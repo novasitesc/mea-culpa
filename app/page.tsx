@@ -231,7 +231,7 @@ export default function HomePage() {
             onMouseLeave={() => setIsHovered(false)}
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-              <div className="relative h-64 lg:h-auto lg:min-h-[400px] bg-gradient-to-br from-background via-card to-[#8B0000]/20 overflow-hidden">
+              <div className="relative h-64 lg:h-auto lg:min-h-100 bg-linear-to-br from-background via-card to-[#8B0000]/20 overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div
                     className={`transition-transform duration-700 ${
@@ -241,7 +241,7 @@ export default function HomePage() {
                     <Skull className="w-48 h-48 text-[#D4AF37]/30" />
                   </div>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-card via-transparent to-transparent" />
                 <div className="absolute top-4 left-4">
                   <span className="inline-flex items-center px-3 py-1 rounded bg-[#D4AF37] text-background text-xs font-semibold tracking-wider">
                     <Flame className="w-3 h-3 mr-1" />
