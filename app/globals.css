@@ -106,7 +106,8 @@
 /* Medieval decorative elements */
 .medieval-border {
   border: 2px solid var(--gold-dim);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 115, 85, 0.2);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(139, 115, 85, 0.2);
 }
 
 .parchment-texture {
@@ -124,7 +125,8 @@
 }
 
 .candle-glow {
-  box-shadow: 0 0 30px rgba(255, 170, 50, 0.15), 0 0 60px rgba(255, 140, 30, 0.08);
+  box-shadow: 0 0 30px rgba(255, 170, 50, 0.15),
+    0 0 60px rgba(255, 140, 30, 0.08);
 }
 
 .text-gold {
