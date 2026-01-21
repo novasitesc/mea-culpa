@@ -1,97 +1,194 @@
 /**
  * Módulo de conexión a la base de datos Supabase
- * Gestiona la conexión y el pool de conexiones usando PostgreSQL
+ * Usa el cliente oficial de Supabase para interactuar con la base de datos
  */
 
 import { dbConfig, validateDbConfig } from './config'
-import { Pool } from 'pg'
-
-// Validar configuración al importar
-validateDbConfig()
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // Tipo para la conexión
-export type DatabaseConnection = Pool
+export type DatabaseConnection = SupabaseClient
 
 let connection: DatabaseConnection | null = null
-let connectionPromise: Promise<DatabaseConnection> | null = null
 
 /**
- * Crea una nueva conexión a la base de datos Supabase
- * Usa PostgreSQL connection pool para Supabase
+ * Crea un cliente de Supabase
  */
-async function createConnection(): Promise<DatabaseConnection> {
-  const pool = new Pool({
-    connectionString: dbConfig.url,
-    ssl: dbConfig.ssl ? { rejectUnauthorized: false } : false,
-    max: dbConfig.maxConnections,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  })
+function createConnection(): DatabaseConnection {
+  // Validar configuración antes de crear el cliente
+  validateDbConfig()
+  
+  const client = createClient(
+    dbConfig.supabaseUrl!,
+    dbConfig.supabaseKey!,
+    {
+      auth: {
+        persistSession: false, // No persistir sesión en el servidor
+      },
+    }
+  )
 
-  // Probar la conexión
-  try {
-    await pool.query('SELECT NOW()')
-  } catch (error) {
-    pool.end()
-    throw new Error(`Error al conectar con Supabase: ${error instanceof Error ? error.message : 'Error desconocido'}`)
-  }
-
-  return pool
+  return client
 }
 
 /**
- * Obtiene una conexión a la base de datos
- * Reutiliza la conexión existente si está disponible
+ * Obtiene el cliente de Supabase
+ * Reutiliza el cliente existente si está disponible
  */
-export async function getConnection(): Promise<DatabaseConnection> {
-  if (connection) {
-    return connection
+export function getConnection(): DatabaseConnection {
+  if (!connection) {
+    connection = createConnection()
   }
-
-  if (!connectionPromise) {
-    connectionPromise = createConnection()
-  }
-
-  try {
-    connection = await connectionPromise
-    return connection
-  } catch (error) {
-    connectionPromise = null
-    throw error
-  }
+  return connection
 }
 
 /**
- * Cierra la conexión a la base de datos
+ * Cierra la conexión (no es necesario con Supabase, pero mantenemos la función para compatibilidad)
  */
 export async function closeConnection(): Promise<void> {
-  if (connection) {
-    await connection.end()
-    connection = null
-    connectionPromise = null
-  }
+  // El cliente de Supabase no requiere cierre explícito
+  connection = null
 }
 
 /**
- * Ejecuta una query en la base de datos
- * Función helper para facilitar el uso
+ * Ejecuta una query SQL usando RPC o directamente desde una tabla
+ * Nota: Supabase usa su API REST, no SQL directo
+ * Para queries SQL personalizadas, usa .rpc() o consulta directa a tablas
  */
 export async function query<T = any>(
-  sql: string,
-  params?: any[]
+  table: string,
+  options?: {
+    select?: string
+    filter?: Record<string, any>
+    limit?: number
+    orderBy?: { column: string; ascending?: boolean }
+  }
 ): Promise<T[]> {
-  const conn = await getConnection()
-  const result = await conn.query(sql, params)
-  return result.rows as T[]
+  const client = getConnection()
+  let query = client.from(table).select(options?.select || '*')
+
+  // Aplicar filtros si existen
+  if (options?.filter) {
+    Object.entries(options.filter).forEach(([key, value]) => {
+      query = query.eq(key, value)
+    })
+  }
+
+  // Aplicar ordenamiento
+  if (options?.orderBy) {
+    query = query.order(options.orderBy.column, { ascending: options.orderBy.ascending ?? true })
+  }
+
+  // Aplicar límite
+  if (options?.limit) {
+    query = query.limit(options.limit)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(`Error en query: ${error.message}`)
+  }
+
+  return (data || []) as T[]
 }
 
 /**
  * Ejecuta una query y retorna un solo resultado
  */
 export async function queryOne<T = any>(
-  sql: string,
-  params?: any[]
+  table: string,
+  options?: {
+    select?: string
+    filter?: Record<string, any>
+  }
 ): Promise<T | null> {
-  const results = await query<T>(sql, params)
+  const results = await query<T>(table, { ...options, limit: 1 })
   return results[0] || null
+}
+
+/**
+ * Inserta datos en una tabla
+ */
+export async function insert<T = any>(
+  table: string,
+  data: T | T[]
+): Promise<T[]> {
+  const client = getConnection()
+  const { data: result, error } = await client
+    .from(table)
+    .insert(data)
+    .select()
+
+  if (error) {
+    throw new Error(`Error al insertar: ${error.message}`)
+  }
+
+  return (result || []) as T[]
+}
+
+/**
+ * Actualiza datos en una tabla
+ */
+export async function update<T = any>(
+  table: string,
+  filter: Record<string, any>,
+  data: Partial<T>
+): Promise<T[]> {
+  const client = getConnection()
+  let query = client.from(table).update(data)
+
+  // Aplicar filtros
+  Object.entries(filter).forEach(([key, value]) => {
+    query = query.eq(key, value)
+  })
+
+  const { data: result, error } = await query.select()
+
+  if (error) {
+    throw new Error(`Error al actualizar: ${error.message}`)
+  }
+
+  return (result || []) as T[]
+}
+
+/**
+ * Elimina datos de una tabla
+ */
+export async function remove<T = any>(
+  table: string,
+  filter: Record<string, any>
+): Promise<T[]> {
+  const client = getConnection()
+  let query = client.from(table).delete()
+
+  // Aplicar filtros
+  Object.entries(filter).forEach(([key, value]) => {
+    query = query.eq(key, value)
+  })
+
+  const { data: result, error } = await query.select()
+
+  if (error) {
+    throw new Error(`Error al eliminar: ${error.message}`)
+  }
+
+  return (result || []) as T[]
+}
+
+/**
+ * Ejecuta una función RPC (Remote Procedure Call) de Supabase
+ */
+export async function rpc<T = any>(
+  functionName: string,
+  params?: Record<string, any>
+): Promise<T> {
+  const client = getConnection()
+  const { data, error } = await client.rpc(functionName, params)
+
+  if (error) {
+    throw new Error(`Error en RPC ${functionName}: ${error.message}`)
+  }
+
+  return data as T
 }

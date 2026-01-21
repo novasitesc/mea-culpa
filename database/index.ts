@@ -9,5 +9,9 @@ export {
   closeConnection,
   query,
   queryOne,
+  insert,
+  update,
+  remove,
+  rpc,
   type DatabaseConnection,
 } from './connection'
