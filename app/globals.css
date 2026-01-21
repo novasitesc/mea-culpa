@@ -128,23 +128,3 @@
   box-shadow: 0 0 30px rgba(255, 170, 50, 0.15),
     0 0 60px rgba(255, 140, 30, 0.08);
 }
-
-.text-gold {
-  color: var(--gold);
-}
-
-.text-gold-dim {
-  color: var(--gold-dim);
-}
-
-.border-gold {
-  border-color: var(--gold);
-}
-
-.border-gold-dim {
-  border-color: var(--gold-dim);
-}
-
-.bg-blood {
-  background-color: var(--blood);
-}
