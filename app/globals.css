@@ -128,3 +128,312 @@
   box-shadow: 0 0 30px rgba(255, 170, 50, 0.15),
     0 0 60px rgba(255, 140, 30, 0.08);
 }
+
+/* Marco épico de fantasía D&D - Ultra detallado */
+.logo-frame {
+  position: relative;
+  padding: 24px;
+  background: 
+    /* Textura de piedra antigua agrietada */
+    url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='stone-crack'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.05' numOctaves='6'/%3E%3CfeColorMatrix values='0.3 0 0 0 0.1 0.25 0 0 0 0.08 0.15 0 0 0 0.05 0 0 0 1 0'/%3E%3C/filter%3E%3Cfilter id='cracks'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.8 0'/%3E%3C/filter%3E%3Cpattern id='ancient-stone' x='0' y='0' width='200' height='200' patternUnits='userSpaceOnUse'%3E%3Crect width='200' height='200' fill='%231a1a1a' filter='url(%23stone-crack)'/%3E%3Cpath d='M0,100 L200,100 M50,0 L50,200 M150,0 L150,200' stroke='%23000' stroke-width='0.5' opacity='0.3' filter='url(%23cracks)'/%3E%3Cpath d='M25,50 Q75,45 125,50 T200,50' stroke='%23000' stroke-width='0.3' opacity='0.2'/%3E%3Cpath d='M0,150 Q50,145 100,150 T200,150' stroke='%23000' stroke-width='0.3' opacity='0.2'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='400' height='400' fill='url(%23ancient-stone)'/%3E%3C/svg%3E"),
+    /* Textura de metal desgastado */
+    repeating-linear-gradient(45deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(139, 115, 85, 0.15) 2px,
+      rgba(139, 115, 85, 0.2) 3px,
+      rgba(184, 134, 11, 0.25) 4px,
+      rgba(139, 115, 85, 0.2) 5px,
+      rgba(139, 115, 85, 0.15) 6px,
+      transparent 6px,
+      transparent 8px),
+    /* Gradiente base oscuro */
+    linear-gradient(135deg, 
+      rgba(26, 26, 26, 0.9) 0%,
+      rgba(45, 35, 25, 0.85) 25%,
+      rgba(30, 25, 20, 0.9) 50%,
+      rgba(45, 35, 25, 0.85) 75%,
+      rgba(26, 26, 26, 0.9) 100%);
+  border: 20px solid transparent;
+  border-image: 
+    linear-gradient(135deg,
+      #8b7355 0%,
+      #b8860b 10%,
+      #8b7355 20%,
+      #d4af37 30%,
+      #8b7355 40%,
+      #b8860b 50%,
+      #8b7355 60%,
+      #d4af37 70%,
+      #8b7355 80%,
+      #b8860b 90%,
+      #8b7355 100%) 1;
+  border-radius: 12px;
+  box-shadow: 
+    /* Sombras profundas para efecto 3D */
+    inset 0 0 120px rgba(0, 0, 0, 0.8),
+    inset 0 0 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 30px rgba(0, 0, 0, 0.5),
+    inset 0 0 15px rgba(139, 115, 85, 0.4),
+    /* Resaltes metálicos */
+    inset 2px 2px 8px rgba(212, 175, 55, 0.3),
+    inset -2px -2px 8px rgba(0, 0, 0, 0.6),
+    /* Brillo dorado */
+    0 0 40px rgba(212, 175, 55, 0.5),
+    0 0 80px rgba(184, 134, 11, 0.3),
+    /* Sombras externas épicas */
+    0 12px 60px rgba(0, 0, 0, 0.9),
+    0 24px 120px rgba(0, 0, 0, 0.7),
+    0 0 0 3px rgba(139, 115, 85, 0.8),
+    0 0 0 6px rgba(184, 134, 11, 0.2);
+}
+
+.logo-frame::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  right: -20px;
+  bottom: -20px;
+  background: 
+    /* Runas y símbolos arcanos en las esquinas */
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='runes' x='0' y='0' width='100' height='100' patternUnits='userSpaceOnUse'%3E%3Cpath d='M20,20 L30,15 L25,25 L35,20' stroke='%23d4af37' stroke-width='1' fill='none' opacity='0.4'/%3E%3Cpath d='M70,20 L80,15 L75,25 L85,20' stroke='%23d4af37' stroke-width='1' fill='none' opacity='0.4'/%3E%3Cpath d='M20,70 L30,65 L25,75 L35,70' stroke='%23d4af37' stroke-width='1' fill='none' opacity='0.4'/%3E%3Cpath d='M70,70 L80,65 L75,75 L85,70' stroke='%23d4af37' stroke-width='1' fill='none' opacity='0.4'/%3E%3Ccircle cx='50' cy='50' r='3' fill='%23d4af37' opacity='0.3'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23runes)'/%3E%3C/svg%3E"),
+    /* Filigrana medieval decorativa */
+    repeating-linear-gradient(90deg, 
+      transparent 0px,
+      transparent 60px,
+      rgba(212, 175, 55, 0.2) 60px,
+      rgba(212, 175, 55, 0.3) 62px,
+      rgba(184, 134, 11, 0.35) 64px,
+      rgba(212, 175, 55, 0.3) 66px,
+      rgba(212, 175, 55, 0.2) 68px,
+      transparent 68px,
+      transparent 128px),
+    repeating-linear-gradient(0deg, 
+      transparent 0px,
+      transparent 60px,
+      rgba(212, 175, 55, 0.2) 60px,
+      rgba(212, 175, 55, 0.3) 62px,
+      rgba(184, 134, 11, 0.35) 64px,
+      rgba(212, 175, 55, 0.3) 66px,
+      rgba(212, 175, 55, 0.2) 68px,
+      transparent 68px,
+      transparent 128px),
+    /* Iluminación dorada en esquinas */
+    radial-gradient(ellipse 200px 200px at 0% 0%, 
+      rgba(212, 175, 55, 0.4) 0%,
+      rgba(184, 134, 11, 0.3) 20%,
+      rgba(212, 175, 55, 0.2) 40%,
+      transparent 60%),
+    radial-gradient(ellipse 200px 200px at 100% 0%, 
+      rgba(212, 175, 55, 0.4) 0%,
+      rgba(184, 134, 11, 0.3) 20%,
+      rgba(212, 175, 55, 0.2) 40%,
+      transparent 60%),
+    radial-gradient(ellipse 200px 200px at 0% 100%, 
+      rgba(212, 175, 55, 0.4) 0%,
+      rgba(184, 134, 11, 0.3) 20%,
+      rgba(212, 175, 55, 0.2) 40%,
+      transparent 60%),
+    radial-gradient(ellipse 200px 200px at 100% 100%, 
+      rgba(212, 175, 55, 0.4) 0%,
+      rgba(184, 134, 11, 0.3) 20%,
+      rgba(212, 175, 55, 0.2) 40%,
+      transparent 60%),
+    /* Gradientes de iluminación cinematográfica */
+    linear-gradient(135deg, 
+      rgba(212, 175, 55, 0.3) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(212, 175, 55, 0.3) 100%),
+    linear-gradient(45deg, 
+      rgba(212, 175, 55, 0.2) 0%,
+      transparent 25%,
+      transparent 75%,
+      rgba(184, 134, 11, 0.2) 100%);
+  border-radius: 12px;
+  z-index: -1;
+  opacity: 0.9;
+  animation: magical-glow 4s ease-in-out infinite;
+}
+
+@keyframes magical-glow {
+  0%, 100% {
+    opacity: 0.9;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+}
+
+.logo-frame::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 3px solid;
+  border-image: 
+    repeating-linear-gradient(90deg,
+      rgba(212, 175, 55, 0.7) 0px,
+      rgba(184, 134, 11, 0.8) 2px,
+      rgba(212, 175, 55, 0.75) 4px,
+      rgba(184, 134, 11, 0.7) 6px,
+      rgba(212, 175, 55, 0.75) 8px,
+      rgba(184, 134, 11, 0.8) 10px,
+      rgba(212, 175, 55, 0.7) 12px) 1;
+  border-radius: 8px;
+  background: 
+    /* Patrón de runas internas */
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(212, 175, 55, 0.1) 8px,
+      rgba(212, 175, 55, 0.15) 9px,
+      rgba(138, 43, 226, 0.2) 10px,
+      rgba(212, 175, 55, 0.15) 11px,
+      rgba(212, 175, 55, 0.1) 12px,
+      transparent 12px,
+      transparent 20px),
+    /* Textura de relieve arcaico */
+    radial-gradient(ellipse at 30% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(184, 134, 11, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.3) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+  box-shadow: 
+    inset 0 0 40px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(184, 134, 11, 0.3),
+    inset 0 0 10px rgba(212, 175, 55, 0.2),
+    inset 0 2px 6px rgba(212, 175, 55, 0.2),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Decoraciones de dragones y símbolos épicos en las esquinas */
+.logo-frame-corner {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  color: #d4af37;
+  text-shadow: 
+    0 0 10px rgba(212, 175, 55, 1),
+    0 0 20px rgba(184, 134, 11, 0.8),
+    0 0 30px rgba(212, 175, 55, 0.6),
+    0 4px 8px rgba(0, 0, 0, 0.8);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  animation: corner-glow 3s ease-in-out infinite;
+}
+
+@keyframes corner-glow {
+  0%, 100% {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) brightness(1.3) drop-shadow(0 0 15px rgba(212, 175, 55, 0.6));
+  }
+}
+
+.logo-frame-corner.top-left {
+  top: -10px;
+  left: -10px;
+}
+
+.logo-frame-corner.top-right {
+  top: -10px;
+  right: -10px;
+}
+
+.logo-frame-corner.bottom-left {
+  bottom: -10px;
+  left: -10px;
+}
+
+.logo-frame-corner.bottom-right {
+  bottom: -10px;
+  right: -10px;
+}
+
+.logo-frame-corner.top-left::before {
+  content: "⚔";
+  transform: rotate(-45deg);
+  font-size: 32px;
+}
+
+.logo-frame-corner.top-right::before {
+  content: "🛡";
+  transform: rotate(45deg);
+  font-size: 32px;
+}
+
+.logo-frame-corner.bottom-left::before {
+  content: "⚔";
+  transform: rotate(-135deg);
+  font-size: 32px;
+}
+
+.logo-frame-corner.bottom-right::before {
+  content: "🛡";
+  transform: rotate(135deg);
+  font-size: 32px;
+}
+
+/* Líneas decorativas con runas y símbolos arcanos */
+.logo-frame-decoration {
+  position: absolute;
+  width: 120px;
+  height: 4px;
+  background: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(184, 134, 11, 0.4) 5%,
+      rgba(212, 175, 55, 0.7) 15%,
+      rgba(184, 134, 11, 0.8) 30%,
+      #d4af37 50%,
+      rgba(184, 134, 11, 0.8) 70%,
+      rgba(212, 175, 55, 0.7) 85%,
+      rgba(184, 134, 11, 0.4) 95%,
+      transparent 100%);
+  z-index: 1;
+  box-shadow: 
+    0 0 12px rgba(212, 175, 55, 0.8),
+    0 0 24px rgba(184, 134, 11, 0.6),
+    0 0 36px rgba(212, 175, 55, 0.4);
+  animation: decoration-pulse 2s ease-in-out infinite;
+}
+
+@keyframes decoration-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: 
+      0 0 12px rgba(212, 175, 55, 0.8),
+      0 0 24px rgba(184, 134, 11, 0.6),
+      0 0 36px rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 
+      0 0 20px rgba(212, 175, 55, 1),
+      0 0 40px rgba(184, 134, 11, 0.8),
+      0 0 60px rgba(212, 175, 55, 0.6);
+  }
+}
+
+.logo-frame-decoration.top {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.logo-frame-decoration.bottom {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
