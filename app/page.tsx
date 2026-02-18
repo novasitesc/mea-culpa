@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 import {
   User,
   MessageSquare,
@@ -13,6 +15,7 @@ import {
   Lock,
   Scroll,
   Sparkles,
+  LogIn,
 } from "lucide-react"
 
 // Datos de noticias del periódico
@@ -74,6 +77,7 @@ const headerButtons = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
   const [activeSection, setActiveSection] = useState("tienda")
   const [activeSlot, setActiveSlot] = useState(1)
 
@@ -92,8 +96,14 @@ export default function HomePage() {
         <header className="flex items-center justify-between mb-6 bg-card rounded-lg border border-border p-3 medieval-border">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gold flex items-center justify-center">
-              <Scroll className="w-6 h-6 text-background" />
+            <div className="relative w-16 h-12 rounded-lg overflow-hidden flex items-center justify-center">
+              <Image
+                src="/imgs/mea-culpa-logo.jpeg"
+                alt="Mea Culpa Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gold tracking-wider font-sans">MEA CULPA</h1>
@@ -116,6 +126,14 @@ export default function HomePage() {
                 <button.icon className="w-5 h-5" />
               </button>
             ))}
+            <button
+              onClick={() => router.push("/login")}
+              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background font-medium rounded-lg transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+              title="Iniciar Sesión"
+            >
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">Iniciar Sesión</span>
+            </button>
           </div>
         </header>
 
