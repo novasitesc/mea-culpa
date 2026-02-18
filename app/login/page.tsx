@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -34,6 +34,16 @@ export default function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   })
+
+  // Ocultar scrollbar cuando se monta el componente
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [])
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true)
@@ -73,12 +83,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background GIF */}
+    <div className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" style={{ overflow: 'hidden' }}>
+      {/* Background Video */}
       <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
-        <img
-          src="/imgs/background.gif"
-          alt="Background"
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
           className="absolute top-0 left-0 w-full h-full object-cover"
           style={{ 
             minWidth: '100%',
@@ -86,7 +98,9 @@ export default function LoginPage() {
             width: 'auto',
             height: 'auto',
           }}
-        />
+        >
+          <source src="/imgs/Login/VIdeos/Dragon.mp4" type="video/mp4" />
+        </video>
         {/* Overlay oscuro para mejorar legibilidad */}
         <div className="absolute inset-0 bg-background/60" />
       </div>
@@ -100,12 +114,12 @@ export default function LoginPage() {
       />
 
       <div className="relative z-20 w-full max-w-lg">
-        <Card className="bg-card border-gold-dim medieval-border shadow-2xl candle-glow">
-          <CardHeader className="text-center space-y-4 pb-6">
-            <div className="flex justify-center mb-6">
-              <div className="relative w-full max-w-sm h-auto aspect-[4/3]">
+        <Card className="bg-card shadow-2xl candle-glow" style={{ borderColor: '#8B4513', borderWidth: '2px', borderStyle: 'solid', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)' }}>
+          <CardHeader className="text-center space-y-2 pb-4">
+            <div className="flex justify-center mb-4">
+              <div className="relative w-full max-w-xs h-auto aspect-[4/3]">
                 <Image
-                  src="/imgs/mea-culpa-logo.jpeg"
+                  src="/imgs/Login/brave_screenshot_gemini.google.com.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
@@ -120,7 +134,7 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Email field */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground">
@@ -185,14 +199,14 @@ export default function LoginPage() {
               {/* Submit button */}
               <Button
                 type="submit"
-                className="w-full bg-gold hover:bg-gold-dim text-background font-medium py-6 text-base cursor-pointer"
+                className="w-full bg-gold hover:bg-gold-dim text-background font-medium py-4 text-base cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
 
               {/* Additional links */}
-              <div className="text-center space-y-2 pt-4">
+              <div className="text-center space-y-1 pt-2">
                 <p className="text-sm text-muted-foreground">
                   ¿No tienes una cuenta?{" "}
                   <button
@@ -216,7 +230,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-4">
           © 2024 Mea Culpa - RPG Online
         </p>
       </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -42,6 +42,16 @@ export default function RegisterPage() {
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
   })
+
+  // Ocultar scrollbar cuando se monta el componente
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [])
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
@@ -86,7 +96,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" style={{ overflow: 'hidden' }}>
       {/* Background GIF */}
       <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
         <img
@@ -113,12 +123,12 @@ export default function RegisterPage() {
       />
 
       <div className="relative z-20 w-full max-w-lg">
-        <Card className="bg-card border-gold-dim medieval-border shadow-2xl candle-glow">
-          <CardHeader className="text-center space-y-4 pb-6">
-            <div className="flex justify-center mb-6">
-              <div className="relative w-full max-w-sm h-auto aspect-[4/3]">
+        <Card className="bg-card shadow-2xl candle-glow" style={{ borderColor: '#8B4513', borderWidth: '2px', borderStyle: 'solid', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)' }}>
+          <CardHeader className="text-center space-y-2 pb-4">
+            <div className="flex justify-center mb-4">
+              <div className="relative w-full max-w-xs h-auto aspect-[4/3]">
                 <Image
-                  src="/imgs/mea-culpa-logo.jpeg"
+                  src="/imgs/Login/brave_screenshot_gemini.google.com.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
@@ -134,112 +144,121 @@ export default function RegisterPage() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Username field */}
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Nombre de Usuario
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Tu nombre de aventurero"
-                  className="bg-input border-border focus-visible:border-gold"
-                  {...register("username")}
-                  disabled={isLoading}
-                />
-                {errors.username && (
-                  <p className="text-sm text-destructive mt-1">{errors.username.message}</p>
-                )}
-              </div>
-
-              {/* Email field */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Correo Electrónico
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="tu@correo.com"
-                    className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
-                    {...register("email")}
-                    disabled={isLoading}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              {/* Password field */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Contraseña
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                    {...register("password")}
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
-                )}
-              </div>
-
-              {/* Confirm Password field */}
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-foreground flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Confirmar Contraseña
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                    {...register("confirmPassword")}
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
-                    disabled={isLoading}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Grid de dos columnas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Columna izquierda */}
+                <div className="space-y-4">
+                  {/* Username field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-foreground flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Nombre de Usuario
+                    </Label>
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="Tu nombre de aventurero"
+                      className="bg-input border-border focus-visible:border-gold"
+                      {...register("username")}
+                      disabled={isLoading}
+                    />
+                    {errors.username && (
+                      <p className="text-sm text-destructive mt-1">{errors.username.message}</p>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Password field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-foreground flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Contraseña
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        {...register("password")}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                    )}
+                  </div>
                 </div>
-                {errors.confirmPassword && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.confirmPassword.message}
-                  </p>
-                )}
+
+                {/* Columna derecha */}
+                <div className="space-y-4">
+                  {/* Email field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-foreground flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Correo Electrónico
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="tu@correo.com"
+                        className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        {...register("email")}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-foreground flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Confirmar Contraseña
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        {...register("confirmPassword")}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Error message */}
@@ -250,10 +269,10 @@ export default function RegisterPage() {
               )}
 
               {/* Submit button */}
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center pt-2">
                 <Button
                   type="submit"
-                  className="bg-gold hover:bg-gold-dim text-background font-medium py-6 px-12 text-base cursor-pointer"
+                  className="bg-gold hover:bg-gold-dim text-background font-medium py-4 px-12 text-base cursor-pointer"
                   disabled={isLoading}
                 >
                   {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
@@ -261,7 +280,7 @@ export default function RegisterPage() {
               </div>
 
               {/* Additional links */}
-              <div className="text-center space-y-2 pt-4">
+              <div className="text-center space-y-1 pt-2">
                 <p className="text-sm text-muted-foreground">
                   ¿Ya tienes una cuenta?{" "}
                   <button
@@ -278,7 +297,7 @@ export default function RegisterPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-4">
           © 2024 Mea Culpa - RPG Online
         </p>
       </div>
