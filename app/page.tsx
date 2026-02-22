@@ -2,18 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import {
-  User,
-  ShoppingBag,
-  Wallet,
-  Calendar,
-  Store,
-  Scroll,
-  Lock,
-  Sparkles,
-} from "lucide-react";
+import { User, Lock, Sparkles } from "lucide-react";
 import Header from "./components/header";
+import Sidebar from "./components/sidebar";
 import { useAuth } from "@/lib/useAuth";
 
 // Datos de noticias del periódico
@@ -79,48 +70,7 @@ type CharacterSlot = {
   character?: Character;
 };
 
-// Items del menú lateral
-const sidebarItems = [
-  {
-    id: "inicio",
-    label: "Inicio",
-    icon: Scroll,
-    hasIndicator: true,
-    href: null,
-  },
-  {
-    id: "tiendas",
-    label: "Tiendas",
-    icon: Store,
-    hasIndicator: true,
-    href: "/tiendas",
-  },
-  {
-    id: "balance",
-    label: "Balance",
-    icon: Wallet,
-    hasIndicator: false,
-    href: null,
-  },
-  {
-    id: "eventos",
-    label: "Eventos",
-    icon: Calendar,
-    hasIndicator: false,
-    href: null,
-  },
-  {
-    id: "comercio",
-    label: "Comercio",
-    icon: ShoppingBag,
-    hasIndicator: false,
-    href: null,
-    subtitle: "(compra y venta entre pj)",
-  },
-];
-
 export default function HomePage() {
-  const router = useRouter();
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -184,38 +134,10 @@ export default function HomePage() {
         {/* Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4">
           {/* Left Sidebar */}
-          <aside className="space-y-3">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.href) {
-                    router.push(item.href);
-                  } else {
-                    setActiveSection(item.id);
-                  }
-                }}
-                className={`w-full rounded-lg border p-4 text-left transition-all ${
-                  activeSection === item.id
-                    ? "bg-card border-gold text-gold medieval-border"
-                    : "bg-card border-border text-foreground hover:border-gold-dim"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium font-sans">{item.label}</span>
-                  {item.hasIndicator && (
-                    <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
-                  )}
-                </div>
-                {item.subtitle && (
-                  <p className="text-xs text-muted-foreground mt-1 ml-8">
-                    {item.subtitle}
-                  </p>
-                )}
-              </button>
-            ))}
-          </aside>
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+          />
 
           {/* Center - Newspaper */}
           <main className="bg-parchment rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow">

@@ -11,6 +11,7 @@ import {
   Minus,
 } from "lucide-react";
 import Header from "@/app/components/header";
+import Sidebar from "@/app/components/sidebar";
 import {
   Card,
   CardContent,
@@ -281,203 +282,212 @@ export default function TiendasPage() {
           </div>
         )}
 
-        {/* Título de sección */}
-        <div className="mb-6 flex items-center justify-between">
+        {/* Layout con sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 mt-4">
+          <Sidebar />
           <div>
-            <h1 className="text-2xl font-bold text-gold tracking-wider font-sans flex items-center gap-2">
-              <Package className="w-7 h-7" />
-              Tiendas de Mea Culpa
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Explora los comerciantes del reino
-            </p>
-          </div>
-          {activeShop && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveShop(null)}
-              className="flex items-center gap-2"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Volver a tiendas
-            </Button>
-          )}
-        </div>
-
-        {/* ── Vista: lista de tiendas ────────────────────────────────────── */}
-        {!activeShop && (
-          <div>
-            {isLoadingShops ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-44 rounded-lg bg-card animate-pulse border border-border"
-                  />
-                ))}
+            {/* Título de sección */}
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gold tracking-wider font-sans flex items-center gap-2">
+                  <Package className="w-7 h-7" />
+                  Tiendas de Mea Culpa
+                </h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Explora los comerciantes del reino
+                </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {shops.map((shop) => (
-                  <Card
-                    key={shop.id}
-                    className="cursor-pointer hover:border-gold-dim transition-all hover:shadow-lg medieval-border group"
-                    onClick={() => openShop(shop.id)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-4xl">{shop.icon}</span>
-                        <div className="min-w-0">
-                          <CardTitle className="text-gold text-lg group-hover:text-gold-dim transition-colors">
-                            {shop.name}
-                          </CardTitle>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {shop.location}
-                          </p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm leading-relaxed line-clamp-2">
-                        {shop.description}
-                      </CardDescription>
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground italic">
-                          — {shop.keeper}
-                        </span>
-                        <span className="text-xs bg-secondary text-muted-foreground px-2 py-1 rounded-full">
-                          {(shop as ShopListItem).itemCount} objetos
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+              {activeShop && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveShop(null)}
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Volver a tiendas
+                </Button>
+              )}
+            </div>
 
-        {/* ── Vista: tienda individual ───────────────────────────────────── */}
-        {activeShop && (
-          <div>
-            {isLoadingShop ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {[...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-52 rounded-lg bg-card animate-pulse border border-border"
-                  />
-                ))}
-              </div>
-            ) : (
-              <>
-                {/* Cabecera de la tienda */}
-                <Card className="mb-6 border-gold-dim medieval-border">
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                      <span className="text-5xl">{activeShop.icon}</span>
-                      <div className="flex-1">
-                        <h2 className="text-xl font-bold text-gold font-sans">
-                          {activeShop.name}
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {activeShop.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2 italic">
-                          📍 {activeShop.location} · Atendido por{" "}
-                          <strong>{activeShop.keeper}</strong>
-                        </p>
-                      </div>
-                      {/* Filtro de categoría */}
-                      <div className="shrink-0">
-                        <Select
-                          value={filterCategory}
-                          onChange={(e) => setFilterCategory(e.target.value)}
-                          className="w-44"
-                        >
-                          {categories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat === "all"
-                                ? "Todas las categorías"
-                                : cat.charAt(0).toUpperCase() + cat.slice(1)}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Grid de items */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {visibleItems.map((item) => {
-                    const bought = purchasedItems.has(item.id);
-                    const outOfStock = item.stock === 0;
-                    const inCart = cart.some((e) => e.id === item.id);
-
-                    return (
+            {/* ── Vista: lista de tiendas ────────────────────────────────────── */}
+            {!activeShop && (
+              <div>
+                {isLoadingShops ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-44 rounded-lg bg-card animate-pulse border border-border"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {shops.map((shop) => (
                       <Card
-                        key={item.id}
-                        className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                        key={shop.id}
+                        className="cursor-pointer hover:border-gold-dim transition-all hover:shadow-lg medieval-border group"
+                        onClick={() => openShop(shop.id)}
                       >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-3xl">{item.icon}</span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
-                            >
-                              {item.rarity}
-                            </span>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            <span className="text-4xl">{shop.icon}</span>
+                            <div className="min-w-0">
+                              <CardTitle className="text-gold text-lg group-hover:text-gold-dim transition-colors">
+                                {shop.name}
+                              </CardTitle>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {shop.location}
+                              </p>
+                            </div>
                           </div>
-                          <CardTitle className="text-sm text-foreground mt-2 leading-tight">
-                            {item.name}
-                          </CardTitle>
                         </CardHeader>
-
-                        <CardContent className="flex-1 flex flex-col gap-3 pt-0">
-                          <CardDescription className="text-xs leading-relaxed flex-1">
-                            {item.description}
+                        <CardContent>
+                          <CardDescription className="text-sm leading-relaxed line-clamp-2">
+                            {shop.description}
                           </CardDescription>
-
-                          <div className="flex items-center justify-between mt-auto">
-                            {/* Precio */}
-                            <span className="flex items-center gap-1 font-bold text-gold text-sm">
-                              <Coins className="w-4 h-4" />
-                              {item.price.toLocaleString()}
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground italic">
+                              — {shop.keeper}
                             </span>
-                            {/* Stock */}
-                            {item.stock !== null && (
-                              <span className="text-xs text-muted-foreground">
-                                Stock: {item.stock}
-                              </span>
-                            )}
+                            <span className="text-xs bg-secondary text-muted-foreground px-2 py-1 rounded-full">
+                              {(shop as ShopListItem).itemCount} objetos
+                            </span>
                           </div>
-
-                          <Button
-                            size="sm"
-                            variant={inCart ? "secondary" : "default"}
-                            disabled={bought || outOfStock}
-                            onClick={() => addToCart(item)}
-                            className="w-full"
-                          >
-                            {bought
-                              ? "Comprado ✓"
-                              : outOfStock
-                                ? "Sin stock"
-                                : inCart
-                                  ? "En carrito +"
-                                  : "Añadir al carrito"}
-                          </Button>
                         </CardContent>
                       </Card>
-                    );
-                  })}
-                </div>
-              </>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Vista: tienda individual ───────────────────────────────────── */}
+            {activeShop && (
+              <div>
+                {isLoadingShop ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-52 rounded-lg bg-card animate-pulse border border-border"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {/* Cabecera de la tienda */}
+                    <Card className="mb-6 border-gold-dim medieval-border">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <span className="text-5xl">{activeShop.icon}</span>
+                          <div className="flex-1">
+                            <h2 className="text-xl font-bold text-gold font-sans">
+                              {activeShop.name}
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {activeShop.description}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              📍 {activeShop.location} · Atendido por{" "}
+                              <strong>{activeShop.keeper}</strong>
+                            </p>
+                          </div>
+                          {/* Filtro de categoría */}
+                          <div className="shrink-0">
+                            <Select
+                              value={filterCategory}
+                              onChange={(e) =>
+                                setFilterCategory(e.target.value)
+                              }
+                              className="w-44"
+                            >
+                              {categories.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {cat === "all"
+                                    ? "Todas las categorías"
+                                    : cat.charAt(0).toUpperCase() +
+                                      cat.slice(1)}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Grid de items */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {visibleItems.map((item) => {
+                        const bought = purchasedItems.has(item.id);
+                        const outOfStock = item.stock === 0;
+                        const inCart = cart.some((e) => e.id === item.id);
+
+                        return (
+                          <Card
+                            key={item.id}
+                            className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                          >
+                            <CardHeader className="pb-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-3xl">{item.icon}</span>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
+                                >
+                                  {item.rarity}
+                                </span>
+                              </div>
+                              <CardTitle className="text-sm text-foreground mt-2 leading-tight">
+                                {item.name}
+                              </CardTitle>
+                            </CardHeader>
+
+                            <CardContent className="flex-1 flex flex-col gap-3 pt-0">
+                              <CardDescription className="text-xs leading-relaxed flex-1">
+                                {item.description}
+                              </CardDescription>
+
+                              <div className="flex items-center justify-between mt-auto">
+                                {/* Precio */}
+                                <span className="flex items-center gap-1 font-bold text-gold text-sm">
+                                  <Coins className="w-4 h-4" />
+                                  {item.price.toLocaleString()}
+                                </span>
+                                {/* Stock */}
+                                {item.stock !== null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Stock: {item.stock}
+                                  </span>
+                                )}
+                              </div>
+
+                              <Button
+                                size="sm"
+                                variant={inCart ? "secondary" : "default"}
+                                disabled={bought || outOfStock}
+                                onClick={() => addToCart(item)}
+                                className="w-full"
+                              >
+                                {bought
+                                  ? "Comprado ✓"
+                                  : outOfStock
+                                    ? "Sin stock"
+                                    : inCart
+                                      ? "En carrito +"
+                                      : "Añadir al carrito"}
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
