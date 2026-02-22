@@ -3,7 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Map, Menu, Scroll, Swords, UserCircle2, Users, X, LogOut } from "lucide-react";
+import {
+  BookOpen,
+  Map,
+  Menu,
+  Scroll,
+  Swords,
+  UserCircle2,
+  Users,
+  X,
+  LogOut,
+} from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 
 const navItems = [
@@ -67,7 +77,9 @@ export default function Header() {
               <Scroll className="w-5 h-5 text-[#D4AF37]" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-wider text-[#D4AF37]">Chronicles</h1>
+              <h1 className="text-lg font-semibold tracking-wider text-[#D4AF37]">
+                Chronicles
+              </h1>
               <p className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase">
                 of the Realm
               </p>

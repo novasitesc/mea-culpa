@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 
 export interface User {
-  id: string
-  email: string
-  name: string
-  role: string
-  level: number
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  level: number;
 }
 
 // Usuarios de prueba
@@ -28,44 +28,47 @@ const DEMO_USERS = [
     role: "Game Master",
     level: 20,
   },
-]
+];
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Verificar si hay un usuario en localStorage
-    const storedUser = localStorage.getItem("meaculpa_user")
+    const storedUser = localStorage.getItem("meaculpa_user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser))
+      setUser(JSON.parse(storedUser));
     }
-    setIsLoading(false)
-  }, [])
+    setIsLoading(false);
+  }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> => {
     // Simular delay de red
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     const foundUser = DEMO_USERS.find(
-      u => u.email === email && u.password === password
-    )
+      (u) => u.email === email && u.password === password,
+    );
 
     if (!foundUser) {
-      return { success: false, error: "Correo o contraseña incorrectos" }
+      return { success: false, error: "Correo o contraseña incorrectos" };
     }
 
-    const { password: _, ...userWithoutPassword } = foundUser
-    localStorage.setItem("meaculpa_user", JSON.stringify(userWithoutPassword))
-    setUser(userWithoutPassword)
+    const { password: _, ...userWithoutPassword } = foundUser;
+    localStorage.setItem("meaculpa_user", JSON.stringify(userWithoutPassword));
+    setUser(userWithoutPassword);
 
-    return { success: true }
-  }
+    return { success: true };
+  };
 
   const logout = () => {
-    localStorage.removeItem("meaculpa_user")
-    setUser(null)
-  }
+    localStorage.removeItem("meaculpa_user");
+    setUser(null);
+  };
 
   return {
     user,
@@ -73,5 +76,5 @@ export function useAuth() {
     isAuthenticated: !!user,
     login,
     logout,
-  }
+  };
 }

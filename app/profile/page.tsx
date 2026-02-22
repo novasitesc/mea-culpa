@@ -59,7 +59,7 @@ export default function ProfilePage() {
               role: user.role,
               level: user.level,
               home: data.player.home,
-            }
+            },
           });
         }
       });
@@ -92,7 +92,9 @@ export default function ProfilePage() {
         <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">Perfil del Jugador</p>
+              <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">
+                Perfil del Jugador
+              </p>
               <h1 className="text-3xl font-serif text-[#D4AF37] tracking-wide mt-2">
                 {player?.name ?? "Cargando..."}
               </h1>
@@ -104,7 +106,8 @@ export default function ProfilePage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">
-                {characters.length} personaje{characters.length === 1 ? "" : "s"}
+                {characters.length} personaje
+                {characters.length === 1 ? "" : "s"}
               </span>
               <span className="px-3 py-1 rounded bg-secondary text-foreground text-xs uppercase">
                 Activo
@@ -121,7 +124,7 @@ export default function ProfilePage() {
             >
               <div className="space-y-4">
                 <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
-                      <Image
+                  <Image
                     src={character.portrait}
                     alt={`${character.name} portrait`}
                     fill
