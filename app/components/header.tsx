@@ -34,7 +34,10 @@ export default function Header() {
     <header className="flex items-center justify-between mb-6 bg-card rounded-lg border border-border p-3 medieval-border">
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <div className="relative w-16 h-12 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer" onClick={() => router.push("/")}>
+        <div
+          className="relative w-16 h-12 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer"
+          onClick={() => router.push("/")}
+        >
           <Image
             src="/imgs/mea-culpa-logo.jpeg"
             alt="Mea Culpa Logo"
@@ -44,7 +47,9 @@ export default function Header() {
           />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gold tracking-wider font-sans">MEA CULPA</h1>
+          <h1 className="text-xl font-bold text-gold tracking-wider font-sans">
+            MEA CULPA
+          </h1>
           <p className="text-xs text-muted-foreground">RPG Online</p>
         </div>
       </div>
@@ -68,7 +73,9 @@ export default function Header() {
             ))}
             <div className="hidden sm:block text-right mx-2">
               <p className="text-sm font-medium text-gold">{user.name}</p>
-              <p className="text-xs text-muted-foreground">Nivel {user.level}</p>
+              <p className="text-xs text-muted-foreground">
+                Nivel {user.level}
+              </p>
             </div>
             <button
               onClick={() => router.push("/profile")}

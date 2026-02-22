@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   User,
   ShoppingBag,
@@ -11,8 +11,8 @@ import {
   Store,
   Lock,
   Sparkles,
-} from "lucide-react"
-import Header from "./components/header"
+} from "lucide-react";
+import Header from "./components/header";
 
 // Datos de noticias del periódico
 const newsArticles = [
@@ -34,7 +34,7 @@ const newsArticles = [
     content:
       "Para todos los gremios y aventureros de nuevos, los devaneos son bienvenidos mas y que esperemos ser buenas familias que van a ir más allá.",
   },
-]
+];
 
 // Datos del periódico
 const newspaperData = {
@@ -45,7 +45,7 @@ const newspaperData = {
   editor: "EDITOR: MALOG",
   mainContent:
     "En estas semanas, el duque del distrito sur, anuncio a las localidades con todos sus provenientes en una cerranza a otra ubicación de la ciudad. La guardia espera haber neutralizado trámites de esta decisión de traslado, entes ya publicar debido a la reciente actividad de una banda lacrón en la ciudad. Al duque últimamente les ocultaba lidiándose y restando/recogiendo asuntos extracontables, y por ello aún tiene estado.",
-}
+};
 
 // Slots de personajes
 const characterSlots = [
@@ -54,20 +54,26 @@ const characterSlots = [
   { id: 3, name: null, locked: true, active: false },
   { id: 4, name: null, locked: true, active: false },
   { id: 5, name: null, locked: true, active: false },
-]
+];
 
 // Items del menú lateral
 const sidebarItems = [
   { id: "tienda", label: "Tienda", icon: Store, hasIndicator: true },
   { id: "balance", label: "Balance", icon: Wallet, hasIndicator: false },
   { id: "eventos", label: "Eventos", icon: Calendar, hasIndicator: false },
-  { id: "comercio", label: "Comercio", icon: ShoppingBag, hasIndicator: false, subtitle: "(compra y venta entre pj)" },
-]
+  {
+    id: "comercio",
+    label: "Comercio",
+    icon: ShoppingBag,
+    hasIndicator: false,
+    subtitle: "(compra y venta entre pj)",
+  },
+];
 
 export default function HomePage() {
-  const router = useRouter()
-  const [activeSection, setActiveSection] = useState("tienda")
-  const [activeSlot, setActiveSlot] = useState(1)
+  const router = useRouter();
+  const [activeSection, setActiveSection] = useState("tienda");
+  const [activeSlot, setActiveSlot] = useState(1);
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,7 +111,9 @@ export default function HomePage() {
                   )}
                 </div>
                 {item.subtitle && (
-                  <p className="text-xs text-muted-foreground mt-1 ml-8">{item.subtitle}</p>
+                  <p className="text-xs text-muted-foreground mt-1 ml-8">
+                    {item.subtitle}
+                  </p>
                 )}
               </button>
             ))}
@@ -118,7 +126,9 @@ export default function HomePage() {
               <span className="text-gold font-bold text-sm tracking-widest font-sans">
                 NOTI CARENSE
               </span>
-              <span className="text-muted-foreground text-xs">{newspaperData.subtitle}</span>
+              <span className="text-muted-foreground text-xs">
+                {newspaperData.subtitle}
+              </span>
             </div>
 
             {/* Newspaper Title */}
@@ -194,7 +204,9 @@ export default function HomePage() {
             {/* Active Character Card */}
             <div className="bg-card rounded-lg border border-gold-dim overflow-hidden medieval-border">
               <div className="bg-linear-to-r from-gold-dim to-accent px-4 py-2">
-                <span className="text-primary-foreground font-bold text-sm tracking-wider font-sans">HUMAN</span>
+                <span className="text-primary-foreground font-bold text-sm tracking-wider font-sans">
+                  HUMAN
+                </span>
                 <span className="text-gold font-bold text-sm tracking-wider ml-2 font-sans">
                   SORCERER
                 </span>
@@ -205,7 +217,9 @@ export default function HomePage() {
                 </div>
                 <div className="text-center">
                   <p className="text-gold font-medium font-sans">Nivel 12</p>
-                  <p className="text-xs text-muted-foreground">Mago de las Sombras</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mago de las Sombras
+                  </p>
                 </div>
               </div>
             </div>
@@ -221,8 +235,8 @@ export default function HomePage() {
                     slot.locked
                       ? "bg-background border-secondary cursor-not-allowed"
                       : activeSlot === slot.id
-                      ? "bg-card border-gold medieval-border"
-                      : "bg-card border-border hover:border-gold-dim"
+                        ? "bg-card border-gold medieval-border"
+                        : "bg-card border-border hover:border-gold-dim"
                   }`}
                 >
                   <div
@@ -238,11 +252,17 @@ export default function HomePage() {
                   </div>
                   <div className="flex-1 text-left">
                     {slot.locked ? (
-                      <p className="text-xs text-muted-foreground">Slot bloqueado</p>
+                      <p className="text-xs text-muted-foreground">
+                        Slot bloqueado
+                      </p>
                     ) : (
                       <>
-                        <p className="text-sm text-foreground font-medium font-sans">{slot.name}</p>
-                        <p className="text-xs text-muted-foreground">Nivel {slot.level}</p>
+                        <p className="text-sm text-foreground font-medium font-sans">
+                          {slot.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Nivel {slot.level}
+                        </p>
                       </>
                     )}
                   </div>
@@ -263,5 +283,5 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
