@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { DEMO_USERS } from "@/lib/demoUsers";
 
 export interface User {
   id: string;
@@ -8,27 +9,8 @@ export interface User {
   name: string;
   role: string;
   level: number;
+  home: string;
 }
-
-// Usuarios de prueba
-const DEMO_USERS = [
-  {
-    id: "1",
-    email: "demo@meaculpa.com",
-    password: "123456",
-    name: "Nyra Valewind",
-    role: "Dungeon Explorer",
-    level: 7,
-  },
-  {
-    id: "2",
-    email: "admin@meaculpa.com",
-    password: "admin123",
-    name: "Liza Darkwood",
-    role: "Game Master",
-    level: 20,
-  },
-];
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);

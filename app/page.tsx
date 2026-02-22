@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   User,
@@ -14,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Header from "./components/header";
+import { useAuth } from "@/lib/useAuth";
 
 // Datos de noticias del periódico
 const newsArticles = [
@@ -48,14 +48,35 @@ const newspaperData = {
     "En estas semanas, el duque del distrito sur, anuncio a las localidades con todos sus provenientes en una cerranza a otra ubicación de la ciudad. La guardia espera haber neutralizado trámites de esta decisión de traslado, entes ya publicar debido a la reciente actividad de una banda lacrón en la ciudad. Al duque últimamente les ocultaba lidiándose y restando/recogiendo asuntos extracontables, y por ello aún tiene estado.",
 };
 
-// Slots de personajes
-const characterSlots = [
-  { id: 1, name: "Human Sorcerer", level: 12, locked: false, active: true },
-  { id: 2, name: "Elf Ranger", level: 8, locked: false, active: false },
-  { id: 3, name: null, locked: true, active: false },
-  { id: 4, name: null, locked: true, active: false },
-  { id: 5, name: null, locked: true, active: false },
-];
+type Player = {
+  name: string;
+  role: string;
+  level: number;
+  home: string;
+};
+
+type Character = {
+  id: number;
+  name: string;
+  className: string;
+  race: string;
+  alignment: string;
+  background: string;
+  portrait: string;
+  stats: Record<string, number>;
+  gear: string[];
+};
+
+type ProfileResponse = {
+  player: Player;
+  characters: Character[];
+};
+
+type CharacterSlot = {
+  id: number;
+  locked: boolean;
+  character?: Character;
+};
 
 // Items del menú lateral
 const sidebarItems = [
@@ -73,9 +94,51 @@ const sidebarItems = [
 ];
 
 export default function HomePage() {
-  const router = useRouter();
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
   const [activeSlot, setActiveSlot] = useState(1);
+
+  useEffect(() => {
+    let isMounted = true;
+    const userId = user?.id ?? "demo-user";
+
+    setIsProfileLoading(true);
+
+    fetch(`/api/profile?userId=${userId}`)
+      .then((res) => res.json())
+      .then((data: ProfileResponse) => {
+        if (isMounted) {
+          setProfile(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsProfileLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  const characters = profile?.characters ?? [];
+  const characterSlots: CharacterSlot[] = Array.from(
+    { length: 5 },
+    (_, index) => {
+      const character = characters[index];
+
+      if (character) {
+        return { id: index + 1, locked: false, character };
+      }
+
+      return { id: index + 1, locked: true };
+    },
+  );
+
+  const activeCharacter = characterSlots[activeSlot - 1]?.character;
 
   return (
     <div className="min-h-screen bg-background">
@@ -207,21 +270,59 @@ export default function HomePage() {
             <div className="bg-card rounded-lg border border-gold-dim overflow-hidden medieval-border">
               <div className="bg-linear-to-r from-gold-dim to-accent px-4 py-2">
                 <span className="text-primary-foreground font-bold text-sm tracking-wider font-sans">
-                  HUMAN
+                  {activeCharacter
+                    ? activeCharacter.race.toUpperCase()
+                    : "SIN PERSONAJE"}
                 </span>
                 <span className="text-gold font-bold text-sm tracking-wider ml-2 font-sans">
-                  SORCERER
+                  {activeCharacter
+                    ? activeCharacter.className.toUpperCase()
+                    : "BLOQUEADO"}
                 </span>
               </div>
               <div className="p-4">
-                <div className="aspect-square bg-background rounded-lg flex items-center justify-center mb-3 border border-border">
-                  <User className="w-20 h-20 text-gold/30" />
+                <div className="relative aspect-square bg-background rounded-lg flex items-center justify-center mb-3 border border-border overflow-hidden">
+                  {activeCharacter?.portrait ? (
+                    <Image
+                      src={activeCharacter.portrait}
+                      alt={activeCharacter.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 200px, 240px"
+                    />
+                  ) : (
+                    <User className="w-20 h-20 text-gold/30" />
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-gold font-medium font-sans">Nivel 12</p>
-                  <p className="text-xs text-muted-foreground">
-                    Mago de las Sombras
-                  </p>
+                  {isProfileLoading ? (
+                    <>
+                      <p className="text-gold font-medium font-sans">
+                        Cargando...
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Obteniendo personaje
+                      </p>
+                    </>
+                  ) : activeCharacter ? (
+                    <>
+                      <p className="text-gold font-medium font-sans">
+                        {activeCharacter.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {activeCharacter.background}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gold font-medium font-sans">
+                        Slot vacio
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Desbloquea un personaje
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -260,10 +361,10 @@ export default function HomePage() {
                     ) : (
                       <>
                         <p className="text-sm text-foreground font-medium font-sans">
-                          {slot.name}
+                          {slot.character?.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Nivel {slot.level}
+                          {slot.character?.className}
                         </p>
                       </>
                     )}

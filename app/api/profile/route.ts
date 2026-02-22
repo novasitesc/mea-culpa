@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
+import { DEMO_USERS } from "@/lib/demoUsers";
 
 const data = {
-  player: {
-    name: "Nyra Valewind",
-    role: "Dungeon Explorer",
-    level: 7,
-    home: "Eldergrove",
-  },
   characters: [
     {
       id: 1,
@@ -40,7 +35,7 @@ const data = {
       race: "Dwarf",
       alignment: "Neutral Good",
       background: "Soldier",
-      portrait: "/characters/renekton.png",
+      portrait: "/characters/braum.png",
       stats: {
         str: 18,
         dex: 12,
@@ -66,11 +61,20 @@ export function GET(request: Request) {
   const userId = searchParams.get("userId");
 
   if (!userId) {
-    return NextResponse.json(
-      { error: "Missing userId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
-  return NextResponse.json({ ...data, userId });
+  const foundUser =
+    DEMO_USERS.find((user) => user.id === userId) ?? DEMO_USERS[0];
+
+  return NextResponse.json({
+    player: {
+      name: foundUser.name,
+      role: foundUser.role,
+      level: foundUser.level,
+      home: foundUser.home,
+    },
+    characters: data.characters,
+    userId,
+  });
 }
