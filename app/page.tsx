@@ -7,15 +7,6 @@ import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import { useAuth } from "@/lib/useAuth";
 
-// Datos del periódico
-const newspaperData = {
-  title: "EL HERALDO DE MEA CULPA",
-  subtitle: "Noticias Oficiales",
-  reporter: "LIZA, REPORTERA",
-  volume: "VOLUMEN #3",
-  editor: "EDITOR: MALOG",
-};
-
 type NoticiaImage = {
   filename: string;
   url: string;
@@ -134,106 +125,75 @@ export default function HomePage() {
             onSectionChange={setActiveSection}
           />
 
-          {/* Center - Newspaper */}
-          <main className="bg-parchment rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow">
-            {/* Newspaper Header */}
-            <div className="bg-card px-4 py-2 flex items-center justify-between border-b-2 border-gold-dim">
-              <span className="text-gold font-bold text-sm tracking-widest font-sans">
-                NOTI CARENSE
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {newspaperData.subtitle}
-              </span>
-            </div>
+          {/* Center - Newspaper image */}
+          <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-[500px]">
+            {noticias.length === 0 ? (
+              <div className="flex items-center justify-center h-full min-h-[500px] bg-parchment">
+                <p className="font-serif text-sm text-parchment-dark/50">
+                  Sin noticias por el momento
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Imagen cubriendo todo el main */}
+                <Image
+                  key={noticias[noticiaIdx].url}
+                  src={noticias[noticiaIdx].url}
+                  alt={noticias[noticiaIdx].alt}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 600px"
+                />
 
-            {/* Newspaper Title */}
-            <div className="text-center py-6 border-b-2 border-gold-dim">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-background tracking-wide">
-                {newspaperData.title}
-              </h2>
-            </div>
+                {/* Controles superpuestos */}
+                {noticias.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevNoticia}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={nextNoticia}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
 
-            {/* Galería de imágenes */}
-            <div className="p-4 md:p-6">
-              {noticias.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-parchment-dark/50 gap-3">
-                  <p className="font-serif text-sm">
-                    Sin noticias por el momento
-                  </p>
+                {/* Contador */}
+                <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
+                  {noticiaIdx + 1} / {noticias.length}
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Imagen principal con controles */}
-                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-gold-dim/40 bg-background/20">
-                    <Image
-                      key={noticias[noticiaIdx].url}
-                      src={noticias[noticiaIdx].url}
-                      alt={noticias[noticiaIdx].alt}
-                      fill
-                      className="object-contain"
-                      sizes="(max-width: 1024px) 100vw, 600px"
-                    />
 
-                    {/* Navegación anterior/siguiente */}
-                    {noticias.length > 1 && (
-                      <>
-                        <button
-                          onClick={prevNoticia}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                        >
-                          <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={nextNoticia}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      </>
-                    )}
-
-                    {/* Contador */}
-                    <div className="absolute bottom-2 right-2 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
-                      {noticiaIdx + 1} / {noticias.length}
-                    </div>
+                {/* Miniaturas */}
+                {noticias.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                    {noticias.map((img, i) => (
+                      <button
+                        key={img.filename}
+                        onClick={() => setNoticiaIdx(i)}
+                        className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
+                          i === noticiaIdx
+                            ? "border-gold scale-110"
+                            : "border-gold-dim/30 opacity-60 hover:opacity-100"
+                        }`}
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.alt}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      </button>
+                    ))}
                   </div>
-
-                  {/* Miniaturas */}
-                  {noticias.length > 1 && (
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      {noticias.map((img, i) => (
-                        <button
-                          key={img.filename}
-                          onClick={() => setNoticiaIdx(i)}
-                          className={`relative w-16 h-16 rounded border-2 overflow-hidden transition-all ${
-                            i === noticiaIdx
-                              ? "border-gold scale-105"
-                              : "border-gold-dim/30 opacity-60 hover:opacity-100"
-                          }`}
-                        >
-                          <Image
-                            src={img.url}
-                            alt={img.alt}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Newspaper Footer */}
-            <div className="bg-card px-4 py-2 flex items-center justify-center gap-4 text-xs text-gold border-t-2 border-gold-dim">
-              <span className="font-sans">{newspaperData.reporter}</span>
-              <span className="text-muted-foreground">*</span>
-              <span className="font-sans">{newspaperData.volume}</span>
-              <span className="text-muted-foreground">*</span>
-              <span className="font-sans">{newspaperData.editor}</span>
-            </div>
+                )}
+              </>
+            )}
           </main>
 
           {/* Right Sidebar - Character Panel */}
