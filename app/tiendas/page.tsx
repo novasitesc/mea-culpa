@@ -137,7 +137,9 @@ export default function TiendasPage() {
     setPurchasedItems(newPurchased);
     setCart([]);
     setCartOpen(false);
-    showNotification(`✅ Compra realizada por ${cartTotal.toLocaleString()} 🪙`);
+    showNotification(
+      `✅ Compra realizada por ${cartTotal.toLocaleString()} 🪙`,
+    );
   };
 
   const showNotification = (msg: string) => {
@@ -358,7 +360,9 @@ export default function TiendasPage() {
                         >
                           {categories.map((cat) => (
                             <option key={cat} value={cat}>
-                              {cat === "all" ? "Todas las categorías" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                              {cat === "all"
+                                ? "Todas las categorías"
+                                : cat.charAt(0).toUpperCase() + cat.slice(1)}
                             </option>
                           ))}
                         </Select>

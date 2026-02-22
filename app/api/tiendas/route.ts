@@ -2,18 +2,29 @@ import { NextResponse } from "next/server";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
-export type ItemRarity = "común" | "poco común" | "raro" | "épico" | "legendario";
-export type ItemCategory = "consumible" | "arma" | "armadura" | "accesorio" | "ingrediente" | "misc";
+export type ItemRarity =
+  | "común"
+  | "poco común"
+  | "raro"
+  | "épico"
+  | "legendario";
+export type ItemCategory =
+  | "consumible"
+  | "arma"
+  | "armadura"
+  | "accesorio"
+  | "ingrediente"
+  | "misc";
 
 export type ShopItem = {
   id: string;
   name: string;
   description: string;
-  price: number;       // en oro
+  price: number; // en oro
   rarity: ItemRarity;
   category: ItemCategory;
   stock: number | null; // null = ilimitado
-  icon: string;        // emoji por ahora; fácil de cambiar a URL
+  icon: string; // emoji por ahora; fácil de cambiar a URL
 };
 
 export type Shop = {
@@ -21,7 +32,7 @@ export type Shop = {
   name: string;
   description: string;
   icon: string;
-  keeper: string;      // nombre del tendero
+  keeper: string; // nombre del tendero
   location: string;
   items: ShopItem[];
 };
@@ -34,7 +45,8 @@ const SHOPS: Shop[] = [
   {
     id: "herbalista",
     name: "La Raíz Antigua",
-    description: "Pociones, hierbas y remedios. La vieja Mira conoce cada planta del bosque.",
+    description:
+      "Pociones, hierbas y remedios. La vieja Mira conoce cada planta del bosque.",
     icon: "🌿",
     keeper: "Mira la Herbalista",
     location: "Plaza del Mercado",
@@ -96,7 +108,8 @@ const SHOPS: Shop[] = [
   {
     id: "herrero",
     name: "La Fragua del Oso",
-    description: "Armas y armaduras forjadas con maestría. Garuk no vende chatarra.",
+    description:
+      "Armas y armaduras forjadas con maestría. Garuk no vende chatarra.",
     icon: "⚒️",
     keeper: "Garuk el Herrero",
     location: "Barrio del Artesano",
@@ -124,7 +137,8 @@ const SHOPS: Shop[] = [
       {
         id: "herrero-003",
         name: "Hacha de Batalla",
-        description: "Daño 1d8 cortante. Favorita entre los guerreros del norte.",
+        description:
+          "Daño 1d8 cortante. Favorita entre los guerreros del norte.",
         price: 400,
         rarity: "común",
         category: "arma",
@@ -168,7 +182,8 @@ const SHOPS: Shop[] = [
   {
     id: "mercado-negro",
     name: "El Callejón Sin Nombre",
-    description: "Si hay que preguntar el precio, no puedes pagarlo. Entra por la puerta trasera.",
+    description:
+      "Si hay que preguntar el precio, no puedes pagarlo. Entra por la puerta trasera.",
     icon: "🕯️",
     keeper: "Shade",
     location: "Barrio Bajo (acceso restringido)",
@@ -176,7 +191,8 @@ const SHOPS: Shop[] = [
       {
         id: "negro-001",
         name: "Veneno de Sombra",
-        description: "Aplica a un arma. El objetivo debe superar CD 13 o quedará envenenado 1 hora.",
+        description:
+          "Aplica a un arma. El objetivo debe superar CD 13 o quedará envenenado 1 hora.",
         price: 600,
         rarity: "poco común",
         category: "consumible",
@@ -186,7 +202,8 @@ const SHOPS: Shop[] = [
       {
         id: "negro-002",
         name: "Kit de Ladrón",
-        description: "Herramientas de thieves' tools. +2 a intentos de abrir cerraduras.",
+        description:
+          "Herramientas de thieves' tools. +2 a intentos de abrir cerraduras.",
         price: 250,
         rarity: "común",
         category: "misc",
@@ -206,7 +223,8 @@ const SHOPS: Shop[] = [
       {
         id: "negro-004",
         name: "Pergamino Maldito",
-        description: "Contiene un hechizo desconocido. Puede ser útil… o fatal.",
+        description:
+          "Contiene un hechizo desconocido. Puede ser útil… o fatal.",
         price: 500,
         rarity: "épico",
         category: "misc",
@@ -230,7 +248,8 @@ const SHOPS: Shop[] = [
   {
     id: "templo",
     name: "Templo de la Llama Sagrada",
-    description: "Ofrendas y servicios sagrados. La hermana Aya atiende a todos por igual.",
+    description:
+      "Ofrendas y servicios sagrados. La hermana Aya atiende a todos por igual.",
     icon: "🕍",
     keeper: "Hermana Aya",
     location: "Plaza Central",
@@ -268,7 +287,8 @@ const SHOPS: Shop[] = [
       {
         id: "templo-004",
         name: "Talismán Contra Muertos Vivientes",
-        description: "Ventaja en tiradas de salvación contra efectos de no-muertos.",
+        description:
+          "Ventaja en tiradas de salvación contra efectos de no-muertos.",
         price: 800,
         rarity: "raro",
         category: "accesorio",
@@ -282,7 +302,8 @@ const SHOPS: Shop[] = [
   {
     id: "magia",
     name: "Arcana Mysteria",
-    description: "Pergaminos, componentes y varitas. El mago Elveth dice que tiene todo… si encuentras la tienda.",
+    description:
+      "Pergaminos, componentes y varitas. El mago Elveth dice que tiene todo… si encuentras la tienda.",
     icon: "🔮",
     keeper: "Elveth el Arcano",
     location: "Torre del Mago",
@@ -310,7 +331,8 @@ const SHOPS: Shop[] = [
       {
         id: "magia-003",
         name: "Bolsa de Componentes",
-        description: "Contiene material surtido para hechizos sin coste especificado.",
+        description:
+          "Contiene material surtido para hechizos sin coste especificado.",
         price: 25,
         rarity: "común",
         category: "misc",
@@ -320,7 +342,8 @@ const SHOPS: Shop[] = [
       {
         id: "magia-004",
         name: "Varilla de Fuerza",
-        description: "10 cargas. Puede lanzar Escudo de Fuerza (1 carga) o Muro de Fuerza (5 cargas).",
+        description:
+          "10 cargas. Puede lanzar Escudo de Fuerza (1 carga) o Muro de Fuerza (5 cargas).",
         price: 5000,
         rarity: "épico",
         category: "accesorio",
@@ -352,12 +375,18 @@ export function GET(request: Request) {
   if (id) {
     const shop = SHOPS.find((s) => s.id === id);
     if (!shop) {
-      return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tienda no encontrada" },
+        { status: 404 },
+      );
     }
     return NextResponse.json(shop);
   }
 
   // Devuelve la lista sin items para el listado
-  const list = SHOPS.map(({ items: _, ...rest }) => ({ ...rest, itemCount: SHOPS.find(s => s.id === rest.id)!.items.length }));
+  const list = SHOPS.map(({ items: _, ...rest }) => ({
+    ...rest,
+    itemCount: SHOPS.find((s) => s.id === rest.id)!.items.length,
+  }));
   return NextResponse.json(list);
 }
