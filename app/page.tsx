@@ -329,7 +329,7 @@ export default function HomePage() {
 
             {/* Character Slots */}
             <div className="space-y-2">
-              {characterSlots.slice(1).map((slot) => (
+              {characterSlots.map((slot) => (
                 <button
                   key={slot.id}
                   onClick={() => !slot.locked && setActiveSlot(slot.id)}
