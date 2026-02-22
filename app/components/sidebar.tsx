@@ -26,6 +26,7 @@ export const sidebarItems = [
     icon: Wallet,
     hasIndicator: false,
     href: null as string | null,
+    disabled: true,
   },
   {
     id: "eventos",
@@ -33,6 +34,7 @@ export const sidebarItems = [
     icon: Calendar,
     hasIndicator: false,
     href: null as string | null,
+    disabled: true,
   },
   {
     id: "comercio",
@@ -41,6 +43,7 @@ export const sidebarItems = [
     hasIndicator: false,
     href: null as string | null,
     subtitle: "(compra y venta entre pj)",
+    disabled: true,
   },
 ];
 
@@ -70,6 +73,7 @@ export default function Sidebar({
   };
 
   const handleClick = (item: (typeof sidebarItems)[number]) => {
+    if ("disabled" in item && item.disabled) return;
     if (item.href) {
       router.push(item.href);
     } else if (onSectionChange) {
@@ -81,30 +85,42 @@ export default function Sidebar({
 
   return (
     <aside className="space-y-3">
-      {sidebarItems.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => handleClick(item)}
-          className={`w-full rounded-lg border p-4 text-left transition-all ${
-            isActive(item)
-              ? "bg-card border-gold text-gold medieval-border"
-              : "bg-card border-border text-foreground hover:border-gold-dim"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <item.icon className="w-5 h-5" />
-            <span className="font-medium font-sans">{item.label}</span>
-            {item.hasIndicator && (
-              <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
+      {sidebarItems.map((item) => {
+        const disabled = "disabled" in item && item.disabled;
+        return (
+          <button
+            key={item.id}
+            onClick={() => handleClick(item)}
+            disabled={disabled}
+            className={`w-full rounded-lg border p-4 text-left transition-all ${
+              disabled
+                ? "bg-card border-border text-muted-foreground opacity-50 cursor-not-allowed"
+                : isActive(item)
+                  ? "bg-card border-gold text-gold medieval-border"
+                  : "bg-card border-border text-foreground hover:border-gold-dim"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium font-sans">{item.label}</span>
+              {disabled ? (
+                <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
+                  Próx.
+                </span>
+              ) : (
+                item.hasIndicator && (
+                  <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
+                )
+              )}
+            </div>
+            {"subtitle" in item && item.subtitle && (
+              <p className="text-xs text-muted-foreground mt-1 ml-8">
+                {item.subtitle}
+              </p>
             )}
-          </div>
-          {"subtitle" in item && item.subtitle && (
-            <p className="text-xs text-muted-foreground mt-1 ml-8">
-              {item.subtitle}
-            </p>
-          )}
-        </button>
-      ))}
+          </button>
+        );
+      })}
     </aside>
   );
 }
