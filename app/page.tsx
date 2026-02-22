@@ -126,9 +126,9 @@ export default function HomePage() {
           />
 
           {/* Center - Newspaper image */}
-          <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-[500px]">
+          <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
             {noticias.length === 0 ? (
-              <div className="flex items-center justify-center h-full min-h-[500px] bg-parchment">
+              <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
                 <p className="font-serif text-sm text-parchment-dark/50">
                   Sin noticias por el momento
                 </p>
