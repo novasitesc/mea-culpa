@@ -81,7 +81,7 @@ type CharacterSlot = {
 // Items del menú lateral
 const sidebarItems = [
   { id: "inicio", label: "Inicio", icon: Scroll, hasIndicator: true },
-  { id: "tienda", label: "Tienda", icon: Store, hasIndicator: true },
+  { id: "Tiendas", label: "Tiendas", icon: Store, hasIndicator: true },
   { id: "balance", label: "Balance", icon: Wallet, hasIndicator: false },
   { id: "eventos", label: "Eventos", icon: Calendar, hasIndicator: false },
   {
