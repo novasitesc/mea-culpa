@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingCart, Coins, Package, ChevronLeft, X, Plus, Minus } from "lucide-react";
+import {
+  ShoppingCart,
+  Coins,
+  Package,
+  ChevronLeft,
+  X,
+  Plus,
+  Minus,
+} from "lucide-react";
 import Header from "@/app/components/header";
 import {
   Card,
@@ -213,10 +221,7 @@ export default function TiendasPage() {
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {cart.map((e) => (
-                  <div
-                    key={e.id}
-                    className="flex items-center gap-3"
-                  >
+                  <div key={e.id} className="flex items-center gap-3">
                     <span className="text-xl shrink-0">{e.icon}</span>
 
                     <div className="flex-1 min-w-0">
@@ -235,7 +240,9 @@ export default function TiendasPage() {
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-6 text-center text-sm font-bold">{e.qty}</span>
+                      <span className="w-6 text-center text-sm font-bold">
+                        {e.qty}
+                      </span>
                       <button
                         onClick={() => changeQty(e.id, 1)}
                         className="w-6 h-6 rounded bg-secondary hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-gold transition-colors"
