@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   User,
   ShoppingBag,
@@ -80,20 +81,22 @@ type CharacterSlot = {
 
 // Items del menú lateral
 const sidebarItems = [
-  { id: "inicio", label: "Inicio", icon: Scroll, hasIndicator: true },
-  { id: "Tiendas", label: "Tiendas", icon: Store, hasIndicator: true },
-  { id: "balance", label: "Balance", icon: Wallet, hasIndicator: false },
-  { id: "eventos", label: "Eventos", icon: Calendar, hasIndicator: false },
+  { id: "inicio", label: "Inicio", icon: Scroll, hasIndicator: true, href: null },
+  { id: "tiendas", label: "Tiendas", icon: Store, hasIndicator: true, href: "/tiendas" },
+  { id: "balance", label: "Balance", icon: Wallet, hasIndicator: false, href: null },
+  { id: "eventos", label: "Eventos", icon: Calendar, hasIndicator: false, href: null },
   {
     id: "comercio",
     label: "Comercio",
     icon: ShoppingBag,
     hasIndicator: false,
+    href: null,
     subtitle: "(compra y venta entre pj)",
   },
 ];
 
 export default function HomePage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -161,7 +164,13 @@ export default function HomePage() {
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => {
+                  if (item.href) {
+                    router.push(item.href);
+                  } else {
+                    setActiveSection(item.id);
+                  }
+                }}
                 className={`w-full rounded-lg border p-4 text-left transition-all ${
                   activeSection === item.id
                     ? "bg-card border-gold text-gold medieval-border"
