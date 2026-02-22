@@ -128,7 +128,7 @@ export default function LoginPage() {
         >
           <CardHeader className="text-center space-y-2 pb-4">
             <div className="flex justify-center mb-4">
-              <div className="relative w-full max-w-xs h-auto aspect-[4/3]">
+              <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
                   src="/imgs/Login/brave_screenshot_gemini.google.com.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"

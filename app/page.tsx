@@ -291,7 +291,7 @@ export default function HomePage() {
           <aside className="space-y-4">
             {/* Active Character Card */}
             <div className="bg-card rounded-lg border border-gold-dim overflow-hidden medieval-border">
-              <div className="bg-gradient-to-r from-gold-dim to-accent px-4 py-2">
+              <div className="bg-linear-to-r from-gold-dim to-accent px-4 py-2">
                 <span className="text-primary-foreground font-bold text-sm tracking-wider font-sans">HUMAN</span>
                 <span className="text-gold font-bold text-sm tracking-wider ml-2 font-sans">
                   SORCERER
