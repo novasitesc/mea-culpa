@@ -9,6 +9,7 @@ import {
   Wallet,
   Calendar,
   Store,
+  Scroll,
   Lock,
   Sparkles,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const characterSlots = [
 
 // Items del menú lateral
 const sidebarItems = [
+  { id: "inicio", label: "Inicio", icon: Scroll, hasIndicator: true },
   { id: "tienda", label: "Tienda", icon: Store, hasIndicator: true },
   { id: "balance", label: "Balance", icon: Wallet, hasIndicator: false },
   { id: "eventos", label: "Eventos", icon: Calendar, hasIndicator: false },
@@ -72,7 +74,7 @@ const sidebarItems = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("tienda");
+  const [activeSection, setActiveSection] = useState("inicio");
   const [activeSlot, setActiveSlot] = useState(1);
 
   return (
