@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
+import { useAuth } from "@/lib/useAuth";
 
 type Player = {
   name: string;
@@ -29,24 +31,55 @@ type ProfileResponse = {
 };
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
 
+  // Redirigir si no está autenticado
   useEffect(() => {
-    let isMounted = true;
-    const userId = "demo-user";
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
-    fetch(`/api/profile?userId=${userId}`)
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    let isMounted = true;
+
+    fetch(`/api/profile?userId=${user.id}`)
       .then((res) => res.json())
       .then((data: ProfileResponse) => {
         if (isMounted) {
-          setProfile(data);
+          // Sobrescribir con datos del usuario autenticado
+          setProfile({
+            ...data,
+            player: {
+              name: user.name,
+              role: user.role,
+              level: user.level,
+              home: data.player.home,
+            }
+          });
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user, isAuthenticated]);
+
+  // Mostrar loading mientras se verifica autenticación
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground mt-4">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const player = profile?.player;
   const characters = profile?.characters ?? [];

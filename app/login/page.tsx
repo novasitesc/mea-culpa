@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { createClient } from "@supabase/supabase-js"
 import Image from "next/image"
-import { Lock, Mail, Eye, EyeOff } from "lucide-react"
+import { Lock, Mail, Eye, EyeOff, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/lib/useAuth"
 
 // Esquema de validación
 const loginSchema = z.object({
@@ -23,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login, isAuthenticated } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,35 +46,25 @@ export default function LoginPage() {
     }
   }, [])
 
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/profile")
+    }
+  }, [isAuthenticated, router])
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // Crear cliente de Supabase en el cliente
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      const result = await login(data.email, data.password)
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Configuración de Supabase no encontrada")
-      }
-
-      const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-      // Intentar iniciar sesión
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      })
-
-      if (authError) {
-        throw new Error(authError.message || "Error al iniciar sesión")
-      }
-
-      if (authData.user) {
-        // Redirigir al usuario a la página principal
-        router.push("/")
-        router.refresh()
+      if (!result.success) {
+        setError(result.error || "Error al iniciar sesión")
+      } else {
+        // Redirigir al perfil
+        router.push("/profile")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error inesperado")
@@ -134,6 +125,21 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
+            {/* Demo credentials info */}
+            <div className="mb-4 p-3 rounded-md bg-gold/10 border border-gold/20">
+              <div className="flex gap-2">
+                <Info className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-gold font-medium mb-1">Modo Demo</p>
+                  <p className="text-muted-foreground text-xs mb-2">Usa estas credenciales para probar:</p>
+                  <div className="space-y-1 text-xs">
+                    <p><strong>Usuario 1:</strong> demo@meaculpa.com / 123456</p>
+                    <p><strong>Usuario 2:</strong> admin@meaculpa.com / admin123</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Email field */}
               <div className="space-y-2">
