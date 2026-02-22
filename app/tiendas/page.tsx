@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingCart, Coins, Package, ChevronLeft, X } from "lucide-react";
+import { ShoppingCart, Coins, Package, ChevronLeft, X, Plus, Minus } from "lucide-react";
 import Header from "@/app/components/header";
 import {
   Card,
@@ -128,6 +128,14 @@ export default function TiendasPage() {
     setCart((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const changeQty = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((e) => (e.id === id ? { ...e, qty: e.qty + delta } : e))
+        .filter((e) => e.qty > 0),
+    );
+  };
+
   const cartTotal = cart.reduce((sum, e) => sum + e.price * e.qty, 0);
   const cartCount = cart.reduce((sum, e) => sum + e.qty, 0);
 
@@ -207,21 +215,44 @@ export default function TiendasPage() {
                 {cart.map((e) => (
                   <div
                     key={e.id}
-                    className="flex items-center justify-between gap-2"
+                    className="flex items-center gap-3"
                   >
-                    <span className="text-xl">{e.icon}</span>
+                    <span className="text-xl shrink-0">{e.icon}</span>
+
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{e.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.price.toLocaleString()} 🪙 × {e.qty}
+                        {e.price.toLocaleString()} 🪙 c/u
                       </p>
                     </div>
-                    <span className="text-sm font-bold text-gold">
-                      {(e.price * e.qty).toLocaleString()}
+
+                    {/* Controles de cantidad */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => changeQty(e.id, -1)}
+                        className="w-6 h-6 rounded bg-secondary hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                        title="Reducir"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-6 text-center text-sm font-bold">{e.qty}</span>
+                      <button
+                        onClick={() => changeQty(e.id, 1)}
+                        className="w-6 h-6 rounded bg-secondary hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-gold transition-colors"
+                        title="Aumentar"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <span className="text-sm font-bold text-gold shrink-0 w-16 text-right">
+                      {(e.price * e.qty).toLocaleString()} 🪙
                     </span>
+
                     <button
                       onClick={() => removeFromCart(e.id)}
-                      className="text-muted-foreground hover:text-destructive ml-2"
+                      className="text-muted-foreground hover:text-destructive shrink-0"
+                      title="Eliminar"
                     >
                       <X className="w-4 h-4" />
                     </button>
