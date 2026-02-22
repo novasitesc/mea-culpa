@@ -2,32 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { User, Lock, Sparkles } from "lucide-react";
+import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import { useAuth } from "@/lib/useAuth";
-
-// Datos de noticias del periódico
-const newsArticles = [
-  {
-    id: 1,
-    title: "POSIBILIDAD DE LA APERTURA DE UNA NUEVA TABERNA EN MEA CULPA!!!",
-    content:
-      "Buenas días Mea Culpa!! El día de hoy les traigo buenas noticias porque hoy se abre la taberna 'Última Hora'. Un lugar en el que podras reunirte y disfrutar un poco de un estadía en Mea Culpa. Item, esta esperamos al personaje que atienda este nuevo rincón, y es los hechos y razones económicas y humildes que se pasen a disfrutar cualquier cosa.",
-  },
-  {
-    id: 2,
-    title: "ENERGÍA MÁGICA DE LA MAZMORRA AUMENTA, ASI MISMO EL PELIGRO",
-    content:
-      "La energía mágica a aumentado dentro de la mazmorra y los enemigos grandes se han vuelto más fuertes Hemos estado que ahora no existe el rumor de solo dormidos. Y tener y aún que aumentó sus números a 60!",
-  },
-  {
-    id: 3,
-    title: "AVISO IMPORTANTE",
-    content:
-      "Para todos los gremios y aventureros de nuevos, los devaneos son bienvenidos mas y que esperemos ser buenas familias que van a ir más allá.",
-  },
-];
 
 // Datos del periódico
 const newspaperData = {
@@ -36,8 +14,12 @@ const newspaperData = {
   reporter: "LIZA, REPORTERA",
   volume: "VOLUMEN #3",
   editor: "EDITOR: MALOG",
-  mainContent:
-    "En estas semanas, el duque del distrito sur, anuncio a las localidades con todos sus provenientes en una cerranza a otra ubicación de la ciudad. La guardia espera haber neutralizado trámites de esta decisión de traslado, entes ya publicar debido a la reciente actividad de una banda lacrón en la ciudad. Al duque últimamente les ocultaba lidiándose y restando/recogiendo asuntos extracontables, y por ello aún tiene estado.",
+};
+
+type NoticiaImage = {
+  filename: string;
+  url: string;
+  alt: string;
 };
 
 type Player = {
@@ -76,6 +58,8 @@ export default function HomePage() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
   const [activeSlot, setActiveSlot] = useState(1);
+  const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
+  const [noticiaIdx, setNoticiaIdx] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,11 +85,22 @@ export default function HomePage() {
     };
   }, [user?.id]);
 
-  const characters = profile?.characters ?? [];
+  // Cargar imágenes de noticias
+  useEffect(() => {
+    fetch("/api/noticias")
+      .then((r) => r.json())
+      .then((data: NoticiaImage[]) => setNoticias(data))
+      .catch(() => {});
+  }, []);
+
+  const prevNoticia = () =>
+    setNoticiaIdx((i) => (i - 1 + noticias.length) % noticias.length);
+  const nextNoticia = () => setNoticiaIdx((i) => (i + 1) % noticias.length);
+
   const characterSlots: CharacterSlot[] = Array.from(
     { length: 5 },
     (_, index) => {
-      const character = characters[index];
+      const character = profile?.characters[index];
 
       if (character) {
         return { id: index + 1, locked: false, character };
@@ -158,55 +153,77 @@ export default function HomePage() {
               </h2>
             </div>
 
-            {/* Newspaper Content */}
+            {/* Galería de imágenes */}
             <div className="p-4 md:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Column */}
+              {noticias.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-parchment-dark/50 gap-3">
+                  <p className="font-serif text-sm">
+                    Sin noticias por el momento
+                  </p>
+                </div>
+              ) : (
                 <div className="space-y-4">
-                  <article className="border-b border-gold-dim/30 pb-4">
-                    <h3 className="font-serif font-bold text-sm text-background mb-2 leading-tight">
-                      {newsArticles[0].title}
-                    </h3>
-                    <p className="text-xs text-parchment-dark leading-relaxed text-justify">
-                      {newsArticles[0].content}
-                    </p>
-                  </article>
-                </div>
+                  {/* Imagen principal con controles */}
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-gold-dim/40 bg-background/20">
+                    <Image
+                      key={noticias[noticiaIdx].url}
+                      src={noticias[noticiaIdx].url}
+                      alt={noticias[noticiaIdx].alt}
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 1024px) 100vw, 600px"
+                    />
 
-                {/* Right Column */}
-                <div className="space-y-4">
-                  <article className="border-b border-gold-dim/30 pb-4">
-                    <h3 className="font-serif font-bold text-sm text-background mb-2 leading-tight">
-                      {newsArticles[1].title}
-                    </h3>
-                    <p className="text-xs text-parchment-dark leading-relaxed text-justify">
-                      {newsArticles[1].content}
-                    </p>
-                  </article>
-                  <article>
-                    <h3 className="font-serif font-bold text-sm text-background mb-2 leading-tight">
-                      {newsArticles[2].title}
-                    </h3>
-                    <p className="text-xs text-parchment-dark leading-relaxed text-justify">
-                      {newsArticles[2].content}
-                    </p>
-                  </article>
-                </div>
-              </div>
+                    {/* Navegación anterior/siguiente */}
+                    {noticias.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevNoticia}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={nextNoticia}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
 
-              {/* Featured Image Area */}
-              <div className="mt-6 bg-parchment/80 rounded-lg p-4 border border-gold-dim/30">
-                <div className="aspect-video bg-parchment/60 rounded flex items-center justify-center">
-                  <Sparkles className="w-16 h-16 text-gold-dim/50" />
-                </div>
-              </div>
+                    {/* Contador */}
+                    <div className="absolute bottom-2 right-2 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
+                      {noticiaIdx + 1} / {noticias.length}
+                    </div>
+                  </div>
 
-              {/* Main Article */}
-              <div className="mt-6">
-                <p className="text-xs text-parchment-dark leading-relaxed text-justify columns-2 gap-6">
-                  {newspaperData.mainContent}
-                </p>
-              </div>
+                  {/* Miniaturas */}
+                  {noticias.length > 1 && (
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {noticias.map((img, i) => (
+                        <button
+                          key={img.filename}
+                          onClick={() => setNoticiaIdx(i)}
+                          className={`relative w-16 h-16 rounded border-2 overflow-hidden transition-all ${
+                            i === noticiaIdx
+                              ? "border-gold scale-105"
+                              : "border-gold-dim/30 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <Image
+                            src={img.url}
+                            alt={img.alt}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Newspaper Footer */}
