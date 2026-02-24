@@ -1,31 +1,38 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { createClient } from "@supabase/supabase-js"
-import Image from "next/image"
-import { Lock, Mail, Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import Image from "next/image";
+import { Lock, Mail, Eye, EyeOff, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/lib/useAuth";
 
 // Esquema de validación
 const loginSchema = z.object({
   email: z.string().email("El correo electrónico no es válido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-})
+});
 
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const { login, isAuthenticated } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -33,57 +40,52 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-  })
+  });
 
   // Ocultar scrollbar cuando se monta el componente
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/profile");
     }
-  }, [])
+  }, [isAuthenticated, router]);
 
   const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
-      // Crear cliente de Supabase en el cliente
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      const result = await login(data.email, data.password);
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Configuración de Supabase no encontrada")
-      }
-
-      const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-      // Intentar iniciar sesión
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      })
-
-      if (authError) {
-        throw new Error(authError.message || "Error al iniciar sesión")
-      }
-
-      if (authData.user) {
-        // Redirigir al usuario a la página principal
-        router.push("/")
-        router.refresh()
+      if (!result.success) {
+        setError(result.error || "Error al iniciar sesión");
+      } else {
+        // Redirigir al perfil
+        router.push("/profile");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ocurrió un error inesperado")
+      setError(
+        err instanceof Error ? err.message : "Ocurrió un error inesperado",
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" style={{ overflow: 'hidden' }}>
+    <div
+      className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ overflow: "hidden" }}
+    >
       {/* Background Video */}
       <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
         <video
@@ -92,11 +94,11 @@ export default function LoginPage() {
           muted
           playsInline
           className="absolute top-0 left-0 w-full h-full object-cover"
-          style={{ 
-            minWidth: '100%',
-            minHeight: '100%',
-            width: 'auto',
-            height: 'auto',
+          style={{
+            minWidth: "100%",
+            minHeight: "100%",
+            width: "auto",
+            height: "auto",
           }}
         >
           <source src="/imgs/Login/VIdeos/Dragon.mp4" type="video/mp4" />
@@ -104,7 +106,7 @@ export default function LoginPage() {
         {/* Overlay oscuro para mejorar legibilidad */}
         <div className="absolute inset-0 bg-background/60" />
       </div>
-      
+
       {/* Background texture */}
       <div
         className="fixed inset-0 opacity-5 pointer-events-none z-0"
@@ -114,10 +116,19 @@ export default function LoginPage() {
       />
 
       <div className="relative z-20 w-full max-w-lg">
-        <Card className="bg-card shadow-2xl candle-glow" style={{ borderColor: '#8B4513', borderWidth: '2px', borderStyle: 'solid', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)' }}>
+        <Card
+          className="bg-card shadow-2xl candle-glow"
+          style={{
+            borderColor: "#8B4513",
+            borderWidth: "2px",
+            borderStyle: "solid",
+            boxShadow:
+              "inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)",
+          }}
+        >
           <CardHeader className="text-center space-y-2 pb-4">
             <div className="flex justify-center mb-4">
-              <div className="relative w-full max-w-xs h-auto aspect-[4/3]">
+              <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
                   src="/imgs/Login/brave_screenshot_gemini.google.com.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
@@ -134,6 +145,27 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
+            {/* Demo credentials info */}
+            <div className="mb-4 p-3 rounded-md bg-gold/10 border border-gold/20">
+              <div className="flex gap-2">
+                <Info className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-gold font-medium mb-1">Modo Demo</p>
+                  <p className="text-muted-foreground text-xs mb-2">
+                    Usa estas credenciales para probar:
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    <p>
+                      <strong>Usuario 1:</strong> demo@meaculpa.com / 123456
+                    </p>
+                    <p>
+                      <strong>Usuario 2:</strong> admin@meaculpa.com / admin123
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Email field */}
               <div className="space-y-2">
@@ -152,7 +184,9 @@ export default function LoginPage() {
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
@@ -185,14 +219,18 @@ export default function LoginPage() {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               {/* Error message */}
               {error && (
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                  <p className="text-sm text-destructive text-center">{error}</p>
+                  <p className="text-sm text-destructive text-center">
+                    {error}
+                  </p>
                 </div>
               )}
 
@@ -235,5 +273,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

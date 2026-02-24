@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
+import { useAuth } from "@/lib/useAuth";
 
 type Player = {
   name: string;
@@ -29,129 +31,173 @@ type ProfileResponse = {
 };
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
 
+  // Redirigir si no está autenticado
   useEffect(() => {
-    let isMounted = true;
-    const userId = "demo-user";
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
-    fetch(`/api/profile?userId=${userId}`)
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    let isMounted = true;
+
+    fetch(`/api/profile?userId=${user.id}`)
       .then((res) => res.json())
       .then((data: ProfileResponse) => {
         if (isMounted) {
-          setProfile(data);
+          // Sobrescribir con datos del usuario autenticado
+          setProfile({
+            ...data,
+            player: {
+              name: user.name,
+              role: user.role,
+              level: user.level,
+              home: data.player.home,
+            },
+          });
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user, isAuthenticated]);
+
+  // Mostrar loading mientras se verifica autenticación
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground mt-4">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const player = profile?.player;
   const characters = profile?.characters ?? [];
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {/* Background texture */}
+      <div
+        className="fixed inset-0 opacity-5 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
 
-      <div className="max-w-7xl mx-auto px-4 py-10 space-y-10">
-        <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">Perfil del Jugador</p>
-              <h1 className="text-3xl font-serif text-[#D4AF37] tracking-wide mt-2">
-                {player?.name ?? "Cargando..."}
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                {player
-                  ? `${player.role} · Nivel ${player.level} · ${player.home}`
-                  : "Obteniendo datos del perfil"}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">
-                {characters.length} personaje{characters.length === 1 ? "" : "s"}
-              </span>
-              <span className="px-3 py-1 rounded bg-secondary text-foreground text-xs uppercase">
-                Activo
-              </span>
-            </div>
-          </div>
-        </section>
+      <div className="relative z-10 max-w-7xl mx-auto p-4">
+        <Header />
 
-        <section className="space-y-6">
-          {characters.map((character) => (
-            <article
-              key={character.id}
-              className="rounded-lg border-2 border-[#8B7355] bg-card/80 p-6 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6"
-            >
-              <div className="space-y-4">
-                <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
-                      <Image
-                    src={character.portrait}
-                    alt={`${character.name} portrait`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground tracking-[0.3em] uppercase">
-                    {character.race}
-                  </p>
-                  <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
-                    {character.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {character.className}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="px-3 py-2 rounded bg-secondary text-center text-sm">
-                    {character.background}
-                  </div>
-                  <div className="px-3 py-2 rounded bg-[#8B7355] text-background text-center text-sm">
-                    {character.alignment}
-                  </div>
-                </div>
+        <div className="space-y-10 mt-6">
+          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">
+                  Perfil del Jugador
+                </p>
+                <h1 className="text-3xl font-serif text-[#D4AF37] tracking-wide mt-2">
+                  {player?.name ?? "Cargando..."}
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  {player
+                    ? `${player.role} · Nivel ${player.level} · ${player.home}`
+                    : "Obteniendo datos del perfil"}
+                </p>
               </div>
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">
+                  {characters.length} personaje
+                  {characters.length === 1 ? "" : "s"}
+                </span>
+                <span className="px-3 py-1 rounded bg-secondary text-foreground text-xs uppercase">
+                  Activo
+                </span>
+              </div>
+            </div>
+          </section>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(character.stats).map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded border border-border/60 bg-secondary/40 p-3 text-center"
-                    >
-                      <p className="text-xs text-muted-foreground uppercase tracking-widest">
-                        {label}
-                      </p>
-                      <p className="text-2xl font-semibold text-foreground mt-1">
-                        {value}
-                      </p>
+          <section className="space-y-6">
+            {characters.map((character) => (
+              <article
+                key={character.id}
+                className="rounded-lg border-2 border-[#8B7355] bg-card/80 p-6 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6"
+              >
+                <div className="space-y-4">
+                  <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
+                    <Image
+                      src={character.portrait}
+                      alt={`${character.name} portrait`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground tracking-[0.3em] uppercase">
+                      {character.race}
+                    </p>
+                    <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
+                      {character.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {character.className}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="px-3 py-2 rounded bg-secondary text-center text-sm">
+                      {character.background}
                     </div>
-                  ))}
+                    <div className="px-3 py-2 rounded bg-[#8B7355] text-background text-center text-sm">
+                      {character.alignment}
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
-                    Equipo
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {character.gear.map((item) => (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(character.stats).map(([label, value]) => (
                       <div
-                        key={item}
-                        className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
+                        key={label}
+                        className="rounded border border-border/60 bg-secondary/40 p-3 text-center"
                       >
-                        {item}
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest">
+                          {label}
+                        </p>
+                        <p className="text-2xl font-semibold text-foreground mt-1">
+                          {value}
+                        </p>
                       </div>
                     ))}
                   </div>
+
+                  <div>
+                    <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
+                      Equipo
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {character.gear.map((item) => (
+                        <div
+                          key={item}
+                          className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
+                        >
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </section>
+              </article>
+            ))}
+          </section>
+        </div>
       </div>
     </div>
   );

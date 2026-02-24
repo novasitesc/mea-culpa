@@ -126,7 +126,7 @@ export default function RegisterPage() {
         <Card className="bg-card shadow-2xl candle-glow" style={{ borderColor: '#8B4513', borderWidth: '2px', borderStyle: 'solid', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)' }}>
           <CardHeader className="text-center space-y-2 pb-4">
             <div className="flex justify-center mb-4">
-              <div className="relative w-full max-w-xs h-auto aspect-[4/3]">
+              <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
                   src="/imgs/Login/brave_screenshot_gemini.google.com.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
