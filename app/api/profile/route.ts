@@ -19,14 +19,30 @@ const data = {
         wis: 10,
         chr: 15,
       },
-      gear: [
-        "Arcane Focus",
-        "Traveler's Ring",
-        "Spellbook",
-        "Iron Staff",
-        "Arcane Robes",
-        "Boots",
-      ],
+      armor: {
+        cabeza: "Arcane helmet",
+        pecho: "Arcane Robes",
+        guante: undefined,
+        botas: "Boots",
+      },
+      accessories: {
+        collar: undefined,
+        anillo1: "Traveler's Ring",
+        anillo2: undefined,
+        amuleto: "Arcane Focus",
+      },
+      weapons: {
+        manoIzquierda: "Iron Staff",
+        manoDerecha: undefined,
+      },
+      bag: {
+        items: [
+          { name: "Iron Helmet", type: "cabeza" },
+          { name: "Leather Helmet", type: "cabeza" },
+          { name: "Leather Gloves", type: "guante" },
+        ],
+        maxSlots: 10 + Math.floor(15 / 2),
+      },
     },
     {
       id: 2,
@@ -44,14 +60,31 @@ const data = {
         wis: 11,
         chr: 8,
       },
-      gear: [
-        "Greatsword",
-        "Shield",
-        "Plate Armor",
-        "Traveler's Cloak",
-        "Boots",
-        "Battle Trophy",
-      ],
+      armor: {
+        cabeza: undefined,
+        pecho: "Plate Armor",
+        guante: undefined,
+        botas: "Boots",
+      },
+      accessories: {
+        collar: undefined,
+        anillo1: undefined,
+        anillo2: undefined,
+        amuleto: "Battle Trophy",
+      },
+      weapons: {
+        manoIzquierda: "Shield",
+        manoDerecha: "Greatsword",
+      },
+      bag: {
+        items: [
+          { name: "Iron Helmet", type: "cabeza" },
+          { name: "Silver Ring", type: "anillo" },
+          { name: "Battle Axe", type: "arma" },
+          { name: "Gold Necklace", type: "collar" },
+        ],
+        maxSlots: 10 + Math.floor(18 / 2),
+      },
     },
   ],
 };
