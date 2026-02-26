@@ -80,6 +80,15 @@ export default function ProfilePage() {
   const [bagItems, setBagItems] = useState<Item[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Character | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newCharacter, setNewCharacter] = useState({
+    name: "",
+    race: "",
+    className: "",
+    background: "",
+    alignment: "",
+  });
 
   const saveBagChanges = async (characterId: number) => {
     if (!profile || !user || !currentCharacter) return;
@@ -126,6 +135,71 @@ export default function ProfilePage() {
       alert('Error al guardar los cambios. Inténtalo de nuevo.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const createCharacter = async () => {
+    if (!user || !profile) return;
+
+    // Validación del límite de personajes
+    if (profile.characters.length >= 5) {
+      alert('Has alcanzado el límite máximo de 5 personajes por cuenta.');
+      return;
+    }
+
+    // Validación de campos
+    if (!newCharacter.name.trim()) {
+      alert('Por favor ingresa un nombre para el personaje');
+      return;
+    }
+    if (!newCharacter.race || !newCharacter.className || !newCharacter.background || !newCharacter.alignment) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/profile/create-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          characterData: newCharacter,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create character');
+      }
+
+      // Actualizar el estado local con el nuevo personaje
+      setProfile({
+        ...profile,
+        characters: [...profile.characters, data.character],
+      });
+
+      // Resetear el formulario y cerrar el modal
+      setNewCharacter({
+        name: "",
+        race: "",
+        className: "",
+        background: "",
+        alignment: "",
+      });
+      setShowCreateModal(false);
+      
+      // Mostrar mensaje de éxito
+      alert('¡Personaje creado exitosamente!');
+    } catch (error) {
+      console.error('Error creating character:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`Error al crear el personaje: ${errorMessage}`);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -309,6 +383,18 @@ export default function ProfilePage() {
                 <span className="px-3 py-1 rounded bg-secondary text-foreground text-xs uppercase">
                   Activo
                 </span>
+                <button 
+                  disabled={characters.length >= 5}
+                  onClick={() => setShowCreateModal(true)}
+                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${
+                    characters.length >= 5
+                      ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg'
+                  }`}
+                  title={characters.length >= 5 ? 'Límite de personajes alcanzado (5/5)' : 'Crear nuevo personaje'}
+                >
+                  Crear Personaje
+                </button>
               </div>
             </div>
           </section>
@@ -560,6 +646,151 @@ export default function ProfilePage() {
           </section>
         </div>
       </div>
+
+      {/* Modal de Crear Personaje */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+          <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
+            <button
+              className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
+              onClick={() => setShowCreateModal(false)}
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-6 text-[#D4AF37] uppercase tracking-wider">Crear Nuevo Personaje</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Nombre del Personaje</label>
+                <input
+                  type="text"
+                  value={newCharacter.name}
+                  onChange={(e) => setNewCharacter({ ...newCharacter, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  placeholder="Ej: Aragorn"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Raza</label>
+                  <select 
+                    value={newCharacter.race}
+                    onChange={(e) => setNewCharacter({ ...newCharacter, race: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  >
+                    <option value="">Selecciona una raza</option>
+                    <option value="Human">Humano</option>
+                    <option value="Elf">Elfo</option>
+                    <option value="Dwarf">Enano</option>
+                    <option value="Halfling">Mediano</option>
+                    <option value="Dragonborn">Dracónido</option>
+                    <option value="Gnome">Gnomo</option>
+                    <option value="Half-Elf">Semielfo</option>
+                    <option value="Half-Orc">Semiorco</option>
+                    <option value="Tiefling">Tiefling</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Clase</label>
+                  <select 
+                    value={newCharacter.className}
+                    onChange={(e) => setNewCharacter({ ...newCharacter, className: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  >
+                    <option value="">Selecciona una clase</option>
+                    <option value="Barbarian">Bárbaro</option>
+                    <option value="Bard">Bardo</option>
+                    <option value="Cleric">Clérigo</option>
+                    <option value="Druid">Druida</option>
+                    <option value="Fighter">Guerrero</option>
+                    <option value="Monk">Monje</option>
+                    <option value="Paladin">Paladín</option>
+                    <option value="Ranger">Explorador</option>
+                    <option value="Rogue">Pícaro</option>
+                    <option value="Sorcerer">Hechicero</option>
+                    <option value="Warlock">Brujo</option>
+                    <option value="Wizard">Mago</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Trasfondo</label>
+                <select 
+                  value={newCharacter.background}
+                  onChange={(e) => setNewCharacter({ ...newCharacter, background: e.target.value })}
+                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                >
+                  <option value="">Selecciona un trasfondo</option>
+                  <option value="Acolyte">Acólito</option>
+                  <option value="Criminal">Criminal</option>
+                  <option value="Folk Hero">Héroe del Pueblo</option>
+                  <option value="Noble">Noble</option>
+                  <option value="Sage">Sabio</option>
+                  <option value="Soldier">Soldado</option>
+                  <option value="Hermit">Ermitaño</option>
+                  <option value="Outlander">Forastero</option>
+                  <option value="Entertainer">Artista</option>
+                  <option value="Guild Artisan">Artesano de Gremio</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Alineamiento</label>
+                <select 
+                  value={newCharacter.alignment}
+                  onChange={(e) => setNewCharacter({ ...newCharacter, alignment: e.target.value })}
+                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                >
+                  <option value="">Selecciona un alineamiento</option>
+                  <option value="Lawful Good">Legal Bueno</option>
+                  <option value="Neutral Good">Neutral Bueno</option>
+                  <option value="Chaotic Good">Caótico Bueno</option>
+                  <option value="Lawful Neutral">Legal Neutral</option>
+                  <option value="True Neutral">Neutral Puro</option>
+                  <option value="Chaotic Neutral">Caótico Neutral</option>
+                  <option value="Lawful Evil">Legal Malvado</option>
+                  <option value="Neutral Evil">Neutral Malvado</option>
+                  <option value="Chaotic Evil">Caótico Malvado</option>
+                </select>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-4">
+                  📝 Nota: Los atributos y equipo inicial se generarán automáticamente según la clase seleccionada.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setNewCharacter({
+                        name: "",
+                        race: "",
+                        className: "",
+                        background: "",
+                        alignment: "",
+                      });
+                    }}
+                    disabled={isCreating}
+                    className="flex-1 px-4 py-2 rounded border border-border bg-secondary text-foreground font-semibold hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={createCharacter}
+                    disabled={isCreating}
+                    className="flex-1 px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreating ? 'Creando...' : 'Crear Personaje'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { DEMO_USERS } from "@/lib/demoUsers";
 
-const data = {
-  characters: [
+// Datos de personajes por usuario (simulando BD)
+// En producción, esto vendrá de la base de datos
+const charactersByUser: Record<string, any[]> = {
+  "1": [
     {
       id: 1,
+      userId: "1",
       name: "Liora",
       className: "Sorcerer",
       race: "Human",
@@ -46,6 +49,7 @@ const data = {
     },
     {
       id: 2,
+      userId: "1",
       name: "Brom",
       className: "Fighter",
       race: "Dwarf",
@@ -87,6 +91,7 @@ const data = {
       },
     },
   ],
+  "2": [], // Usuario admin sin personajes por defecto
 };
 
 export function GET(request: Request) {
@@ -100,6 +105,10 @@ export function GET(request: Request) {
   const foundUser =
     DEMO_USERS.find((user) => user.id === userId) ?? DEMO_USERS[0];
 
+  // Obtener personajes del usuario específico
+  // En producción: await db.select().from(characters).where(eq(characters.userId, userId))
+  const userCharacters = charactersByUser[userId] || [];
+
   return NextResponse.json({
     player: {
       name: foundUser.name,
@@ -107,7 +116,35 @@ export function GET(request: Request) {
       level: foundUser.level,
       home: foundUser.home,
     },
-    characters: data.characters,
+    characters: userCharacters,
     userId,
   });
+}
+
+// Función auxiliar para agregar un personaje (usado por create-character)
+export function addCharacter(userId: string, character: any) {
+  if (!charactersByUser[userId]) {
+    charactersByUser[userId] = [];
+  }
+  charactersByUser[userId].push(character);
+}
+
+// Función auxiliar para obtener personajes de un usuario
+export function getUserCharacters(userId: string) {
+  return charactersByUser[userId] || [];
+}
+
+// Función auxiliar para actualizar un personaje
+export function updateCharacter(userId: string, characterId: number, updates: any) {
+  if (!charactersByUser[userId]) return false;
+  
+  const charIndex = charactersByUser[userId].findIndex(c => c.id === characterId);
+  if (charIndex === -1) return false;
+  
+  charactersByUser[userId][charIndex] = {
+    ...charactersByUser[userId][charIndex],
+    ...updates,
+  };
+  
+  return true;
 }
