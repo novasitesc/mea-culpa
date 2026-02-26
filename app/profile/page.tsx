@@ -517,7 +517,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 {openBagModal === character.id && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/20 p-4">
                     <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
                       <button
                         className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
@@ -649,7 +649,7 @@ export default function ProfilePage() {
 
       {/* Modal de Crear Personaje */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/20 p-4">
           <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
             <button
               className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
@@ -677,7 +677,7 @@ export default function ProfilePage() {
                   <select 
                     value={newCharacter.race}
                     onChange={(e) => setNewCharacter({ ...newCharacter, race: e.target.value })}
-                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                   >
                     <option value="">Selecciona una raza</option>
                     <option value="Human">Humano</option>
@@ -697,7 +697,7 @@ export default function ProfilePage() {
                   <select 
                     value={newCharacter.className}
                     onChange={(e) => setNewCharacter({ ...newCharacter, className: e.target.value })}
-                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                   >
                     <option value="">Selecciona una clase</option>
                     <option value="Barbarian">Bárbaro</option>
@@ -721,7 +721,7 @@ export default function ProfilePage() {
                 <select 
                   value={newCharacter.background}
                   onChange={(e) => setNewCharacter({ ...newCharacter, background: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                 >
                   <option value="">Selecciona un trasfondo</option>
                   <option value="Acolyte">Acólito</option>
@@ -742,7 +742,7 @@ export default function ProfilePage() {
                 <select 
                   value={newCharacter.alignment}
                   onChange={(e) => setNewCharacter({ ...newCharacter, alignment: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                 >
                   <option value="">Selecciona un alineamiento</option>
                   <option value="Lawful Good">Legal Bueno</option>
