@@ -48,7 +48,7 @@
 }
 
 @theme inline {
-  --font-sans: "Cinzel", "Cinzel Fallback", serif;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cinzel Decorative", "Cinzel Decorative Fallback", serif;
   --font-mono: "MedievalSharp", "MedievalSharp Fallback", cursive;
   --color-background: var(--background);
@@ -436,4 +436,10 @@
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+/* Shop card dimensions */
+.shop-card {
+  width: 331px;
+  height: 182px;
 }

@@ -10,6 +10,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
+import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import {
@@ -49,6 +50,7 @@ type Shop = {
   name: string;
   description: string;
   icon: string;
+  minLevel?: number;
   keeper: string;
   location: string;
   items: ShopItem[];
@@ -79,6 +81,7 @@ const RARITY_BADGE: Record<ItemRarity, string> = {
 // ─── Componente principal ─────────────────────────────────────────────────
 
 export default function TiendasPage() {
+  const { user } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
@@ -318,46 +321,59 @@ export default function TiendasPage() {
                     {[...Array(5)].map((_, i) => (
                       <div
                         key={i}
-                        className="h-44 rounded-lg bg-card animate-pulse border border-border"
+                        className="shop-card rounded-lg bg-card animate-pulse border border-border"
                       />
                     ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {shops.map((shop) => (
-                      <Card
-                        key={shop.id}
-                        className="cursor-pointer hover:border-gold-dim transition-all hover:shadow-lg medieval-border group"
-                        onClick={() => openShop(shop.id)}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start gap-3">
-                            <span className="text-4xl">{shop.icon}</span>
-                            <div className="min-w-0">
-                              <CardTitle className="text-gold text-lg group-hover:text-gold-dim transition-colors">
-                                {shop.name}
-                              </CardTitle>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {shop.location}
-                              </p>
+                    {shops.map((shop) => {
+                      // allow access to all shops if user is over level 10
+                      const hasAccess = (user && user.level > 10) || !shop.minLevel || (user && user.level >= shop.minLevel);
+                      
+                      return (
+                        <div key={shop.id} className="relative">
+                          <Card
+                            className={`medieval-border shop-card flex flex-col transition-all ${hasAccess ? "cursor-pointer hover:border-gold-dim hover:shadow-lg group" : "cursor-not-allowed opacity-75"}`}
+                            onClick={() => hasAccess && openShop(shop.id)}
+                          >
+                            <CardHeader className="pb-2 pt-4 px-4">
+                              <div className="flex items-start gap-2.5">
+                                <span className="text-3xl flex-shrink-0">{shop.icon}</span>
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className={`text-sm line-clamp-1 transition-colors ${hasAccess ? "text-gold group-hover:text-gold-dim" : "text-muted-foreground"}`}>
+                                    {shop.name}
+                                  </CardTitle>
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                    {shop.location}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col px-4 py-2">
+                              <CardDescription className="text-xs leading-relaxed line-clamp-2 flex-1">
+                                {shop.description}
+                              </CardDescription>
+                            </CardContent>
+                            <div className="px-4 pb-3 flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground italic line-clamp-1">
+                                — {shop.keeper}
+                              </span>
+                              <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                {(shop as ShopListItem).itemCount}o
+                              </span>
                             </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <CardDescription className="text-sm leading-relaxed line-clamp-2">
-                            {shop.description}
-                          </CardDescription>
-                          <div className="mt-3 flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground italic">
-                              — {shop.keeper}
-                            </span>
-                            <span className="text-xs bg-secondary text-muted-foreground px-2 py-1 rounded-full">
-                              {(shop as ShopListItem).itemCount} objetos
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </Card>
+                          
+                          {/* Overlay de incognito cuando no tiene acceso (mismo tamaño que la tarjeta) */}
+                          {!hasAccess && (
+                            <div className="absolute inset-0 rounded-lg overflow-hidden medieval-border border border-gold-dim/50">
+                              <img src="/incognito.png" alt="Incógnito" className="w-full h-full object-fill" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -375,115 +391,148 @@ export default function TiendasPage() {
                       />
                     ))}
                   </div>
-                ) : (
-                  <>
-                    {/* Cabecera de la tienda */}
-                    <Card className="mb-6 border-gold-dim medieval-border">
-                      <CardContent className="pt-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                          <span className="text-5xl">{activeShop.icon}</span>
-                          <div className="flex-1">
-                            <h2 className="text-xl font-bold text-gold font-sans">
-                              {activeShop.name}
-                            </h2>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {activeShop.description}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2 italic">
-                              📍 {activeShop.location} · Atendido por{" "}
-                              <strong>{activeShop.keeper}</strong>
-                            </p>
-                          </div>
-                          {/* Filtro de categoría */}
-                          <div className="shrink-0">
-                            <Select
-                              value={filterCategory}
-                              onChange={(e) =>
-                                setFilterCategory(e.target.value)
-                              }
-                              className="w-44"
-                            >
-                              {categories.map((cat) => (
-                                <option key={cat} value={cat}>
-                                  {cat === "all"
-                                    ? "Todas las categorías"
-                                    : cat.charAt(0).toUpperCase() +
-                                      cat.slice(1)}
-                                </option>
-                              ))}
-                            </Select>
-                          </div>
+                ) : (() => {
+                  // desbloqueo global: cualquier usuario con nivel > 10 tiene acceso a todo
+                  const hasAccess = (user && user.level > 10) || !activeShop.minLevel || (user && user.level >= activeShop.minLevel);
+                  
+                  if (!hasAccess) {
+                    return (
+                      <div className="flex flex-col items-center justify-center gap-6 py-20">
+                        <img src="/incognito.png" alt="Acceso denegado" className="w-24 h-24 object-contain opacity-80" />
+                        <div className="text-center max-w-sm">
+                          <h2 className="text-2xl font-bold text-gold mb-2">Acceso restringido</h2>
+                          <p className="text-muted-foreground text-sm mb-4">
+                            No tienes el nivel suficiente para acceder a {activeShop.name}.
+                          </p>
+                          <p className="text-gold font-bold text-lg">
+                            Nivel requerido: {activeShop.minLevel}
+                          </p>
+                          <p className="text-muted-foreground text-sm mt-2">
+                            Tu nivel actual: {user?.level || "No definido"}
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveShop(null)}
+                          className="mt-4"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          Volver a tiendas
+                        </Button>
+                      </div>
+                    );
+                  }
 
-                    {/* Grid de items */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {visibleItems.map((item) => {
-                        const bought = purchasedItems.has(item.id);
-                        const outOfStock = item.stock === 0;
-                        const inCart = cart.some((e) => e.id === item.id);
-
-                        return (
-                          <Card
-                            key={item.id}
-                            className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="text-3xl">{item.icon}</span>
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
-                                >
-                                  {item.rarity}
-                                </span>
-                              </div>
-                              <CardTitle className="text-sm text-foreground mt-2 leading-tight">
-                                {item.name}
-                              </CardTitle>
-                            </CardHeader>
-
-                            <CardContent className="flex-1 flex flex-col gap-3 pt-0">
-                              <CardDescription className="text-xs leading-relaxed flex-1">
-                                {item.description}
-                              </CardDescription>
-
-                              <div className="flex items-center justify-between mt-auto">
-                                {/* Precio */}
-                                <span className="flex items-center gap-1 font-bold text-gold text-sm">
-                                  <Coins className="w-4 h-4" />
-                                  {item.price.toLocaleString()}
-                                </span>
-                                {/* Stock */}
-                                {item.stock !== null && (
-                                  <span className="text-xs text-muted-foreground">
-                                    Stock: {item.stock}
-                                  </span>
-                                )}
-                              </div>
-
-                              <Button
-                                size="sm"
-                                variant={inCart ? "secondary" : "default"}
-                                disabled={bought || outOfStock}
-                                onClick={() => addToCart(item)}
-                                className="w-full"
+                  return (
+                    <>
+                      {/* Cabecera de la tienda */}
+                      <Card className="mb-6 border-gold-dim medieval-border">
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <span className="text-5xl">{activeShop.icon}</span>
+                            <div className="flex-1">
+                              <h2 className="text-xl font-bold text-gold font-sans">
+                                {activeShop.name}
+                              </h2>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {activeShop.description}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-2 italic">
+                                📍 {activeShop.location} · Atendido por{" "}
+                                <strong>{activeShop.keeper}</strong>
+                              </p>
+                            </div>
+                            {/* Filtro de categoría */}
+                            <div className="shrink-0">
+                              <Select
+                                value={filterCategory}
+                                onChange={(e) =>
+                                  setFilterCategory(e.target.value)
+                                }
+                                className="w-44"
                               >
-                                {bought
-                                  ? "Comprado ✓"
-                                  : outOfStock
-                                    ? "Sin stock"
-                                    : inCart
-                                      ? "En carrito +"
-                                      : "Añadir al carrito"}
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                                {categories.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {cat === "all"
+                                      ? "Todas las categorías"
+                                      : cat.charAt(0).toUpperCase() +
+                                        cat.slice(1)}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Grid de items */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {visibleItems.map((item) => {
+                          const bought = purchasedItems.has(item.id);
+                          const outOfStock = item.stock === 0;
+                          const inCart = cart.some((e) => e.id === item.id);
+
+                          return (
+                            <Card
+                              key={item.id}
+                              className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                            >
+                              <CardHeader className="pb-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="text-3xl">{item.icon}</span>
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
+                                  >
+                                    {item.rarity}
+                                  </span>
+                                </div>
+                                <CardTitle className="text-sm text-foreground mt-2 leading-tight">
+                                  {item.name}
+                                </CardTitle>
+                              </CardHeader>
+
+                              <CardContent className="flex-1 flex flex-col gap-3 pt-0">
+                                <CardDescription className="text-xs leading-relaxed flex-1">
+                                  {item.description}
+                                </CardDescription>
+
+                                <div className="flex items-center justify-between mt-auto">
+                                  {/* Precio */}
+                                  <span className="flex items-center gap-1 font-bold text-gold text-sm">
+                                    <Coins className="w-4 h-4" />
+                                    {item.price.toLocaleString()}
+                                  </span>
+                                  {/* Stock */}
+                                  {item.stock !== null && (
+                                    <span className="text-xs text-muted-foreground">
+                                      Stock: {item.stock}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <Button
+                                  size="sm"
+                                  variant={inCart ? "secondary" : "default"}
+                                  disabled={bought || outOfStock}
+                                  onClick={() => addToCart(item)}
+                                  className="w-full"
+                                >
+                                  {bought
+                                    ? "Comprado ✓"
+                                    : outOfStock
+                                      ? "Sin stock"
+                                      : inCart
+                                        ? "En carrito +"
+                                        : "Añadir al carrito"}
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>

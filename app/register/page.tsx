@@ -160,6 +160,9 @@ export default function RegisterPage() {
                       type="text"
                       placeholder="Tu nombre de aventurero"
                       className="bg-input border-border focus-visible:border-gold"
+                      autoCapitalize="none" autoCorrect="off"
+                      tabIndex={1}
+                      autoFocus
                       {...register("username")}
                       disabled={isLoading}
                     />
@@ -181,6 +184,8 @@ export default function RegisterPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        autoCapitalize="none" autoCorrect="off"
+                        tabIndex={3}
                         {...register("password")}
                         disabled={isLoading}
                       />
@@ -214,6 +219,8 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="tu@correo.com"
                         className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        autoCapitalize="none" autoCorrect="off"
+                        tabIndex={2}
                         {...register("email")}
                         disabled={isLoading}
                       />
@@ -236,6 +243,8 @@ export default function RegisterPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="••••••••"
                         className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                        autoCapitalize="none" autoCorrect="off"
+                        tabIndex={4}
                         {...register("confirmPassword")}
                         disabled={isLoading}
                       />
