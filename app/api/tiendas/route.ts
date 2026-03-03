@@ -34,6 +34,8 @@ export type Shop = {
   icon: string;
   keeper: string; // nombre del tendero
   location: string;
+  // Nivel mínimo requerido para ver el tendero (opcional)
+  minLevel?: number;
   items: ShopItem[];
 };
 
@@ -185,6 +187,7 @@ const SHOPS: Shop[] = [
     description:
       "Si hay que preguntar el precio, no puedes pagarlo. Entra por la puerta trasera.",
     icon: "🕯️",
+    minLevel: 10,
     keeper: "Shade",
     location: "Barrio Bajo (acceso restringido)",
     items: [
@@ -305,6 +308,7 @@ const SHOPS: Shop[] = [
     description:
       "Pergaminos, componentes y varitas. El mago Elveth dice que tiene todo… si encuentras la tienda.",
     icon: "🔮",
+    minLevel: 5,
     keeper: "Elveth el Arcano",
     location: "Torre del Mago",
     items: [
