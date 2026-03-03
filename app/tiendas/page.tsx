@@ -339,7 +339,7 @@ export default function TiendasPage() {
                           >
                             <CardHeader className="pb-2 pt-4 px-4">
                               <div className="flex items-start gap-2.5">
-                                <span className="text-3xl flex-shrink-0">{shop.icon}</span>
+                                <span className="text-3xl shrink-0">{shop.icon}</span>
                                 <div className="min-w-0 flex-1">
                                   <CardTitle className={`text-sm line-clamp-1 transition-colors ${hasAccess ? "text-gold group-hover:text-gold-dim" : "text-muted-foreground"}`}>
                                     {shop.name}
@@ -359,7 +359,7 @@ export default function TiendasPage() {
                               <span className="text-xs text-muted-foreground italic line-clamp-1">
                                 — {shop.keeper}
                               </span>
-                              <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full flex-shrink-0">
+                              <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">
                                 {(shop as ShopListItem).itemCount}o
                               </span>
                             </div>
