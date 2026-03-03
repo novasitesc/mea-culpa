@@ -96,7 +96,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" style={{ overflow: 'hidden' }}>
+    <div
+      className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ overflow: "hidden" }}
+    >
       {/* Background GIF */}
       <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
         <img
@@ -123,12 +126,21 @@ export default function RegisterPage() {
       />
 
       <div className="relative z-20 w-full max-w-lg">
-        <Card className="bg-card shadow-2xl candle-glow" style={{ borderColor: '#8B4513', borderWidth: '2px', borderStyle: 'solid', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)' }}>
+        <Card
+          className="bg-card shadow-2xl candle-glow"
+          style={{
+            borderColor: "#8B4513",
+            borderWidth: "2px",
+            borderStyle: "solid",
+            boxShadow:
+              "inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(139, 69, 19, 0.2)",
+          }}
+        >
           <CardHeader className="text-center space-y-2 pb-4">
             <div className="flex justify-center mb-4">
               <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
-                  src="/imgs/Login/brave_screenshot_gemini.google.com.png"
+                  src="/imgs/Login/calavera.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
@@ -137,7 +149,9 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
-            <CardTitle className="text-2xl text-gold font-serif">Crear Cuenta</CardTitle>
+            <CardTitle className="text-2xl text-gold font-serif">
+              Crear Cuenta
+            </CardTitle>
             <CardDescription className="text-base text-muted-foreground mt-2">
               Regístrate para comenzar tu aventura
             </CardDescription>
@@ -151,7 +165,10 @@ export default function RegisterPage() {
                 <div className="space-y-4">
                   {/* Username field */}
                   <div className="space-y-2">
-                    <Label htmlFor="username" className="text-foreground flex items-center gap-2">
+                    <Label
+                      htmlFor="username"
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <User className="w-4 h-4" />
                       Nombre de Usuario
                     </Label>
@@ -160,20 +177,26 @@ export default function RegisterPage() {
                       type="text"
                       placeholder="Tu nombre de aventurero"
                       className="bg-input border-border focus-visible:border-gold"
-                      autoCapitalize="none" autoCorrect="off"
+                      autoCapitalize="none"
+                      autoCorrect="off"
                       tabIndex={1}
                       autoFocus
                       {...register("username")}
                       disabled={isLoading}
                     />
                     {errors.username && (
-                      <p className="text-sm text-destructive mt-1">{errors.username.message}</p>
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.username.message}
+                      </p>
                     )}
                   </div>
 
                   {/* Password field */}
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-foreground flex items-center gap-2">
+                    <Label
+                      htmlFor="password"
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <Lock className="w-4 h-4" />
                       Contraseña
                     </Label>
@@ -184,7 +207,8 @@ export default function RegisterPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none" autoCorrect="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
                         tabIndex={3}
                         {...register("password")}
                         disabled={isLoading}
@@ -195,11 +219,17 @@ export default function RegisterPage() {
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
                         disabled={isLoading}
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.password.message}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -208,7 +238,10 @@ export default function RegisterPage() {
                 <div className="space-y-4">
                   {/* Email field */}
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-foreground flex items-center gap-2">
+                    <Label
+                      htmlFor="email"
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <Mail className="w-4 h-4" />
                       Correo Electrónico
                     </Label>
@@ -219,20 +252,26 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="tu@correo.com"
                         className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none" autoCorrect="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
                         tabIndex={2}
                         {...register("email")}
                         disabled={isLoading}
                       />
                     </div>
                     {errors.email && (
-                      <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.email.message}
+                      </p>
                     )}
                   </div>
 
                   {/* Confirm Password field */}
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-foreground flex items-center gap-2">
+                    <Label
+                      htmlFor="confirmPassword"
+                      className="text-foreground flex items-center gap-2"
+                    >
                       <Lock className="w-4 h-4" />
                       Confirmar Contraseña
                     </Label>
@@ -243,14 +282,17 @@ export default function RegisterPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="••••••••"
                         className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none" autoCorrect="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
                         tabIndex={4}
                         {...register("confirmPassword")}
                         disabled={isLoading}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
                         disabled={isLoading}
                       >
@@ -273,7 +315,9 @@ export default function RegisterPage() {
               {/* Error message */}
               {error && (
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                  <p className="text-sm text-destructive text-center">{error}</p>
+                  <p className="text-sm text-destructive text-center">
+                    {error}
+                  </p>
                 </div>
               )}
 
@@ -311,5 +355,5 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

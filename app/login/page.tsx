@@ -130,7 +130,7 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4">
               <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
-                  src="/imgs/Login/brave_screenshot_gemini.google.com.png"
+                  src="/imgs/Login/calavera.png"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
