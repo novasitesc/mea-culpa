@@ -631,7 +631,7 @@ export default function ProfilePage() {
                             </div>
                           ))}
                           {[...Array((currentCharacter?.bag.maxSlots || character.bag.maxSlots) - bagItems.length)].map((_, idx) => (
-                            <div key={"empty-"+idx} className="rounded border border-dashed border-border/40 bg-secondary/10 p-3 text-sm text-muted-foreground flex items-center justify-center min-h-[80px]">
+                            <div key={"empty-"+idx} className="rounded border border-dashed border-border/40 bg-secondary/10 p-3 text-sm text-muted-foreground flex items-center justify-center min-h-20">
                               <span className="text-xs">Vacío</span>
                             </div>
                           ))}
