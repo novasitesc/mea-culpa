@@ -6,6 +6,7 @@ export type DemoUser = {
   role: string;
   level: number;
   home: string;
+  isAdmin: boolean;
 };
 
 export const DEMO_USERS: DemoUser[] = [
@@ -17,6 +18,7 @@ export const DEMO_USERS: DemoUser[] = [
     role: "Dungeon Explorer",
     level: 7,
     home: "Eldergrove",
+    isAdmin: false,
   },
   {
     id: "2",
@@ -26,5 +28,6 @@ export const DEMO_USERS: DemoUser[] = [
     role: "Game Master",
     level: 20,
     home: "High Keep",
+    isAdmin: true,
   },
 ];

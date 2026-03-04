@@ -10,6 +10,7 @@ export interface User {
   role: string;
   level: number;
   home: string;
+  isAdmin: boolean;
 }
 
 export function useAuth() {
