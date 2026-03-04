@@ -52,13 +52,17 @@ type Bag = {
   maxSlots: number;
 };
 
+type ClassEntry = {
+  className: string;
+  level: number;
+};
+
 type Character = {
   id: number;
   name: string;
-  className: string;
+  multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
   alignment: string;
-  background: string;
   portrait: string;
   stats: Record<string, number>;
   armor: ArmorSlots;
@@ -82,11 +86,15 @@ export default function ProfilePage() {
   const [currentCharacter, setCurrentCharacter] = useState<Character | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [newCharacter, setNewCharacter] = useState({
+  const [newCharacter, setNewCharacter] = useState<{
+    name: string;
+    race: string;
+    multiclass: ClassEntry[];
+    alignment: string;
+  }>({
     name: "",
     race: "",
-    className: "",
-    background: "",
+    multiclass: [{ className: "", level: 1 }],
     alignment: "",
   });
 
@@ -152,7 +160,7 @@ export default function ProfilePage() {
       alert('Por favor ingresa un nombre para el personaje');
       return;
     }
-    if (!newCharacter.race || !newCharacter.className || !newCharacter.background || !newCharacter.alignment) {
+    if (!newCharacter.race || newCharacter.multiclass.length === 0 || newCharacter.multiclass.some(c => !c.className) || !newCharacter.alignment) {
       alert('Por favor completa todos los campos');
       return;
     }
@@ -186,8 +194,7 @@ export default function ProfilePage() {
       setNewCharacter({
         name: "",
         race: "",
-        className: "",
-        background: "",
+        multiclass: [{ className: "", level: 1 }],
         alignment: "",
       });
       setShowCreateModal(false);
@@ -421,14 +428,34 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
                       {character.name}
                     </h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {character.className}
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      {(character.multiclass ?? []).map((entry, idx) => (
+                        <div key={idx} className="flex items-center justify-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            {entry.className} <span className="text-[#D4AF37] font-semibold">Nv.{entry.level}</span>
+                          </span>
+                          <button
+                            title="Subir nivel de clase"
+                            className="text-xs px-1.5 py-0.5 rounded border border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition leading-none"
+                            onClick={() => {
+                              const updated = (character.multiclass ?? []).map((c, i) =>
+                                i === idx ? { ...c, level: Math.min(20, c.level + 1) } : c
+                              );
+                              setProfile({
+                                ...profile!,
+                                characters: profile!.characters.map((ch) =>
+                                  ch.id === character.id ? { ...ch, multiclass: updated } : ch
+                                ),
+                              });
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="px-3 py-2 rounded bg-secondary text-center text-sm">
-                      {character.background}
-                    </div>
                     <div className="px-3 py-2 rounded bg-[#8B7355] text-background text-center text-sm">
                       {character.alignment}
                     </div>
@@ -674,87 +701,101 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">Raza</label>
-                  <select 
+                  <input
+                    type="text"
                     value={newCharacter.race}
                     onChange={(e) => setNewCharacter({ ...newCharacter, race: e.target.value })}
-                    className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                  >
-                    <option value="">Selecciona una raza</option>
-                    <option value="Human">Humano</option>
-                    <option value="Elf">Elfo</option>
-                    <option value="Dwarf">Enano</option>
-                    <option value="Halfling">Mediano</option>
-                    <option value="Dragonborn">Dracónido</option>
-                    <option value="Gnome">Gnomo</option>
-                    <option value="Half-Elf">Semielfo</option>
-                    <option value="Half-Orc">Semiorco</option>
-                    <option value="Tiefling">Tiefling</option>
-                  </select>
+                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    placeholder="Ej: Elfo, Humano, Semiorco..."
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">Clase</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Alineamiento</label>
                   <select 
-                    value={newCharacter.className}
-                    onChange={(e) => setNewCharacter({ ...newCharacter, className: e.target.value })}
+                    value={newCharacter.alignment}
+                    onChange={(e) => setNewCharacter({ ...newCharacter, alignment: e.target.value })}
                     className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                   >
-                    <option value="">Selecciona una clase</option>
-                    <option value="Barbarian">Bárbaro</option>
-                    <option value="Bard">Bardo</option>
-                    <option value="Cleric">Clérigo</option>
-                    <option value="Druid">Druida</option>
-                    <option value="Fighter">Guerrero</option>
-                    <option value="Monk">Monje</option>
-                    <option value="Paladin">Paladín</option>
-                    <option value="Ranger">Explorador</option>
-                    <option value="Rogue">Pícaro</option>
-                    <option value="Sorcerer">Hechicero</option>
-                    <option value="Warlock">Brujo</option>
-                    <option value="Wizard">Mago</option>
+                    <option value="">Selecciona un alineamiento</option>
+                    <option value="Lawful Good">Legal Bueno</option>
+                    <option value="Neutral Good">Neutral Bueno</option>
+                    <option value="Chaotic Good">Caótico Bueno</option>
+                    <option value="Lawful Neutral">Legal Neutral</option>
+                    <option value="True Neutral">Neutral Puro</option>
+                    <option value="Chaotic Neutral">Caótico Neutral</option>
+                    <option value="Lawful Evil">Legal Malvado</option>
+                    <option value="Neutral Evil">Neutral Malvado</option>
+                    <option value="Chaotic Evil">Caótico Malvado</option>
                   </select>
                 </div>
               </div>
 
+              {/* Multiclase - máximo 3 clases */}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">Trasfondo</label>
-                <select 
-                  value={newCharacter.background}
-                  onChange={(e) => setNewCharacter({ ...newCharacter, background: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                >
-                  <option value="">Selecciona un trasfondo</option>
-                  <option value="Acolyte">Acólito</option>
-                  <option value="Criminal">Criminal</option>
-                  <option value="Folk Hero">Héroe del Pueblo</option>
-                  <option value="Noble">Noble</option>
-                  <option value="Sage">Sabio</option>
-                  <option value="Soldier">Soldado</option>
-                  <option value="Hermit">Ermitaño</option>
-                  <option value="Outlander">Forastero</option>
-                  <option value="Entertainer">Artista</option>
-                  <option value="Guild Artisan">Artesano de Gremio</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">Alineamiento</label>
-                <select 
-                  value={newCharacter.alignment}
-                  onChange={(e) => setNewCharacter({ ...newCharacter, alignment: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                >
-                  <option value="">Selecciona un alineamiento</option>
-                  <option value="Lawful Good">Legal Bueno</option>
-                  <option value="Neutral Good">Neutral Bueno</option>
-                  <option value="Chaotic Good">Caótico Bueno</option>
-                  <option value="Lawful Neutral">Legal Neutral</option>
-                  <option value="True Neutral">Neutral Puro</option>
-                  <option value="Chaotic Neutral">Caótico Neutral</option>
-                  <option value="Lawful Evil">Legal Malvado</option>
-                  <option value="Neutral Evil">Neutral Malvado</option>
-                  <option value="Chaotic Evil">Caótico Malvado</option>
-                </select>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Clases <span className="text-xs text-muted-foreground/60">({newCharacter.multiclass.length}/3)</span>
+                  </label>
+                  {newCharacter.multiclass.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setNewCharacter({ ...newCharacter, multiclass: [...newCharacter.multiclass, { className: "", level: 1 }] })}
+                      className="text-xs px-2 py-1 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
+                    >
+                      + Añadir clase
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {newCharacter.multiclass.map((entry, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        value={entry.className}
+                        onChange={(e) => {
+                          const updated = newCharacter.multiclass.map((c, i) => i === idx ? { ...c, className: e.target.value } : c);
+                          setNewCharacter({ ...newCharacter, multiclass: updated });
+                        }}
+                        className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
+                      >
+                        <option value="">Selecciona una clase</option>
+                        <option value="Barbarian">Bárbaro</option>
+                        <option value="Bard">Bardo</option>
+                        <option value="Cleric">Clérigo</option>
+                        <option value="Druid">Druida</option>
+                        <option value="Fighter">Guerrero</option>
+                        <option value="Monk">Monje</option>
+                        <option value="Paladin">Paladín</option>
+                        <option value="Ranger">Explorador</option>
+                        <option value="Rogue">Pícaro</option>
+                        <option value="Sorcerer">Hechicero</option>
+                        <option value="Warlock">Brujo</option>
+                        <option value="Wizard">Mago</option>
+                      </select>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Nv.</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={entry.level}
+                          onChange={(e) => {
+                            const updated = newCharacter.multiclass.map((c, i) => i === idx ? { ...c, level: Math.max(1, Math.min(20, Number(e.target.value))) } : c);
+                            setNewCharacter({ ...newCharacter, multiclass: updated });
+                          }}
+                          className="w-14 px-2 py-2 rounded border border-border bg-secondary/30 text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+                      {newCharacter.multiclass.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNewCharacter({ ...newCharacter, multiclass: newCharacter.multiclass.filter((_, i) => i !== idx) })}
+                          className="px-2 py-2 text-red-500 hover:bg-red-500/10 rounded transition text-sm"
+                        >×</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="pt-4 border-t border-border">
@@ -768,8 +809,7 @@ export default function ProfilePage() {
                       setNewCharacter({
                         name: "",
                         race: "",
-                        className: "",
-                        background: "",
+                        multiclass: [{ className: "", level: 1 }],
                         alignment: "",
                       });
                     }}

@@ -106,11 +106,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, race, className, background, alignment } = characterData;
+    const { name, race, multiclass, alignment } = characterData;
 
-    if (!name || !race || !className || !background || !alignment) {
+    if (!name || !race || !multiclass || multiclass.length === 0 || multiclass.some((c: { className: string }) => !c.className) || !alignment) {
       return NextResponse.json(
         { error: "All character fields are required" },
+        { status: 400 }
+      );
+    }
+
+    if (multiclass.length > 3) {
+      return NextResponse.json(
+        { error: "Maximum 3 classes per character." },
         { status: 400 }
       );
     }
@@ -124,11 +131,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generar stats basados en la clase
-    const stats = generateStatsForClass(className);
+    // Generar stats basados en la clase primaria
+    const primaryClass = multiclass[0].className;
+    const stats = generateStatsForClass(primaryClass);
     
-    // Generar equipo inicial
-    const { armor, weapons, accessories } = generateInitialEquipment(className);
+    // Generar equipo inicial basado en la clase primaria
+    const { armor, weapons, accessories } = generateInitialEquipment(primaryClass);
 
     // Calcular espacios de bolsa (10 base + modificador de constitución)
     const conModifier = Math.floor((stats.con - 10) / 2);
@@ -136,14 +144,13 @@ export async function POST(request: Request) {
 
     // Crear el nuevo personaje
     const newCharacter = {
-      id: Date.now(), // En producción, esto será generado por la BD
+      id: Date.now(),
       userId,
       name,
-      className,
+      multiclass,
       race,
       alignment,
-      background,
-      portrait: "/characters/default-portrait.png", // Placeholder, se puede personalizar después
+      portrait: "/characters/default-portrait.png",
       stats,
       armor,
       accessories,

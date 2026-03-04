@@ -20,13 +20,17 @@ type Player = {
   home: string;
 };
 
+type ClassEntry = {
+  className: string;
+  level: number;
+};
+
 type Character = {
   id: number;
   name: string;
-  className: string;
+  multiclass: ClassEntry[];
   race: string;
   alignment: string;
-  background: string;
   portrait: string;
   stats: Record<string, number>;
   gear: string[];
@@ -208,7 +212,7 @@ export default function HomePage() {
                 </span>
                 <span className="text-gold font-bold text-sm tracking-wider ml-2 font-sans">
                   {activeCharacter
-                    ? activeCharacter.className.toUpperCase()
+                    ? (activeCharacter.multiclass ?? []).map(c => c.className.toUpperCase()).join(" / ")
                     : "BLOQUEADO"}
                 </span>
               </div>
@@ -242,7 +246,7 @@ export default function HomePage() {
                         {activeCharacter.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {activeCharacter.background}
+                        {(activeCharacter.multiclass ?? []).map(c => `${c.className} Nv.${c.level}`).join(" / ")}
                       </p>
                     </>
                   ) : (
@@ -296,7 +300,7 @@ export default function HomePage() {
                           {slot.character?.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {slot.character?.className}
+                          {(slot.character?.multiclass ?? []).map(c => c.className).join(" / ")}
                         </p>
                       </>
                     )}

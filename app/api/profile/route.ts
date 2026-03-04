@@ -9,10 +9,9 @@ const charactersByUser: Record<string, any[]> = {
       id: 1,
       userId: "1",
       name: "Liora",
-      className: "Sorcerer",
+      multiclass: [{ className: "Sorcerer", level: 5 }],
       race: "Human",
       alignment: "Lawful Good",
-      background: "Hermit",
       portrait: "/characters/renekton.png",
       stats: {
         str: 15,
@@ -51,10 +50,9 @@ const charactersByUser: Record<string, any[]> = {
       id: 2,
       userId: "1",
       name: "Brom",
-      className: "Fighter",
+      multiclass: [{ className: "Fighter", level: 6 }],
       race: "Dwarf",
       alignment: "Neutral Good",
-      background: "Soldier",
       portrait: "/characters/braum.png",
       stats: {
         str: 18,
