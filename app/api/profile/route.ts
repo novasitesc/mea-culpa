@@ -133,16 +133,22 @@ export function getUserCharacters(userId: string) {
 }
 
 // Función auxiliar para actualizar un personaje
-export function updateCharacter(userId: string, characterId: number, updates: any) {
+export function updateCharacter(
+  userId: string,
+  characterId: number,
+  updates: any,
+) {
   if (!charactersByUser[userId]) return false;
-  
-  const charIndex = charactersByUser[userId].findIndex(c => c.id === characterId);
+
+  const charIndex = charactersByUser[userId].findIndex(
+    (c) => c.id === characterId,
+  );
   if (charIndex === -1) return false;
-  
+
   charactersByUser[userId][charIndex] = {
     ...charactersByUser[userId][charIndex],
     ...updates,
   };
-  
+
   return true;
 }

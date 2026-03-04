@@ -212,7 +212,9 @@ export default function HomePage() {
                 </span>
                 <span className="text-gold font-bold text-sm tracking-wider ml-2 font-sans">
                   {activeCharacter
-                    ? (activeCharacter.multiclass ?? []).map(c => c.className.toUpperCase()).join(" / ")
+                    ? (activeCharacter.multiclass ?? [])
+                        .map((c) => c.className.toUpperCase())
+                        .join(" / ")
                     : "BLOQUEADO"}
                 </span>
               </div>
@@ -246,7 +248,9 @@ export default function HomePage() {
                         {activeCharacter.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {(activeCharacter.multiclass ?? []).map(c => `${c.className} Nv.${c.level}`).join(" / ")}
+                        {(activeCharacter.multiclass ?? [])
+                          .map((c) => `${c.className} Nv.${c.level}`)
+                          .join(" / ")}
                       </p>
                     </>
                   ) : (
@@ -300,7 +304,9 @@ export default function HomePage() {
                           {slot.character?.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {(slot.character?.multiclass ?? []).map(c => c.className).join(" / ")}
+                          {(slot.character?.multiclass ?? [])
+                            .map((c) => c.className)
+                            .join(" / ")}
                         </p>
                       </>
                     )}

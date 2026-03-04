@@ -3,34 +3,39 @@ import { NextResponse } from "next/server";
 // Función auxiliar para generar stats basados en la clase
 function generateStatsForClass(className: string): Record<string, number> {
   const baseStats = {
-    str: 10, dex: 10, con: 10, int: 10, wis: 10, chr: 10
+    str: 10,
+    dex: 10,
+    con: 10,
+    int: 10,
+    wis: 10,
+    chr: 10,
   };
 
   // Ajustar stats según la clase
   switch (className.toLowerCase()) {
-    case 'barbarian':
+    case "barbarian":
       return { ...baseStats, str: 16, con: 14, dex: 12 };
-    case 'fighter':
+    case "fighter":
       return { ...baseStats, str: 16, con: 14, dex: 12 };
-    case 'paladin':
+    case "paladin":
       return { ...baseStats, str: 16, chr: 14, con: 12 };
-    case 'ranger':
+    case "ranger":
       return { ...baseStats, dex: 16, wis: 14, con: 12 };
-    case 'rogue':
+    case "rogue":
       return { ...baseStats, dex: 16, chr: 14, int: 12 };
-    case 'monk':
+    case "monk":
       return { ...baseStats, dex: 16, wis: 14, con: 12 };
-    case 'bard':
+    case "bard":
       return { ...baseStats, chr: 16, dex: 14, con: 12 };
-    case 'cleric':
+    case "cleric":
       return { ...baseStats, wis: 16, con: 14, str: 12 };
-    case 'druid':
+    case "druid":
       return { ...baseStats, wis: 16, con: 14, dex: 12 };
-    case 'sorcerer':
+    case "sorcerer":
       return { ...baseStats, chr: 16, con: 14, dex: 12 };
-    case 'warlock':
+    case "warlock":
       return { ...baseStats, chr: 16, con: 14, dex: 12 };
-    case 'wizard':
+    case "wizard":
       return { ...baseStats, int: 16, con: 14, dex: 12 };
     default:
       return baseStats;
@@ -40,7 +45,7 @@ function generateStatsForClass(className: string): Record<string, number> {
 // Función para generar equipo inicial según la clase
 function generateInitialEquipment(className: string) {
   const classLower = className.toLowerCase();
-  
+
   // Armadura inicial
   const armor: {
     cabeza: string | undefined;
@@ -72,19 +77,19 @@ function generateInitialEquipment(className: string) {
   };
 
   // Configurar según clase
-  if (['fighter', 'barbarian', 'paladin'].includes(classLower)) {
+  if (["fighter", "barbarian", "paladin"].includes(classLower)) {
     armor.pecho = "Leather Armor";
     weapons.manoDerecha = "Simple Sword";
-  } else if (['rogue', 'ranger', 'monk'].includes(classLower)) {
+  } else if (["rogue", "ranger", "monk"].includes(classLower)) {
     armor.pecho = "Light Armor";
     weapons.manoDerecha = "Dagger";
-  } else if (['wizard', 'sorcerer', 'warlock'].includes(classLower)) {
+  } else if (["wizard", "sorcerer", "warlock"].includes(classLower)) {
     armor.pecho = "Simple Robes";
     weapons.manoDerecha = "Wooden Staff";
-  } else if (['cleric', 'druid'].includes(classLower)) {
+  } else if (["cleric", "druid"].includes(classLower)) {
     armor.pecho = "Simple Robes";
     weapons.manoDerecha = "Simple Mace";
-  } else if (classLower === 'bard') {
+  } else if (classLower === "bard") {
     armor.pecho = "Light Armor";
     weapons.manoDerecha = "Simple Rapier";
   }
@@ -102,23 +107,30 @@ export async function POST(request: Request) {
     if (!userId || !characterData) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { name, race, multiclass, alignment } = characterData;
 
-    if (!name || !race || !multiclass || multiclass.length === 0 || multiclass.some((c: { className: string }) => !c.className) || !alignment) {
+    if (
+      !name ||
+      !race ||
+      !multiclass ||
+      multiclass.length === 0 ||
+      multiclass.some((c: { className: string }) => !c.className) ||
+      !alignment
+    ) {
       return NextResponse.json(
         { error: "All character fields are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (multiclass.length > 3) {
       return NextResponse.json(
         { error: "Maximum 3 classes per character." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -127,16 +139,17 @@ export async function POST(request: Request) {
     if (existingCharacters.length >= 5) {
       return NextResponse.json(
         { error: "Character limit reached. Maximum 5 characters per user." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Generar stats basados en la clase primaria
     const primaryClass = multiclass[0].className;
     const stats = generateStatsForClass(primaryClass);
-    
+
     // Generar equipo inicial basado en la clase primaria
-    const { armor, weapons, accessories } = generateInitialEquipment(primaryClass);
+    const { armor, weapons, accessories } =
+      generateInitialEquipment(primaryClass);
 
     // Calcular espacios de bolsa (10 base + modificador de constitución)
     const conModifier = Math.floor((stats.con - 10) / 2);
@@ -191,7 +204,7 @@ export async function POST(request: Request) {
     console.error("Error creating character:", error);
     return NextResponse.json(
       { error: "Failed to create character" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
