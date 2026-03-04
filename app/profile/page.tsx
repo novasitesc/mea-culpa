@@ -956,13 +956,13 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setNewCharacter({
-                          ...newCharacter,
+                        setNewCharacter((prev) => ({
+                          ...prev,
                           multiclass: [
-                            ...newCharacter.multiclass,
+                            ...prev.multiclass,
                             { className: "", level: 1 },
                           ],
-                        })
+                        }))
                       }
                       className="text-xs px-2 py-1 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
                     >
@@ -976,13 +976,13 @@ export default function ProfilePage() {
                       <select
                         value={entry.className}
                         onChange={(e) => {
-                          const updated = newCharacter.multiclass.map((c, i) =>
-                            i === idx ? { ...c, className: e.target.value } : c,
-                          );
-                          setNewCharacter({
-                            ...newCharacter,
-                            multiclass: updated,
-                          });
+                          const val = e.target.value;
+                          setNewCharacter((prev) => ({
+                            ...prev,
+                            multiclass: prev.multiclass.map((c, i) =>
+                              i === idx ? { ...c, className: val } : c,
+                            ),
+                          }));
                         }}
                         className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                       >
@@ -1010,22 +1010,16 @@ export default function ProfilePage() {
                           max={20}
                           value={entry.level}
                           onChange={(e) => {
-                            const updated = newCharacter.multiclass.map(
-                              (c, i) =>
-                                i === idx
-                                  ? {
-                                      ...c,
-                                      level: Math.max(
-                                        1,
-                                        Math.min(20, Number(e.target.value)),
-                                      ),
-                                    }
-                                  : c,
+                            const val = Math.max(
+                              1,
+                              Math.min(20, Number(e.target.value)),
                             );
-                            setNewCharacter({
-                              ...newCharacter,
-                              multiclass: updated,
-                            });
+                            setNewCharacter((prev) => ({
+                              ...prev,
+                              multiclass: prev.multiclass.map((c, i) =>
+                                i === idx ? { ...c, level: val } : c,
+                              ),
+                            }));
                           }}
                           className="w-14 px-2 py-2 rounded border border-border bg-secondary/30 text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                         />
@@ -1034,12 +1028,12 @@ export default function ProfilePage() {
                         <button
                           type="button"
                           onClick={() =>
-                            setNewCharacter({
-                              ...newCharacter,
-                              multiclass: newCharacter.multiclass.filter(
+                            setNewCharacter((prev) => ({
+                              ...prev,
+                              multiclass: prev.multiclass.filter(
                                 (_, i) => i !== idx,
                               ),
-                            })
+                            }))
                           }
                           className="px-2 py-2 text-red-500 hover:bg-red-500/10 rounded transition text-sm"
                         >
