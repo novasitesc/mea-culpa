@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { User, MessageSquare, Users, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -11,7 +11,6 @@ const headerButtons = [
     id: "cuenta",
     icon: User,
     label: "Perfil",
-    highlighted: true,
     href: "/profile",
     comingSoon: false,
   },
@@ -19,7 +18,6 @@ const headerButtons = [
     id: "chat",
     icon: MessageSquare,
     label: "Chat de Gremio",
-    highlighted: false,
     href: null,
     comingSoon: false,
   },
@@ -27,7 +25,6 @@ const headerButtons = [
     id: "amigos",
     icon: Users,
     label: "Amigos",
-    highlighted: false,
     href: null,
     comingSoon: true,
   },
@@ -35,6 +32,7 @@ const headerButtons = [
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
 
   const handleLogout = () => {
@@ -82,7 +80,7 @@ export default function Header() {
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     button.comingSoon
                       ? "bg-secondary text-muted-foreground/40 cursor-not-allowed"
-                      : button.highlighted
+                      : button.href && pathname === button.href
                         ? "bg-gold text-background ring-2 ring-gold/50 hover:bg-gold-dim"
                         : "bg-secondary text-muted-foreground hover:bg-muted hover:text-gold"
                   }`}
