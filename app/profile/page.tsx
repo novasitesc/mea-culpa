@@ -945,30 +945,13 @@ export default function ProfilePage() {
 
               {/* Multiclase - máximo 3 clases */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center mb-2">
                   <label className="text-sm font-medium text-muted-foreground">
                     Clases{" "}
                     <span className="text-xs text-muted-foreground/60">
                       ({newCharacter.multiclass.length}/3)
                     </span>
                   </label>
-                  {newCharacter.multiclass.length < 3 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setNewCharacter((prev) => ({
-                          ...prev,
-                          multiclass: [
-                            ...prev.multiclass,
-                            { className: "", level: 1 },
-                          ],
-                        }))
-                      }
-                      className="text-xs px-2 py-1 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
-                    >
-                      + Añadir clase
-                    </button>
-                  )}
                 </div>
                 <div className="space-y-2">
                   {newCharacter.multiclass.map((entry, idx) => (
@@ -1043,6 +1026,23 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </div>
+                {newCharacter.multiclass.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewCharacter((prev) => ({
+                        ...prev,
+                        multiclass: [
+                          ...prev.multiclass,
+                          { className: "", level: 1 },
+                        ],
+                      }))
+                    }
+                    className="mt-2 w-full text-xs px-2 py-1.5 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
+                  >
+                    + Añadir clase
+                  </button>
+                )}
               </div>
 
               <div className="pt-4 border-t border-border">
