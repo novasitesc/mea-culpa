@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   if (guard) return guard;
 
   const body = await request.json();
-  const { name, email, password, role, level, home, isAdmin } = body;
+  const { name, email, password, role, level } = body;
 
   if (!name || !email || !password) {
     return NextResponse.json(
@@ -56,14 +56,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // isAdmin no puede asignarse desde este endpoint — solo SUPER_ADMIN podrá hacerlo (próximamente).
   const newUser = db_createUser({
     name,
     email,
     password,
     role: role ?? "Adventurer",
     level: level ?? 1,
-    home: home ?? "Unknow",
-    isAdmin: isAdmin ?? false,
+    home: "",
+    isAdmin: false,
   });
 
   return NextResponse.json(newUser, { status: 201 });
@@ -85,7 +86,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const updated = db_updateUser(id, body);
+
+  // Solo se permiten modificar estos campos desde el panel de admin normal.
+  // Email y contraseña no son editables; isAdmin lo gestiona únicamente SUPER_ADMIN (próximamente).
+  const { name, role, level } = body;
+  const updated = db_updateUser(id, { name, role, level });
 
   if (!updated) {
     return NextResponse.json(

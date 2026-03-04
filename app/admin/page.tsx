@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
+import Header from "@/app/components/header";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -438,14 +439,16 @@ function UserFormModal({
   onSubmit: (data: Partial<AdminUser> & { password?: string }) => void;
   loading: boolean;
 }) {
+  const isEdit = initial !== null;
+
   const [form, setForm] = useState({
     name: initial?.name ?? "",
-    email: initial?.email ?? "",
+    // Solo se usan en creación
+    email: "",
     password: "",
+    // Editables siempre
     role: initial?.role ?? "",
     level: initial?.level ?? 1,
-    home: initial?.home ?? "",
-    isAdmin: initial?.isAdmin ?? false,
   });
 
   const set = (key: string, val: unknown) =>
@@ -453,15 +456,33 @@ function UserFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: Record<string, unknown> = { ...form };
-    // Si no se ingresa contraseña en edición, no la enviamos
-    if (!payload.password) delete payload.password;
-    onSubmit(payload);
+    if (isEdit) {
+      // En edición solo se envían nombre, rol y nivel
+      onSubmit({ name: form.name, role: form.role, level: form.level });
+    } else {
+      onSubmit({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        level: form.level,
+      });
+    }
   };
 
   return (
     <Modal title={title} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* En edición mostramos el email como campo informativo (solo lectura) */}
+        {isEdit && (
+          <div className="p-3 bg-secondary/50 border border-border rounded-lg">
+            <p className="text-xs text-muted-foreground mb-0.5">Cuenta</p>
+            <p className="text-sm font-medium text-foreground">
+              {initial.email}
+            </p>
+          </div>
+        )}
+
         <FormField label="Nombre">
           <input
             className={inputCls}
@@ -471,32 +492,33 @@ function UserFormModal({
             required
           />
         </FormField>
-        <FormField label="Email">
-          <input
-            className={inputCls}
-            type="email"
-            value={form.email}
-            onChange={(e) => set("email", e.target.value)}
-            placeholder="correo@ejemplo.com"
-            required
-          />
-        </FormField>
-        <FormField
-          label={
-            initial
-              ? "Nueva contraseña (dejar vacío para no cambiar)"
-              : "Contraseña"
-          }
-        >
-          <input
-            className={inputCls}
-            type="password"
-            value={form.password}
-            onChange={(e) => set("password", e.target.value)}
-            placeholder={initial ? "••••••••" : "Contraseña"}
-            {...(!initial && { required: true })}
-          />
-        </FormField>
+
+        {/* Email y contraseña solo al crear */}
+        {!isEdit && (
+          <>
+            <FormField label="Email">
+              <input
+                className={inputCls}
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="correo@ejemplo.com"
+                required
+              />
+            </FormField>
+            <FormField label="Contraseña">
+              <input
+                className={inputCls}
+                type="password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                placeholder="Contraseña"
+                required
+              />
+            </FormField>
+          </>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Rol / Clase">
             <input
@@ -517,33 +539,9 @@ function UserFormModal({
             />
           </FormField>
         </div>
-        <FormField label="Ciudad natal">
-          <input
-            className={inputCls}
-            value={form.home}
-            onChange={(e) => set("home", e.target.value)}
-            placeholder="Ej: Eldergrove"
-          />
-        </FormField>
-        <FormField label="Permisos">
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <div
-              onClick={() => set("isAdmin", !form.isAdmin)}
-              className={`w-10 h-5 rounded-full relative transition-colors ${
-                form.isAdmin ? "bg-gold" : "bg-secondary border border-border"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                  form.isAdmin ? "translate-x-5" : "translate-x-0.5"
-                }`}
-              />
-            </div>
-            <span className="text-sm text-foreground group-hover:text-gold transition-colors">
-              Administrador
-            </span>
-          </label>
-        </FormField>
+
+        {/* El toggle de Admin está reservado para SUPER_ADMIN (próximamente) */}
+
         <div className="flex gap-3 justify-end pt-2 border-t border-border">
           <button
             type="button"
@@ -558,7 +556,7 @@ function UserFormModal({
             className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {initial ? "Guardar cambios" : "Crear usuario"}
+            {isEdit ? "Guardar cambios" : "Crear usuario"}
           </button>
         </div>
       </form>
@@ -912,7 +910,7 @@ export default function AdminPage() {
   // Mientras se verifica el auth
   if (isLoading || !user || !user.isAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-gold" />
       </div>
     );
@@ -924,59 +922,71 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6">
-      {/* Cabecera del panel */}
-      <div className="bg-card border border-border rounded-xl p-6 medieval-border">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gold/20 border border-gold/40 rounded-xl flex items-center justify-center">
-            <Shield className="w-6 h-6 text-gold" />
+    <div className="min-h-screen bg-background">
+      {/* Fondo textura */}
+      <div
+        className="fixed inset-0 opacity-5 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="relative z-10 max-w-6xl mx-auto p-4 flex flex-col gap-6">
+        <Header />
+
+        {/* Cabecera del panel */}
+        <div className="bg-card border border-border rounded-xl p-6 medieval-border">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gold/20 border border-gold/40 rounded-xl flex items-center justify-center">
+              <Shield className="w-6 h-6 text-gold" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gold tracking-wide">
+                Panel de Administrador
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Bienvenido,{" "}
+                <span className="text-foreground font-medium">{user.name}</span>{" "}
+                · Gestión del servidor Mea Culpa
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gold tracking-wide">
-              Panel de Administrador
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Bienvenido,{" "}
-              <span className="text-foreground font-medium">{user.name}</span> ·
-              Gestión del servidor Mea Culpa
-            </p>
+        </div>
+
+        {/* Contenedor principal con tabs */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-border">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
+                  activeTab === tab.id
+                    ? "border-gold text-gold"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Contenido de pestaña */}
+          <div className="p-6">
+            {activeTab === "usuarios" && (
+              <UsersTab userId={user.id} onToast={showToast} />
+            )}
+            {activeTab === "tiendas" && (
+              <ShopsTab userId={user.id} onToast={showToast} />
+            )}
           </div>
         </div>
+
+        {/* Toast */}
+        {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
-
-      {/* Contenedor principal con tabs */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {/* Tabs */}
-        <div className="flex border-b border-border">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
-                activeTab === tab.id
-                  ? "border-gold text-gold"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Contenido de pestaña */}
-        <div className="p-6">
-          {activeTab === "usuarios" && (
-            <UsersTab userId={user.id} onToast={showToast} />
-          )}
-          {activeTab === "tiendas" && (
-            <ShopsTab userId={user.id} onToast={showToast} />
-          )}
-        </div>
-      </div>
-
-      {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 }
