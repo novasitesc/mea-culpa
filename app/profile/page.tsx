@@ -151,34 +151,11 @@ export default function ProfilePage() {
   const createCharacter = async () => {
     if (!user || !profile) return;
 
-    // Validación del límite de personajes
-    if (profile.characters.length >= 5) {
-      alert("Has alcanzado el límite máximo de 5 personajes por cuenta.");
-      return;
-    }
-
-    // Validación de campos
-    if (!newCharacter.name.trim()) {
-      alert("Por favor ingresa un nombre para el personaje");
-      return;
-    }
-    if (
-      !newCharacter.race ||
-      newCharacter.multiclass.length === 0 ||
-      newCharacter.multiclass.some((c) => !c.className) ||
-      !newCharacter.alignment
-    ) {
-      alert("Por favor completa todos los campos");
-      return;
-    }
-
     setIsCreating(true);
     try {
       const response = await fetch("/api/profile/create-character", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           characterData: newCharacter,
@@ -191,13 +168,11 @@ export default function ProfilePage() {
         throw new Error(data.error || "Failed to create character");
       }
 
-      // Actualizar el estado local con el nuevo personaje
       setProfile({
         ...profile,
         characters: [...profile.characters, data.character],
       });
 
-      // Resetear el formulario y cerrar el modal
       setNewCharacter({
         name: "",
         race: "",
@@ -205,8 +180,6 @@ export default function ProfilePage() {
         alignment: "",
       });
       setShowCreateModal(false);
-
-      // Mostrar mensaje de éxito
       alert("¡Personaje creado exitosamente!");
     } catch (error) {
       console.error("Error creating character:", error);

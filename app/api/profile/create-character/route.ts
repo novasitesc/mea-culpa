@@ -113,23 +113,55 @@ export async function POST(request: Request) {
 
     const { name, race, multiclass, alignment } = characterData;
 
-    if (
-      !name ||
-      !race ||
-      !multiclass ||
-      multiclass.length === 0 ||
-      multiclass.some((c: { className: string }) => !c.className) ||
-      !alignment
-    ) {
+    if (!name || !name.trim()) {
       return NextResponse.json(
-        { error: "All character fields are required" },
+        { error: "El nombre del personaje es obligatorio" },
+        { status: 400 },
+      );
+    }
+
+    if (!race || !race.trim()) {
+      return NextResponse.json(
+        { error: "La raza es obligatoria" },
+        { status: 400 },
+      );
+    }
+
+    if (!alignment) {
+      return NextResponse.json(
+        { error: "El alineamiento es obligatorio" },
+        { status: 400 },
+      );
+    }
+
+    if (!multiclass || multiclass.length === 0) {
+      return NextResponse.json(
+        { error: "Debes seleccionar al menos una clase" },
         { status: 400 },
       );
     }
 
     if (multiclass.length > 3) {
       return NextResponse.json(
-        { error: "Maximum 3 classes per character." },
+        { error: "Máximo 3 clases por personaje" },
+        { status: 400 },
+      );
+    }
+
+    if (multiclass.some((c: { className: string }) => !c.className)) {
+      return NextResponse.json(
+        { error: "Todas las clases deben estar seleccionadas" },
+        { status: 400 },
+      );
+    }
+
+    const classNames = multiclass.map(
+      (c: { className: string }) => c.className,
+    );
+    const hasDuplicates = classNames.length !== new Set(classNames).size;
+    if (hasDuplicates) {
+      return NextResponse.json(
+        { error: "No puede haber clases duplicadas" },
         { status: 400 },
       );
     }
@@ -138,7 +170,7 @@ export async function POST(request: Request) {
     const existingCharacters = getUserCharacters(userId);
     if (existingCharacters.length >= 5) {
       return NextResponse.json(
-        { error: "Character limit reached. Maximum 5 characters per user." },
+        { error: "Has alcanzado el límite máximo de 5 personajes por cuenta" },
         { status: 400 },
       );
     }
@@ -174,27 +206,21 @@ export async function POST(request: Request) {
       },
     };
 
-    // Agregar a la simulación de BD
+    // Agregar a la simulación de BD (reemplazar por INSERT de DB cuando migres)
+    // TODO: await db.insert(characters).values({
+    //   userId:     newCharacter.userId,
+    //   name:       newCharacter.name,
+    //   multiclass: JSON.stringify(newCharacter.multiclass),
+    //   race:       newCharacter.race,
+    //   alignment:  newCharacter.alignment,
+    //   portrait:   newCharacter.portrait,
+    //   stats:      JSON.stringify(newCharacter.stats),
+    //   armor:      JSON.stringify(newCharacter.armor),
+    //   accessories:JSON.stringify(newCharacter.accessories),
+    //   weapons:    JSON.stringify(newCharacter.weapons),
+    //   bag:        JSON.stringify(newCharacter.bag),
+    // });
     addCharacter(userId, newCharacter);
-
-    // TODO: Aquí irá la lógica para guardar en la base de datos
-    // Ejemplo futuro:
-    // const result = await db.insert(characters).values({
-    //   userId: userId,
-    //   name: newCharacter.name,
-    //   class: newCharacter.className,
-    //   race: newCharacter.race,
-    //   alignment: newCharacter.alignment,
-    //   background: newCharacter.background,
-    //   portrait: newCharacter.portrait,
-    //   stats: JSON.stringify(newCharacter.stats),
-    //   armor: JSON.stringify(newCharacter.armor),
-    //   accessories: JSON.stringify(newCharacter.accessories),
-    //   weapons: JSON.stringify(newCharacter.weapons),
-    //   bag: JSON.stringify(newCharacter.bag),
-    //   createdAt: new Date(),
-    // }).returning();
-
     return NextResponse.json({
       success: true,
       message: "Character created successfully",
