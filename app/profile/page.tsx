@@ -970,18 +970,33 @@ export default function ProfilePage() {
                         className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                       >
                         <option value="">Selecciona una clase</option>
-                        <option value="Barbarian">Bárbaro</option>
-                        <option value="Bard">Bardo</option>
-                        <option value="Cleric">Clérigo</option>
-                        <option value="Druid">Druida</option>
-                        <option value="Fighter">Guerrero</option>
-                        <option value="Monk">Monje</option>
-                        <option value="Paladin">Paladín</option>
-                        <option value="Ranger">Explorador</option>
-                        <option value="Rogue">Pícaro</option>
-                        <option value="Sorcerer">Hechicero</option>
-                        <option value="Warlock">Brujo</option>
-                        <option value="Wizard">Mago</option>
+                        {[
+                          { value: "Barbarian", label: "Bárbaro" },
+                          { value: "Bard", label: "Bardo" },
+                          { value: "Cleric", label: "Clérigo" },
+                          { value: "Druid", label: "Druida" },
+                          { value: "Fighter", label: "Guerrero" },
+                          { value: "Monk", label: "Monje" },
+                          { value: "Paladin", label: "Paladín" },
+                          { value: "Ranger", label: "Explorador" },
+                          { value: "Rogue", label: "Pícaro" },
+                          { value: "Sorcerer", label: "Hechicero" },
+                          { value: "Warlock", label: "Brujo" },
+                          { value: "Wizard", label: "Mago" },
+                        ]
+                          .filter(
+                            (cls) =>
+                              cls.value === entry.className ||
+                              !newCharacter.multiclass.some(
+                                (c, i) =>
+                                  i !== idx && c.className === cls.value,
+                              ),
+                          )
+                          .map((cls) => (
+                            <option key={cls.value} value={cls.value}>
+                              {cls.label}
+                            </option>
+                          ))}
                       </select>
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-muted-foreground">
