@@ -2,7 +2,14 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-import { User, MessageSquare, Users, LogIn, LogOut } from "lucide-react";
+import {
+  User,
+  MessageSquare,
+  Users,
+  LogIn,
+  LogOut,
+  Shield,
+} from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 
 // Botones del header
@@ -68,6 +75,24 @@ export default function Header() {
       <div className="flex items-center gap-2">
         {isAuthenticated && user ? (
           <>
+            {user.isAdmin && (
+              <div className="relative group">
+                <button
+                  onClick={() => router.push("/admin")}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    pathname === "/admin"
+                      ? "bg-gold text-background ring-2 ring-gold/50"
+                      : "bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30"
+                  }`}
+                  title="Panel de Administrador"
+                >
+                  <Shield className="w-5 h-5" />
+                </button>
+                <span className="absolute -top-1 -right-1 text-[9px] leading-none bg-gold text-background px-1 py-0.5 rounded font-bold pointer-events-none">
+                  ADM
+                </span>
+              </div>
+            )}
             {headerButtons.map((button) => (
               <div key={button.id} className="relative group">
                 <button
