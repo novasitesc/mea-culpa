@@ -1,39 +1,49 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { createClient } from "@supabase/supabase-js"
-import Image from "next/image"
-import { Lock, Mail, Eye, EyeOff, User } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { getSupabase } from "@/lib/supabase";
+import Image from "next/image";
+import { Lock, Mail, Eye, EyeOff, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 // Esquema de validación
 const registerSchema = z
   .object({
-    username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
+    username: z
+      .string()
+      .min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
     email: z.string().email("El correo electrónico no es válido"),
-    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+    password: z
+      .string()
+      .min(6, "La contraseña debe tener al menos 6 caracteres"),
     confirmPassword: z.string().min(6, "Confirma tu contraseña"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
-  })
+  });
 
-type RegisterFormValues = z.infer<typeof registerSchema>
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -41,59 +51,51 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-  })
+  });
 
   // Ocultar scrollbar cuando se monta el componente
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
-  }, [])
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
 
   const onSubmit = async (data: RegisterFormValues) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
-      // Crear cliente de Supabase
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Configuración de Supabase no encontrada")
-      }
-
-      const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
       // Registrar usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await getSupabase().auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           data: {
-            username: data.username,
+            name: data.username,
           },
         },
-      })
+      });
 
       if (authError) {
-        throw new Error(authError.message || "Error al registrar usuario")
+        throw new Error(authError.message || "Error al registrar usuario");
       }
 
       if (authData.user) {
         // Aquí podrías guardar información adicional en una tabla de perfiles
         // Por ahora, redirigimos al login
-        router.push("/login?registered=true")
+        router.push("/login?registered=true");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ocurrió un error inesperado")
+      setError(
+        err instanceof Error ? err.message : "Ocurrió un error inesperado",
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div

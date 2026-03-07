@@ -42,8 +42,8 @@ export default function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.refresh();
   };
 

@@ -1,109 +1,47 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabaseServer";
 
-// Función auxiliar para generar stats basados en la clase
-function generateStatsForClass(className: string): Record<string, number> {
-  const baseStats = {
-    str: 10,
-    dex: 10,
-    con: 10,
-    int: 10,
-    wis: 10,
-    chr: 10,
+// Generar stats basados en la clase primaria
+function generateStatsForClass(className: string) {
+  const base = {
+    fuerza: 10,
+    destreza: 10,
+    constitucion: 10,
+    inteligencia: 10,
+    sabiduria: 10,
+    carisma: 10,
   };
-
-  // Ajustar stats según la clase
   switch (className.toLowerCase()) {
     case "barbarian":
-      return { ...baseStats, str: 16, con: 14, dex: 12 };
     case "fighter":
-      return { ...baseStats, str: 16, con: 14, dex: 12 };
+      return { ...base, fuerza: 16, constitucion: 14, destreza: 12 };
     case "paladin":
-      return { ...baseStats, str: 16, chr: 14, con: 12 };
+      return { ...base, fuerza: 16, carisma: 14, constitucion: 12 };
     case "ranger":
-      return { ...baseStats, dex: 16, wis: 14, con: 12 };
-    case "rogue":
-      return { ...baseStats, dex: 16, chr: 14, int: 12 };
     case "monk":
-      return { ...baseStats, dex: 16, wis: 14, con: 12 };
+      return { ...base, destreza: 16, sabiduria: 14, constitucion: 12 };
+    case "rogue":
+      return { ...base, destreza: 16, carisma: 14, inteligencia: 12 };
     case "bard":
-      return { ...baseStats, chr: 16, dex: 14, con: 12 };
+      return { ...base, carisma: 16, destreza: 14, constitucion: 12 };
     case "cleric":
-      return { ...baseStats, wis: 16, con: 14, str: 12 };
+      return { ...base, sabiduria: 16, constitucion: 14, fuerza: 12 };
     case "druid":
-      return { ...baseStats, wis: 16, con: 14, dex: 12 };
+      return { ...base, sabiduria: 16, constitucion: 14, destreza: 12 };
     case "sorcerer":
-      return { ...baseStats, chr: 16, con: 14, dex: 12 };
     case "warlock":
-      return { ...baseStats, chr: 16, con: 14, dex: 12 };
+      return { ...base, carisma: 16, constitucion: 14, destreza: 12 };
     case "wizard":
-      return { ...baseStats, int: 16, con: 14, dex: 12 };
+      return { ...base, inteligencia: 16, constitucion: 14, destreza: 12 };
     default:
-      return baseStats;
+      return base;
   }
 }
-
-// Función para generar equipo inicial según la clase
-function generateInitialEquipment(className: string) {
-  const classLower = className.toLowerCase();
-
-  // Armadura inicial
-  const armor: {
-    cabeza: string | undefined;
-    pecho: string | undefined;
-    guante: string | undefined;
-    botas: string | undefined;
-  } = {
-    cabeza: undefined,
-    pecho: undefined,
-    guante: undefined,
-    botas: "Simple Boots",
-  };
-
-  // Armas iniciales
-  const weapons: {
-    manoIzquierda: string | undefined;
-    manoDerecha: string | undefined;
-  } = {
-    manoIzquierda: undefined,
-    manoDerecha: undefined,
-  };
-
-  // Accesorios iniciales
-  const accessories = {
-    collar: undefined,
-    anillo1: undefined,
-    anillo2: undefined,
-    amuleto: undefined,
-  };
-
-  // Configurar según clase
-  if (["fighter", "barbarian", "paladin"].includes(classLower)) {
-    armor.pecho = "Leather Armor";
-    weapons.manoDerecha = "Simple Sword";
-  } else if (["rogue", "ranger", "monk"].includes(classLower)) {
-    armor.pecho = "Light Armor";
-    weapons.manoDerecha = "Dagger";
-  } else if (["wizard", "sorcerer", "warlock"].includes(classLower)) {
-    armor.pecho = "Simple Robes";
-    weapons.manoDerecha = "Wooden Staff";
-  } else if (["cleric", "druid"].includes(classLower)) {
-    armor.pecho = "Simple Robes";
-    weapons.manoDerecha = "Simple Mace";
-  } else if (classLower === "bard") {
-    armor.pecho = "Light Armor";
-    weapons.manoDerecha = "Simple Rapier";
-  }
-
-  return { armor, weapons, accessories };
-}
-
-import { getUserCharacters, addCharacter } from "../route";
 
 export async function POST(request: Request) {
   try {
     const { userId, characterData } = await request.json();
 
-    // Validación de datos requeridos
     if (!userId || !characterData) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -113,118 +51,165 @@ export async function POST(request: Request) {
 
     const { name, race, multiclass, alignment } = characterData;
 
-    if (!name || !name.trim()) {
+    if (!name?.trim()) {
       return NextResponse.json(
         { error: "El nombre del personaje es obligatorio" },
         { status: 400 },
       );
     }
-
-    if (!race || !race.trim()) {
+    if (!race?.trim()) {
       return NextResponse.json(
         { error: "La raza es obligatoria" },
         { status: 400 },
       );
     }
-
     if (!alignment) {
       return NextResponse.json(
         { error: "El alineamiento es obligatorio" },
         { status: 400 },
       );
     }
-
     if (!multiclass || multiclass.length === 0) {
       return NextResponse.json(
         { error: "Debes seleccionar al menos una clase" },
         { status: 400 },
       );
     }
-
     if (multiclass.length > 3) {
       return NextResponse.json(
         { error: "Máximo 3 clases por personaje" },
         { status: 400 },
       );
     }
-
     if (multiclass.some((c: { className: string }) => !c.className)) {
       return NextResponse.json(
         { error: "Todas las clases deben estar seleccionadas" },
         { status: 400 },
       );
     }
-
     const classNames = multiclass.map(
       (c: { className: string }) => c.className,
     );
-    const hasDuplicates = classNames.length !== new Set(classNames).size;
-    if (hasDuplicates) {
+    if (classNames.length !== new Set(classNames).size) {
       return NextResponse.json(
         { error: "No puede haber clases duplicadas" },
         { status: 400 },
       );
     }
 
-    // Validar límite de personajes (máximo 5)
-    const existingCharacters = getUserCharacters(userId);
-    if (existingCharacters.length >= 5) {
+    const db = createServerClient();
+
+    // Verificar límite de 5 personajes
+    const { count } = await db
+      .from("personajes")
+      .select("id", { count: "exact", head: true })
+      .eq("usuario_id", userId);
+
+    if ((count ?? 0) >= 5) {
       return NextResponse.json(
         { error: "Has alcanzado el límite máximo de 5 personajes por cuenta" },
         { status: 400 },
       );
     }
 
+    // Siguiente slot disponible
+    const { data: existingSlots } = await db
+      .from("personajes")
+      .select("numero_slot")
+      .eq("usuario_id", userId);
+
+    const usedSlots = new Set(
+      (existingSlots ?? []).map((s: any) => s.numero_slot),
+    );
+    let nextSlot = 1;
+    while (usedSlots.has(nextSlot) && nextSlot <= 5) nextSlot++;
+
     // Generar stats basados en la clase primaria
     const primaryClass = multiclass[0].className;
     const stats = generateStatsForClass(primaryClass);
 
-    // Generar equipo inicial basado en la clase primaria
-    const { armor, weapons, accessories } =
-      generateInitialEquipment(primaryClass);
+    // Calcular capacidad de bolsa
+    const conModifier = Math.floor((stats.constitucion - 10) / 2);
+    const capacidadBolsa = Math.max(10 + conModifier, 10);
 
-    // Calcular espacios de bolsa (10 base + modificador de constitución)
-    const conModifier = Math.floor((stats.con - 10) / 2);
-    const maxSlots = 10 + conModifier;
+    // 1. Insertar personaje
+    const { data: personaje, error: charErr } = await db
+      .from("personajes")
+      .insert({
+        usuario_id: userId,
+        numero_slot: nextSlot,
+        nombre: name.trim(),
+        raza: race.trim(),
+        alineamiento: alignment,
+        retrato: "/characters/default-portrait.png",
+        capacidad_bolsa: capacidadBolsa,
+      })
+      .select("id")
+      .single();
 
-    // Crear el nuevo personaje
-    const newCharacter = {
-      id: Date.now(),
-      userId,
-      name,
-      multiclass,
-      race,
-      alignment,
-      portrait: "/characters/default-portrait.png",
-      stats,
-      armor,
-      accessories,
-      weapons,
-      bag: {
-        items: [],
-        maxSlots: maxSlots > 0 ? maxSlots : 10,
-      },
-    };
+    if (charErr || !personaje) {
+      console.error("Error inserting character:", charErr);
+      return NextResponse.json(
+        { error: "Error al crear el personaje" },
+        { status: 500 },
+      );
+    }
 
-    // Agregar a la simulación de BD (reemplazar por INSERT de DB cuando migres)
-    // TODO: await db.insert(characters).values({
-    //   userId:     newCharacter.userId,
-    //   name:       newCharacter.name,
-    //   multiclass: JSON.stringify(newCharacter.multiclass),
-    //   race:       newCharacter.race,
-    //   alignment:  newCharacter.alignment,
-    //   portrait:   newCharacter.portrait,
-    //   stats:      JSON.stringify(newCharacter.stats),
-    //   armor:      JSON.stringify(newCharacter.armor),
-    //   accessories:JSON.stringify(newCharacter.accessories),
-    //   weapons:    JSON.stringify(newCharacter.weapons),
-    //   bag:        JSON.stringify(newCharacter.bag),
-    // });
-    addCharacter(userId, newCharacter);
+    const charId = personaje.id;
+
+    // 2. Insertar clases
+    const clasesInsert = multiclass.map(
+      (c: { className: string; level: number }, i: number) => ({
+        personaje_id: charId,
+        nombre_clase: c.className,
+        nivel: c.level || 1,
+        orden: i + 1,
+      }),
+    );
+
+    // 3. Insertar stats
+    const statsInsert = { personaje_id: charId, ...stats };
+
+    // 4. Insertar equipamiento vacío
+    const equipInsert = { personaje_id: charId };
+
+    // Ejecutar en paralelo
+    const [clasesRes, statsRes, equipRes] = await Promise.all([
+      db.from("clases_personaje").insert(clasesInsert),
+      db.from("estadisticas_personaje").insert(statsInsert),
+      db.from("equipamiento_personaje").insert(equipInsert),
+    ]);
+
+    if (clasesRes.error)
+      console.error("Error inserting classes:", clasesRes.error);
+    if (statsRes.error) console.error("Error inserting stats:", statsRes.error);
+    if (equipRes.error)
+      console.error("Error inserting equipment:", equipRes.error);
+
+    // Devolver el personaje en el formato que espera el frontend
     return NextResponse.json({
       success: true,
       message: "Character created successfully",
-      character: newCharacter,
+      character: {
+        id: charId,
+        name: name.trim(),
+        multiclass,
+        race: race.trim(),
+        alignment,
+        portrait: "/characters/default-portrait.png",
+        stats: {
+          str: stats.fuerza,
+          dex: stats.destreza,
+          con: stats.constitucion,
+          int: stats.inteligencia,
+          wis: stats.sabiduria,
+          chr: stats.carisma,
+        },
+        armor: {},
+        accessories: {},
+        weapons: {},
+        bag: { items: [], maxSlots: capacidadBolsa },
+      },
     });
   } catch (error) {
     console.error("Error creating character:", error);

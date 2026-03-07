@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DEMO_USERS } from "@/lib/demoUsers";
+import { getSupabase } from "@/lib/supabase";
 
 export interface User {
   id: string;
@@ -17,39 +17,77 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Carga la sesión activa y escucha cambios de auth
   useEffect(() => {
-    // Verificar si hay un usuario en localStorage
-    const storedUser = localStorage.getItem("meaculpa_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    let ignore = false;
+
+    const supabase = getSupabase();
+
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!ignore && session?.user) {
+        await hydrateProfile(session.user.id, session.user.email ?? "");
+      }
+      if (!ignore) setIsLoading(false);
     }
-    setIsLoading(false);
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await hydrateProfile(session.user.id, session.user.email ?? "");
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  /** Lee el perfil de la tabla `perfiles` y construye el objeto User */
+  async function hydrateProfile(uid: string, email: string) {
+    const { data } = await getSupabase()
+      .from("perfiles")
+      .select("nombre, rol, nivel, hogar")
+      .eq("id", uid)
+      .single();
+
+    setUser({
+      id: uid,
+      email,
+      name: data?.nombre ?? email,
+      role: data?.rol ?? "Dungeon Explorer",
+      level: data?.nivel ?? 1,
+      home: data?.hogar ?? "Sin hogar",
+      isAdmin: data?.rol === "Game Master",
+    });
+  }
 
   const login = async (
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
-    // Simular delay de red
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const { error } = await getSupabase().auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    const foundUser = DEMO_USERS.find(
-      (u) => u.email === email && u.password === password,
-    );
-
-    if (!foundUser) {
-      return { success: false, error: "Correo o contraseña incorrectos" };
+    if (error) {
+      return { success: false, error: error.message };
     }
-
-    const { password: _, ...userWithoutPassword } = foundUser;
-    localStorage.setItem("meaculpa_user", JSON.stringify(userWithoutPassword));
-    setUser(userWithoutPassword);
-
     return { success: true };
   };
 
-  const logout = () => {
-    localStorage.removeItem("meaculpa_user");
+  const logout = async () => {
+    await getSupabase().auth.signOut();
     setUser(null);
   };
 
