@@ -29,6 +29,7 @@ type AdminUser = {
   level: number;
   home: string;
   isAdmin: boolean;
+  rolSistema: string;
   createdAt: string;
 };
 
@@ -176,10 +177,10 @@ function Toast({
 // ─── Pestaña Usuarios ─────────────────────────────────────────────────────────
 
 function UsersTab({
-  userId,
+  token,
   onToast,
 }: {
-  userId: string;
+  token: string;
   onToast: (msg: string, type: "success" | "error") => void;
 }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -191,7 +192,7 @@ function UsersTab({
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const headers = { "x-user-id": userId };
+  const headers = { Authorization: `Bearer ${token}` };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -199,7 +200,7 @@ function UsersTab({
     if (res.ok) setUsers(await res.json());
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [token]);
 
   useEffect(() => {
     load();
@@ -567,10 +568,10 @@ function UserFormModal({
 // ─── Pestaña Tiendas ──────────────────────────────────────────────────────────
 
 function ShopsTab({
-  userId,
+  token,
   onToast,
 }: {
-  userId: string;
+  token: string;
   onToast: (msg: string, type: "success" | "error") => void;
 }) {
   const [shops, setShops] = useState<AdminShop[]>([]);
@@ -580,7 +581,7 @@ function ShopsTab({
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const headers = { "x-user-id": userId };
+  const headers = { Authorization: `Bearer ${token}` };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -588,7 +589,7 @@ function ShopsTab({
     if (res.ok) setShops(await res.json());
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [token]);
 
   useEffect(() => {
     load();
@@ -885,7 +886,7 @@ function ShopFormModal({
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, token } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("usuarios");
   const [toast, setToast] = useState<{
     message: string;
@@ -976,10 +977,10 @@ export default function AdminPage() {
           {/* Contenido de pestaña */}
           <div className="p-6">
             {activeTab === "usuarios" && (
-              <UsersTab userId={user.id} onToast={showToast} />
+              <UsersTab token={token} onToast={showToast} />
             )}
             {activeTab === "tiendas" && (
-              <ShopsTab userId={user.id} onToast={showToast} />
+              <ShopsTab token={token} onToast={showToast} />
             )}
           </div>
         </div>

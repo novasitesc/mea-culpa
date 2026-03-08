@@ -17,6 +17,7 @@ export interface User {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string>("");
 
   // Carga la sesión activa y escucha cambios de auth
   useEffect(() => {
@@ -29,6 +30,7 @@ export function useAuth() {
         data: { session },
       } = await supabase.auth.getSession();
 
+      if (!ignore && session?.access_token) setToken(session.access_token);
       if (!ignore && session?.user) {
         await hydrateProfile(session.user.id, session.user.email ?? "");
       }
@@ -41,6 +43,7 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        if (!ignore) setToken(session.access_token ?? "");
         // setTimeout saca la llamada del contexto del lock de auth.
         // onAuthStateChange mantiene el lock mientras corre; si dentro llamamos
         // a getSupabase().from(...) se vuelve a pedir el lock → "Lock broken".
@@ -51,6 +54,7 @@ export function useAuth() {
         }, 0);
       } else {
         setUser(null);
+        if (!ignore) setToken("");
       }
     });
 
@@ -64,7 +68,7 @@ export function useAuth() {
   async function hydrateProfile(uid: string, email: string) {
     const { data } = await getSupabase()
       .from("perfiles")
-      .select("nombre, rol, nivel, hogar, oro")
+      .select("nombre, rol, nivel, hogar, oro, es_admin")
       .eq("id", uid)
       .single();
 
@@ -76,7 +80,7 @@ export function useAuth() {
       level: data?.nivel ?? 1,
       home: data?.hogar ?? "Sin hogar",
       oro: data?.oro ?? 0,
-      isAdmin: data?.rol === "Game Master",
+      isAdmin: data?.es_admin ?? false,
     });
   }
 
@@ -112,5 +116,6 @@ export function useAuth() {
     login,
     logout,
     refreshUser,
+    token,
   };
 }
