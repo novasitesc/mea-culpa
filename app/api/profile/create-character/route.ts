@@ -99,16 +99,22 @@ export async function POST(request: Request) {
 
     const db = createServerClient();
 
-    // Verificar límite de 5 personajes
+    // Verificar límite de personajes
+    // Cuentas gratuitas: máximo 2. Con plan premium (a implementar): hasta 5.
+    const FREE_LIMIT = 2;
     const { count } = await db
       .from("personajes")
       .select("id", { count: "exact", head: true })
       .eq("usuario_id", userId);
 
-    if ((count ?? 0) >= 5) {
+    if ((count ?? 0) >= FREE_LIMIT) {
       return NextResponse.json(
-        { error: "Has alcanzado el límite máximo de 5 personajes por cuenta" },
-        { status: 400 },
+        {
+          error:
+            "Has alcanzado el límite de 2 personajes de la cuenta gratuita. Actualiza tu plan para crear hasta 5.",
+          code: "CHARACTER_LIMIT_REACHED",
+        },
+        { status: 403 },
       );
     }
 

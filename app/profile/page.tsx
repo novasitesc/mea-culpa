@@ -429,20 +429,22 @@ export default function ProfilePage() {
                   Activo
                 </span>
                 <button
-                  disabled={characters.length >= 5}
+                  disabled={characters.length >= 2}
                   onClick={() => setShowCreateModal(true)}
                   className={`px-4 py-2 rounded font-semibold text-sm transition-all ${
-                    characters.length >= 5
+                    characters.length >= 2
                       ? "bg-secondary text-muted-foreground cursor-not-allowed"
                       : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
                   }`}
                   title={
-                    characters.length >= 5
-                      ? "Límite de personajes alcanzado (5/5)"
+                    characters.length >= 2
+                      ? "Límite de la cuenta gratuita (2/2). Próximamente: plan premium"
                       : "Crear nuevo personaje"
                   }
                 >
-                  Crear Personaje
+                  {characters.length >= 2
+                    ? "Límite alcanzado 🔒"
+                    : "Crear Personaje"}
                 </button>
               </div>
             </div>
