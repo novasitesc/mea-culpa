@@ -40,7 +40,7 @@ const headerButtons = [
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -73,7 +73,14 @@ export default function Header() {
 
       {/* Header Buttons */}
       <div className="flex items-center gap-2">
-        {isAuthenticated && user ? (
+        {isLoading ? (
+          /* Skeleton neutro mientras se verifica la sesión — evita el flash */
+          <div className="flex items-center gap-2 animate-pulse">
+            <div className="w-10 h-10 rounded-full bg-secondary" />
+            <div className="w-10 h-10 rounded-full bg-secondary" />
+            <div className="w-24 h-9 rounded-lg bg-secondary" />
+          </div>
+        ) : isAuthenticated && user ? (
           <>
             {user.isAdmin && (
               <div className="relative group">
