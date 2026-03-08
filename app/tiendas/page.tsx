@@ -126,8 +126,8 @@ export default function TiendasPage() {
             id: c.id,
             name: c.name,
             portrait: c.portrait,
-            bagCapacity: c.bagCapacity,
-            bagUsed: (c.bagItems ?? []).length,
+            bagCapacity: c.bag?.maxSlots ?? 0,
+            bagUsed: (c.bag?.items ?? []).length,
           })),
         ),
       );
