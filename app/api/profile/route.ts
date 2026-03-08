@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   // Obtener perfil del jugador
   const { data: perfil } = await db
     .from("perfiles")
-    .select("nombre, rol, nivel, hogar")
+    .select("nombre, rol, nivel, hogar, oro")
     .eq("id", userId)
     .single();
 
@@ -105,6 +105,7 @@ export async function GET(request: Request) {
       role: perfil?.rol ?? "Dungeon Explorer",
       level: perfil?.nivel ?? 1,
       home: perfil?.hogar ?? "Sin hogar",
+      oro: perfil?.oro ?? 0,
     },
     characters,
     userId,

@@ -10,6 +10,7 @@ export interface User {
   role: string;
   level: number;
   home: string;
+  oro: number;
   isAdmin: boolean;
 }
 
@@ -61,7 +62,7 @@ export function useAuth() {
   async function hydrateProfile(uid: string, email: string) {
     const { data } = await getSupabase()
       .from("perfiles")
-      .select("nombre, rol, nivel, hogar")
+      .select("nombre, rol, nivel, hogar, oro")
       .eq("id", uid)
       .single();
 
@@ -72,6 +73,7 @@ export function useAuth() {
       role: data?.rol ?? "Dungeon Explorer",
       level: data?.nivel ?? 1,
       home: data?.hogar ?? "Sin hogar",
+      oro: data?.oro ?? 0,
       isAdmin: data?.rol === "Game Master",
     });
   }
