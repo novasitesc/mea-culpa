@@ -354,6 +354,7 @@ export default function ProfilePage() {
               role: user.role,
               level: user.level,
               home: data.player.home,
+              oro: user.oro,
             },
           });
         }
