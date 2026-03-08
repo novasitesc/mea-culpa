@@ -68,10 +68,9 @@ export default function LoginPage() {
 
       if (!result.success) {
         setError(result.error || "Error al iniciar sesión");
-      } else {
-        // Redirigir al perfil
-        router.push("/profile");
       }
+      // La redirección la maneja el useEffect que vigila isAuthenticated.
+      // No hacer router.push aquí para evitar doble navegación.
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Ocurrió un error inesperado",

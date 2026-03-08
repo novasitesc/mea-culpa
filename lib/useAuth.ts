@@ -38,9 +38,14 @@ export function useAuth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        await hydrateProfile(session.user.id, session.user.email ?? "");
+        // setTimeout saca la llamada del contexto del lock de auth.
+        // onAuthStateChange mantiene el lock mientras corre; si dentro llamamos
+        // a getSupabase().from(...) se vuelve a pedir el lock → "Lock broken".
+        const uid = session.user.id;
+        const email = session.user.email ?? "";
+        setTimeout(() => { hydrateProfile(uid, email); }, 0);
       } else {
         setUser(null);
       }

@@ -68,27 +68,38 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      console.log("[register] Intentando signUp para:", data.email);
+
       // Registrar usuario en Supabase Auth
-      const { data: authData, error: authError } = await getSupabase().auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.username,
+      const { data: authData, error: authError } =
+        await getSupabase().auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: {
+              name: data.username,
+            },
           },
-        },
-      });
+        });
+
+      console.log("[register] Respuesta de signUp:", { authData, authError });
 
       if (authError) {
-        throw new Error(authError.message || "Error al registrar usuario");
+        const detail = `${authError.message} (status: ${(authError as any).status ?? "?"}, code: ${(authError as any).code ?? "??"})`;
+        console.error("[register] authError:", authError);
+        throw new Error(detail);
       }
 
       if (authData.user) {
-        // Aquí podrías guardar información adicional en una tabla de perfiles
-        // Por ahora, redirigimos al login
         router.push("/login?registered=true");
+      } else {
+        // Algunos proyectos Supabase requieren confirmación de email
+        setError(
+          "Revisa tu correo para confirmar el registro antes de iniciar sesión.",
+        );
       }
     } catch (err) {
+      console.error("[register] Error inesperado:", err);
       setError(
         err instanceof Error ? err.message : "Ocurrió un error inesperado",
       );
