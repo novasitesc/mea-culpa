@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         `
         id, nombre, descripcion, icono, tendero, ubicacion, nivel_minimo,
         articulos_tienda (
-          precio, inventario,
+          id, precio, inventario,
           objetos:objeto_id (
             id, nombre, descripcion, rareza, tipo_item, icono
           )
