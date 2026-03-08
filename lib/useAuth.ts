@@ -46,7 +46,9 @@ export function useAuth() {
         // a getSupabase().from(...) se vuelve a pedir el lock → "Lock broken".
         const uid = session.user.id;
         const email = session.user.email ?? "";
-        setTimeout(() => { hydrateProfile(uid, email); }, 0);
+        setTimeout(() => {
+          hydrateProfile(uid, email);
+        }, 0);
       } else {
         setUser(null);
       }
