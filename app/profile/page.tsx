@@ -413,7 +413,9 @@ export default function ProfilePage() {
                     <span className="text-2xl font-bold text-yellow-400 font-serif">
                       {(player.oro ?? 0).toLocaleString()}
                     </span>
-                    <span className="text-xs text-muted-foreground uppercase tracking-widest self-end mb-1">oro</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-widest self-end mb-1">
+                      oro
+                    </span>
                   </div>
                 )}
               </div>
