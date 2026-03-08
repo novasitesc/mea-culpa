@@ -36,6 +36,7 @@ export async function GET(request: Request) {
 
     const items = (tienda.articulos_tienda ?? []).map((a: any) => ({
       id: a.objetos?.id,
+      articuloTiendaId: a.id,
       name: a.objetos?.nombre,
       description: a.objetos?.descripcion,
       price: a.precio,

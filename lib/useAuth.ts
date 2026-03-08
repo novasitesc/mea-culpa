@@ -100,11 +100,17 @@ export function useAuth() {
     setUser(null);
   };
 
+  const refreshUser = () => {
+    if (!user) return Promise.resolve();
+    return hydrateProfile(user.id, user.email);
+  };
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
     login,
     logout,
+    refreshUser,
   };
 }
