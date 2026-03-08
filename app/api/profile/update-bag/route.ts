@@ -35,9 +35,16 @@ export async function POST(request: Request) {
     // Resolver nombres → IDs antes de escribir.
     if (armor || accessories || weapons) {
       const slotNames = [
-        armor?.cabeza, armor?.pecho, armor?.guante, armor?.botas,
-        accessories?.collar, accessories?.anillo1, accessories?.anillo2, accessories?.amuleto,
-        weapons?.manoIzquierda, weapons?.manoDerecha,
+        armor?.cabeza,
+        armor?.pecho,
+        armor?.guante,
+        armor?.botas,
+        accessories?.collar,
+        accessories?.anillo1,
+        accessories?.anillo2,
+        accessories?.amuleto,
+        weapons?.manoIzquierda,
+        weapons?.manoDerecha,
       ].filter((v): v is string => typeof v === "string" && v.trim() !== "");
 
       const nameToId = new Map<string, number>();
@@ -51,20 +58,40 @@ export async function POST(request: Request) {
 
       const equipUpdate: Record<string, number | null> = {};
       if (armor) {
-        equipUpdate.cabeza  = armor.cabeza  ? (nameToId.get(armor.cabeza)  ?? null) : null;
-        equipUpdate.pecho   = armor.pecho   ? (nameToId.get(armor.pecho)   ?? null) : null;
-        equipUpdate.guante  = armor.guante  ? (nameToId.get(armor.guante)  ?? null) : null;
-        equipUpdate.botas   = armor.botas   ? (nameToId.get(armor.botas)   ?? null) : null;
+        equipUpdate.cabeza = armor.cabeza
+          ? (nameToId.get(armor.cabeza) ?? null)
+          : null;
+        equipUpdate.pecho = armor.pecho
+          ? (nameToId.get(armor.pecho) ?? null)
+          : null;
+        equipUpdate.guante = armor.guante
+          ? (nameToId.get(armor.guante) ?? null)
+          : null;
+        equipUpdate.botas = armor.botas
+          ? (nameToId.get(armor.botas) ?? null)
+          : null;
       }
       if (accessories) {
-        equipUpdate.collar  = accessories.collar  ? (nameToId.get(accessories.collar)  ?? null) : null;
-        equipUpdate.anillo1 = accessories.anillo1 ? (nameToId.get(accessories.anillo1) ?? null) : null;
-        equipUpdate.anillo2 = accessories.anillo2 ? (nameToId.get(accessories.anillo2) ?? null) : null;
-        equipUpdate.amuleto = accessories.amuleto ? (nameToId.get(accessories.amuleto) ?? null) : null;
+        equipUpdate.collar = accessories.collar
+          ? (nameToId.get(accessories.collar) ?? null)
+          : null;
+        equipUpdate.anillo1 = accessories.anillo1
+          ? (nameToId.get(accessories.anillo1) ?? null)
+          : null;
+        equipUpdate.anillo2 = accessories.anillo2
+          ? (nameToId.get(accessories.anillo2) ?? null)
+          : null;
+        equipUpdate.amuleto = accessories.amuleto
+          ? (nameToId.get(accessories.amuleto) ?? null)
+          : null;
       }
       if (weapons) {
-        equipUpdate.mano_izquierda = weapons.manoIzquierda ? (nameToId.get(weapons.manoIzquierda) ?? null) : null;
-        equipUpdate.mano_derecha   = weapons.manoDerecha   ? (nameToId.get(weapons.manoDerecha)   ?? null) : null;
+        equipUpdate.mano_izquierda = weapons.manoIzquierda
+          ? (nameToId.get(weapons.manoIzquierda) ?? null)
+          : null;
+        equipUpdate.mano_derecha = weapons.manoDerecha
+          ? (nameToId.get(weapons.manoDerecha) ?? null)
+          : null;
       }
 
       await db
