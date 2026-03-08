@@ -11,6 +11,7 @@ type Player = {
   role: string;
   level: number;
   home: string;
+  oro: number;
 };
 
 type ArmorSlots = {
@@ -406,6 +407,15 @@ export default function ProfilePage() {
                     ? `${player.role} · Nivel ${player.level} · ${player.home}`
                     : "Obteniendo datos del perfil"}
                 </p>
+                {player && (
+                  <div className="flex items-center gap-1.5 mt-3">
+                    <span className="text-xl">🪙</span>
+                    <span className="text-2xl font-bold text-yellow-400 font-serif">
+                      {(player.oro ?? 0).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-widest self-end mb-1">oro</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">

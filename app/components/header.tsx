@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Shield,
+  Coins,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 
@@ -129,9 +130,13 @@ export default function Header() {
             ))}
             <div className="hidden sm:block text-right mx-2">
               <p className="text-sm font-medium text-gold">{user.name}</p>
-              <p className="text-xs text-muted-foreground">
-                Nivel {user.level}
-              </p>
+              <div className="flex items-center justify-end gap-2">
+                <p className="text-xs text-muted-foreground">Nivel {user.level}</p>
+                <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400">
+                  <Coins className="w-3 h-3" />
+                  {user.oro.toLocaleString()}
+                </span>
+              </div>
             </div>
             <button
               onClick={handleLogout}
