@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get("limit") || "100", 10);
 
-  // Obtener transacciones con la info del usuario
+  // Obtener transacciones con la info del usuario y del admin
   const { data, error } = await session.db
     .from("transacciones_oro")
     .select(`
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
       balance_after,
       concepto,
       creado_en,
-      perfil:perfiles ( nombre )
+      perfil:usuario_id ( nombre ),
+      admin:admin_id ( nombre )
     `)
     .order("creado_en", { ascending: false })
     .limit(limit);
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
     id: t.id,
     usuario_id: t.usuario_id,
     nombre_usuario: t.perfil?.nombre || "Desconocido",
+    nombre_admin: t.admin?.nombre || null,
     delta: t.delta,
     balance_after: t.balance_after,
     concepto: t.concepto,

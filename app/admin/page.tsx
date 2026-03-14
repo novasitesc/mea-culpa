@@ -81,6 +81,7 @@ type AdminTransaction = {
   id: string;
   usuario_id: string;
   nombre_usuario: string;
+  nombre_admin?: string;
   delta: number;
   balance_after: number;
   concepto: string;
@@ -288,6 +289,9 @@ function TransactionsTab({
                   Usuario
                 </th>
                 <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Realizado Por
+                </th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Concepto
                 </th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -317,6 +321,16 @@ function TransactionsTab({
                   <td className="px-3 py-3 font-medium text-foreground">
                     {t.nombre_usuario}
                   </td>
+                  <td className="px-3 py-3 text-muted-foreground">
+                    {t.nombre_admin ? (
+                      <span className="text-gold flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        {t.nombre_admin}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60 italic">Sistema</span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-muted-foreground max-w-xs truncate" title={t.concepto}>
                     {t.concepto}
                   </td>
@@ -332,7 +346,7 @@ function TransactionsTab({
               ))}
               {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                     No hay transacciones registradas
                   </td>
                 </tr>

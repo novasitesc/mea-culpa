@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
       p_usuario_id: userId,
       p_delta: delta,
       p_concepto: desc,
+      p_referencia: null,
+      p_admin_id: session.userId,
     });
 
     if (rpcError) {
