@@ -121,15 +121,17 @@ function formatDate(iso: string) {
 function Modal({
   title,
   onClose,
+  maxWidth = "max-w-lg", // default
   children,
 }: {
   title: string;
   onClose: () => void;
+  maxWidth?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-visible`}>
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-bold text-gold">{title}</h2>
           <button
@@ -1618,6 +1620,11 @@ function ShopItemFormModal({
   const [objetoId, setObjetoId] = useState<number>(
     initial?.objetoId ?? objects[0]?.id ?? 0,
   );
+  
+  // --- Estados de búsqueda de objeto ---
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showDropdown, setShowDropdown] = useState(false);
+
   const [precio, setPrecio] = useState<number>(initial?.precio ?? 0);
   const [inventarioRaw, setInventarioRaw] = useState<string>(
     initial?.inventario === null || initial?.inventario === undefined
@@ -1628,6 +1635,11 @@ function ShopItemFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === "create" && !objetoId) {
+      alert("Selecciona un objeto válido");
+      return;
+    }
 
     const inventario =
       inventarioRaw.trim() === "" ? null : Number(inventarioRaw.trim());
@@ -1640,26 +1652,84 @@ function ShopItemFormModal({
     });
   };
 
+  const selectedObject = objects.find((o) => o.id === objetoId);
+  const filteredObjects = objects
+    .filter(
+      (obj) =>
+        obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        obj.id.toString() === searchTerm ||
+        obj.itemType.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .slice(0, 10);
+
   return (
     <Modal
       title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
+      maxWidth="max-w-2xl"
       onClose={onClose}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
         {mode === "create" && (
           <FormField label="Objeto">
-            <select
-              className={inputCls}
-              value={objetoId}
-              onChange={(e) => setObjetoId(Number(e.target.value))}
-              required
-            >
-              {objects.map((obj) => (
-                <option key={obj.id} value={obj.id}>
-                  {obj.icon} {obj.name} ({obj.itemType})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              {selectedObject ? (
+                <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>{selectedObject.icon}</span>
+                    <span className="font-medium text-foreground">{selectedObject.name}</span>
+                    <span className="text-muted-foreground text-xs">({selectedObject.itemType})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setObjetoId(0);
+                      setSearchTerm("");
+                      setShowDropdown(true);
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="Buscar por nombre, ID o tipo..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  />
+                  {showDropdown && (
+                    <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {filteredObjects.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron objetos</div>
+                      ) : (
+                        filteredObjects.map((obj) => (
+                          <div
+                            key={obj.id}
+                            className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
+                            onClick={() => {
+                              setObjetoId(obj.id);
+                              setShowDropdown(false);
+                            }}
+                          >
+                            <span>{obj.icon}</span>
+                            <span className="font-medium">{obj.name}</span>
+                            <span className="text-muted-foreground text-xs">ID: {obj.id} • {obj.itemType}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </FormField>
         )}
 
