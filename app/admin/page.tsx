@@ -16,6 +16,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Coins,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
@@ -28,6 +29,7 @@ type AdminUser = {
   name: string;
   role: string;
   level: number;
+  gold: number;
   home: string;
   isAdmin: boolean;
   rolSistema: string;
@@ -232,6 +234,7 @@ function UsersTab({
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -318,6 +321,9 @@ function UsersTab({
                 <th className={thCls} onClick={() => handleSort("level")}>
                   Nivel <SortIcon field="level" />
                 </th>
+                <th className={thCls} onClick={() => handleSort("gold")}>
+                  Oro <SortIcon field="gold" />
+                </th>
                 <th className={thCls} onClick={() => handleSort("isAdmin")}>
                   Admin <SortIcon field="isAdmin" />
                 </th>
@@ -349,6 +355,9 @@ function UsersTab({
                   <td className="px-3 py-3 text-center text-foreground">
                     {u.level}
                   </td>
+                  <td className="px-3 py-3 text-center text-gold font-medium">
+                    {u.gold}
+                  </td>
                   <td className="px-3 py-3 text-center">
                     {u.isAdmin ? (
                       <span className="px-2 py-0.5 bg-gold/20 text-gold rounded text-xs font-semibold">
@@ -365,6 +374,13 @@ function UsersTab({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => setGoldTarget(u)}
+                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-yellow-500 transition-colors"
+                        title="Gestionar Oro"
+                      >
+                        <Coins className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => setEditTarget(u)}
                         className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
@@ -437,6 +453,32 @@ function UsersTab({
             } else {
               const e = await res.json();
               onToast(e.error ?? "Error al crear", "error");
+            }
+          }}
+        />
+      )}
+
+      {/* Modal Oro */}
+      {goldTarget && (
+        <GoldFormModal
+          user={goldTarget}
+          onClose={() => setGoldTarget(null)}
+          loading={actionLoading}
+          onSubmit={async (data) => {
+            setActionLoading(true);
+            const res = await fetch(`/api/admin/users/oro`, {
+              method: "POST",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: goldTarget.id, ...data }),
+            });
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Transacción de oro exitosa", "success");
+              setGoldTarget(null);
+              load();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al gestionar oro", "error");
             }
           }}
         />
@@ -603,6 +645,97 @@ function UserFormModal({
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {isEdit ? "Guardar cambios" : "Crear usuario"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Formulario de Oro ────────────────────────────────────────────────────────
+
+function GoldFormModal({
+  user,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSubmit: (data: { amount: number; reason: string; action: "add" | "remove" }) => void;
+  loading: boolean;
+}) {
+  const [amount, setAmount] = useState<number>(0);
+  const [reason, setReason] = useState("");
+  const [action, setAction] = useState<"add" | "remove">("add");
+
+  return (
+    <Modal title={`Gestionar Oro: ${user.name}`} onClose={onClose}>
+      <div className="mb-4">
+        <p className="text-sm text-muted-foreground">Oro actual: <span className="text-gold font-bold">{user.gold}</span></p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({ amount, reason, action });
+        }}
+        className="flex flex-col gap-4"
+      >
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              checked={action === "add"}
+              onChange={() => setAction("add")}
+              className="text-gold"
+            />
+            <span className="text-sm font-medium">Añadir Oro</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              checked={action === "remove"}
+              onChange={() => setAction("remove")}
+              className="text-gold"
+            />
+            <span className="text-sm font-medium">Quitar Oro</span>
+          </label>
+        </div>
+
+        <FormField label="Cantidad">
+          <input
+            type="number"
+            min="1"
+            className={inputCls}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            required
+          />
+        </FormField>
+        <FormField label="Motivo (opcional)">
+          <input
+            type="text"
+            className={inputCls}
+            placeholder="Recompensa, ajuste, etc..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </FormField>
+        <div className="flex justify-end gap-3 mt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading || amount <= 0}
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Confirmar
           </button>
         </div>
       </form>
