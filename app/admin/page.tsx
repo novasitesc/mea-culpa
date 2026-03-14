@@ -6,6 +6,7 @@ import {
   Shield,
   Users,
   Store,
+  Box,
   Pencil,
   Trash2,
   Plus,
@@ -22,7 +23,6 @@ import Header from "@/app/components/header";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 type AdminUser = {
-  gold: number;
   id: string;
   email: string;
   name: string;
@@ -46,7 +46,51 @@ type AdminShop = {
   createdAt: string;
 };
 
-type Tab = "usuarios" | "tiendas";
+type AdminObject = {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  itemType: string;
+  rarity: string;
+  bonusStats: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+type AdminShopItem = {
+  id: number;
+  tiendaId: string;
+  objetoId: number;
+  precio: number;
+  inventario: number | null;
+  orden: number;
+  createdAt: string;
+  object: {
+    id: number;
+    name: string;
+    icon: string;
+    itemType: string;
+    rarity: string;
+  };
+};
+
+const ITEM_TYPES = [
+  "cabeza",
+  "pecho",
+  "guante",
+  "botas",
+  "collar",
+  "anillo",
+  "amuleto",
+  "arma",
+  "consumible",
+  "ingrediente",
+  "misc",
+];
+
+const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
+
+type Tab = "usuarios" | "tiendas" | "objetos";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -188,7 +232,6 @@ function UsersTab({
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
-  const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -427,103 +470,6 @@ function UsersTab({
   );
 }
 
-
-
-  // ─── Formulario de Oro ────────────────────────────────────────────────────────
-  function UserGoldModal({
-    title,
-    initialGold,
-    onClose,
-    onSubmit,
-    loading,
-  }: {
-    title: string;
-    initialGold: number;
-    onClose: () => void;
-    onSubmit: (delta: number, concepto: string) => void;
-    loading: boolean;
-  }) {
-    const [action, setAction] = useState<"add" | "remove">("add");
-    const [amount, setAmount] = useState<number>(0);
-    const [concepto, setConcepto] = useState<string>("Recompensa de evento");
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!amount || amount <= 0) return;
-      const delta = action === "add" ? amount : -amount;
-      onSubmit(delta, concepto);
-    };
-
-    return (
-      <Modal title={title} onClose={onClose}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="p-3 bg-gold/10 border border-gold/30 rounded-lg flex justify-between items-center">
-            <span className="text-sm font-medium text-gold">Saldo actual:</span>
-            <span className="text-lg font-bold text-gold">{initialGold} <span className="text-sm font-normal">oros</span></span>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setAction("add")}
-              className={"flex-1 py-2 text-sm font-bold rounded-lg border transition-colors " + (action === "add" ? "bg-green-500/20 text-green-500 border-green-500/50" : "bg-secondary text-muted-foreground border-transparent hover:bg-secondary/80")}
-            >
-              + Añadir
-            </button>
-            <button
-              type="button"
-              onClick={() => setAction("remove")}
-              className={"flex-1 py-2 text-sm font-bold rounded-lg border transition-colors " + (action === "remove" ? "bg-destructive/20 text-destructive border-destructive/50" : "bg-secondary text-muted-foreground border-transparent hover:bg-secondary/80")}
-            >
-              - Quitar
-            </button>
-          </div>
-
-          <FormField label="Cantidad">
-            <input
-              className={inputCls}
-              type="number"
-              min={1}
-              value={amount || ""}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              placeholder="Ej. 100"
-              required
-            />
-          </FormField>
-
-          <FormField label="Concepto (Razón)">
-            <input
-              className={inputCls}
-              type="text"
-              value={concepto}
-              onChange={(e) => setConcepto(e.target.value)}
-              placeholder="Ej. Evento PVP, Admin regaló, etc."
-              required
-            />
-          </FormField>
-
-          <div className="flex gap-3 justify-end pt-2 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !amount || amount <= 0}
-              className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60 text-background " + (action === "add" ? "bg-green-600 hover:bg-green-700" : "bg-destructive text-white hover:bg-destructive/90")}
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {action === "add" ? "Añadir Oro" : "Quitar Oro"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-    );
-  }
-
 // ─── Formulario de usuario ────────────────────────────────────────────────────
 
 function UserFormModal({
@@ -678,6 +624,7 @@ function ShopsTab({
   const [editTarget, setEditTarget] = useState<AdminShop | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminShop | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [itemsTarget, setItemsTarget] = useState<AdminShop | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -736,6 +683,13 @@ function ShopsTab({
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={() => setItemsTarget(shop)}
+                    className="h-7 px-3 flex items-center justify-center rounded bg-gold/20 text-gold hover:bg-gold hover:text-background transition-colors text-xs font-bold shadow-sm"
+                    title="Gestionar objetos"
+                  >
+                    Items
+                  </button>
                   <button
                     onClick={() => setEditTarget(shop)}
                     className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
@@ -854,6 +808,16 @@ function ShopsTab({
               onToast(e.error ?? "Error al eliminar", "error");
             }
           }}
+        />
+      )}
+
+      {itemsTarget && (
+        <ShopItemsModal
+          shop={itemsTarget}
+          token={token}
+          onClose={() => setItemsTarget(null)}
+          onToast={onToast}
+          refreshShops={load}
         />
       )}
     </div>
@@ -981,6 +945,684 @@ function ShopFormModal({
   );
 }
 
+function ShopItemsModal({
+  shop,
+  token,
+  onClose,
+  onToast,
+  refreshShops,
+}: {
+  shop: AdminShop;
+  token: string;
+  onClose: () => void;
+  onToast: (msg: string, type: "success" | "error") => void;
+  refreshShops: () => Promise<void>;
+}) {
+  const [items, setItems] = useState<AdminShopItem[]>([]);
+  const [objects, setObjects] = useState<AdminObject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AdminShopItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminShopItem | null>(null);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [itemsRes, objectsRes] = await Promise.all([
+      fetch(`/api/admin/tiendas/articulos?tiendaId=${shop.id}`, { headers }),
+      fetch("/api/admin/objetos", { headers }),
+    ]);
+
+    if (itemsRes.ok) setItems(await itemsRes.json());
+    if (objectsRes.ok) setObjects(await objectsRes.json());
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop.id, token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <Modal title={`Objetos de tienda: ${shop.name}`} onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {items.length} artículo{items.length !== 1 ? "s" : ""} configurado
+            {items.length !== 1 ? "s" : ""}
+          </p>
+          <button
+            onClick={() => setCreateOpen(true)}
+            disabled={objects.length === 0}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Añadir objeto
+          </button>
+        </div>
+
+        {objects.length === 0 && (
+          <p className="text-xs text-destructive">
+            No hay objetos en catálogo. Crea primero un objeto en la pestaña Objetos.
+          </p>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-5 h-5 animate-spin text-gold" />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+            Esta tienda no tiene objetos configurados aún.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-xs">
+              <thead className="bg-secondary/50 border-b border-border">
+                <tr>
+                  <th className="px-2 py-2 text-left">Objeto</th>
+                  <th className="px-2 py-2 text-left">Tipo</th>
+                  <th className="px-2 py-2 text-left">Precio</th>
+                  <th className="px-2 py-2 text-left">Stock</th>
+                  <th className="px-2 py-2 text-left">Orden</th>
+                  <th className="px-2 py-2 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-b border-border last:border-0">
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <span>{item.object?.icon ?? "📦"}</span>
+                        <span className="font-medium text-foreground">
+                          {item.object?.name ?? `Objeto #${item.objetoId}`}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 text-muted-foreground capitalize">
+                      {item.object?.itemType ?? "-"}
+                    </td>
+                    <td className="px-2 py-2 text-foreground">{item.precio}</td>
+                    <td className="px-2 py-2 text-foreground">
+                      {item.inventario ?? "Ilimitado"}
+                    </td>
+                    <td className="px-2 py-2 text-foreground">{item.orden}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setEditTarget(item)}
+                          className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
+                          title="Editar artículo"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                          title="Eliminar artículo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2 border-t border-border">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      {createOpen && (
+        <ShopItemFormModal
+          mode="create"
+          objects={objects}
+          loading={actionLoading}
+          onClose={() => setCreateOpen(false)}
+          onSubmit={async (payload) => {
+            setActionLoading(true);
+            const res = await fetch("/api/admin/tiendas/articulos", {
+              method: "POST",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({ ...payload, tiendaId: shop.id }),
+            });
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Artículo añadido a la tienda", "success");
+              setCreateOpen(false);
+              await load();
+              await refreshShops();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al añadir artículo", "error");
+            }
+          }}
+        />
+      )}
+
+      {editTarget && (
+        <ShopItemFormModal
+          mode="edit"
+          objects={objects}
+          initial={editTarget}
+          loading={actionLoading}
+          onClose={() => setEditTarget(null)}
+          onSubmit={async (payload) => {
+            setActionLoading(true);
+            const res = await fetch(
+              `/api/admin/tiendas/articulos?id=${editTarget.id}`,
+              {
+                method: "PATCH",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              },
+            );
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Artículo actualizado", "success");
+              setEditTarget(null);
+              await load();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al actualizar artículo", "error");
+            }
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDelete
+          message={`¿Quitar "${deleteTarget.object?.name ?? `#${deleteTarget.objetoId}`}" de la tienda?`}
+          loading={actionLoading}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            setActionLoading(true);
+            const res = await fetch(
+              `/api/admin/tiendas/articulos?id=${deleteTarget.id}`,
+              {
+                method: "DELETE",
+                headers,
+              },
+            );
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Artículo eliminado de la tienda", "success");
+              setDeleteTarget(null);
+              await load();
+              await refreshShops();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al eliminar artículo", "error");
+            }
+          }}
+        />
+      )}
+    </Modal>
+  );
+}
+
+function ShopItemFormModal({
+  mode,
+  objects,
+  initial,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  mode: "create" | "edit";
+  objects: AdminObject[];
+  initial?: AdminShopItem;
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (data: {
+    objetoId?: number;
+    precio: number;
+    inventario: number | null;
+    orden: number;
+  }) => void;
+}) {
+  const [objetoId, setObjetoId] = useState<number>(
+    initial?.objetoId ?? objects[0]?.id ?? 0,
+  );
+  const [precio, setPrecio] = useState<number>(initial?.precio ?? 0);
+  const [inventarioRaw, setInventarioRaw] = useState<string>(
+    initial?.inventario === null || initial?.inventario === undefined
+      ? ""
+      : String(initial.inventario),
+  );
+  const [orden, setOrden] = useState<number>(initial?.orden ?? 0);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const inventario =
+      inventarioRaw.trim() === "" ? null : Number(inventarioRaw.trim());
+
+    onSubmit({
+      ...(mode === "create" ? { objetoId } : {}),
+      precio,
+      inventario,
+      orden,
+    });
+  };
+
+  return (
+    <Modal
+      title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
+      onClose={onClose}
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {mode === "create" && (
+          <FormField label="Objeto">
+            <select
+              className={inputCls}
+              value={objetoId}
+              onChange={(e) => setObjetoId(Number(e.target.value))}
+              required
+            >
+              {objects.map((obj) => (
+                <option key={obj.id} value={obj.id}>
+                  {obj.icon} {obj.name} ({obj.itemType})
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          <FormField label="Precio">
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={precio}
+              onChange={(e) => setPrecio(Number(e.target.value))}
+              required
+            />
+          </FormField>
+          <FormField label="Stock (vacío=ilimitado)">
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={inventarioRaw}
+              onChange={(e) => setInventarioRaw(e.target.value)}
+              placeholder="∞"
+            />
+          </FormField>
+          <FormField label="Orden">
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={orden}
+              onChange={(e) => setOrden(Number(e.target.value))}
+            />
+          </FormField>
+        </div>
+
+        <div className="flex gap-3 justify-end pt-2 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading || (mode === "create" && objects.length === 0)}
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {mode === "create" ? "Añadir" : "Guardar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Pestaña Objetos ──────────────────────────────────────────────────────────
+
+function ObjectsTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [objects, setObjects] = useState<AdminObject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editTarget, setEditTarget] = useState<AdminObject | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminObject | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/objetos", { headers });
+    if (res.ok) setObjects(await res.json());
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {objects.length} objeto{objects.length !== 1 ? "s" : ""} en catálogo
+        </p>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo objeto
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {objects.map((obj) => (
+            <div
+              key={obj.id}
+              className="bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-gold/40 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{obj.icon}</span>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm leading-tight">
+                      {obj.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {obj.itemType}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={() => setEditTarget(obj)}
+                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(obj)}
+                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                {obj.description || "Sin descripción"}
+              </p>
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
+                <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
+                  {obj.rarity}
+                </span>
+                <span>{formatDate(obj.createdAt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editTarget && (
+        <ObjectFormModal
+          title={`Editar: ${editTarget.name}`}
+          initial={editTarget}
+          onClose={() => setEditTarget(null)}
+          loading={actionLoading}
+          onSubmit={async (data) => {
+            setActionLoading(true);
+            const res = await fetch(`/api/admin/objetos?id=${editTarget.id}`, {
+              method: "PATCH",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Objeto actualizado", "success");
+              setEditTarget(null);
+              load();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al actualizar", "error");
+            }
+          }}
+        />
+      )}
+
+      {showCreate && (
+        <ObjectFormModal
+          title="Nuevo objeto"
+          initial={null}
+          onClose={() => setShowCreate(false)}
+          loading={actionLoading}
+          onSubmit={async (data) => {
+            setActionLoading(true);
+            const res = await fetch("/api/admin/objetos", {
+              method: "POST",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Objeto creado", "success");
+              setShowCreate(false);
+              load();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al crear", "error");
+            }
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDelete
+          message={`¿Eliminar el objeto "${deleteTarget.name}"?`}
+          loading={actionLoading}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            setActionLoading(true);
+            const res = await fetch(`/api/admin/objetos?id=${deleteTarget.id}`, {
+              method: "DELETE",
+              headers,
+            });
+            setActionLoading(false);
+            if (res.ok) {
+              onToast("Objeto eliminado", "success");
+              setDeleteTarget(null);
+              load();
+            } else {
+              const e = await res.json();
+              onToast(e.error ?? "Error al eliminar", "error");
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ObjectFormModal({
+  title,
+  initial,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  title: string;
+  initial: AdminObject | null;
+  onClose: () => void;
+  onSubmit: (data: Partial<AdminObject>) => void;
+  loading: boolean;
+}) {
+  const [form, setForm] = useState({
+    name: initial?.name ?? "",
+    description: initial?.description ?? "",
+    icon: initial?.icon ?? "📦",
+    itemType: initial?.itemType ?? "misc",
+    rarity: initial?.rarity ?? "común",
+    bonusStats: initial?.bonusStats
+      ? JSON.stringify(initial.bonusStats, null, 2)
+      : "",
+  });
+  const [jsonError, setJsonError] = useState("");
+
+  const set = (key: string, val: unknown) =>
+    setForm((f) => ({ ...f, [key]: val }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    let parsedBonus: Record<string, unknown> | null = null;
+    if (form.bonusStats.trim()) {
+      try {
+        parsedBonus = JSON.parse(form.bonusStats);
+        setJsonError("");
+      } catch {
+        setJsonError("El JSON de bonos no es válido");
+        return;
+      }
+    }
+
+    onSubmit({
+      name: form.name,
+      description: form.description,
+      icon: form.icon,
+      itemType: form.itemType,
+      rarity: form.rarity,
+      bonusStats: parsedBonus,
+    });
+  };
+
+  return (
+    <Modal title={title} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-[auto_1fr] gap-4 items-end">
+          <FormField label="Icono">
+            <input
+              className={`${inputCls} w-16 text-center text-xl`}
+              value={form.icon}
+              onChange={(e) => set("icon", e.target.value)}
+              placeholder="📦"
+              maxLength={4}
+            />
+          </FormField>
+          <FormField label="Nombre del objeto">
+            <input
+              className={inputCls}
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Espada larga"
+              required
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Descripción">
+          <textarea
+            className={`${inputCls} resize-none`}
+            rows={3}
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            placeholder="Descripción del objeto"
+          />
+        </FormField>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Tipo de objeto">
+            <select
+              className={inputCls}
+              value={form.itemType}
+              onChange={(e) => set("itemType", e.target.value)}
+            >
+              {ITEM_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Rareza">
+            <select
+              className={inputCls}
+              value={form.rarity}
+              onChange={(e) => set("rarity", e.target.value)}
+            >
+              {RARITY_OPTIONS.map((rarity) => (
+                <option key={rarity} value={rarity}>
+                  {rarity}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
+        <FormField label="Bonos (JSON opcional)">
+          <textarea
+            className={`${inputCls} resize-none font-mono text-xs`}
+            rows={5}
+            value={form.bonusStats}
+            onChange={(e) => set("bonusStats", e.target.value)}
+            placeholder='{"fuerza": 2, "destreza": 1}'
+          />
+          {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
+        </FormField>
+
+        <div className="flex gap-3 justify-end pt-2 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {initial ? "Guardar cambios" : "Crear objeto"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // ─── Página principal del panel ───────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -1019,6 +1661,7 @@ export default function AdminPage() {
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
+    { id: "objetos", label: "Objetos", icon: Box },
   ];
 
   return (
@@ -1080,6 +1723,9 @@ export default function AdminPage() {
             )}
             {activeTab === "tiendas" && (
               <ShopsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "objetos" && (
+              <ObjectsTab token={token} onToast={showToast} />
             )}
           </div>
         </div>
