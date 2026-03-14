@@ -681,25 +681,29 @@ function GoldFormModal({
         }}
         className="flex flex-col gap-4"
       >
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={action === "add"}
-              onChange={() => setAction("add")}
-              className="text-gold"
-            />
-            <span className="text-sm font-medium">Añadir Oro</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={action === "remove"}
-              onChange={() => setAction("remove")}
-              className="text-gold"
-            />
-            <span className="text-sm font-medium">Quitar Oro</span>
-          </label>
+        <div className="flex bg-secondary/50 p-1 rounded-xl w-full border border-border">
+          <button
+            type="button"
+            onClick={() => setAction("add")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              action === "add"
+                ? "bg-gold text-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            Añadir Oro
+          </button>
+          <button
+            type="button"
+            onClick={() => setAction("remove")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              action === "remove"
+                ? "bg-destructive text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            Quitar Oro
+          </button>
         </div>
 
         <FormField label="Cantidad">
