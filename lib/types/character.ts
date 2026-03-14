@@ -1,14 +1,14 @@
 // Tipos compartidos para personajes
 // Estos tipos serán usados tanto en frontend como en backend
 
-export type ItemType = 
-  | "cabeza" 
-  | "pecho" 
-  | "guante" 
-  | "botas" 
-  | "collar" 
-  | "anillo" 
-  | "amuleto" 
+export type ItemType =
+  | "cabeza"
+  | "pecho"
+  | "guante"
+  | "botas"
+  | "collar"
+  | "anillo"
+  | "amuleto"
   | "arma";
 
 export type Item = {
@@ -49,14 +49,18 @@ export type Bag = {
   maxSlots: number;
 };
 
+export type ClassEntry = {
+  className: string;
+  level: number;
+};
+
 export type Character = {
   id: number;
   userId: string;
   name: string;
-  className: string;
+  multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
   alignment: string;
-  background: string;
   portrait: string;
   stats: CharacterStats;
   armor: ArmorSlots;
@@ -68,8 +72,7 @@ export type Character = {
 export type CreateCharacterInput = {
   name: string;
   race: string;
-  className: string;
-  background: string;
+  multiclass: ClassEntry[];
   alignment: string;
 };
 

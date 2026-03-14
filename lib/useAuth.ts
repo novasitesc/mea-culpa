@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DEMO_USERS } from "@/lib/demoUsers";
+import { getSupabase } from "@/lib/supabase";
 
 export interface User {
   id: string;
@@ -10,46 +10,103 @@ export interface User {
   role: string;
   level: number;
   home: string;
+  oro: number;
+  isAdmin: boolean;
 }
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string>("");
 
+  // Carga la sesión activa y escucha cambios de auth
   useEffect(() => {
-    // Verificar si hay un usuario en localStorage
-    const storedUser = localStorage.getItem("meaculpa_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    let ignore = false;
+
+    const supabase = getSupabase();
+
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!ignore && session?.access_token) setToken(session.access_token);
+      if (!ignore && session?.user) {
+        await hydrateProfile(session.user.id, session.user.email ?? "");
+      }
+      if (!ignore) setIsLoading(false);
     }
-    setIsLoading(false);
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        if (!ignore) setToken(session.access_token ?? "");
+        // setTimeout saca la llamada del contexto del lock de auth.
+        // onAuthStateChange mantiene el lock mientras corre; si dentro llamamos
+        // a getSupabase().from(...) se vuelve a pedir el lock → "Lock broken".
+        const uid = session.user.id;
+        const email = session.user.email ?? "";
+        setTimeout(() => {
+          hydrateProfile(uid, email);
+        }, 0);
+      } else {
+        setUser(null);
+        if (!ignore) setToken("");
+      }
+    });
+
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  /** Lee el perfil de la tabla `perfiles` y construye el objeto User */
+  async function hydrateProfile(uid: string, email: string) {
+    const { data } = await getSupabase()
+      .from("perfiles")
+      .select("nombre, rol, nivel, hogar, oro, es_admin")
+      .eq("id", uid)
+      .single();
+
+    setUser({
+      id: uid,
+      email,
+      name: data?.nombre ?? email,
+      role: data?.rol ?? "Dungeon Explorer",
+      level: data?.nivel ?? 1,
+      home: data?.hogar ?? "Sin hogar",
+      oro: data?.oro ?? 0,
+      isAdmin: data?.es_admin ?? false,
+    });
+  }
 
   const login = async (
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
-    // Simular delay de red
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const { error } = await getSupabase().auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    const foundUser = DEMO_USERS.find(
-      (u) => u.email === email && u.password === password,
-    );
-
-    if (!foundUser) {
-      return { success: false, error: "Correo o contraseña incorrectos" };
+    if (error) {
+      return { success: false, error: error.message };
     }
-
-    const { password: _, ...userWithoutPassword } = foundUser;
-    localStorage.setItem("meaculpa_user", JSON.stringify(userWithoutPassword));
-    setUser(userWithoutPassword);
-
     return { success: true };
   };
 
-  const logout = () => {
-    localStorage.removeItem("meaculpa_user");
+  const logout = async () => {
+    await getSupabase().auth.signOut();
     setUser(null);
+  };
+
+  const refreshUser = () => {
+    if (!user) return Promise.resolve();
+    return hydrateProfile(user.id, user.email);
   };
 
   return {
@@ -58,5 +115,7 @@ export function useAuth() {
     isAuthenticated: !!user,
     login,
     logout,
+    refreshUser,
+    token,
   };
 }

@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from "next/image";
-import { Lock, Mail, Eye, EyeOff, Info } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,10 +68,9 @@ export default function LoginPage() {
 
       if (!result.success) {
         setError(result.error || "Error al iniciar sesión");
-      } else {
-        // Redirigir al perfil
-        router.push("/profile");
       }
+      // La redirección la maneja el useEffect que vigila isAuthenticated.
+      // No hacer router.push aquí para evitar doble navegación.
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Ocurrió un error inesperado",
@@ -130,7 +129,7 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4">
               <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
-                  src="/imgs/Login/calavera.png"
+                  src="/imgs/Login/calavera.jpeg"
                   alt="Mea Culpa - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
@@ -145,27 +144,6 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
-            {/* Demo credentials info */}
-            <div className="mb-4 p-3 rounded-md bg-gold/10 border border-gold/20">
-              <div className="flex gap-2">
-                <Info className="w-5 h-5 text-gold shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-gold font-medium mb-1">Modo Demo</p>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    Usa estas credenciales para probar:
-                  </p>
-                  <div className="space-y-1 text-xs">
-                    <p>
-                      <strong>Usuario 1:</strong> demo@meaculpa.com / 123456
-                    </p>
-                    <p>
-                      <strong>Usuario 2:</strong> admin@meaculpa.com / admin123
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Email field */}
               <div className="space-y-2">
