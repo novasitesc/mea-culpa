@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
@@ -76,6 +77,16 @@ type AdminShopItem = {
   };
 };
 
+type AdminTransaction = {
+  id: string;
+  usuario_id: string;
+  nombre_usuario: string;
+  delta: number;
+  balance_after: number;
+  concepto: string;
+  creado_en: string;
+};
+
 const ITEM_TYPES = [
   "cabeza",
   "pecho",
@@ -92,7 +103,7 @@ const ITEM_TYPES = [
 
 const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
 
-type Tab = "usuarios" | "tiendas" | "objetos";
+type Tab = "usuarios" | "tiendas" | "objetos" | "transacciones";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -217,6 +228,119 @@ function Toast({
         <AlertTriangle className="w-4 h-4" />
       )}
       {message}
+    </div>
+  );
+}
+
+// ─── Pestaña Transacciones ────────────────────────────────────────────────────
+
+function TransactionsTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/oro?limit=100", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setTransactions(await res.json());
+    else onToast("Error cargando transacciones", "error");
+    setLoading(false);
+  }, [token, onToast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Últimas {transactions.length} transacciones de oro
+        </p>
+        <button
+          onClick={load}
+          className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+        >
+          Actualizar
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/50 border-b border-border">
+              <tr>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Fecha
+                </th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Usuario
+                </th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Concepto
+                </th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Cambio
+                </th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Balance Final
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((t, i) => (
+                <tr
+                  key={t.id}
+                  className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors ${
+                    i % 2 === 0 ? "" : "bg-secondary/10"
+                  }`}
+                >
+                  <td className="px-3 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    {new Date(t.creado_en).toLocaleString("es-ES", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td className="px-3 py-3 font-medium text-foreground">
+                    {t.nombre_usuario}
+                  </td>
+                  <td className="px-3 py-3 text-muted-foreground max-w-xs truncate" title={t.concepto}>
+                    {t.concepto}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${t.delta >= 0 ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-500"}`}>
+                      {t.delta >= 0 ? "+" : ""}{t.delta}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-center text-gold font-medium">
+                    {t.balance_after}
+                  </td>
+                </tr>
+              ))}
+              {transactions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                    No hay transacciones registradas
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -1799,6 +1923,7 @@ export default function AdminPage() {
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
+    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
   ];
 
   return (
@@ -1863,6 +1988,9 @@ export default function AdminPage() {
             )}
             {activeTab === "objetos" && (
               <ObjectsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "transacciones" && (
+              <TransactionsTab token={token} onToast={showToast} />
             )}
           </div>
         </div>
