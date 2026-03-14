@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       id,
       nombre: name,
       descripcion: description,
-      icono: icon ?? "",
+      icono: icon?.trim() || "🏪",
       tendero: keeper,
       ubicacion: location,
       nivel_minimo: minLevel ? Number(minLevel) : null,

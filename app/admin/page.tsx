@@ -22,6 +22,7 @@ import Header from "@/app/components/header";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 type AdminUser = {
+  gold: number;
   id: string;
   email: string;
   name: string;
@@ -187,6 +188,7 @@ function UsersTab({
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -424,6 +426,103 @@ function UsersTab({
     </div>
   );
 }
+
+
+
+  // ─── Formulario de Oro ────────────────────────────────────────────────────────
+  function UserGoldModal({
+    title,
+    initialGold,
+    onClose,
+    onSubmit,
+    loading,
+  }: {
+    title: string;
+    initialGold: number;
+    onClose: () => void;
+    onSubmit: (delta: number, concepto: string) => void;
+    loading: boolean;
+  }) {
+    const [action, setAction] = useState<"add" | "remove">("add");
+    const [amount, setAmount] = useState<number>(0);
+    const [concepto, setConcepto] = useState<string>("Recompensa de evento");
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!amount || amount <= 0) return;
+      const delta = action === "add" ? amount : -amount;
+      onSubmit(delta, concepto);
+    };
+
+    return (
+      <Modal title={title} onClose={onClose}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="p-3 bg-gold/10 border border-gold/30 rounded-lg flex justify-between items-center">
+            <span className="text-sm font-medium text-gold">Saldo actual:</span>
+            <span className="text-lg font-bold text-gold">{initialGold} <span className="text-sm font-normal">oros</span></span>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setAction("add")}
+              className={"flex-1 py-2 text-sm font-bold rounded-lg border transition-colors " + (action === "add" ? "bg-green-500/20 text-green-500 border-green-500/50" : "bg-secondary text-muted-foreground border-transparent hover:bg-secondary/80")}
+            >
+              + Añadir
+            </button>
+            <button
+              type="button"
+              onClick={() => setAction("remove")}
+              className={"flex-1 py-2 text-sm font-bold rounded-lg border transition-colors " + (action === "remove" ? "bg-destructive/20 text-destructive border-destructive/50" : "bg-secondary text-muted-foreground border-transparent hover:bg-secondary/80")}
+            >
+              - Quitar
+            </button>
+          </div>
+
+          <FormField label="Cantidad">
+            <input
+              className={inputCls}
+              type="number"
+              min={1}
+              value={amount || ""}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              placeholder="Ej. 100"
+              required
+            />
+          </FormField>
+
+          <FormField label="Concepto (Razón)">
+            <input
+              className={inputCls}
+              type="text"
+              value={concepto}
+              onChange={(e) => setConcepto(e.target.value)}
+              placeholder="Ej. Evento PVP, Admin regaló, etc."
+              required
+            />
+          </FormField>
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !amount || amount <= 0}
+              className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60 text-background " + (action === "add" ? "bg-green-600 hover:bg-green-700" : "bg-destructive text-white hover:bg-destructive/90")}
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {action === "add" ? "Añadir Oro" : "Quitar Oro"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    );
+  }
 
 // ─── Formulario de usuario ────────────────────────────────────────────────────
 

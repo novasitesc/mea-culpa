@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   const { data: perfiles, error: perfilesError } = await db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
     .order("creado_en", { ascending: false });
 
   if (perfilesError) {
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     name: p.nombre,
     role: p.rol,
     level: p.nivel,
+    gold: p.oro || 0,
     home: p.hogar,
     isAdmin: p.es_admin,
     rolSistema: p.rol_sistema,
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
   const { data: perfil } = await db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
     .eq("id", created.user.id)
     .single();
 
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       name: (perfil as any)?.nombre ?? name,
       role: (perfil as any)?.rol ?? role,
       level: (perfil as any)?.nivel ?? level,
+      gold: (perfil as any)?.oro ?? 0,
       home: (perfil as any)?.hogar ?? "",
       isAdmin: false,
       rolSistema: "usuario",
@@ -164,7 +166,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: perfil } = await session.db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
     .eq("id", targetId)
     .single();
 
@@ -176,6 +178,7 @@ export async function PATCH(request: NextRequest) {
     name: (perfil as any)?.nombre,
     role: (perfil as any)?.rol,
     level: (perfil as any)?.nivel,
+    gold: (perfil as any)?.oro ?? 0,
     home: (perfil as any)?.hogar,
     isAdmin: (perfil as any)?.es_admin,
     rolSistema: (perfil as any)?.rol_sistema,
