@@ -245,25 +245,148 @@ function TransactionsTab({
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 20;
+
+  // Filter states
+  const [fConcept, setFConcept] = useState("");
+  const [fDelta, setFDelta] = useState<"all" | "positive" | "negative">("all");
+  const [fUser, setFUser] = useState("");
+  const [fAdmin, setFAdmin] = useState("");
+  const [fDateFrom, setFDateFrom] = useState("");
+  const [fDateTo, setFDateTo] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/oro?limit=100", {
+    
+    // Build query params
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+
+    if (fConcept) params.append("concepto", fConcept);
+    if (fDelta !== "all") params.append("delta", fDelta);
+    if (fUser) params.append("usuario", fUser);
+    if (fAdmin) params.append("admin", fAdmin);
+    if (fDateFrom) params.append("dateFrom", fDateFrom);
+    if (fDateTo) params.append("dateTo", fDateTo);
+
+    const res = await fetch(`/api/admin/oro?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) setTransactions(await res.json());
-    else onToast("Error cargando transacciones", "error");
+    if (res.ok) {
+      const result = await res.json();
+      setTransactions(result.data || []);
+      setTotalPages(result.totalPages || 1);
+      setTotalCount(result.count || 0);
+    } else {
+      onToast("Error cargando transacciones", "error");
+    }
     setLoading(false);
-  }, [token, onToast]);
+  }, [page, limit, fConcept, fDelta, fUser, fAdmin, fDateFrom, fDateTo, token, onToast]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const handleResetFilters = () => {
+    setFConcept("");
+    setFDelta("all");
+    setFUser("");
+    setFAdmin("");
+    setFDateFrom("");
+    setFDateTo("");
+    setPage(1);
+  };
+
+  const handleFilterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1); // Reset page on filter
+    load();
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Filtros */}
+      <form onSubmit={handleFilterSubmit} className="bg-secondary/20 p-4 rounded-lg border border-border grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+        <FormField label="Usuario">
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre..." 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fUser}
+            onChange={e => setFUser(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Realizado Por">
+          <input 
+            type="text" 
+            placeholder="Admin o 'SISTEMA'..." 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fAdmin}
+            onChange={e => setFAdmin(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Concepto">
+          <input 
+            type="text" 
+            placeholder="Ej: Recompensa..." 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fConcept}
+            onChange={e => setFConcept(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Cambio">
+          <select 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fDelta}
+            onChange={e => setFDelta(e.target.value as any)}
+          >
+            <option value="all">Todos</option>
+            <option value="positive">Ganancias (+)</option>
+            <option value="negative">Pérdidas (-)</option>
+          </select>
+        </FormField>
+        <FormField label="Desde">
+          <input 
+            type="date" 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fDateFrom}
+            onChange={e => setFDateFrom(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Hasta">
+          <input 
+            type="date" 
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+            value={fDateTo}
+            onChange={e => setFDateTo(e.target.value)}
+          />
+        </FormField>
+        <div className="flex gap-2 xl:col-span-6 justify-end mt-2">
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+          >
+            Limpiar Filtros
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
+          >
+            Buscar
+          </button>
+        </div>
+      </form>
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Últimas {transactions.length} transacciones de oro
+          {totalCount} transacciones encontradas (Página {page} de {totalPages})
         </p>
         <button
           onClick={load}
@@ -353,6 +476,31 @@ function TransactionsTab({
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-secondary/20 p-4 rounded-lg border border-border mt-2">
+          <p className="text-sm text-muted-foreground">
+            Mostrando página {page} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 bg-background hover:bg-secondary text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-4 py-2 bg-background hover:bg-secondary text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       )}
     </div>
