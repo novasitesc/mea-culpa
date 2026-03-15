@@ -100,7 +100,7 @@ export default function LoginPage() {
             height: "auto",
           }}
         >
-          <source src="/imgs/Login/VIdeos/Dragon.mp4" type="video/mp4" />
+          <source src="/imgs/Login/VIdeos/Dragon2.mp4" type="video/mp4" />
         </video>
         {/* Overlay oscuro para mejorar legibilidad */}
         <div className="absolute inset-0 bg-background/60" />

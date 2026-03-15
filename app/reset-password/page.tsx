@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
           playsInline
           className="absolute top-0 left-0 w-full h-full object-cover"
         >
-          <source src="/imgs/Login/VIdeos/Dragon.mp4" type="video/mp4" />
+          <source src="/imgs/Login/VIdeos/Dragon2.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-background/60" />
       </div>
