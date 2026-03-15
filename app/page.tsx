@@ -220,16 +220,20 @@ export default function HomePage() {
               </div>
               <div className="p-4">
                 <div className="relative aspect-square bg-background rounded-lg flex items-center justify-center mb-3 border border-border overflow-hidden">
-                  {activeCharacter?.portrait ? (
-                    <Image
-                      src={activeCharacter.portrait}
-                      alt={activeCharacter.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 1024px) 200px, 240px"
-                    />
+                  {isProfileLoading ? (
+                    <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <User className="w-20 h-20 text-gold/30" />
+                    <img
+                      src={
+                        activeCharacter?.portrait?.trim() ||
+                        "/characters/profileplaceholder.webp"
+                      }
+                      alt={activeCharacter?.name || "Personaje"}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/characters/profileplaceholder.webp";
+                      }}
+                    />
                   )}
                 </div>
                 <div className="text-center">
