@@ -105,6 +105,22 @@ const ITEM_TYPES = [
 const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
 
 type Tab = "usuarios" | "tiendas" | "objetos" | "transacciones";
+type ActiveGameSession = {
+  id: string;
+  name: string;
+  characters: Array<{
+    id: string;
+    name: string;
+    ownerId: string;
+    ownerName: string;
+    ownerEmail: string;
+  }>;
+  splitGoldOnClose: boolean;
+  splitLootOnClose: boolean;
+  startedAt: string;
+};
+
+const GAME_SESSION_STORAGE_KEY = "mc_admin_active_game_session";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -2116,12 +2132,319 @@ function ObjectFormModal({
   );
 }
 
+function GameSessionInitModal({
+  token,
+  onToast,
+  onClose,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+  onClose: () => void;
+}) {
+  type SelectableCharacter = {
+    id: string;
+    name: string;
+    ownerId: string;
+    ownerName: string;
+    ownerEmail: string;
+  };
+
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingCharacters, setLoadingCharacters] = useState(false);
+  const [characters, setCharacters] = useState<SelectableCharacter[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [sessionName, setSessionName] = useState("Partida de hoy");
+  const [splitGoldOnClose, setSplitGoldOnClose] = useState(true);
+  const [splitLootOnClose, setSplitLootOnClose] = useState(true);
+  const [activeSession, setActiveSession] = useState<ActiveGameSession | null>(
+    null,
+  );
+  const [lastCloseSummary, setLastCloseSummary] = useState<string | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(GAME_SESSION_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<ActiveGameSession>;
+        if (parsed && Array.isArray(parsed.characters)) {
+          setActiveSession(parsed as ActiveGameSession);
+        } else {
+          // Limpiar esquema anterior basado en jugadores
+          localStorage.removeItem(GAME_SESSION_STORAGE_KEY);
+        }
+      } catch {
+        localStorage.removeItem(GAME_SESSION_STORAGE_KEY);
+      }
+    }
+
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const res = await fetch("/api/admin/users", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("No se pudieron cargar usuarios");
+
+        const data = await res.json();
+        const rows: AdminUser[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data.users)
+            ? data.users
+            : [];
+
+        setUsers(rows);
+
+        setLoadingCharacters(true);
+        const profileResponses = await Promise.all(
+          rows.map(async (u) => {
+            const r = await fetch(`/api/profile?userId=${u.id}`);
+            if (!r.ok) return { user: u, characters: [] as any[] };
+            const profileData = await r.json();
+            return {
+              user: u,
+              characters: Array.isArray(profileData?.characters)
+                ? profileData.characters
+                : [],
+            };
+          }),
+        );
+
+        const flattened: SelectableCharacter[] = profileResponses.flatMap(
+          ({ user, characters: chars }) =>
+            chars.map((c: any) => ({
+              id: String(c.id),
+              name: c.name ?? "Personaje sin nombre",
+              ownerId: user.id,
+              ownerName: user.name,
+              ownerEmail: user.email,
+            })),
+        );
+
+        setCharacters(flattened);
+      } catch {
+        onToast("No se pudieron cargar los jugadores", "error");
+      } finally {
+        setLoadingUsers(false);
+        setLoadingCharacters(false);
+      }
+    };
+
+    loadUsers();
+  }, [token, onToast]);
+
+  const toggleUser = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const createSession = () => {
+    if (selectedIds.length === 0) {
+      onToast("Selecciona al menos un personaje", "error");
+      return;
+    }
+
+    const selectedCharacters = characters.filter((c) =>
+      selectedIds.includes(c.id),
+    );
+
+    const session: ActiveGameSession = {
+      id: crypto.randomUUID(),
+      name: sessionName.trim() || "Partida sin nombre",
+      characters: selectedCharacters,
+      splitGoldOnClose,
+      splitLootOnClose,
+      startedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(GAME_SESSION_STORAGE_KEY, JSON.stringify(session));
+    setActiveSession(session);
+    setSelectedIds([]);
+    onToast("Partida inicializada (modo provisional)", "success");
+  };
+
+  const closeSession = () => {
+    if (!activeSession) return;
+
+    const count = activeSession.characters.length;
+    const goldPerPlayer = activeSession.splitGoldOnClose ? 150 : 0;
+    const totalGold = goldPerPlayer * count;
+
+    const lootPool = [
+      "cofre comun",
+      "gema misteriosa",
+      "pocion mayor",
+      "anillo antiguo",
+      "pergamino arcano",
+    ];
+
+    const lootSummary = activeSession.splitLootOnClose
+      ? activeSession.characters
+          .map(
+            (c, idx) => `${c.name} (${c.ownerName}): ${lootPool[idx % lootPool.length]}`,
+          )
+          .join(" | ")
+      : "sin reparto de loot";
+
+    const summary =
+      `Cierre de partida '${activeSession.name}'. ` +
+      (activeSession.splitGoldOnClose
+        ? `Oro total repartido: ${totalGold} (${goldPerPlayer} por jugador). `
+        : "Sin reparto de oro. ") +
+      `Loot: ${lootSummary}.`;
+
+    localStorage.removeItem(GAME_SESSION_STORAGE_KEY);
+    setActiveSession(null);
+    setLastCloseSummary(summary);
+    onToast("Partida cerrada y reparto simulado aplicado", "success");
+  };
+
+  return (
+    <Modal title="Inicializacion de partida (provisional)" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        {activeSession ? (
+          <div className="rounded-lg border border-gold/40 bg-gold/10 p-4 space-y-3">
+            <p className="text-sm text-foreground">
+              Partida activa: <span className="font-semibold">{activeSession.name}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Personajes: {activeSession.characters.map((c) => `${c.name} (${c.ownerName})`).join(", ")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Cierre configurado: oro {activeSession.splitGoldOnClose ? "SI" : "NO"} · loot {activeSession.splitLootOnClose ? "SI" : "NO"}
+            </p>
+            <button
+              onClick={closeSession}
+              className="px-4 py-2 bg-destructive hover:bg-destructive/80 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Cerrar partida y ejecutar reparto
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+            No hay una partida activa. Crea una nueva inicializacion abajo.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Nombre de la partida">
+            <input
+              className={inputCls}
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              placeholder="Partida de hoy"
+            />
+          </FormField>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">Opciones al cerrar</label>
+            <label className="text-sm text-muted-foreground flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={splitGoldOnClose}
+                onChange={(e) => setSplitGoldOnClose(e.target.checked)}
+              />
+              Repartir oro al cerrar
+            </label>
+            <label className="text-sm text-muted-foreground flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={splitLootOnClose}
+                onChange={(e) => setSplitLootOnClose(e.target.checked)}
+              />
+              Repartir loot al cerrar
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-foreground">Seleccion de personajes</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedIds(characters.map((c) => c.id))}
+                className="px-2 py-1 text-xs rounded bg-secondary hover:bg-muted text-foreground"
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="px-2 py-1 text-xs rounded bg-secondary hover:bg-muted text-foreground"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+
+          {loadingUsers || loadingCharacters ? (
+            <div className="py-6 flex justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-gold" />
+            </div>
+          ) : (
+            <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+              {characters.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">
+                  No se encontraron personajes disponibles.
+                </div>
+              )}
+              {characters.map((c) => (
+                <label
+                  key={`${c.ownerId}-${c.id}`}
+                  className="flex items-center justify-between gap-2 text-sm bg-secondary/20 border border-border rounded px-3 py-2"
+                >
+                  <span className="text-foreground">
+                    {c.name}{" "}
+                    <span className="text-muted-foreground">· {c.ownerName} ({c.ownerEmail})</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(c.id)}
+                    onChange={() => toggleUser(c.id)}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {lastCloseSummary && (
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+            <p className="text-xs text-emerald-300">{lastCloseSummary}</p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2 border-t border-border">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cerrar
+          </button>
+          <button
+            onClick={createSession}
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors"
+          >
+            Crear modulo de inicializacion
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Página principal del panel ───────────────────────────────────────────────
 
 export default function AdminPage() {
   const router = useRouter();
   const { user, isLoading, token } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("usuarios");
+  const [showGameInitModal, setShowGameInitModal] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -2173,20 +2496,28 @@ export default function AdminPage() {
 
         {/* Cabecera del panel */}
         <div className="bg-card border border-border rounded-xl p-6 medieval-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gold/20 border border-gold/40 rounded-xl flex items-center justify-center">
-              <Shield className="w-6 h-6 text-gold" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gold/20 border border-gold/40 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-gold" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gold tracking-wide">
+                  Panel de Administrador
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Bienvenido,{" "}
+                  <span className="text-foreground font-medium">{user.name}</span>{" "}
+                  · Gestión del servidor Mea Culpa
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gold tracking-wide">
-                Panel de Administrador
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Bienvenido,{" "}
-                <span className="text-foreground font-medium">{user.name}</span>{" "}
-                · Gestión del servidor Mea Culpa
-              </p>
-            </div>
+            <button
+              onClick={() => setShowGameInitModal(true)}
+              className="px-4 py-2 rounded-lg bg-gold hover:bg-gold-dim text-background text-sm font-semibold transition-colors"
+            >
+              Crear modulo de inicializacion de partida
+            </button>
           </div>
         </div>
 
@@ -2228,6 +2559,13 @@ export default function AdminPage() {
         </div>
 
         {/* Toast */}
+        {showGameInitModal && (
+          <GameSessionInitModal
+            token={token}
+            onToast={showToast}
+            onClose={() => setShowGameInitModal(false)}
+          />
+        )}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     </div>
