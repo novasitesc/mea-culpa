@@ -44,6 +44,7 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const {
     register,
@@ -76,6 +77,7 @@ export default function RegisterPage() {
           email: data.email,
           password: data.password,
           options: {
+            emailRedirectTo: `${window.location.origin}/login`,
             data: {
               name: data.username,
             },
@@ -90,14 +92,8 @@ export default function RegisterPage() {
         throw new Error(detail);
       }
 
-      if (authData.user) {
-        router.push("/login?registered=true");
-      } else {
-        // Algunos proyectos Supabase requieren confirmación de email
-        setError(
-          "Revisa tu correo para confirmar el registro antes de iniciar sesión.",
-        );
-      }
+      // Si no hay error, asumimos que el correo de confirmación fue enviado.
+      setRegistrationSuccess(true);
     } catch (err) {
       console.error("[register] Error inesperado:", err);
       setError(
@@ -109,10 +105,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div
-      className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ overflow: "hidden" }}
-    >
+    <div className="h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" style={{ overflow: "hidden" }} >
       {/* Background GIF */}
       <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
         <img
@@ -171,202 +164,224 @@ export default function RegisterPage() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Grid de dos columnas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Columna izquierda */}
-                <div className="space-y-4">
-                  {/* Username field */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="username"
-                      className="text-foreground flex items-center gap-2"
-                    >
-                      <User className="w-4 h-4" />
-                      Nombre de Usuario
-                    </Label>
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="Tu nombre de aventurero"
-                      className="bg-input border-border focus-visible:border-gold"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      tabIndex={1}
-                      autoFocus
-                      {...register("username")}
-                      disabled={isLoading}
-                    />
-                    {errors.username && (
-                      <p className="text-sm text-destructive mt-1">
-                        {errors.username.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Password field */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="password"
-                      className="text-foreground flex items-center gap-2"
-                    >
-                      <Lock className="w-4 h-4" />
-                      Contraseña
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        tabIndex={3}
-                        {...register("password")}
-                        disabled={isLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
-                        disabled={isLoading}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                    {errors.password && (
-                      <p className="text-sm text-destructive mt-1">
-                        {errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Columna derecha */}
-                <div className="space-y-4">
-                  {/* Email field */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="email"
-                      className="text-foreground flex items-center gap-2"
-                    >
-                      <Mail className="w-4 h-4" />
-                      Correo Electrónico
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="tu@correo.com"
-                        className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        tabIndex={2}
-                        {...register("email")}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    {errors.email && (
-                      <p className="text-sm text-destructive mt-1">
-                        {errors.email.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Confirm Password field */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="confirmPassword"
-                      className="text-foreground flex items-center gap-2"
-                    >
-                      <Lock className="w-4 h-4" />
-                      Confirmar Contraseña
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        tabIndex={4}
-                        {...register("confirmPassword")}
-                        disabled={isLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
-                        disabled={isLoading}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-destructive mt-1">
-                        {errors.confirmPassword.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Error message */}
-              {error && (
-                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                  <p className="text-sm text-destructive text-center">
-                    {error}
-                  </p>
-                </div>
-              )}
-
-              {/* Submit button */}
-              <div className="flex justify-center pt-2">
+            {registrationSuccess ? (
+              <div className="text-center space-y-4 p-4">
+                <h3 className="text-xl font-semibold text-gold">
+                  ¡Registro casi completo!
+                </h3>
+                <p className="text-foreground">
+                  Hemos enviado un correo de confirmación a tu dirección de
+                  correo electrónico.
+                </p>
+                <p className="text-muted-foreground">
+                  Por favor, revisa tu bandeja de entrada (y la carpeta de spam)
+                  y haz clic en el enlace para activar tu cuenta.
+                </p>
                 <Button
-                  type="submit"
-                  className="bg-gold hover:bg-gold-dim text-background font-medium py-4 px-12 text-base cursor-pointer"
-                  disabled={isLoading}
+                  onClick={() => router.push("/login")}
+                  className="bg-gold hover:bg-gold-dim text-background font-medium py-2 px-6 text-base mt-4"
                 >
-                  {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
+                  Ir a Iniciar Sesión
                 </Button>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Grid de dos columnas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Columna izquierda */}
+                  <div className="space-y-4">
+                    {/* Username field */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="username"
+                        className="text-foreground flex items-center gap-2"
+                      >
+                        <User className="w-4 h-4" />
+                        Nombre de Usuario
+                      </Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="Tu nombre de aventurero"
+                        className="bg-input border-border focus-visible:border-gold"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        tabIndex={1}
+                        autoFocus
+                        {...register("username")}
+                        disabled={isLoading}
+                      />
+                      {errors.username && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.username.message}
+                        </p>
+                      )}
+                    </div>
 
-              {/* Additional links */}
-              <div className="text-center space-y-1 pt-2">
-                <p className="text-sm text-muted-foreground">
-                  ¿Ya tienes una cuenta?{" "}
-                  <button
-                    type="button"
-                    onClick={() => router.push("/login")}
-                    className="text-gold hover:text-gold-dim underline font-medium cursor-pointer"
+                    {/* Password field */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="password"
+                        className="text-foreground flex items-center gap-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        Contraseña
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          tabIndex={3}
+                          {...register("password")}
+                          disabled={isLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
+                          disabled={isLoading}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                      {errors.password && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Columna derecha */}
+                  <div className="space-y-4">
+                    {/* Email field */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="email"
+                        className="text-foreground flex items-center gap-2"
+                      >
+                        <Mail className="w-4 h-4" />
+                        Correo Electrónico
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="tu@correo.com"
+                          className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          tabIndex={2}
+                          {...register("email")}
+                          disabled={isLoading}
+                        />
+                      </div>
+                      {errors.email && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.email.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Confirm Password field */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="confirmPassword"
+                        className="text-foreground flex items-center gap-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        Confirmar Contraseña
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          tabIndex={4}
+                          {...register("confirmPassword")}
+                          disabled={isLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-gold transition-colors cursor-pointer z-30"
+                          disabled={isLoading}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                      {errors.confirmPassword && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.confirmPassword.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error message */}
+                {error && (
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm text-destructive text-center">
+                      {error}
+                    </p>
+                  </div>
+                )}
+
+                {/* Submit button */}
+                <div className="flex justify-center pt-2">
+                  <Button
+                    type="submit"
+                    className="bg-gold hover:bg-gold-dim text-background font-medium py-4 px-12 text-base cursor-pointer"
+                    disabled={isLoading}
                   >
-                    Inicia sesión aquí
-                  </button>
-                </p>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                    {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
+                  </Button>
+                </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          © 2024 Mea Culpa - RPG Online
-        </p>
-      </div>
+                {/* Additional links */}
+                <div className="text-center space-y-1 pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    ¿Ya tienes una cuenta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => router.push("/login")}
+                      className="text-gold hover:text-gold-dim underline font-medium cursor-pointer"
+                    >
+                      Inicia sesión aquí
+                    </button>
+                  </p>
+                </div>
+              </form>
+            )}
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            © 2024 Mea Culpa - RPG Online
+          </p>
+        </div>
     </div>
   );
 }
