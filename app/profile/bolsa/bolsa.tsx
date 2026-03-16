@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import FantasyAlert from "@/components/ui/fantasy-alert";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
 
@@ -235,114 +236,126 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
   const equipped = buildEquippedMap(character);
   const bagItems = character.bag.items;
   const emptySlots = character.bag.maxSlots - bagItems.length;
+  const [noticeId, setNoticeId] = useState(0);
   const notifyOpenBag = () => {
-    alert('Para editar, presiona "Abrir Bolsa".');
+    setNoticeId((prev) => prev + 1);
   };
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{
-        background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
-        border: "1px solid #8B7355",
-      }}
-    >
+    <>
+      <FantasyAlert
+        key={noticeId}
+        open={noticeId > 0}
+        title="Modo solo lectura"
+        message='Para editar, presiona "Abrir Bolsa".'
+        variant="warning"
+        onClose={() => setNoticeId(0)}
+      />
+
       <div
-        className="px-4 py-3 border-b border-[#3a3020]"
+        className="rounded-xl overflow-hidden"
         style={{
-          background:
-            "linear-gradient(90deg, #0f0e0c 0%, #1e1c14 50%, #0f0e0c 100%)",
+          background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
+          border: "1px solid #8B7355",
         }}
       >
-        <h3 className="text-xs tracking-[0.2em] uppercase text-[#D4AF37]">
-          Equipo y Bolsa
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[300px,1fr] gap-0">
         <div
-          className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
-          style={{ background: "rgba(0,0,0,0.15)" }}
+          className="px-4 py-3 border-b border-[#3a3020]"
+          style={{
+            background:
+              "linear-gradient(90deg, #0f0e0c 0%, #1e1c14 50%, #0f0e0c 100%)",
+          }}
         >
-          <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
-            Personaje
-          </span>
-
-          <div className="relative w-65 h-92.5">
-            <svg
-              viewBox="0 0 280 380"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute inset-0 w-full h-full"
-            >
-              <defs>
-                <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2a2618" />
-                  <stop offset="100%" stopColor="#1a1610" />
-                </linearGradient>
-              </defs>
-              <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-              <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
-              <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-              <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
-            </svg>
-
-            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
-              <SlotButton
-                key={key}
-                slotKey={key}
-                item={equipped[key]}
-                selected={false}
-                onSelect={() => {}}
-                readOnly
-                onReadOnlyAttempt={notifyOpenBag}
-              />
-            ))}
-          </div>
+          <h3 className="text-xs tracking-[0.2em] uppercase text-[#D4AF37]">
+            Equipo y Bolsa
+          </h3>
         </div>
 
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
-              ⚜ Bolsa
-            </h3>
-            <span className="text-xs text-[#8a7a5a] font-sans">
-              {bagItems.length} / {character.bag.maxSlots} espacios
+        <div className="grid grid-cols-1 xl:grid-cols-[300px,1fr] gap-0">
+          <div
+            className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
+            style={{ background: "rgba(0,0,0,0.15)" }}
+          >
+            <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
+              Personaje
             </span>
+
+            <div className="relative w-65 h-92.5">
+              <svg
+                viewBox="0 0 280 380"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute inset-0 w-full h-full"
+              >
+                <defs>
+                  <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2a2618" />
+                    <stop offset="100%" stopColor="#1a1610" />
+                  </linearGradient>
+                </defs>
+                <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+                <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
+                <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+                <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+                <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
+              </svg>
+
+              {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
+                <SlotButton
+                  key={key}
+                  slotKey={key}
+                  item={equipped[key]}
+                  selected={false}
+                  onSelect={() => {}}
+                  readOnly
+                  onReadOnlyAttempt={notifyOpenBag}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
-            {bagItems.map((item, idx) => (
-              <BagItemCard
-                key={`${item.name}-${idx}`}
-                item={item}
-                selectedSlot={null}
-                onEquip={() => {}}
-                readOnly
-                onReadOnlyAttempt={notifyOpenBag}
-              />
-            ))}
-            {Array.from({ length: emptySlots }).map((_, i) => (
-              <div
-                key={`empty-${i}`}
-                className="flex items-center justify-center min-h-20 rounded-lg border border-dashed border-[#2a2518]/60"
-                style={{ background: "rgba(20,18,16,0.4)" }}
-              >
-                <span className="text-[10px] text-[#3a3020]">Vacío</span>
-              </div>
-            ))}
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
+                ⚜ Bolsa
+              </h3>
+              <span className="text-xs text-[#8a7a5a] font-sans">
+                {bagItems.length} / {character.bag.maxSlots} espacios
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
+              {bagItems.map((item, idx) => (
+                <BagItemCard
+                  key={`${item.name}-${idx}`}
+                  item={item}
+                  selectedSlot={null}
+                  onEquip={() => {}}
+                  readOnly
+                  onReadOnlyAttempt={notifyOpenBag}
+                />
+              ))}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div
+                  key={`empty-${i}`}
+                  className="flex items-center justify-center min-h-20 rounded-lg border border-dashed border-[#2a2518]/60"
+                  style={{ background: "rgba(20,18,16,0.4)" }}
+                >
+                  <span className="text-[10px] text-[#3a3020]">Vacío</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
