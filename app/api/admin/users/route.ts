@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
+import { normalizeAccountLevel } from "@/lib/accountLevel";
 
 // ─── GET /api/admin/users ─────────────────────────────────────────────────────
 // Devuelve todos los usuarios con sus datos de perfil y email.
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     email: emailMap.get(p.id) ?? "",
     name: p.nombre,
     role: p.rol,
-    level: p.nivel,
+    level: normalizeAccountLevel(p.nivel),
     gold: p.oro || 0,
     home: p.hogar,
     isAdmin: p.es_admin,
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { name, email, password, role, level } = body;
+  const normalizedLevel = normalizeAccountLevel(level ?? 1);
 
   if (!name?.trim() || !email?.trim() || !password?.trim()) {
     return NextResponse.json(
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     .update({
       nombre: name,
       rol: role ?? "Dungeon Explorer",
-      nivel: level ?? 1,
+      nivel: normalizedLevel,
     })
     .eq("id", created.user.id);
 
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
       email: created.user.email ?? "",
       name: (perfil as any)?.nombre ?? name,
       role: (perfil as any)?.rol ?? role,
-      level: (perfil as any)?.nivel ?? level,
+      level: normalizeAccountLevel((perfil as any)?.nivel ?? normalizedLevel),
       gold: (perfil as any)?.oro ?? 0,
       home: (perfil as any)?.hogar ?? "",
       isAdmin: false,
@@ -128,7 +130,7 @@ export async function PATCH(request: NextRequest) {
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.nombre = name;
   if (role !== undefined) updates.rol = role;
-  if (level !== undefined) updates.nivel = level;
+  if (level !== undefined) updates.nivel = normalizeAccountLevel(level);
 
   // Solo super_admin puede cambiar rol_sistema y es_admin
   if (rolSistema !== undefined) {
@@ -177,7 +179,7 @@ export async function PATCH(request: NextRequest) {
     email: authUser?.user?.email ?? "",
     name: (perfil as any)?.nombre,
     role: (perfil as any)?.rol,
-    level: (perfil as any)?.nivel,
+    level: normalizeAccountLevel((perfil as any)?.nivel),
     gold: (perfil as any)?.oro ?? 0,
     home: (perfil as any)?.hogar,
     isAdmin: (perfil as any)?.es_admin,

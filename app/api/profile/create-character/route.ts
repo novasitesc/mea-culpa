@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { calculateBagSlots } from "@/lib/types/character";
 
 // Generar stats basados en la clase primaria
 function generateStatsForClass(className: string) {
@@ -134,9 +135,8 @@ export async function POST(request: Request) {
     const primaryClass = multiclass[0].className;
     const stats = generateStatsForClass(primaryClass);
 
-    // Calcular capacidad de bolsa
-    const conModifier = Math.floor((stats.constitucion - 10) / 2);
-    const capacidadBolsa = Math.max(10 + conModifier, 10);
+    // Calcular capacidad de bolsa en base a fuerza
+    const capacidadBolsa = calculateBagSlots(stats.fuerza);
 
     // 1. Insertar personaje
     const { data: personaje, error: charErr } = await db

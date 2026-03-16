@@ -55,7 +55,7 @@ export default function LoginPage() {
   // Redirigir si ya está autenticado
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/profile");
+      router.push("/");
     }
   }, [isAuthenticated, router]);
 

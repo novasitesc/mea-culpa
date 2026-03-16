@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { normalizeAccountLevel } from "@/lib/accountLevel";
 
 export interface User {
   id: string;
@@ -93,7 +94,7 @@ export function useAuth() {
       email,
       name: data?.nombre ?? email,
       role: data?.rol ?? "Dungeon Explorer",
-      level: data?.nivel ?? 1,
+      level: normalizeAccountLevel(data?.nivel ?? 1),
       home: data?.hogar ?? "Sin hogar",
       oro: data?.oro ?? 0,
       isAdmin: data?.es_admin ?? false,

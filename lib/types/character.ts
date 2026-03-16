@@ -9,6 +9,7 @@ export type ItemType =
   | "collar"
   | "anillo"
   | "amuleto"
+  | "cinturón"
   | "arma";
 
 export type Item = {
@@ -28,6 +29,7 @@ export type AccessorySlots = {
   anillo1?: string;
   anillo2?: string;
   amuleto?: string;
+  cinturon?: string;
 };
 
 export type WeaponSlots = {
@@ -87,9 +89,9 @@ export type UpdateCharacterEquipmentInput = {
 export const MAX_CHARACTERS_PER_USER = 5;
 export const BASE_BAG_SLOTS = 10;
 
-// Función helper para calcular slots de bolsa
-export function calculateBagSlots(constitution: number): number {
-  const conModifier = Math.floor((constitution - 10) / 2);
-  const slots = BASE_BAG_SLOTS + conModifier;
+// Cada 2 puntos de fuerza otorgan +1 espacio sobre una base de 10.
+export function calculateBagSlots(strength: number): number {
+  const strModifier = Math.floor((strength - 10) / 2);
+  const slots = BASE_BAG_SLOTS + strModifier;
   return slots > 0 ? slots : BASE_BAG_SLOTS;
 }

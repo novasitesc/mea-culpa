@@ -12,6 +12,7 @@ import {
   Coins,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
+import { getAccountLevelTitle } from "@/lib/accountLevel";
 
 // Botones del header
 const headerButtons = [
@@ -132,7 +133,7 @@ export default function Header() {
               <p className="text-sm font-medium text-gold">{user.name}</p>
               <div className="flex items-center justify-end gap-2">
                 <p className="text-xs text-muted-foreground">
-                  Nivel {user.level}
+                  {getAccountLevelTitle(user.level)} (Nivel {user.level})
                 </p>
                 <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400">
                   <Coins className="w-3 h-3" />

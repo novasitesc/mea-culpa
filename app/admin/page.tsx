@@ -21,6 +21,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
+import FantasyAlert from "@/components/ui/fantasy-alert";
+import {
+  MAX_ACCOUNT_LEVEL,
+  MIN_ACCOUNT_LEVEL,
+  getAccountLevelTitle,
+  normalizeAccountLevel,
+} from "@/lib/accountLevel";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +63,7 @@ type AdminObject = {
   icon: string;
   itemType: string;
   rarity: string;
+  price: number;
   bonusStats: Record<string, unknown> | null;
   createdAt: string;
 };
@@ -150,6 +158,7 @@ const ITEM_TYPES = [
   "collar",
   "anillo",
   "amuleto",
+  "cinturón",
   "arma",
   "consumible",
   "ingrediente",
@@ -938,11 +947,14 @@ function PartidasTab({
                       min={0}
                       className={inputCls}
                       value={p.gold}
-                      onChange={(e) =>
-                        updateParticipant(p.id, {
-                          gold: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d+$/.test(val)) {
+                          updateParticipant(p.id, {
+                            gold: val === "" ? 0 : Math.max(0, Number(val)),
+                          });
+                        }
+                      }}
                     />
                   </FormField>
                   <FormField label="Comentario">
@@ -1107,11 +1119,14 @@ function PartidasTab({
                             min={1}
                             className={inputCls}
                             value={item.qty}
-                            onChange={(e) =>
-                              updateItem(p.id, item.id, {
-                                qty: Math.max(1, Number(e.target.value) || 1),
-                              })
-                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || /^\d+$/.test(val)) {
+                                updateItem(p.id, item.id, {
+                                  qty: val === "" ? 1 : Math.max(1, Number(val)),
+                                });
+                              }
+                            }}
                           />
                           <button
                             type="button"
@@ -1437,7 +1452,7 @@ function UsersTab({
                   Email <SortIcon field="email" />
                 </th>
                 <th className={thCls} onClick={() => handleSort("role")}>
-                  Rol <SortIcon field="role" />
+                  Gremio <SortIcon field="role" />
                 </th>
                 <th className={thCls} onClick={() => handleSort("level")}>
                   Nivel <SortIcon field="level" />
@@ -1481,7 +1496,9 @@ function UsersTab({
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center text-foreground">
-                    {u.level}
+                    <span title={getAccountLevelTitle(u.level)}>
+                      {normalizeAccountLevel(u.level)}
+                    </span>
                   </td>
                   <td className="px-3 py-3 text-center text-gold font-medium">
                     {u.gold}
@@ -1674,7 +1691,7 @@ function UserFormModal({
     password: "",
     // Editables siempre
     role: initial?.role ?? "",
-    level: initial?.level ?? 1,
+    level: normalizeAccountLevel(initial?.level ?? MIN_ACCOUNT_LEVEL),
   });
 
   const set = (key: string, val: unknown) =>
@@ -1684,14 +1701,18 @@ function UserFormModal({
     e.preventDefault();
     if (isEdit) {
       // En edición solo se envían nombre, rol y nivel
-      onSubmit({ name: form.name, role: form.role, level: form.level });
+      onSubmit({
+        name: form.name,
+        role: form.role,
+        level: normalizeAccountLevel(form.level),
+      });
     } else {
       onSubmit({
         name: form.name,
         email: form.email,
         password: form.password,
         role: form.role,
-        level: form.level,
+        level: normalizeAccountLevel(form.level),
       });
     }
   };
@@ -1746,7 +1767,7 @@ function UserFormModal({
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Rol / Clase">
+          <FormField label="Gremio">
             <input
               className={inputCls}
               value={form.role}
@@ -1758,11 +1779,16 @@ function UserFormModal({
             <input
               className={inputCls}
               type="number"
-              min={1}
-              max={99}
+              min={MIN_ACCOUNT_LEVEL}
+              max={MAX_ACCOUNT_LEVEL}
               value={form.level}
-              onChange={(e) => set("level", Number(e.target.value))}
+              onChange={(e) =>
+                set("level", normalizeAccountLevel(Number(e.target.value)))
+              }
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {getAccountLevelTitle(form.level)} (niveles {MIN_ACCOUNT_LEVEL}-{MAX_ACCOUNT_LEVEL})
+            </p>
           </FormField>
         </div>
 
@@ -1812,7 +1838,7 @@ function GoldFormModal({
   onSubmit: (data: { amount: number; reason: string; action: "add" | "remove" }) => void;
   loading: boolean;
 }) {
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>("");
   const [reason, setReason] = useState("");
   const [action, setAction] = useState<"add" | "remove">("add");
 
@@ -1824,7 +1850,8 @@ function GoldFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit({ amount, reason, action });
+          const amountNum = amount === "" ? 0 : Number(amount);
+          onSubmit({ amount: amountNum, reason, action });
         }}
         className="flex flex-col gap-4"
       >
@@ -1859,7 +1886,12 @@ function GoldFormModal({
             min="1"
             className={inputCls}
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                setAmount(val);
+              }
+            }}
             required
           />
         </FormField>
@@ -1882,7 +1914,7 @@ function GoldFormModal({
           </button>
           <button
             type="submit"
-            disabled={loading || amount <= 0}
+            disabled={loading || !amount || Number(amount) <= 0}
             className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -2067,7 +2099,7 @@ function CharactersFormModal({
                       <div className="space-y-2">
                         {editForm.clases.map((clase, idx) => (
                           <div key={idx} className="flex items-center gap-3">
-                            <span className="text-sm text-foreground min-w-[100px]">
+                            <span className="text-sm text-foreground min-w-25">
                               {clase.nombre_clase}
                             </span>
                             <div className="flex items-center gap-1">
@@ -2487,7 +2519,12 @@ function ShopFormModal({
             min={1}
             max={99}
             value={form.minLevel}
-            onChange={(e) => set("minLevel", e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                set("minLevel", val);
+              }
+            }}
             placeholder="Sin restricción"
           />
         </FormField>
@@ -2755,11 +2792,11 @@ function ShopItemFormModal({
   onClose: () => void;
   onSubmit: (data: {
     objetoId?: number;
-    precio: number;
     inventario: number | null;
     orden: number;
   }) => void;
 }) {
+  const [invalidObjectAlertId, setInvalidObjectAlertId] = useState(0);
   const [objetoId, setObjetoId] = useState<number>(
     initial?.objetoId ?? objects[0]?.id ?? 0,
   );
@@ -2768,30 +2805,31 @@ function ShopItemFormModal({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const [precio, setPrecio] = useState<number>(initial?.precio ?? 0);
   const [inventarioRaw, setInventarioRaw] = useState<string>(
     initial?.inventario === null || initial?.inventario === undefined
       ? ""
       : String(initial.inventario),
   );
-  const [orden, setOrden] = useState<number>(initial?.orden ?? 0);
+  const [orden, setOrden] = useState<string>(
+    initial?.orden || initial?.orden === 0 ? String(initial.orden) : ""
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (mode === "create" && !objetoId) {
-      alert("Selecciona un objeto válido");
+      setInvalidObjectAlertId((prev) => prev + 1);
       return;
     }
 
     const inventario =
       inventarioRaw.trim() === "" ? null : Number(inventarioRaw.trim());
+    const ordenNum = orden.trim() === "" ? 0 : Number(orden.trim());
 
     onSubmit({
       ...(mode === "create" ? { objetoId } : {}),
-      precio,
       inventario,
-      orden,
+      orden: ordenNum,
     });
   };
 
@@ -2806,12 +2844,22 @@ function ShopItemFormModal({
     .slice(0, 10);
 
   return (
-    <Modal
-      title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
-      maxWidth="max-w-2xl"
-      onClose={onClose}
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
+    <>
+      <FantasyAlert
+        key={invalidObjectAlertId}
+        open={invalidObjectAlertId > 0}
+        title="Objeto requerido"
+        message="Selecciona un objeto válido"
+        variant="warning"
+        onClose={() => setInvalidObjectAlertId(0)}
+      />
+
+      <Modal
+        title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
+        maxWidth="max-w-2xl"
+        onClose={onClose}
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
         {mode === "create" && (
           <FormField label="Objeto">
             <div className="relative">
@@ -2820,7 +2868,9 @@ function ShopItemFormModal({
                   <div className="flex items-center gap-2">
                     <span>{selectedObject.icon}</span>
                     <span className="font-medium text-foreground">{selectedObject.name}</span>
-                    <span className="text-muted-foreground text-xs">({selectedObject.itemType})</span>
+                    <span className="text-muted-foreground text-xs">
+                      ({selectedObject.itemType}) · {selectedObject.price.toLocaleString()} 🪙
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -2864,7 +2914,9 @@ function ShopItemFormModal({
                           >
                             <span>{obj.icon}</span>
                             <span className="font-medium">{obj.name}</span>
-                            <span className="text-muted-foreground text-xs">ID: {obj.id} • {obj.itemType}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ID: {obj.id} • {obj.itemType} • {obj.price.toLocaleString()} 🪙
+                            </span>
                           </div>
                         ))
                       )}
@@ -2876,24 +2928,19 @@ function ShopItemFormModal({
           </FormField>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <FormField label="Precio">
-            <input
-              className={inputCls}
-              type="number"
-              min={0}
-              value={precio}
-              onChange={(e) => setPrecio(Number(e.target.value))}
-              required
-            />
-          </FormField>
+        <div className="grid grid-cols-2 gap-3">
           <FormField label="Stock (vacío=ilimitado)">
             <input
               className={inputCls}
               type="number"
               min={0}
               value={inventarioRaw}
-              onChange={(e) => setInventarioRaw(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  setInventarioRaw(val);
+                }
+              }}
               placeholder="∞"
             />
           </FormField>
@@ -2903,7 +2950,12 @@ function ShopItemFormModal({
               type="number"
               min={0}
               value={orden}
-              onChange={(e) => setOrden(Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  setOrden(val);
+                }
+              }}
             />
           </FormField>
         </div>
@@ -2925,8 +2977,9 @@ function ShopItemFormModal({
             {mode === "create" ? "Añadir" : "Guardar"}
           </button>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }
 
@@ -3021,9 +3074,12 @@ function ObjectsTab({
               </p>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
-                <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
-                  {obj.rarity}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
+                    {obj.rarity}
+                  </span>
+                  <span className="text-gold">{obj.price.toLocaleString()} 🪙</span>
+                </div>
                 <span>{formatDate(obj.createdAt)}</span>
               </div>
             </div>
@@ -3129,6 +3185,7 @@ function ObjectFormModal({
     icon: initial?.icon ?? "📦",
     itemType: initial?.itemType ?? "misc",
     rarity: initial?.rarity ?? "común",
+    price: initial?.price ? String(initial.price) : "",
     bonusStats: initial?.bonusStats
       ? JSON.stringify(initial.bonusStats, null, 2)
       : "",
@@ -3152,12 +3209,15 @@ function ObjectFormModal({
       }
     }
 
+    const priceNum = form.price === "" ? 0 : Number(form.price);
+
     onSubmit({
       name: form.name,
       description: form.description,
       icon: form.icon,
       itemType: form.itemType,
       rarity: form.rarity,
+      price: priceNum,
       bonusStats: parsedBonus,
     });
   };
@@ -3223,6 +3283,22 @@ function ObjectFormModal({
                 </option>
               ))}
             </select>
+          </FormField>
+
+          <FormField label="Precio base">
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={form.price}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  set("price", val === "" ? "" : Number(val));
+                }
+              }}
+              required
+            />
           </FormField>
         </div>
 

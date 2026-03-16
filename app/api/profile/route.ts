@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { normalizeAccountLevel } from "@/lib/accountLevel";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -34,10 +35,10 @@ export async function GET(request: Request) {
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
         cabeza, pecho, guante, botas,
-        collar, anillo1, anillo2, amuleto,
+        collar, anillo1, anillo2, amuleto, cinturon,
         mano_izquierda, mano_derecha
       ),
-      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item ) )
+      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item, precio ) )
     `,
     )
     .eq("usuario_id", userId)
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
       equip.anillo1,
       equip.anillo2,
       equip.amuleto,
+      equip.cinturon,
       equip.mano_izquierda,
       equip.mano_derecha,
     ]) {
@@ -65,12 +67,16 @@ export async function GET(request: Request) {
   }
 
   const equipIdToName = new Map<number, string>();
+  const equipIdToPrice = new Map<number, number>();
   if (allEquipIds.size > 0) {
     const { data: objEquip } = await db
       .from("objetos")
-      .select("id, nombre")
+      .select("id, nombre, precio")
       .in("id", Array.from(allEquipIds));
-    for (const o of objEquip ?? []) equipIdToName.set(o.id, o.nombre);
+    for (const o of objEquip ?? []) {
+      equipIdToName.set(o.id, o.nombre);
+      equipIdToPrice.set(o.id, o.precio ?? 0);
+    }
   }
 
   // Transformar a la forma que espera el frontend
@@ -80,6 +86,26 @@ export async function GET(request: Request) {
     const clases = (p.clases_personaje ?? []).sort(
       (a: any, b: any) => a.orden - b.orden,
     );
+
+    const equipmentPriceByName: Record<string, number> = {};
+    for (const id of [
+      equip?.cabeza,
+      equip?.pecho,
+      equip?.guante,
+      equip?.botas,
+      equip?.collar,
+      equip?.anillo1,
+      equip?.anillo2,
+      equip?.amuleto,
+      equip?.cinturon,
+      equip?.mano_izquierda,
+      equip?.mano_derecha,
+    ]) {
+      if (id == null) continue;
+      const name = equipIdToName.get(id);
+      if (!name) continue;
+      equipmentPriceByName[name] = equipIdToPrice.get(id) ?? 0;
+    }
 
     return {
       id: p.id,
@@ -120,6 +146,8 @@ export async function GET(request: Request) {
           equip?.anillo2 != null ? equipIdToName.get(equip.anillo2) : undefined,
         amuleto:
           equip?.amuleto != null ? equipIdToName.get(equip.amuleto) : undefined,
+        cinturon:
+          equip?.cinturon != null ? equipIdToName.get(equip.cinturon) : undefined,
       },
       weapons: {
         manoIzquierda:
@@ -131,12 +159,14 @@ export async function GET(request: Request) {
             ? equipIdToName.get(equip.mano_derecha)
             : undefined,
       },
+          equipmentPriceByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
           .sort((a: any, b: any) => a.orden - b.orden)
           .map((bi: any) => ({
             name: bi.objetos?.nombre ?? "Objeto desconocido",
             type: bi.objetos?.tipo_item ?? "misc",
+            price: bi.objetos?.precio ?? 0,
           })),
         maxSlots: p.capacidad_bolsa,
       },
@@ -147,7 +177,7 @@ export async function GET(request: Request) {
     player: {
       name: perfil?.nombre ?? "Aventurero",
       role: perfil?.rol ?? "Dungeon Explorer",
-      level: perfil?.nivel ?? 1,
+      level: normalizeAccountLevel(perfil?.nivel ?? 1),
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
     },

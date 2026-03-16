@@ -9,6 +9,7 @@ const VALID_TYPES = [
   "collar",
   "anillo",
   "amuleto",
+  "cinturón",
   "arma",
   "consumible",
   "ingrediente",
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
     .order("creado_en", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -76,6 +77,7 @@ export async function GET(request: NextRequest) {
       icon: o.icono,
       itemType: o.tipo_item,
       rarity: mapRarityFromDb(o.rareza),
+      price: o.precio,
       bonusStats: o.bono_estadisticas,
       createdAt: o.creado_en,
     })),
@@ -89,13 +91,16 @@ export async function POST(request: NextRequest) {
   const { db } = result.session;
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, bonusStats } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Nombre obligatorio" }, { status: 400 });
   }
   if (!itemType || !VALID_TYPES.includes(itemType)) {
     return NextResponse.json({ error: "Tipo de objeto invalido" }, { status: 400 });
+  }
+  if (typeof price !== "number" || Number.isNaN(price) || price < 0) {
+    return NextResponse.json({ error: "Precio invalido" }, { status: 400 });
   }
 
   const rarityNormalized = normalizeRarity(rarity ?? "común");
@@ -108,9 +113,10 @@ export async function POST(request: NextRequest) {
       icono: icon?.trim() || "📦",
       tipo_item: itemType,
       rareza: rarityNormalized,
+      precio: Number(price),
       bono_estadisticas: bonusStats ?? null,
     })
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -123,6 +129,7 @@ export async function POST(request: NextRequest) {
       icon: (data as any).icono,
       itemType: (data as any).tipo_item,
       rarity: mapRarityFromDb((data as any).rareza),
+      price: (data as any).precio,
       bonusStats: (data as any).bono_estadisticas,
       createdAt: (data as any).creado_en,
     },
@@ -143,7 +150,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, bonusStats } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats } = body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.nombre = name;
@@ -162,6 +169,12 @@ export async function PATCH(request: NextRequest) {
     }
     updates.rareza = normalized;
   }
+  if (price !== undefined) {
+    if (typeof price !== "number" || Number.isNaN(price) || price < 0) {
+      return NextResponse.json({ error: "Precio invalido" }, { status: 400 });
+    }
+    updates.precio = Number(price);
+  }
   if (bonusStats !== undefined) updates.bono_estadisticas = bonusStats;
 
   const { error } = await db.from("objetos").update(updates).eq("id", Number(id));
@@ -169,7 +182,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
     .eq("id", Number(id))
     .single();
 
@@ -180,6 +193,7 @@ export async function PATCH(request: NextRequest) {
     icon: (data as any).icono,
     itemType: (data as any).tipo_item,
     rarity: mapRarityFromDb((data as any).rareza),
+    price: (data as any).precio,
     bonusStats: (data as any).bono_estadisticas,
     createdAt: (data as any).creado_en,
   });

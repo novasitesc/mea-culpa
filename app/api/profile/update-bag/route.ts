@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         accessories?.anillo1,
         accessories?.anillo2,
         accessories?.amuleto,
+        accessories?.cinturon,
         weapons?.manoIzquierda,
         weapons?.manoDerecha,
       ].filter((v): v is string => typeof v === "string" && v.trim() !== "");
@@ -83,6 +84,9 @@ export async function POST(request: Request) {
           : null;
         equipUpdate.amuleto = accessories.amuleto
           ? (nameToId.get(accessories.amuleto) ?? null)
+          : null;
+        equipUpdate.cinturon = accessories.cinturon
+          ? (nameToId.get(accessories.cinturon) ?? null)
           : null;
       }
       if (weapons) {
