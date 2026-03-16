@@ -453,7 +453,7 @@ export default function TiendasPage() {
                           }`}
                         >
                           <img
-                            src={char.portrait}
+                            src={char.portrait || "/characters/profileplaceholder.webp"}
                             alt={char.name}
                             className="w-12 h-12 rounded object-cover shrink-0 bg-secondary"
                           />

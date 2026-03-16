@@ -459,7 +459,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
                     <Image
-                      src={character.portrait}
+                      src={character.portrait || "/characters/profileplaceholder.webp"}
                       alt={`${character.name} portrait`}
                       fill
                       className="object-cover"

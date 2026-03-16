@@ -32,7 +32,7 @@ CREATE TABLE characters (
   race VARCHAR(100) NOT NULL,
   alignment VARCHAR(100) NOT NULL,
   background VARCHAR(100) NOT NULL,
-  portrait VARCHAR(500) DEFAULT '/characters/default-portrait.png',
+  portrait VARCHAR(500) DEFAULT '/characters/profileplaceholder.webp',
   
   -- Stats como JSON o columnas separadas
   stats JSON NOT NULL,
@@ -67,7 +67,7 @@ export const characters = pgTable('characters', {
   race: varchar('race', { length: 100 }).notNull(),
   alignment: varchar('alignment', { length: 100 }).notNull(),
   background: varchar('background', { length: 100 }).notNull(),
-  portrait: varchar('portrait', { length: 500 }).default('/characters/default-portrait.png'),
+  portrait: varchar('portrait', { length: 500 }).default('/characters/profileplaceholder.webp'),
   stats: json('stats').$type<Record<string, number>>().notNull(),
   armor: json('armor').$type<ArmorSlots>().notNull(),
   accessories: json('accessories').$type<AccessorySlots>().notNull(),
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
     race,
     alignment,
     background,
-    portrait: "/characters/default-portrait.png",
+    portrait: "/characters/profileplaceholder.webp",
     stats,
     armor,
     accessories,
