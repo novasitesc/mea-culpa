@@ -1351,6 +1351,7 @@ function UsersTab({
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
   const [sortAsc, setSortAsc] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -1394,14 +1395,29 @@ function UsersTab({
   const thCls =
     "px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
 
+  const filtered = users.filter((u) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      u.name.toLowerCase().includes(search) ||
+      u.email.toLowerCase().includes(search) ||
+      u.role.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header de sección */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {users.length} usuario{users.length !== 1 ? "s" : ""} registrado
-          {users.length !== 1 ? "s" : ""}
+          {filtered.length} de {users.length} usuario{users.length !== 1 ? "s" : ""}
         </p>
+        <input
+          type="text"
+          placeholder="Buscar por nombre, email o rol..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 max-w-xs px-3 py-2 rounded border border-border bg-secondary/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+        />
       </div>
 
       {/* Tabla */}
@@ -1441,7 +1457,14 @@ function UsersTab({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((u, i) => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                    No se encontraron usuarios que coincidan con "{searchTerm}"
+                  </td>
+                </tr>
+              ) : (
+                sorted.filter((u) => filtered.includes(u)).map((u, i) => (
                 <tr
                   key={u.id}
                   className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors ${
@@ -1496,7 +1519,8 @@ function UsersTab({
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
