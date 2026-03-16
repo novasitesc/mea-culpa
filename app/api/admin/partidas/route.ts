@@ -100,21 +100,138 @@ export async function POST(request: NextRequest) {
     cantidad: number;
   }[] = [];
 
-  (participants ?? []).forEach((p) => {
+  for (const p of participants) {
     const personajeId = Number(p.characterId);
-    if (!Number.isFinite(personajeId)) return;
+    const usuarioId = userMap.get(personajeId);
+    if (!Number.isFinite(personajeId) || !usuarioId) continue;
+
+    const itemMap = new Map<number, number>();
     for (const item of p.items ?? []) {
       const objectId = Number(item.objectId);
       if (!Number.isFinite(objectId)) continue;
       const qty = Math.max(1, Number(item.qty ?? 1) || 1);
-      itemsPayload.push({
-        personaje_id: personajeId,
-        objeto_id: objectId,
-        origen: "admin",
-        cantidad: qty,
-      });
+      itemMap.set(objectId, (itemMap.get(objectId) ?? 0) + qty);
     }
-  });
+
+    const uniqueObjectIds = Array.from(itemMap.keys());
+
+    if (uniqueObjectIds.length > 0) {
+      const { data: personaje, error: personajeError } = await session.db
+        .from("personajes")
+        .select("capacidad_bolsa")
+        .eq("id", personajeId)
+        .single();
+
+      if (personajeError || !personaje) {
+        return NextResponse.json(
+          { error: "No se pudo cargar la capacidad de bolsa" },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingItems, error: existingError } = await session.db
+        .from("bolsa_objetos")
+        .select("id, objeto_id, cantidad")
+        .eq("personaje_id", personajeId)
+        .in("objeto_id", uniqueObjectIds);
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 });
+      }
+
+      const existingMap = new Map<number, { id: number; cantidad: number }>();
+      for (const row of existingItems ?? []) {
+        existingMap.set((row as any).objeto_id, {
+          id: (row as any).id,
+          cantidad: (row as any).cantidad,
+        });
+      }
+
+      const { count: bagCount, error: bagCountError } = await session.db
+        .from("bolsa_objetos")
+        .select("id", { count: "exact", head: true })
+        .eq("personaje_id", personajeId);
+
+      if (bagCountError) {
+        return NextResponse.json({ error: bagCountError.message }, { status: 500 });
+      }
+
+      const newSlotsNeeded = uniqueObjectIds.filter(
+        (id) => !existingMap.has(id),
+      ).length;
+
+      if ((bagCount ?? 0) + newSlotsNeeded > (personaje as any).capacidad_bolsa) {
+        return NextResponse.json(
+          { error: "Bolsa llena para uno de los personajes" },
+          { status: 400 },
+        );
+      }
+
+      const { data: maxOrdenRow, error: maxOrdenError } = await session.db
+        .from("bolsa_objetos")
+        .select("orden")
+        .eq("personaje_id", personajeId)
+        .order("orden", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (maxOrdenError) {
+        return NextResponse.json({ error: maxOrdenError.message }, { status: 500 });
+      }
+
+      let nextOrden = maxOrdenRow?.orden ?? -1;
+
+      for (const [objectId, qty] of itemMap.entries()) {
+        const existing = existingMap.get(objectId);
+        if (existing) {
+          const { error: updateError } = await session.db
+            .from("bolsa_objetos")
+            .update({ cantidad: existing.cantidad + qty })
+            .eq("id", existing.id);
+
+          if (updateError) {
+            return NextResponse.json({ error: updateError.message }, { status: 500 });
+          }
+        } else {
+          nextOrden += 1;
+          const { error: insertError } = await session.db
+            .from("bolsa_objetos")
+            .insert({
+              personaje_id: personajeId,
+              objeto_id: objectId,
+              cantidad: qty,
+              orden: nextOrden,
+            });
+
+          if (insertError) {
+            return NextResponse.json({ error: insertError.message }, { status: 500 });
+          }
+        }
+
+        itemsPayload.push({
+          personaje_id: personajeId,
+          objeto_id: objectId,
+          origen: "admin",
+          cantidad: qty,
+        });
+      }
+    }
+
+    const goldDelta = Math.max(0, Number(p.gold ?? 0) || 0);
+    if (goldDelta > 0) {
+      const { error: goldError } = await session.db.rpc("modificar_oro", {
+        p_usuario_id: usuarioId,
+        p_delta: goldDelta,
+        p_concepto: `partida:${title}`,
+        p_referencia: (partida as any).id,
+        p_admin_id: session.userId,
+      });
+
+      if (goldError) {
+        return NextResponse.json({ error: goldError.message }, { status: 500 });
+      }
+    }
+  }
 
   if (itemsPayload.length > 0) {
     const { error: itemsError } = await session.db
