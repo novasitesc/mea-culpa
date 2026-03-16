@@ -964,30 +964,7 @@ export default function ProfilePage() {
                             </option>
                           ))}
                       </select>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          Nv.
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={entry.level}
-                          onChange={(e) => {
-                            const val = Math.max(
-                              1,
-                              Math.min(20, Number(e.target.value)),
-                            );
-                            setNewCharacter((prev) => ({
-                              ...prev,
-                              multiclass: prev.multiclass.map((c, i) =>
-                                i === idx ? { ...c, level: val } : c,
-                              ),
-                            }));
-                          }}
-                          className="w-14 px-2 py-2 rounded border border-border bg-secondary/30 text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        />
-                      </div>
+
                       {newCharacter.multiclass.length > 1 && (
                         <button
                           type="button"
