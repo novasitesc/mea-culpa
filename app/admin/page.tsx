@@ -219,10 +219,10 @@ function Toast({
 }) {
   return (
     <div
-      className={`fixed bottom-6 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
+      className={`fixed bottom-6 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
         type === "success"
-          ? "bg-green-900/90 border border-green-700 text-green-200"
-          : "bg-destructive/90 border border-destructive text-white"
+          ? "bg-[#1A100E] border border-[#1A100E] text-white"
+          : "bg-[#1A100E] border border-[#1A100E] text-white"
       }`}
     >
       {type === "success" ? (
@@ -1515,6 +1515,7 @@ function ShopItemsModal({
           objects={objects}
           loading={actionLoading}
           onClose={() => setCreateOpen(false)}
+          onToast={onToast}
           onSubmit={async (payload) => {
             setActionLoading(true);
             const res = await fetch("/api/admin/tiendas/articulos", {
@@ -1543,6 +1544,7 @@ function ShopItemsModal({
           initial={editTarget}
           loading={actionLoading}
           onClose={() => setEditTarget(null)}
+          onToast={onToast}
           onSubmit={async (payload) => {
             setActionLoading(true);
             const res = await fetch(
@@ -1604,6 +1606,7 @@ function ShopItemFormModal({
   loading,
   onClose,
   onSubmit,
+  onToast,
 }: {
   mode: "create" | "edit";
   objects: AdminObject[];
@@ -1616,6 +1619,7 @@ function ShopItemFormModal({
     inventario: number | null;
     orden: number;
   }) => void;
+  onToast: (msg: string, type: "success" | "error") => void;
 }) {
   const [objetoId, setObjetoId] = useState<number>(
     initial?.objetoId ?? objects[0]?.id ?? 0,
@@ -1637,7 +1641,7 @@ function ShopItemFormModal({
     e.preventDefault();
 
     if (mode === "create" && !objetoId) {
-      alert("Selecciona un objeto válido");
+      onToast("Selecciona un objeto válido", "error");
       return;
     }
 

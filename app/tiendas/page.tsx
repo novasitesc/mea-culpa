@@ -92,6 +92,7 @@ const RARITY_BADGE: Record<ItemRarity, string> = {
 
 export default function TiendasPage() {
   const { user, refreshUser } = useAuth();
+  const [currentOro, setCurrentOro] = useState<number>(user?.oro ?? 0);
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
@@ -132,6 +133,12 @@ export default function TiendasPage() {
         ),
       );
   }, [user?.id]);
+
+  useEffect(() => {
+    if (typeof user?.oro === "number") {
+      setCurrentOro(user.oro);
+    }
+  }, [user?.oro]);
 
   // Cargar tienda seleccionada con sus items
   const openShop = (id: string) => {
@@ -189,7 +196,7 @@ export default function TiendasPage() {
 
   const cartTotal = cart.reduce((sum, e) => sum + e.price * e.qty, 0);
   const cartCount = cart.reduce((sum, e) => sum + e.qty, 0);
-  const canAfford = (user?.oro ?? 0) >= cartTotal && cartTotal > 0;
+  const canAfford = currentOro >= cartTotal && cartTotal > 0;
 
   const handleBuy = () => {
     setBuyError(null);
@@ -241,9 +248,14 @@ export default function TiendasPage() {
             : c,
         ),
       );
+
+      // Actualizar el balance mostrado inmediatamente
+      const newOro = data.oro ?? currentOro;
+      setCurrentOro(newOro);
       await refreshUser();
+
       showNotification(
-        `✅ Compra completada · Saldo: ${(data.oro ?? 0).toLocaleString()} 🪙`,
+        `✅ Compra completada · Saldo: ${newOro.toLocaleString()} 🪙`,
       );
     } catch {
       setBuyError("Error de conexión. Intenta de nuevo.");
@@ -375,7 +387,7 @@ export default function TiendasPage() {
                   <p className="text-xs text-destructive text-center">
                     Te faltan{" "}
                     <strong>
-                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} 🪙
+                      {(cartTotal - currentOro).toLocaleString()} 🪙
                     </strong>{" "}
                     para esta compra
                   </p>

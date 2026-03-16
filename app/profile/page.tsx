@@ -89,6 +89,42 @@ export default function ProfilePage() {
     background: "",
     alignment: "",
   });
+  const [notifications, setNotifications] = useState<{id: number, type: 'success' | 'error' | 'warning', message: string}[]>([]);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const addNotification = (type: 'success' | 'error' | 'warning', message: string) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, {id, type, message}]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
+
+  const getNotificationClasses = (type: 'success' | 'error' | 'warning') => {
+    switch (type) {
+      case 'success':
+        return 'bg-[#1A100E] border-[#1A100E] text-white';
+      case 'error':
+        return 'bg-[#1A100E] border-[#1A100E] text-white';
+      case 'warning':
+        return 'bg-[#1A100E] border-[#1A100E] text-white';
+      default:
+        return '';
+    }
+  };
+
+  const getNotificationTitle = (type: 'success' | 'error' | 'warning') => {
+    switch (type) {
+      case 'success':
+        return 'Éxito';
+      case 'error':
+        return 'Error';
+      case 'warning':
+        return 'Advertencia';
+      default:
+        return '';
+    }
+  };
 
   const saveBagChanges = async (characterId: number) => {
     if (!profile || !user || !currentCharacter) return;
@@ -132,7 +168,7 @@ export default function ProfilePage() {
       setOpenBagModal(null);
     } catch (error) {
       console.error('Error saving bag changes:', error);
-      alert('Error al guardar los cambios. Inténtalo de nuevo.');
+      addNotification('error', 'Error al guardar los cambios. Inténtalo de nuevo.');
     } finally {
       setIsSaving(false);
     }
@@ -143,17 +179,17 @@ export default function ProfilePage() {
 
     // Validación del límite de personajes
     if (profile.characters.length >= 5) {
-      alert('Has alcanzado el límite máximo de 5 personajes por cuenta.');
+      setCreateError('Has alcanzado el límite máximo de 5 personajes por cuenta.');
       return;
     }
 
     // Validación de campos
     if (!newCharacter.name.trim()) {
-      alert('Por favor ingresa un nombre para el personaje');
+      setCreateError('Por favor ingresa un nombre para el personaje');
       return;
     }
     if (!newCharacter.race || !newCharacter.className || !newCharacter.background || !newCharacter.alignment) {
-      alert('Por favor completa todos los campos');
+      setCreateError('Por favor completa todos los campos');
       return;
     }
 
@@ -193,11 +229,11 @@ export default function ProfilePage() {
       setShowCreateModal(false);
       
       // Mostrar mensaje de éxito
-      alert('¡Personaje creado exitosamente!');
+      addNotification('success', '¡Personaje creado exitosamente!');
     } catch (error) {
       console.error('Error creating character:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      alert(`Error al crear el personaje: ${errorMessage}`);
+      setCreateError(`Error al crear el personaje: ${errorMessage}`);
     } finally {
       setIsCreating(false);
     }
@@ -270,7 +306,7 @@ export default function ProfilePage() {
       setCurrentCharacter(updatedCharacter);
       setBagItems((prev) => prev.filter((i) => i.name !== item.name));
     } else {
-      alert(`No hay espacio disponible para equipar ${item.name}`);
+      addNotification('warning', `No hay espacio disponible para equipar ${item.name}`);
     }
   };
 
@@ -279,7 +315,7 @@ export default function ProfilePage() {
 
     // Verificar si hay espacio en la bolsa
     if (bagItems.length >= (currentCharacter.bag.maxSlots)) {
-      alert('La bolsa está llena. No puedes desequipar este item.');
+      addNotification('warning', 'La bolsa está llena. No puedes desequipar este item.');
       return;
     }
 
@@ -385,7 +421,10 @@ export default function ProfilePage() {
                 </span>
                 <button 
                   disabled={characters.length >= 5}
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => {
+                    setShowCreateModal(true);
+                    setCreateError(null);
+                  }}
                   className={`px-4 py-2 rounded font-semibold text-sm transition-all ${
                     characters.length >= 5
                       ? 'bg-secondary text-muted-foreground cursor-not-allowed'
@@ -652,6 +691,22 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Notificaciones */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map(notification => (
+          <div key={notification.id} className={`p-4 rounded-xl border-l-4 shadow-lg ${getNotificationClasses(notification.type)}`} role="alert">
+            <p className="font-bold">{getNotificationTitle(notification.type)}</p>
+            <p>{notification.message}</p>
+            <button 
+              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))} 
+              className="absolute top-2 right-2 text-lg hover:text-foreground/80"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* Modal de Crear Personaje */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/20 p-4">
@@ -663,6 +718,15 @@ export default function ProfilePage() {
               ×
             </button>
             <h2 className="text-2xl font-bold mb-6 text-[#D4AF37] uppercase tracking-wider">Crear Nuevo Personaje</h2>
+            
+            {createError && (
+              <div
+                className="mb-4 p-3 rounded border text-white"
+                style={{ backgroundColor: '#810707', borderColor: '#810707' }}
+              >
+                {createError}
+              </div>
+            )}
             
             <div className="space-y-4">
               <div>
@@ -777,6 +841,7 @@ export default function ProfilePage() {
                         background: "",
                         alignment: "",
                       });
+                      setCreateError(null);
                     }}
                     disabled={isCreating}
                     className="flex-1 px-4 py-2 rounded border border-border bg-secondary text-foreground font-semibold hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
