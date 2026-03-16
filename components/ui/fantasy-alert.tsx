@@ -44,28 +44,28 @@ export default function FantasyAlert({
   if (!open) return null;
 
   return (
-    <div className="fixed top-5 right-5 z-90 pointer-events-none">
+    <div className="fixed top-6 right-6 z-90 pointer-events-none">
       <div
         className={cn(
-          "pointer-events-auto min-w-65 max-w-90 rounded-md border shadow-2xl",
-          "backdrop-blur-sm px-4 py-3",
+          "pointer-events-auto min-w-96 max-w-140 rounded-xl border shadow-2xl",
+          "backdrop-blur-sm px-6 py-5",
           "animate-in slide-in-from-top-2 fade-in duration-200",
           VARIANT_STYLES[variant],
           className,
         )}
       >
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-2 w-2 rounded-full bg-current/80" />
+        <div className="flex items-start gap-4">
+          <div className="mt-1 h-3 w-3 rounded-full bg-current/80" />
           <div className="flex-1">
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold opacity-90">
+            <p className="text-sm uppercase tracking-[0.22em] font-semibold opacity-90">
               {title}
             </p>
-            <p className="text-sm mt-1 leading-snug">{message}</p>
+            <p className="text-lg mt-2 leading-snug">{message}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-6 w-6 rounded text-sm hover:bg-white/10 transition-colors"
+            className="h-8 w-8 rounded text-lg hover:bg-white/10 transition-colors"
             aria-label="Cerrar alerta"
           >
             ×
