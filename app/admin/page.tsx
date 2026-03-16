@@ -947,11 +947,14 @@ function PartidasTab({
                       min={0}
                       className={inputCls}
                       value={p.gold}
-                      onChange={(e) =>
-                        updateParticipant(p.id, {
-                          gold: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d+$/.test(val)) {
+                          updateParticipant(p.id, {
+                            gold: val === "" ? 0 : Math.max(0, Number(val)),
+                          });
+                        }
+                      }}
                     />
                   </FormField>
                   <FormField label="Comentario">
@@ -1116,11 +1119,14 @@ function PartidasTab({
                             min={1}
                             className={inputCls}
                             value={item.qty}
-                            onChange={(e) =>
-                              updateItem(p.id, item.id, {
-                                qty: Math.max(1, Number(e.target.value) || 1),
-                              })
-                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || /^\d+$/.test(val)) {
+                                updateItem(p.id, item.id, {
+                                  qty: val === "" ? 1 : Math.max(1, Number(val)),
+                                });
+                              }
+                            }}
                           />
                           <button
                             type="button"
@@ -1832,7 +1838,7 @@ function GoldFormModal({
   onSubmit: (data: { amount: number; reason: string; action: "add" | "remove" }) => void;
   loading: boolean;
 }) {
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>("");
   const [reason, setReason] = useState("");
   const [action, setAction] = useState<"add" | "remove">("add");
 
@@ -1844,7 +1850,8 @@ function GoldFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit({ amount, reason, action });
+          const amountNum = amount === "" ? 0 : Number(amount);
+          onSubmit({ amount: amountNum, reason, action });
         }}
         className="flex flex-col gap-4"
       >
@@ -1879,7 +1886,12 @@ function GoldFormModal({
             min="1"
             className={inputCls}
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                setAmount(val);
+              }
+            }}
             required
           />
         </FormField>
@@ -1902,7 +1914,7 @@ function GoldFormModal({
           </button>
           <button
             type="submit"
-            disabled={loading || amount <= 0}
+            disabled={loading || !amount || Number(amount) <= 0}
             className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -2507,7 +2519,12 @@ function ShopFormModal({
             min={1}
             max={99}
             value={form.minLevel}
-            onChange={(e) => set("minLevel", e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) {
+                set("minLevel", val);
+              }
+            }}
             placeholder="Sin restricción"
           />
         </FormField>
@@ -2918,7 +2935,12 @@ function ShopItemFormModal({
               type="number"
               min={0}
               value={inventarioRaw}
-              onChange={(e) => setInventarioRaw(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  setInventarioRaw(val);
+                }
+              }}
               placeholder="∞"
             />
           </FormField>
