@@ -100,18 +100,22 @@ const ITEM_ICONS: Partial<Record<ItemType, string>> = {
 type EquippedMap = Record<SlotKey, Item | null>;
 
 function buildEquippedMap(character: Character): EquippedMap {
+  const equipmentPriceByName =
+    ((character as { equipmentPriceByName?: Record<string, number> })
+      .equipmentPriceByName ?? {}) as Record<string, number>;
+
   return {
-    cabeza:      character.armor.cabeza      ? { name: character.armor.cabeza,      type: "cabeza"   } : null,
-    pecho:       character.armor.pecho       ? { name: character.armor.pecho,       type: "pecho"    } : null,
-    manos:       character.armor.guante      ? { name: character.armor.guante,      type: "guante"   } : null,
-    pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas"    } : null,
-    colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar"  } :
-                 character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto" } : null,
-    cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón" } : null,
-    anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo"  } : null,
-    anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo"  } : null,
-    manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma" } : null,
-    manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma" } : null,
+    cabeza:      character.armor.cabeza      ? { name: character.armor.cabeza,      type: "cabeza",   price: equipmentPriceByName[character.armor.cabeza] } : null,
+    pecho:       character.armor.pecho       ? { name: character.armor.pecho,       type: "pecho",    price: equipmentPriceByName[character.armor.pecho] } : null,
+    manos:       character.armor.guante      ? { name: character.armor.guante,      type: "guante",   price: equipmentPriceByName[character.armor.guante] } : null,
+    pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas",    price: equipmentPriceByName[character.armor.botas] } : null,
+    colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar",  price: equipmentPriceByName[character.accessories.collar] } :
+                 character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto", price: equipmentPriceByName[character.accessories.amuleto] } : null,
+    cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón", price: equipmentPriceByName[character.accessories.cinturon] } : null,
+    anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo1] } : null,
+    anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo2] } : null,
+    manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma", price: equipmentPriceByName[character.weapons.manoIzquierda] } : null,
+    manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma", price: equipmentPriceByName[character.weapons.manoDerecha] } : null,
   };
 }
 

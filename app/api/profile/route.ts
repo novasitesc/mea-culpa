@@ -67,12 +67,16 @@ export async function GET(request: Request) {
   }
 
   const equipIdToName = new Map<number, string>();
+  const equipIdToPrice = new Map<number, number>();
   if (allEquipIds.size > 0) {
     const { data: objEquip } = await db
       .from("objetos")
-      .select("id, nombre")
+      .select("id, nombre, precio")
       .in("id", Array.from(allEquipIds));
-    for (const o of objEquip ?? []) equipIdToName.set(o.id, o.nombre);
+    for (const o of objEquip ?? []) {
+      equipIdToName.set(o.id, o.nombre);
+      equipIdToPrice.set(o.id, o.precio ?? 0);
+    }
   }
 
   // Transformar a la forma que espera el frontend
@@ -82,6 +86,26 @@ export async function GET(request: Request) {
     const clases = (p.clases_personaje ?? []).sort(
       (a: any, b: any) => a.orden - b.orden,
     );
+
+    const equipmentPriceByName: Record<string, number> = {};
+    for (const id of [
+      equip?.cabeza,
+      equip?.pecho,
+      equip?.guante,
+      equip?.botas,
+      equip?.collar,
+      equip?.anillo1,
+      equip?.anillo2,
+      equip?.amuleto,
+      equip?.cinturon,
+      equip?.mano_izquierda,
+      equip?.mano_derecha,
+    ]) {
+      if (id == null) continue;
+      const name = equipIdToName.get(id);
+      if (!name) continue;
+      equipmentPriceByName[name] = equipIdToPrice.get(id) ?? 0;
+    }
 
     return {
       id: p.id,
@@ -135,6 +159,7 @@ export async function GET(request: Request) {
             ? equipIdToName.get(equip.mano_derecha)
             : undefined,
       },
+          equipmentPriceByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
           .sort((a: any, b: any) => a.orden - b.orden)
