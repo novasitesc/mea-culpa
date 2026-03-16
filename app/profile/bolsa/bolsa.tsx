@@ -197,7 +197,6 @@ function SlotButton({
       className={[
         "w-15 h-13 flex flex-col items-center justify-center gap-0.5",
         "rounded-lg border text-center transition-all duration-200",
-        "font-sans",
         readOnly ? "cursor-default" : "cursor-pointer",
         selected
           ? "border-[#D4AF37] bg-[#1e1a0a] shadow-[0_0_12px_rgba(212,175,55,0.4)]"
@@ -473,6 +472,15 @@ export default function EquipmentModal({
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
   const [isSaving, setIsSaving] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
+  const [showSellConfirm, setShowSellConfirm] = useState(false);
+
+  const selectedBagItem =
+    selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
+  const selectedBagItemSaleGold = Math.max(
+    0,
+    Math.floor((selectedBagItem?.price ?? 0) / 2),
+  );
+  const sellConcept = "venta_objeto";
 
   const selectSlot = useCallback(
     (slotKey: SlotKey) => {
@@ -579,12 +587,13 @@ export default function EquipmentModal({
   };
 
   const handleSellSelected = async () => {
-    if (selectedBagIndex === null) {
+    if (selectedBagIndex === null || !selectedBagItem) {
       setStatusMsg("⚠ Selecciona un objeto de la bolsa para vender");
       return;
     }
 
     setIsSelling(true);
+    setShowSellConfirm(false);
     try {
       const response = await fetch("/api/profile/sell-item", {
         method: "POST",
@@ -603,11 +612,14 @@ export default function EquipmentModal({
 
       const soldItemName = data?.itemName ?? bagItems[selectedBagIndex]?.name ?? "objeto";
       const gainedGold = Number(data?.saleGold ?? 0);
+      const concept = String(data?.concepto ?? sellConcept);
 
       setBagItems((prev) => prev.filter((_, idx) => idx !== selectedBagIndex));
       setSelectedBagIndex(null);
       setSelectedSlot(null);
-      setStatusMsg(`💰 Vendiste ${soldItemName} por +${gainedGold} oro`);
+      setStatusMsg(
+        `💰 Venta: ${soldItemName} por +${gainedGold} oro (concepto: ${concept})`,
+      );
 
       if (typeof data?.oro === "number") {
         onGoldUpdate?.(data.oro);
@@ -676,7 +688,7 @@ export default function EquipmentModal({
               className="w-75 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
-              <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
+              <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
                 Personaje
               </span>
 
@@ -744,14 +756,20 @@ export default function EquipmentModal({
             <div className="flex-1 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
               {/* Bag header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
                   ⚜ Bolsa
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleSellSelected}
+                    onClick={() => {
+                      if (selectedBagIndex === null || !selectedBagItem) {
+                        setStatusMsg("⚠ Selecciona un objeto de la bolsa para vender");
+                        return;
+                      }
+                      setShowSellConfirm(true);
+                    }}
                     disabled={selectedBagIndex === null || isSelling || isSaving}
-                    className="font-sans text-[10px] tracking-[0.12em] uppercase font-bold py-1.5 px-3 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-[10px] tracking-[0.12em] uppercase font-bold py-1.5 px-3 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
                       background: selectedBagIndex === null || isSelling || isSaving ? "#5a5040" : "#8B5E34",
                       color: "#f5e6c8",
@@ -760,7 +778,7 @@ export default function EquipmentModal({
                   >
                     {isSelling ? "Vendiendo..." : "Vender seleccionado"}
                   </button>
-                  <span className="text-xs text-[#8a7a5a] font-sans">
+                  <span className="text-xs text-[#8a7a5a]">
                     {bagItems.length} / {character.bag.maxSlots} espacios
                   </span>
                 </div>
@@ -820,13 +838,13 @@ export default function EquipmentModal({
             <p className="flex-1 text-xs text-[#8a7a5a] italic font-serif">
               {statusMsg}
             </p>
-            <p className="text-[10px] text-[#5a5040] font-sans hidden sm:block">
+            <p className="text-[10px] text-[#5a5040] hidden sm:block">
               Clic en slot equipado para desequipar
             </p>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="font-sans text-xs tracking-[0.15em] uppercase font-bold py-2.5 px-7 rounded-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="text-xs tracking-[0.15em] uppercase font-bold py-2.5 px-7 rounded-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
                 background: isSaving ? "#6a6030" : "#D4AF37",
                 color: "#0a0a08",
@@ -837,6 +855,44 @@ export default function EquipmentModal({
           </div>
         </div>
       </div>
+
+      {showSellConfirm && selectedBagItem && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5"
+            style={{ background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)" }}
+          >
+            <h3 className="text-sm tracking-[0.18em] uppercase text-[#D4AF37] mb-3">
+              Confirmar Venta
+            </h3>
+            <p className="text-sm text-[#e8d8b0] leading-relaxed">
+              Vas a vender <strong>{selectedBagItem.name}</strong> por la mitad de su valor.
+            </p>
+            <div className="mt-3 rounded-md border border-[#3a3020] bg-black/20 p-3 text-xs text-[#cbb58a] space-y-1">
+              <p>Precio base: {(selectedBagItem.price ?? 0).toLocaleString()} oro</p>
+              <p>Recibirás: {selectedBagItemSaleGold.toLocaleString()} oro (50%)</p>
+              <p>Concepto de la transferencia: {sellConcept}</p>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowSellConfirm(false)}
+                disabled={isSelling}
+                className="px-3 py-2 rounded-md border border-[#5a5040] text-xs text-[#cbb58a] disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSellSelected}
+                disabled={isSelling}
+                className="px-3 py-2 rounded-md text-xs font-semibold disabled:opacity-60"
+                style={{ background: "#8B5E34", color: "#f5e6c8" }}
+              >
+                {isSelling ? "Vendiendo..." : "Confirmar venta"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

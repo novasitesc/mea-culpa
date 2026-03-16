@@ -4,6 +4,7 @@ import { modifyGold } from "@/lib/goldService";
 
 export async function POST(request: Request) {
   try {
+    const concepto = "venta_objeto";
     const { userId, characterId, bagIndex } = await request.json();
 
     if (!userId || !characterId || !Number.isInteger(bagIndex) || bagIndex < 0) {
@@ -81,12 +82,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const oro = await modifyGold(userId, saleGold, "venta_objeto");
+    const oro = await modifyGold(userId, saleGold, concepto);
 
     return NextResponse.json({
       success: true,
       oro,
       saleGold,
+      concepto,
       itemName,
       bagIndex,
     });
