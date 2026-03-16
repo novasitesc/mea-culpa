@@ -63,6 +63,7 @@ type AdminObject = {
   icon: string;
   itemType: string;
   rarity: string;
+  price: number;
   bonusStats: Record<string, unknown> | null;
   createdAt: string;
 };
@@ -2773,7 +2774,6 @@ function ShopItemFormModal({
   onClose: () => void;
   onSubmit: (data: {
     objetoId?: number;
-    precio: number;
     inventario: number | null;
     orden: number;
   }) => void;
@@ -2787,7 +2787,6 @@ function ShopItemFormModal({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const [precio, setPrecio] = useState<number>(initial?.precio ?? 0);
   const [inventarioRaw, setInventarioRaw] = useState<string>(
     initial?.inventario === null || initial?.inventario === undefined
       ? ""
@@ -2808,7 +2807,6 @@ function ShopItemFormModal({
 
     onSubmit({
       ...(mode === "create" ? { objetoId } : {}),
-      precio,
       inventario,
       orden,
     });
@@ -2905,17 +2903,7 @@ function ShopItemFormModal({
           </FormField>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <FormField label="Precio">
-            <input
-              className={inputCls}
-              type="number"
-              min={0}
-              value={precio}
-              onChange={(e) => setPrecio(Number(e.target.value))}
-              required
-            />
-          </FormField>
+        <div className="grid grid-cols-2 gap-3">
           <FormField label="Stock (vacío=ilimitado)">
             <input
               className={inputCls}
@@ -3159,6 +3147,7 @@ function ObjectFormModal({
     icon: initial?.icon ?? "📦",
     itemType: initial?.itemType ?? "misc",
     rarity: initial?.rarity ?? "común",
+    price: initial?.price ?? 0,
     bonusStats: initial?.bonusStats
       ? JSON.stringify(initial.bonusStats, null, 2)
       : "",
@@ -3188,6 +3177,7 @@ function ObjectFormModal({
       icon: form.icon,
       itemType: form.itemType,
       rarity: form.rarity,
+      price: form.price,
       bonusStats: parsedBonus,
     });
   };
@@ -3253,6 +3243,17 @@ function ObjectFormModal({
                 </option>
               ))}
             </select>
+          </FormField>
+
+          <FormField label="Precio base">
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={form.price}
+              onChange={(e) => set("price", Number(e.target.value))}
+              required
+            />
           </FormField>
         </div>
 

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await db
     .from("articulos_tienda")
     .select(
-      "id, tienda_id, objeto_id, precio, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza)",
+      "id, tienda_id, objeto_id, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza, precio)",
     )
     .eq("tienda_id", tiendaId)
     .order("orden", { ascending: true });
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       id: a.id,
       tiendaId: a.tienda_id,
       objetoId: a.objeto_id,
-      precio: a.precio,
+      precio: a.objetos?.precio ?? 0,
       inventario: a.inventario,
       orden: a.orden,
       createdAt: a.creado_en,
@@ -50,11 +50,11 @@ export async function POST(request: NextRequest) {
   const { db } = result.session;
 
   const body = await request.json();
-  const { tiendaId, objetoId, precio, inventario, orden } = body;
+  const { tiendaId, objetoId, inventario, orden } = body;
 
-  if (!tiendaId || !objetoId || precio === undefined || precio === null) {
+  if (!tiendaId || !objetoId) {
     return NextResponse.json(
-      { error: "tiendaId, objetoId y precio son obligatorios" },
+      { error: "tiendaId y objetoId son obligatorios" },
       { status: 400 },
     );
   }
@@ -62,20 +62,19 @@ export async function POST(request: NextRequest) {
   const payload = {
     tienda_id: tiendaId,
     objeto_id: Number(objetoId),
-    precio: Number(precio),
     inventario: inventario === null || inventario === "" ? null : Number(inventario),
     orden: orden === null || orden === "" ? 0 : Number(orden),
   };
 
-  if (Number.isNaN(payload.objeto_id) || Number.isNaN(payload.precio)) {
-    return NextResponse.json({ error: "objetoId y precio deben ser numericos" }, { status: 400 });
+  if (Number.isNaN(payload.objeto_id)) {
+    return NextResponse.json({ error: "objetoId debe ser numerico" }, { status: 400 });
   }
 
   const { data, error } = await db
     .from("articulos_tienda")
     .insert(payload)
     .select(
-      "id, tienda_id, objeto_id, precio, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza)",
+      "id, tienda_id, objeto_id, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza, precio)",
     )
     .single();
 
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest) {
       id: (data as any).id,
       tiendaId: (data as any).tienda_id,
       objetoId: (data as any).objeto_id,
-      precio: (data as any).precio,
+      precio: (data as any).objetos?.precio ?? 0,
       inventario: (data as any).inventario,
       orden: (data as any).orden,
       createdAt: (data as any).creado_en,
@@ -124,10 +123,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { precio, inventario, orden } = body;
+  const { inventario, orden } = body;
 
   const updates: Record<string, unknown> = {};
-  if (precio !== undefined) updates.precio = Number(precio);
   if (inventario !== undefined) {
     updates.inventario = inventario === null || inventario === "" ? null : Number(inventario);
   }
@@ -139,7 +137,7 @@ export async function PATCH(request: NextRequest) {
   const { data } = await db
     .from("articulos_tienda")
     .select(
-      "id, tienda_id, objeto_id, precio, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza)",
+      "id, tienda_id, objeto_id, inventario, orden, creado_en, objetos(id, nombre, icono, tipo_item, rareza, precio)",
     )
     .eq("id", Number(id))
     .single();
@@ -148,7 +146,7 @@ export async function PATCH(request: NextRequest) {
     id: (data as any).id,
     tiendaId: (data as any).tienda_id,
     objetoId: (data as any).objeto_id,
-    precio: (data as any).precio,
+    precio: (data as any).objetos?.precio ?? 0,
     inventario: (data as any).inventario,
     orden: (data as any).orden,
     createdAt: (data as any).creado_en,
