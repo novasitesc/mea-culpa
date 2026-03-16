@@ -673,13 +673,22 @@ export default function EquipmentModal({
 
                 {/* Slot buttons */}
                 {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
+                  (() => {
+                    const selectedBagItem =
+                      selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
+                    const isCompatibleWithSelectedBagItem =
+                      !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
+
+                    return (
                   <SlotButton
                     key={key}
                     slotKey={key}
                     item={equipped[key]}
-                    selected={selectedSlot === key}
+                    selected={selectedSlot === key || isCompatibleWithSelectedBagItem}
                     onSelect={selectSlot}
                   />
+                    );
+                  })()
                 ))}
               </div>
             </div>
