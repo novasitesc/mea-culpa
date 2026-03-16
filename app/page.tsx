@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "./components/header";
@@ -49,6 +50,7 @@ type CharacterSlot = {
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
@@ -276,7 +278,12 @@ export default function HomePage() {
               {characterSlots.map((slot) => (
                 <button
                   key={slot.id}
-                  onClick={() => !slot.locked && setActiveSlot(slot.id)}
+                  onClick={() => {
+                    if (!slot.locked) {
+                      setActiveSlot(slot.id);
+                      router.push("/profile");
+                    }
+                  }}
                   disabled={slot.locked}
                   className={`w-full rounded-lg border p-3 flex items-center gap-3 transition-all ${
                     slot.locked
