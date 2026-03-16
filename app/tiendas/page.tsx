@@ -242,6 +242,13 @@ export default function TiendasPage() {
         ),
       );
       await refreshUser();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("auth:refresh", {
+            detail: { oro: typeof data?.oro === "number" ? data.oro : undefined },
+          }),
+        );
+      }
       showNotification(
         `✅ Compra completada · Saldo: ${(data.oro ?? 0).toLocaleString()} 🪙`,
       );
