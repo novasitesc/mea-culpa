@@ -450,15 +450,19 @@ function BagItemCard({
 // ─── Main EquipmentModal component ───────────────────────────────────────────
 
 interface EquipmentModalProps {
+  userId: string;
   character: Character;
   onClose: () => void;
   onSave: (updatedCharacter: Character, updatedBagItems: Item[]) => Promise<void>;
+  onGoldUpdate?: (newGold: number) => void;
 }
 
 export default function EquipmentModal({
+  userId,
   character,
   onClose,
   onSave,
+  onGoldUpdate,
 }: EquipmentModalProps) {
   const [equipped, setEquipped] = useState<EquippedMap>(() =>
     buildEquippedMap(character)
@@ -468,6 +472,7 @@ export default function EquipmentModal({
   const [selectedBagIndex, setSelectedBagIndex] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSelling, setIsSelling] = useState(false);
 
   const selectSlot = useCallback(
     (slotKey: SlotKey) => {
@@ -570,6 +575,48 @@ export default function EquipmentModal({
       setStatusMsg("✗ Error al guardar. Inténtalo de nuevo.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSellSelected = async () => {
+    if (selectedBagIndex === null) {
+      setStatusMsg("⚠ Selecciona un objeto de la bolsa para vender");
+      return;
+    }
+
+    setIsSelling(true);
+    try {
+      const response = await fetch("/api/profile/sell-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          characterId: character.id,
+          bagIndex: selectedBagIndex,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "No se pudo vender el objeto");
+      }
+
+      const soldItemName = data?.itemName ?? bagItems[selectedBagIndex]?.name ?? "objeto";
+      const gainedGold = Number(data?.saleGold ?? 0);
+
+      setBagItems((prev) => prev.filter((_, idx) => idx !== selectedBagIndex));
+      setSelectedBagIndex(null);
+      setSelectedSlot(null);
+      setStatusMsg(`💰 Vendiste ${soldItemName} por +${gainedGold} oro`);
+
+      if (typeof data?.oro === "number") {
+        onGoldUpdate?.(data.oro);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo vender";
+      setStatusMsg(`✗ ${message}`);
+    } finally {
+      setIsSelling(false);
     }
   };
 
@@ -700,9 +747,23 @@ export default function EquipmentModal({
                 <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
                   ⚜ Bolsa
                 </h3>
-                <span className="text-xs text-[#8a7a5a] font-sans">
-                  {bagItems.length} / {character.bag.maxSlots} espacios
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSellSelected}
+                    disabled={selectedBagIndex === null || isSelling || isSaving}
+                    className="font-sans text-[10px] tracking-[0.12em] uppercase font-bold py-1.5 px-3 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: selectedBagIndex === null || isSelling || isSaving ? "#5a5040" : "#8B5E34",
+                      color: "#f5e6c8",
+                    }}
+                    title="Vender objeto seleccionado por la mitad de su precio"
+                  >
+                    {isSelling ? "Vendiendo..." : "Vender seleccionado"}
+                  </button>
+                  <span className="text-xs text-[#8a7a5a] font-sans">
+                    {bagItems.length} / {character.bag.maxSlots} espacios
+                  </span>
+                </div>
               </div>
 
               {/* Hint */}

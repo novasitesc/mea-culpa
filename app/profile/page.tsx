@@ -447,6 +447,7 @@ export default function ProfilePage() {
                   </div>
                   {openBagModal === character.id && (
                     <EquipmentModal
+                      userId={user?.id ?? ""}
                       character={character}
                       onClose={() => setOpenBagModal(null)}
                       onSave={async (updatedCharacter, updatedBagItems) => {
@@ -459,6 +460,24 @@ export default function ProfilePage() {
                           character.id,
                           nextCharacter,
                           nextBagItems,
+                        );
+                      }}
+                      onGoldUpdate={(newGold) => {
+                        setProfile((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            player: {
+                              ...prev.player,
+                              oro: newGold,
+                            },
+                          };
+                        });
+
+                        window.dispatchEvent(
+                          new CustomEvent("auth:refresh", {
+                            detail: { oro: newGold },
+                          }),
                         );
                       }}
                     />
