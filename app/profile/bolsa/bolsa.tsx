@@ -146,12 +146,14 @@ function SlotButton({
   selected,
   onSelect,
   readOnly = false,
+  onReadOnlyAttempt,
 }: {
   slotKey: SlotKey;
   item: Item | null;
   selected: boolean;
   onSelect: (key: SlotKey) => void;
   readOnly?: boolean;
+  onReadOnlyAttempt?: () => void;
 }) {
   const cfg = SLOT_CONFIG[slotKey];
 
@@ -175,7 +177,9 @@ function SlotButton({
   return (
     <button
       onClick={() => {
-        if (!readOnly) {
+        if (readOnly) {
+          onReadOnlyAttempt?.();
+        } else {
           onSelect(slotKey);
         }
       }}
@@ -231,6 +235,9 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
   const equipped = buildEquippedMap(character);
   const bagItems = character.bag.items;
   const emptySlots = character.bag.maxSlots - bagItems.length;
+  const notifyOpenBag = () => {
+    alert('Para editar, presiona "Abrir Bolsa".');
+  };
 
   return (
     <div
@@ -296,6 +303,7 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
                 selected={false}
                 onSelect={() => {}}
                 readOnly
+                onReadOnlyAttempt={notifyOpenBag}
               />
             ))}
           </div>
@@ -318,6 +326,8 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
                 item={item}
                 selectedSlot={null}
                 onEquip={() => {}}
+                readOnly
+                onReadOnlyAttempt={notifyOpenBag}
               />
             ))}
             {Array.from({ length: emptySlots }).map((_, i) => (
@@ -340,10 +350,14 @@ function BagItemCard({
   item,
   selectedSlot,
   onEquip,
+  readOnly = false,
+  onReadOnlyAttempt,
 }: {
   item: Item;
   selectedSlot: SlotKey | null;
   onEquip: (item: Item) => void;
+  readOnly?: boolean;
+  onReadOnlyAttempt?: () => void;
 }) {
   const isCompatible =
     selectedSlot !== null &&
@@ -354,7 +368,15 @@ function BagItemCard({
 
   return (
     <div
-      onClick={() => isCompatible && onEquip(item)}
+      onClick={() => {
+        if (readOnly) {
+          onReadOnlyAttempt?.();
+          return;
+        }
+        if (isCompatible) {
+          onEquip(item);
+        }
+      }}
       title={
         selectedSlot
           ? isCompatible
@@ -367,6 +389,8 @@ function BagItemCard({
         "transition-all duration-200",
         isCompatible
           ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a] animate-pulse-gold"
+          : readOnly
+          ? "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518] cursor-pointer"
           : selectedSlot
           ? "opacity-40 cursor-not-allowed border-[#3a3020] bg-[#141210]"
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518] cursor-default",
