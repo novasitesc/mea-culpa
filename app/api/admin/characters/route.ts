@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
+import { calculateBagSlots } from "@/lib/types/character";
 
 type Character = {
   id: number;
@@ -122,6 +123,36 @@ export async function PATCH(request: NextRequest) {
 
       if (statsError) {
         return NextResponse.json({ error: statsError.message }, { status: 500 });
+      }
+
+      // Recalcular capacidad de bolsa según la fuerza efectiva.
+      // Si no viene fuerza en el payload, leer el valor actual desde DB.
+      let effectiveStrength: number | null =
+        typeof estadisticas?.fuerza === "number" ? estadisticas.fuerza : null;
+
+      if (effectiveStrength === null) {
+        const { data: currentStats, error: currentStatsError } = await session.db
+          .from("estadisticas_personaje")
+          .select("fuerza")
+          .eq("personaje_id", characterId)
+          .single();
+
+        if (currentStatsError) {
+          return NextResponse.json({ error: currentStatsError.message }, { status: 500 });
+        }
+
+        effectiveStrength = currentStats?.fuerza ?? 10;
+      }
+
+      const strengthForBag = effectiveStrength ?? 10;
+
+      const { error: bagError } = await session.db
+        .from("personajes")
+        .update({ capacidad_bolsa: calculateBagSlots(strengthForBag) })
+        .eq("id", characterId);
+
+      if (bagError) {
+        return NextResponse.json({ error: bagError.message }, { status: 500 });
       }
     }
 
