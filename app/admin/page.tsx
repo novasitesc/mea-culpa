@@ -88,6 +88,29 @@ type AdminTransaction = {
   creado_en: string;
 };
 
+type AdminCharacter = {
+  id: number;
+  name: string;
+  slot: number;
+  userId: string;
+  userName: string;
+};
+
+type PartidaItemDraft = {
+  id: string;
+  objectId: number | "";
+  qty: number;
+};
+
+type PartidaParticipantDraft = {
+  id: string;
+  characterId: number | "";
+  gold: number;
+  comment: string;
+  dead: boolean;
+  items: PartidaItemDraft[];
+};
+
 const ITEM_TYPES = [
   "cabeza",
   "pecho",
@@ -104,7 +127,7 @@ const ITEM_TYPES = [
 
 const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
 
-type Tab = "usuarios" | "tiendas" | "objetos" | "transacciones";
+type Tab = "usuarios" | "tiendas" | "objetos" | "transacciones" | "partidas";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -504,6 +527,420 @@ function TransactionsTab({
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Pestaña Partidas ───────────────────────────────────────────────────────
+
+function PartidasTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [characters, setCharacters] = useState<AdminCharacter[]>([]);
+  const [objects, setObjects] = useState<AdminObject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [title, setTitle] = useState("");
+  const [comment, setComment] = useState("");
+  const [participants, setParticipants] = useState<PartidaParticipantDraft[]>([
+    {
+      id: "p-1",
+      characterId: "",
+      gold: 0,
+      comment: "",
+      dead: false,
+      items: [],
+    },
+  ]);
+
+  const createId = (prefix: string) =>
+    `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const headers = { Authorization: `Bearer ${token}` };
+    const [charsRes, objsRes] = await Promise.all([
+      fetch("/api/admin/personajes", { headers }),
+      fetch("/api/admin/objetos", { headers }),
+    ]);
+
+    if (charsRes.ok) {
+      setCharacters(await charsRes.json());
+    } else {
+      onToast("Error cargando personajes", "error");
+    }
+
+    if (objsRes.ok) {
+      setObjects(await objsRes.json());
+    } else {
+      onToast("Error cargando objetos", "error");
+    }
+
+    setLoading(false);
+  }, [token, onToast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const updateParticipant = (
+    id: string,
+    updates: Partial<PartidaParticipantDraft>,
+  ) =>
+    setParticipants((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+    );
+
+  const addParticipant = () =>
+    setParticipants((prev) => [
+      ...prev,
+      {
+        id: createId("p"),
+        characterId: "",
+        gold: 0,
+        comment: "",
+        dead: false,
+        items: [],
+      },
+    ]);
+
+  const removeParticipant = (id: string) =>
+    setParticipants((prev) => prev.filter((p) => p.id !== id));
+
+  const addItem = (participantId: string) =>
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === participantId
+          ? {
+              ...p,
+              items: [
+                ...p.items,
+                { id: createId("i"), objectId: "", qty: 1 },
+              ],
+            }
+          : p,
+      ),
+    );
+
+  const updateItem = (
+    participantId: string,
+    itemId: string,
+    updates: Partial<PartidaItemDraft>,
+  ) =>
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === participantId
+          ? {
+              ...p,
+              items: p.items.map((item) =>
+                item.id === itemId ? { ...item, ...updates } : item,
+              ),
+            }
+          : p,
+      ),
+    );
+
+  const removeItem = (participantId: string, itemId: string) =>
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === participantId
+          ? { ...p, items: p.items.filter((item) => item.id !== itemId) }
+          : p,
+      ),
+    );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      onToast("El nombre de la partida es obligatorio", "error");
+      return;
+    }
+
+    const validParticipants = participants.filter((p) => p.characterId !== "");
+    if (validParticipants.length === 0) {
+      onToast("Agrega al menos un participante", "error");
+      return;
+    }
+
+    setSaving(true);
+    const res = await fetch("/api/admin/partidas", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: trimmedTitle,
+        comment: comment.trim(),
+        participants: validParticipants.map((p) => ({
+          characterId: p.characterId,
+          gold: p.gold,
+          comment: p.comment,
+          dead: p.dead,
+          items: p.items
+            .filter((item) => item.objectId !== "")
+            .map((item) => ({
+              objectId: item.objectId,
+              qty: item.qty,
+            })),
+        })),
+      }),
+    });
+    setSaving(false);
+
+    if (res.ok) {
+      onToast("Partida creada", "success");
+      setTitle("");
+      setComment("");
+      setParticipants([
+        {
+          id: "p-1",
+          characterId: "",
+          gold: 0,
+          comment: "",
+          dead: false,
+          items: [],
+        },
+      ]);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      onToast(err.error ?? "Error al crear partida", "error");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Crea una nueva partida e invita personajes
+        </p>
+        <button
+          type="button"
+          onClick={addParticipant}
+          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Agregar participante
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="Nombre de la partida">
+              <input
+                className={inputCls}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ej: Asalto a la Torre"
+                required
+              />
+            </FormField>
+            <FormField label="Comentario general (opcional)">
+              <input
+                className={inputCls}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Notas del master"
+              />
+            </FormField>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold text-foreground">Invitados</h3>
+            {participants.map((p, index) => (
+              <div
+                key={p.id}
+                className="border border-border rounded-xl p-4 bg-secondary/20 flex flex-col gap-4"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">
+                    Participante {index + 1}
+                  </p>
+                  {participants.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeParticipant(p.id)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <FormField label="Personaje">
+                    <select
+                      className={inputCls}
+                      value={p.characterId}
+                      onChange={(e) =>
+                        updateParticipant(p.id, {
+                          characterId: e.target.value
+                            ? Number(e.target.value)
+                            : "",
+                        })
+                      }
+                    >
+                      <option value="">Selecciona personaje</option>
+                      {characters.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} · {c.userName} (Slot {c.slot})
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Oro a otorgar">
+                    <input
+                      type="number"
+                      min={0}
+                      className={inputCls}
+                      value={p.gold}
+                      onChange={(e) =>
+                        updateParticipant(p.id, {
+                          gold: Math.max(0, Number(e.target.value) || 0),
+                        })
+                      }
+                    />
+                  </FormField>
+                  <FormField label="Comentario">
+                    <input
+                      className={inputCls}
+                      value={p.comment}
+                      onChange={(e) =>
+                        updateParticipant(p.id, { comment: e.target.value })
+                      }
+                      placeholder="Notas individuales"
+                    />
+                  </FormField>
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      id={`dead-${p.id}`}
+                      type="checkbox"
+                      checked={p.dead}
+                      onChange={(e) =>
+                        updateParticipant(p.id, { dead: e.target.checked })
+                      }
+                      className="w-4 h-4 accent-red-500"
+                    />
+                    <label
+                      htmlFor={`dead-${p.id}`}
+                      className="text-sm text-muted-foreground"
+                    >
+                      Se murio
+                    </label>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Objetos</p>
+                    <button
+                      type="button"
+                      onClick={() => addItem(p.id)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
+                    >
+                      Agregar objeto
+                    </button>
+                  </div>
+
+                  {p.items.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Sin objetos asignados
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {p.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
+                        >
+                          <select
+                            className={inputCls}
+                            value={item.objectId}
+                            onChange={(e) =>
+                              updateItem(p.id, item.id, {
+                                objectId: e.target.value
+                                  ? Number(e.target.value)
+                                  : "",
+                              })
+                            }
+                          >
+                            <option value="">Selecciona objeto</option>
+                            {objects.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.icon} {o.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            className={inputCls}
+                            value={item.qty}
+                            onChange={(e) =>
+                              updateItem(p.id, item.id, {
+                                qty: Math.max(1, Number(e.target.value) || 1),
+                              })
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeItem(p.id, item.id)}
+                            className="px-3 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => {
+                setTitle("");
+                setComment("");
+                setParticipants([
+                  {
+                    id: "p-1",
+                    characterId: "",
+                    gold: 0,
+                    comment: "",
+                    dead: false,
+                    items: [],
+                  },
+                ]);
+              }}
+              className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+            >
+              Limpiar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              Crear partida
+            </button>
+          </div>
+        </form>
       )}
     </div>
   );
@@ -2156,6 +2593,7 @@ export default function AdminPage() {
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "partidas", label: "Partidas", icon: Shield },
   ];
 
   return (
@@ -2223,6 +2661,9 @@ export default function AdminPage() {
             )}
             {activeTab === "transacciones" && (
               <TransactionsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "partidas" && (
+              <PartidasTab token={token} onToast={showToast} />
             )}
           </div>
         </div>
