@@ -145,11 +145,13 @@ function SlotButton({
   item,
   selected,
   onSelect,
+  readOnly = false,
 }: {
   slotKey: SlotKey;
   item: Item | null;
   selected: boolean;
   onSelect: (key: SlotKey) => void;
+  readOnly?: boolean;
 }) {
   const cfg = SLOT_CONFIG[slotKey];
 
@@ -172,13 +174,18 @@ function SlotButton({
 
   return (
     <button
-      onClick={() => onSelect(slotKey)}
-      title={item ? `${item.name} (clic para desequipar)` : cfg.label}
+      onClick={() => {
+        if (!readOnly) {
+          onSelect(slotKey);
+        }
+      }}
+      title={item ? item.name : cfg.label}
       style={positionStyle}
       className={[
-        "w-[60px] h-[52px] flex flex-col items-center justify-center gap-0.5",
-        "rounded-lg border text-center cursor-pointer transition-all duration-200",
+        "w-15 h-13 flex flex-col items-center justify-center gap-0.5",
+        "rounded-lg border text-center transition-all duration-200",
         "font-sans",
+        readOnly ? "cursor-default" : "cursor-pointer",
         selected
           ? "border-[#D4AF37] bg-[#1e1a0a] shadow-[0_0_12px_rgba(212,175,55,0.4)]"
           : item
@@ -191,7 +198,7 @@ function SlotButton({
         {cfg.label}
       </span>
       {item && (
-        <span className="text-[8px] text-[#D4AF37] leading-none max-w-[52px] truncate px-0.5">
+        <span className="text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5">
           {item.name}
         </span>
       )}
@@ -215,6 +222,119 @@ const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   amuleto:  "bg-yellow-900/20 text-yellow-400",
   colgante: "bg-yellow-900/20 text-yellow-400",
 };
+
+interface EquipmentPreviewProps {
+  character: Character;
+}
+
+export function EquipmentPreview({ character }: EquipmentPreviewProps) {
+  const equipped = buildEquippedMap(character);
+  const bagItems = character.bag.items;
+  const emptySlots = character.bag.maxSlots - bagItems.length;
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
+        border: "1px solid #8B7355",
+      }}
+    >
+      <div
+        className="px-4 py-3 border-b border-[#3a3020]"
+        style={{
+          background:
+            "linear-gradient(90deg, #0f0e0c 0%, #1e1c14 50%, #0f0e0c 100%)",
+        }}
+      >
+        <h3 className="text-xs tracking-[0.2em] uppercase text-[#D4AF37]">
+          Equipo y Bolsa
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[300px,1fr] gap-0">
+        <div
+          className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
+          style={{ background: "rgba(0,0,0,0.15)" }}
+        >
+          <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
+            Personaje
+          </span>
+
+          <div className="relative w-65 h-92.5">
+            <svg
+              viewBox="0 0 280 380"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute inset-0 w-full h-full"
+            >
+              <defs>
+                <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2a2618" />
+                  <stop offset="100%" stopColor="#1a1610" />
+                </linearGradient>
+              </defs>
+              <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+              <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
+              <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+              <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
+            </svg>
+
+            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
+              <SlotButton
+                key={key}
+                slotKey={key}
+                item={equipped[key]}
+                selected={false}
+                onSelect={() => {}}
+                readOnly
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
+              ⚜ Bolsa
+            </h3>
+            <span className="text-xs text-[#8a7a5a] font-sans">
+              {bagItems.length} / {character.bag.maxSlots} espacios
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
+            {bagItems.map((item, idx) => (
+              <BagItemCard
+                key={`${item.name}-${idx}`}
+                item={item}
+                selectedSlot={null}
+                onEquip={() => {}}
+              />
+            ))}
+            {Array.from({ length: emptySlots }).map((_, i) => (
+              <div
+                key={`empty-${i}`}
+                className="flex items-center justify-center min-h-20 rounded-lg border border-dashed border-[#2a2518]/60"
+                style={{ background: "rgba(20,18,16,0.4)" }}
+              >
+                <span className="text-[10px] text-[#3a3020]">Vacío</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function BagItemCard({
   item,
@@ -243,7 +363,7 @@ function BagItemCard({
           : item.name
       }
       className={[
-        "flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-[80px]",
+        "flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-20",
         "transition-all duration-200",
         isCompatible
           ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a] animate-pulse-gold"
@@ -261,7 +381,7 @@ function BagItemCard({
       }
     >
       <span className="text-xl leading-none">{icon}</span>
-      <span className="text-[11px] text-[#e8d8b0] text-center leading-tight max-w-[72px]">
+      <span className="text-[11px] text-[#e8d8b0] text-center leading-tight max-w-18">
         {item.name}
       </span>
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
@@ -410,7 +530,7 @@ export default function EquipmentModal({
           <div className="flex overflow-hidden flex-1 min-h-0">
             {/* LEFT: Character figure */}
             <div
-              className="w-[300px] flex-shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
+              className="w-75 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
               <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
@@ -418,7 +538,7 @@ export default function EquipmentModal({
               </span>
 
               {/* Figure */}
-              <div className="relative w-[260px] h-[370px]">
+              <div className="relative w-65 h-92.5">
                 {/* SVG silhouette */}
                 <svg
                   viewBox="0 0 280 380"
@@ -511,7 +631,7 @@ export default function EquipmentModal({
                 {Array.from({ length: emptySlots }).map((_, i) => (
                   <div
                     key={`empty-${i}`}
-                    className="flex items-center justify-center min-h-[80px] rounded-lg border border-dashed border-[#2a2518]/60"
+                    className="flex items-center justify-center min-h-20 rounded-lg border border-dashed border-[#2a2518]/60"
                     style={{ background: "rgba(20,18,16,0.4)" }}
                   >
                     <span className="text-[10px] text-[#3a3020]">Vacío</span>

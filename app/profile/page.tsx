@@ -6,7 +6,7 @@ import Image from "next/image";
 import Header from "../components/header";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
-import EquipmentModal from "./bolsa/bolsa";
+import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 
 type Player = {
   name: string;
@@ -383,90 +383,7 @@ export default function ProfilePage() {
                     ))}
                   </div>
 
-                  <div>
-                    <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
-                      Armadura
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      {Object.entries(character.armor).map(([slot, item]) => (
-                        <div
-                          key={slot}
-                          className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
-                        >
-                          <span className="font-bold">
-                            {slot.toUpperCase()}
-                          </span>
-                          : {item || "Vacío"}
-                        </div>
-                      ))}
-                    </div>
-
-                    <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
-                      Accesorios
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      {Object.entries(character.accessories).map(
-                        ([slot, item]) => (
-                          <div
-                            key={slot}
-                            className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
-                          >
-                            <span className="font-bold">
-                              {slot.toUpperCase()}
-                            </span>
-                            : {item || "Vacío"}
-                          </div>
-                        ),
-                      )}
-                    </div>
-
-                    <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
-                      Armas
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {Object.entries(character.weapons).map(([slot, item]) => (
-                        <div
-                          key={slot}
-                          className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
-                        >
-                          <span className="font-bold">
-                            {slot.toUpperCase()}
-                          </span>
-                          : {item || "Vacío"}
-                        </div>
-                      ))}
-                    </div>
-
-                    <h3 className="text-sm text-[#D4AF37] uppercase tracking-[0.3em] mb-3">
-                      Bolsa
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                      {character.bag.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded border border-border/60 bg-secondary/30 px-3 py-2 text-sm text-muted-foreground"
-                        >
-                          {item.name}
-                        </div>
-                      ))}
-                      {[
-                        ...Array(
-                          character.bag.maxSlots - character.bag.items.length,
-                        ),
-                      ].map((_, idx) => (
-                        <div
-                          key={"empty-" + idx}
-                          className="rounded border border-border/60 bg-secondary/10 px-3 py-2 text-sm text-muted-foreground"
-                        >
-                          Vacío
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-xs text-muted-foreground mb-2">
-                      Espacios: {character.bag.items.length} /{" "}
-                      {character.bag.maxSlots}
-                    </div>
-                  </div>
+                  <EquipmentPreview character={character} />
 
                   <div className="flex justify-end mt-2">
                     <button
