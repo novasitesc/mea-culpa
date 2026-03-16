@@ -484,28 +484,6 @@ export default function ProfilePage() {
                               Nv.{entry.level}
                             </span>
                           </span>
-                          <button
-                            title="Subir nivel de clase"
-                            className="text-xs px-1.5 py-0.5 rounded border border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition leading-none"
-                            onClick={() => {
-                              const updated = (character.multiclass ?? []).map(
-                                (c, i) =>
-                                  i === idx
-                                    ? { ...c, level: Math.min(20, c.level + 1) }
-                                    : c,
-                              );
-                              setProfile({
-                                ...profile!,
-                                characters: profile!.characters.map((ch) =>
-                                  ch.id === character.id
-                                    ? { ...ch, multiclass: updated }
-                                    : ch,
-                                ),
-                              });
-                            }}
-                          >
-                            +
-                          </button>
                         </div>
                       ))}
                     </div>
