@@ -60,10 +60,10 @@ BEGIN
       RAISE EXCEPTION 'Cantidad inválida para artículo %', v_articulo_id;
     END IF;
 
-    SELECT at.precio, at.inventario, at.objeto_id, o.tipo_item
+    SELECT o.precio, at.inventario, at.objeto_id, o.tipo_item
     INTO   v_precio, v_stock, v_obj_id, v_tipo_item
     FROM   articulos_tienda at
-    INNER JOIN objetos o ON at.objeto_id = o.id
+    INNER JOIN objetos o ON o.id = at.objeto_id
     WHERE  at.id = v_articulo_id;
 
     IF NOT FOUND THEN
@@ -91,10 +91,10 @@ BEGIN
     v_articulo_id := (v_elem->>'articulo_tienda_id')::BIGINT;
     v_qty         := (v_elem->>'qty')::INT;
 
-    SELECT at.precio, at.inventario, at.objeto_id, o.tipo_item
-    INTO   v_precio, v_stock, v_obj_id, v_tipo_item
+    SELECT at.inventario, at.objeto_id, o.tipo_item
+    INTO   v_stock, v_obj_id, v_tipo_item
     FROM   articulos_tienda at
-    INNER JOIN objetos o ON at.objeto_id = o.id
+    INNER JOIN objetos o ON o.id = at.objeto_id
     WHERE  at.id = v_articulo_id;
 
     -- Reducir stock si es finito

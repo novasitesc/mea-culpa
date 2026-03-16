@@ -260,7 +260,9 @@ export default function TiendasPage() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("auth:refresh", {
-            detail: { oro: typeof data?.oro === "number" ? data.oro : undefined },
+            detail: {
+              oro: typeof data?.oro === "number" ? data.oro : undefined,
+            },
           }),
         );
       }
@@ -437,7 +439,7 @@ export default function TiendasPage() {
                   </button>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {cart.length} objeto{cart.length !== 1 ? "s" : ""} ·{" "}
+                  {cartCount} objeto{cartCount !== 1 ? "s" : ""} ·{" "}
                   <span className="text-gold font-semibold">
                     {cartTotal.toLocaleString()} 🪙
                   </span>
@@ -445,6 +447,26 @@ export default function TiendasPage() {
               </CardHeader>
 
               <CardContent className="pt-4">
+                {/* Vista previa de items a comprar */}
+                <div className="mb-4 p-3 bg-secondary/30 rounded-lg border border-border">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                    Items a comprar:
+                  </p>
+                  <div className="space-y-1.5">
+                    {cart.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <span className="text-lg">{item.icon}</span>
+                        <span className="flex-1 truncate">{item.name}</span>
+                        <span className="font-semibold text-gold shrink-0">
+                          ×{item.qty}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 {characters.length === 0 ? (
                   <p className="text-center text-muted-foreground text-sm py-6">
                     No tienes personajes creados. Crea uno desde tu perfil.
@@ -468,7 +490,10 @@ export default function TiendasPage() {
                           }`}
                         >
                           <img
-                            src={char.portrait || "/characters/profileplaceholder.webp"}
+                            src={
+                              char.portrait ||
+                              "/characters/profileplaceholder.webp"
+                            }
                             alt={char.name}
                             className="w-12 h-12 rounded object-cover shrink-0 bg-secondary"
                           />
