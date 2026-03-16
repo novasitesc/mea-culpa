@@ -896,15 +896,15 @@ export default function ProfilePage() {
                     className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
                   >
                     <option value="">Selecciona un alineamiento</option>
-                    <option value="Lawful Good">Legal Bueno</option>
-                    <option value="Neutral Good">Neutral Bueno</option>
-                    <option value="Chaotic Good">Caótico Bueno</option>
-                    <option value="Lawful Neutral">Legal Neutral</option>
-                    <option value="True Neutral">Neutral Puro</option>
-                    <option value="Chaotic Neutral">Caótico Neutral</option>
-                    <option value="Lawful Evil">Legal Malvado</option>
-                    <option value="Neutral Evil">Neutral Malvado</option>
-                    <option value="Chaotic Evil">Caótico Malvado</option>
+                    <option value="Legal Bueno">Legal Bueno</option>
+                    <option value="Legal Neutral">Legal Neutral</option>
+                    <option value="Legal Malo">Legal Malo</option>
+                    <option value="Neutral Bueno">Neutral Bueno</option>
+                    <option value="Neutral">Neutral</option>
+                    <option value="Neutral Malo">Neutral Malo</option>
+                    <option value="Caótico Bueno">Caótico Bueno</option>
+                    <option value="Caótico Neutral">Caótico Neutral</option>
+                    <option value="Caótico Malo">Caótico Malo</option>
                   </select>
                 </div>
               </div>
