@@ -599,6 +599,15 @@ function PartidasTab({
   const createId = (prefix: string) =>
     `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
+  const [characterSearch, setCharacterSearch] = useState<Record<string, string>>(
+    {},
+  );
+  const [characterDropdown, setCharacterDropdown] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
+  const [itemDropdown, setItemDropdown] = useState<Record<string, boolean>>({});
+
   const loadOptions = useCallback(async () => {
     setLoading(true);
     const headers = { Authorization: `Bearer ${token}` };
@@ -818,24 +827,110 @@ function PartidasTab({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <FormField label="Personaje">
-                    <select
-                      className={inputCls}
-                      value={p.characterId}
-                      onChange={(e) =>
-                        updateParticipant(p.id, {
-                          characterId: e.target.value
-                            ? Number(e.target.value)
-                            : "",
-                        })
-                      }
-                    >
-                      <option value="">Selecciona personaje</option>
-                      {characters.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} · {c.userName} (Slot {c.slot})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      {p.characterId ? (
+                        <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">
+                              {characters.find((c) => c.id === p.characterId)?.name ?? "Personaje"}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              {characters.find((c) => c.id === p.characterId)?.userName ?? ""}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateParticipant(p.id, { characterId: "" })
+                            }
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className={inputCls}
+                            placeholder="Buscar por nombre o usuario..."
+                            value={characterSearch[p.id] ?? ""}
+                            onChange={(e) => {
+                              setCharacterSearch((s) => ({
+                                ...s,
+                                [p.id]: e.target.value,
+                              }));
+                              setCharacterDropdown((s) => ({
+                                ...s,
+                                [p.id]: true,
+                              }));
+                            }}
+                            onFocus={() =>
+                              setCharacterDropdown((s) => ({
+                                ...s,
+                                [p.id]: true,
+                              }))
+                            }
+                            onBlur={() =>
+                              setTimeout(
+                                () =>
+                                  setCharacterDropdown((s) => ({
+                                    ...s,
+                                    [p.id]: false,
+                                  })),
+                                200,
+                              )
+                            }
+                          />
+                          {characterDropdown[p.id] && (
+                            <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                              {characters
+                                .filter((c) => {
+                                  const term = (characterSearch[p.id] ?? "").toLowerCase();
+                                  return (
+                                    c.name.toLowerCase().includes(term) ||
+                                    c.userName.toLowerCase().includes(term)
+                                  );
+                                })
+                                .slice(0, 10)
+                                .map((c) => (
+                                  <div
+                                    key={c.id}
+                                    className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
+                                    onClick={() => {
+                                      updateParticipant(p.id, { characterId: c.id });
+                                      setCharacterSearch((s) => ({
+                                        ...s,
+                                        [p.id]: "",
+                                      }));
+                                      setCharacterDropdown((s) => ({
+                                        ...s,
+                                        [p.id]: false,
+                                      }));
+                                    }}
+                                  >
+                                    <span className="font-medium">{c.name}</span>
+                                    <span className="text-muted-foreground text-xs">
+                                      {c.userName} (Slot {c.slot})
+                                    </span>
+                                  </div>
+                                ))}
+                              {characters.filter((c) => {
+                                const term = (characterSearch[p.id] ?? "").toLowerCase();
+                                return (
+                                  c.name.toLowerCase().includes(term) ||
+                                  c.userName.toLowerCase().includes(term)
+                                );
+                              }).length === 0 && (
+                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                  No se encontraron personajes
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </FormField>
                   <FormField label="Oro a otorgar">
                     <input
@@ -902,24 +997,111 @@ function PartidasTab({
                           key={item.id}
                           className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
                         >
-                          <select
-                            className={inputCls}
-                            value={item.objectId}
-                            onChange={(e) =>
-                              updateItem(p.id, item.id, {
-                                objectId: e.target.value
-                                  ? Number(e.target.value)
-                                  : "",
-                              })
-                            }
-                          >
-                            <option value="">Selecciona objeto</option>
-                            {objects.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.icon} {o.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            {item.objectId ? (
+                              <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {objects.find((o) => o.id === item.objectId)?.icon ?? "📦"}
+                                  </span>
+                                  <span className="font-medium text-foreground">
+                                    {objects.find((o) => o.id === item.objectId)?.name ?? "Objeto"}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateItem(p.id, item.id, { objectId: "" })
+                                  }
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  className={inputCls}
+                                  placeholder="Buscar por nombre o tipo..."
+                                  value={itemSearch[item.id] ?? ""}
+                                  onChange={(e) => {
+                                    setItemSearch((s) => ({
+                                      ...s,
+                                      [item.id]: e.target.value,
+                                    }));
+                                    setItemDropdown((s) => ({
+                                      ...s,
+                                      [item.id]: true,
+                                    }));
+                                  }}
+                                  onFocus={() =>
+                                    setItemDropdown((s) => ({
+                                      ...s,
+                                      [item.id]: true,
+                                    }))
+                                  }
+                                  onBlur={() =>
+                                    setTimeout(
+                                      () =>
+                                        setItemDropdown((s) => ({
+                                          ...s,
+                                          [item.id]: false,
+                                        })),
+                                      200,
+                                    )
+                                  }
+                                />
+                                {itemDropdown[item.id] && (
+                                  <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                    {objects
+                                      .filter((o) => {
+                                        const term = (itemSearch[item.id] ?? "").toLowerCase();
+                                        return (
+                                          o.name.toLowerCase().includes(term) ||
+                                          o.itemType.toLowerCase().includes(term)
+                                        );
+                                      })
+                                      .slice(0, 10)
+                                      .map((o) => (
+                                        <div
+                                          key={o.id}
+                                          className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
+                                          onClick={() => {
+                                            updateItem(p.id, item.id, { objectId: o.id });
+                                            setItemSearch((s) => ({
+                                              ...s,
+                                              [item.id]: "",
+                                            }));
+                                            setItemDropdown((s) => ({
+                                              ...s,
+                                              [item.id]: false,
+                                            }));
+                                          }}
+                                        >
+                                          <span>{o.icon}</span>
+                                          <span className="font-medium">{o.name}</span>
+                                          <span className="text-muted-foreground text-xs">
+                                            {o.itemType}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    {objects.filter((o) => {
+                                      const term = (itemSearch[item.id] ?? "").toLowerCase();
+                                      return (
+                                        o.name.toLowerCase().includes(term) ||
+                                        o.itemType.toLowerCase().includes(term)
+                                      );
+                                    }).length === 0 && (
+                                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                                        No se encontraron objetos
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="number"
                             min={1}
