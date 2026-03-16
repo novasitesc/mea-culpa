@@ -66,6 +66,7 @@ export default function PortraitPicker({
 
       onPortraitUpdated(characterId, portrait);
       setIsOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       onAlert(
         "Retrato actualizado",
         "La imagen del personaje se guardó correctamente.",
