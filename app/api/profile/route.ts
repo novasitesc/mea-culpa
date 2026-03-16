@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { normalizeAccountLevel } from "@/lib/accountLevel";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -147,7 +148,7 @@ export async function GET(request: Request) {
     player: {
       name: perfil?.nombre ?? "Aventurero",
       role: perfil?.rol ?? "Dungeon Explorer",
-      level: perfil?.nivel ?? 1,
+      level: normalizeAccountLevel(perfil?.nivel ?? 1),
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
     },

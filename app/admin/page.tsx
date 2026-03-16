@@ -21,6 +21,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
+import {
+  MAX_ACCOUNT_LEVEL,
+  MIN_ACCOUNT_LEVEL,
+  getAccountLevelTitle,
+  normalizeAccountLevel,
+} from "@/lib/accountLevel";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -1481,7 +1487,9 @@ function UsersTab({
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center text-foreground">
-                    {u.level}
+                    <span title={getAccountLevelTitle(u.level)}>
+                      {normalizeAccountLevel(u.level)}
+                    </span>
                   </td>
                   <td className="px-3 py-3 text-center text-gold font-medium">
                     {u.gold}
@@ -1674,7 +1682,7 @@ function UserFormModal({
     password: "",
     // Editables siempre
     role: initial?.role ?? "",
-    level: initial?.level ?? 1,
+    level: normalizeAccountLevel(initial?.level ?? MIN_ACCOUNT_LEVEL),
   });
 
   const set = (key: string, val: unknown) =>
@@ -1684,14 +1692,18 @@ function UserFormModal({
     e.preventDefault();
     if (isEdit) {
       // En edición solo se envían nombre, rol y nivel
-      onSubmit({ name: form.name, role: form.role, level: form.level });
+      onSubmit({
+        name: form.name,
+        role: form.role,
+        level: normalizeAccountLevel(form.level),
+      });
     } else {
       onSubmit({
         name: form.name,
         email: form.email,
         password: form.password,
         role: form.role,
-        level: form.level,
+        level: normalizeAccountLevel(form.level),
       });
     }
   };
@@ -1758,11 +1770,16 @@ function UserFormModal({
             <input
               className={inputCls}
               type="number"
-              min={1}
-              max={99}
+              min={MIN_ACCOUNT_LEVEL}
+              max={MAX_ACCOUNT_LEVEL}
               value={form.level}
-              onChange={(e) => set("level", Number(e.target.value))}
+              onChange={(e) =>
+                set("level", normalizeAccountLevel(Number(e.target.value)))
+              }
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {getAccountLevelTitle(form.level)} (niveles {MIN_ACCOUNT_LEVEL}-{MAX_ACCOUNT_LEVEL})
+            </p>
           </FormField>
         </div>
 

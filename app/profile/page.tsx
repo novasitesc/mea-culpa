@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
 import { useAuth } from "@/lib/useAuth";
+import { getAccountLevelTitle } from "@/lib/accountLevel";
 
 type Player = {
   name: string;
@@ -405,7 +406,7 @@ export default function ProfilePage() {
                 </h1>
                 <p className="text-muted-foreground mt-2">
                   {player
-                    ? `${player.role} · Nivel ${player.level} · ${player.home}`
+                    ? `${player.role} · ${getAccountLevelTitle(player.level)} (Nivel ${player.level}) · ${player.home}`
                     : "Obteniendo datos del perfil"}
                 </p>
                 {player && (
