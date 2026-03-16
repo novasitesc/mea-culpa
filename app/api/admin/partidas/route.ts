@@ -9,6 +9,109 @@ type ParticipantInput = {
   items?: { objectId: number; qty?: number }[];
 };
 
+// GET /api/admin/partidas
+// Lista partidas con participantes y objetos entregados.
+export async function GET(request: NextRequest) {
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+  const { session } = result;
+
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
+
+  const { data: partidas, error: partidasError } = await session.db
+    .from("partidas")
+    .select(
+      `
+      id,
+      titulo,
+      comentario,
+      estado,
+      creada_en,
+      finalizada_en,
+      creada_por,
+      creador:creada_por ( nombre ),
+      partida_participantes (
+        id,
+        personaje_id,
+        usuario_id,
+        oro_delta,
+        comentario,
+        muerto,
+        personaje:personaje_id ( nombre ),
+        usuario:usuario_id ( nombre )
+      )
+    `,
+    )
+    .order("creada_en", { ascending: false })
+    .limit(limit);
+
+  if (partidasError) {
+    return NextResponse.json({ error: partidasError.message }, { status: 500 });
+  }
+
+  const partidaIds = (partidas ?? []).map((p: any) => p.id);
+  const itemsByPartida = new Map<string, any[]>();
+
+  if (partidaIds.length > 0) {
+    const { data: items, error: itemsError } = await session.db
+      .from("transacciones_objetos")
+      .select(
+        `
+        partida_id,
+        personaje_id,
+        objeto_id,
+        cantidad,
+        creado_en,
+        objeto:objeto_id ( nombre, icono )
+      `,
+      )
+      .in("partida_id", partidaIds)
+      .eq("origen", "admin");
+
+    if (itemsError) {
+      return NextResponse.json({ error: itemsError.message }, { status: 500 });
+    }
+
+    for (const item of items ?? []) {
+      const partidaId = (item as any).partida_id;
+      if (!partidaId) continue;
+      const list = itemsByPartida.get(partidaId) ?? [];
+      list.push(item);
+      itemsByPartida.set(partidaId, list);
+    }
+  }
+
+  const payload = (partidas ?? []).map((p: any) => ({
+    id: p.id,
+    title: p.titulo,
+    comment: p.comentario,
+    status: p.estado,
+    createdAt: p.creada_en,
+    finalizedAt: p.finalizada_en,
+    createdBy: p.creador?.nombre ?? null,
+    participants: (p.partida_participantes ?? []).map((pp: any) => ({
+      id: pp.id,
+      characterId: pp.personaje_id,
+      characterName: pp.personaje?.nombre ?? "",
+      userId: pp.usuario_id,
+      userName: pp.usuario?.nombre ?? "",
+      gold: pp.oro_delta ?? 0,
+      comment: pp.comentario ?? "",
+      dead: pp.muerto ?? false,
+    })),
+    items: (itemsByPartida.get(p.id) ?? []).map((it: any) => ({
+      characterId: it.personaje_id,
+      objectId: it.objeto_id,
+      objectName: it.objeto?.nombre ?? "",
+      objectIcon: it.objeto?.icono ?? "📦",
+      qty: it.cantidad ?? 1,
+    })),
+  }));
+
+  return NextResponse.json(payload);
+}
+
 // POST /api/admin/partidas
 // Crea una partida con participantes y recompensas registradas.
 export async function POST(request: NextRequest) {
@@ -94,6 +197,7 @@ export async function POST(request: NextRequest) {
   }
 
   const itemsPayload: {
+    partida_id: string;
     personaje_id: number;
     objeto_id: number;
     origen: string;
@@ -209,6 +313,7 @@ export async function POST(request: NextRequest) {
         }
 
         itemsPayload.push({
+          partida_id: (partida as any).id,
           personaje_id: personajeId,
           objeto_id: objectId,
           origen: "admin",

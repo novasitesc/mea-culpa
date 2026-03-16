@@ -111,6 +111,37 @@ type PartidaParticipantDraft = {
   items: PartidaItemDraft[];
 };
 
+type PartidaHistoryItem = {
+  characterId: number;
+  objectId: number;
+  objectName: string;
+  objectIcon: string;
+  qty: number;
+};
+
+type PartidaHistoryParticipant = {
+  id: string;
+  characterId: number;
+  characterName: string;
+  userId: string | null;
+  userName: string;
+  gold: number;
+  comment: string;
+  dead: boolean;
+};
+
+type PartidaHistoryEntry = {
+  id: string;
+  title: string;
+  comment: string;
+  status: string;
+  createdAt: string;
+  finalizedAt: string | null;
+  createdBy: string | null;
+  participants: PartidaHistoryParticipant[];
+  items: PartidaHistoryItem[];
+};
+
 const ITEM_TYPES = [
   "cabeza",
   "pecho",
@@ -545,6 +576,9 @@ function PartidasTab({
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<PartidaHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [comment, setComment] = useState("");
@@ -562,7 +596,7 @@ function PartidasTab({
   const createId = (prefix: string) =>
     `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
-  const load = useCallback(async () => {
+  const loadOptions = useCallback(async () => {
     setLoading(true);
     const headers = { Authorization: `Bearer ${token}` };
     const [charsRes, objsRes] = await Promise.all([
@@ -586,8 +620,25 @@ function PartidasTab({
   }, [token, onToast]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadOptions();
+  }, [loadOptions]);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    const res = await fetch("/api/admin/partidas", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setHistory(await res.json());
+    } else {
+      onToast("Error cargando historial de partidas", "error");
+    }
+    setHistoryLoading(false);
+  }, [token, onToast]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const updateParticipant = (
     id: string,
@@ -709,6 +760,7 @@ function PartidasTab({
           items: [],
         },
       ]);
+      loadHistory();
     } else {
       const err = await res.json().catch(() => ({}));
       onToast(err.error ?? "Error al crear partida", "error");
@@ -942,6 +994,139 @@ function PartidasTab({
           </div>
         </form>
       )}
+
+      <div className="border-t border-border pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-foreground">
+            Historial de partidas
+          </h3>
+          <button
+            type="button"
+            onClick={loadHistory}
+            className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+          >
+            Actualizar
+          </button>
+        </div>
+
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-5 h-5 animate-spin text-gold" />
+          </div>
+        ) : history.length === 0 ? (
+          <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+            No hay partidas registradas.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {history.map((entry) => {
+              const totalGold = entry.participants.reduce(
+                (sum, p) => sum + (p.gold ?? 0),
+                0,
+              );
+              const isOpen = expandedId === entry.id;
+
+              return (
+                <div
+                  key={entry.id}
+                  className="border border-border rounded-xl p-4 bg-secondary/10"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isOpen ? null : entry.id)}
+                    className="w-full flex items-center justify-between gap-3 text-left"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {entry.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(entry.createdAt).toLocaleString("es-ES", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {entry.createdBy ? ` · ${entry.createdBy}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{entry.participants.length} jugadores</span>
+                      <span className="text-gold">+{totalGold} oro</span>
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="mt-4 flex flex-col gap-4">
+                      {entry.comment && (
+                        <p className="text-xs text-muted-foreground">
+                          {entry.comment}
+                        </p>
+                      )}
+
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <table className="w-full text-xs">
+                          <thead className="bg-secondary/50 border-b border-border">
+                            <tr>
+                              <th className="px-2 py-2 text-left">Personaje</th>
+                              <th className="px-2 py-2 text-left">Usuario</th>
+                              <th className="px-2 py-2 text-center">Oro</th>
+                              <th className="px-2 py-2 text-left">Estado</th>
+                              <th className="px-2 py-2 text-left">Comentario</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entry.participants.map((p) => (
+                              <tr key={p.id} className="border-b border-border last:border-0">
+                                <td className="px-2 py-2 text-foreground">
+                                  {p.characterName}
+                                </td>
+                                <td className="px-2 py-2 text-muted-foreground">
+                                  {p.userName}
+                                </td>
+                                <td className="px-2 py-2 text-center text-gold">
+                                  {p.gold}
+                                </td>
+                                <td className="px-2 py-2 text-muted-foreground">
+                                  {p.dead ? "Muerto" : "Vivo"}
+                                </td>
+                                <td className="px-2 py-2 text-muted-foreground">
+                                  {p.comment || "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="rounded-lg border border-border p-3">
+                        <p className="text-xs font-semibold text-foreground mb-2">
+                          Objetos entregados
+                        </p>
+                        {entry.items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Sin objetos registrados
+                          </p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {entry.items.map((item, idx) => (
+                              <div key={`${item.objectId}-${idx}`} className="text-xs text-muted-foreground">
+                                <span className="mr-2">{item.objectIcon}</span>
+                                {item.objectName} x{item.qty}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
