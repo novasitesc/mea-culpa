@@ -2067,7 +2067,7 @@ function CharactersFormModal({
                       <div className="space-y-2">
                         {editForm.clases.map((clase, idx) => (
                           <div key={idx} className="flex items-center gap-3">
-                            <span className="text-sm text-foreground min-w-[100px]">
+                            <span className="text-sm text-foreground min-w-25">
                               {clase.nombre_clase}
                             </span>
                             <div className="flex items-center gap-1">
