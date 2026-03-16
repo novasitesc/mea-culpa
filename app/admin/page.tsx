@@ -1346,6 +1346,7 @@ function UsersTab({
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
+  const [editCharacterTarget, setEditCharacterTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -1508,6 +1509,10 @@ function UsersTab({
           initial={editTarget}
           onClose={() => setEditTarget(null)}
           loading={actionLoading}
+          onEditCharacters={() => {
+            setEditCharacterTarget(editTarget);
+            setEditTarget(null);
+          }}
           onSubmit={async (data) => {
             setActionLoading(true);
             const res = await fetch(`/api/admin/users?id=${editTarget.id}`, {
@@ -1581,6 +1586,16 @@ function UsersTab({
         />
       )}
 
+      {/* Modal Editar Personajes */}
+      {editCharacterTarget && (
+        <CharactersFormModal
+          user={editCharacterTarget}
+          onClose={() => setEditCharacterTarget(null)}
+          onToast={onToast}
+          token={token}
+        />
+      )}
+
       {/* Modal Eliminar */}
       {deleteTarget && (
         <ConfirmDelete
@@ -1617,12 +1632,14 @@ function UserFormModal({
   onClose,
   onSubmit,
   loading,
+  onEditCharacters,
 }: {
   title: string;
   initial: AdminUser | null;
   onClose: () => void;
   onSubmit: (data: Partial<AdminUser> & { password?: string }) => void;
   loading: boolean;
+  onEditCharacters?: () => void;
 }) {
   const isEdit = initial !== null;
 
@@ -1728,6 +1745,15 @@ function UserFormModal({
         {/* El toggle de Admin está reservado para SUPER_ADMIN (próximamente) */}
 
         <div className="flex gap-3 justify-end pt-2 border-t border-border">
+          {isEdit && onEditCharacters && (
+            <button
+              type="button"
+              onClick={onEditCharacters}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Editar Personajes
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -1840,6 +1866,290 @@ function GoldFormModal({
           </button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+// ─── Modal para Editar Personajes ────────────────────────────────────────────
+
+type Character = {
+  id: number;
+  nombre: string;
+  raza: string;
+  clases: Array<{
+    nombre_clase: string;
+    nivel: number;
+  }>;
+  estadisticas: {
+    fuerza: number;
+    destreza: number;
+    constitucion: number;
+    inteligencia: number;
+    sabiduria: number;
+    carisma: number;
+  } | null;
+};
+
+function CharactersFormModal({
+  user,
+  onClose,
+  onToast,
+  token,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onToast: (msg: string, type: "success" | "error") => void;
+  token: string;
+}) {
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingChar, setEditingChar] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{
+    raza: string;
+    clases: Array<{ nombre_clase: string; nivel: number }>;
+    estadisticas: {
+      fuerza: number;
+      destreza: number;
+      constitucion: number;
+      inteligencia: number;
+      sabiduria: number;
+      carisma: number;
+    };
+  } | null>(null);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    const loadCharacters = async () => {
+      try {
+        const res = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (res.ok) {
+          setCharacters(await res.json());
+        } else {
+          onToast("Error al cargar personajes", "error");
+        }
+      } catch (error) {
+        onToast("Error al cargar personajes", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCharacters();
+  }, [user.id, token, headers, onToast]);
+
+  const saveCharacter = async (characterId: number) => {
+    if (!editForm) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/characters", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          characterId,
+          raza: editForm.raza,
+          clases: editForm.clases,
+          estadisticas: editForm.estadisticas,
+        }),
+      });
+
+      if (res.ok) {
+        onToast("Personaje actualizado", "success");
+        setEditingChar(null);
+        setEditForm(null);
+        // Recargar personajes
+        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (charsRes.ok) {
+          setCharacters(await charsRes.json());
+        }
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al guardar", "error");
+      }
+    } catch (error) {
+      onToast("Error al guardar personaje", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={`Personajes de ${user.name}`} onClose={onClose} maxWidth="max-w-4xl">
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-gold" />
+          </div>
+        ) : characters.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            Este usuario no tiene personajes
+          </p>
+        ) : (
+          <>
+            {characters.map((character) => (
+              <div
+                key={character.id}
+                className="p-4 rounded border border-border bg-secondary/20 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {character.nombre}
+                  </h3>
+                  {editingChar !== character.id && (
+                    <button
+                      onClick={() => {
+                        setEditingChar(character.id);
+                        setEditForm({
+                          raza: character.raza,
+                          clases: character.clases,
+                          estadisticas: character.estadisticas || {
+                            fuerza: 10,
+                            destreza: 10,
+                            constitucion: 10,
+                            inteligencia: 10,
+                            sabiduria: 10,
+                            carisma: 10,
+                          },
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+
+                {editingChar === character.id && editForm ? (
+                  <div className="space-y-3">
+                    {/* Raza */}
+                    <FormField label="Raza">
+                      <input
+                        type="text"
+                        value={editForm.raza}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, raza: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="Ej: Elfo, Humano, etc."
+                      />
+                    </FormField>
+
+                    {/* Clases y Niveles */}
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Clases
+                      </label>
+                      <div className="space-y-2">
+                        {editForm.clases.map((clase, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <span className="text-sm text-foreground min-w-[100px]">
+                              {clase.nombre_clase}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">
+                                Nv.
+                              </span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={clase.nivel}
+                                onChange={(e) => {
+                                  const newClases = [...editForm.clases];
+                                  newClases[idx].nivel = Math.max(
+                                    1,
+                                    Math.min(20, Number(e.target.value))
+                                  );
+                                  setEditForm({ ...editForm, clases: newClases });
+                                }}
+                                className={`${inputCls} w-16`}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Estadísticas */}
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Puntos de Habilidad
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(editForm.estadisticas).map(([stat, value]) => (
+                          <FormField key={stat} label={stat.charAt(0).toUpperCase() + stat.slice(1)}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={value}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  estadisticas: {
+                                    ...editForm.estadisticas,
+                                    [stat]: Math.max(1, Math.min(30, Number(e.target.value))),
+                                  },
+                                })
+                              }
+                              className={inputCls}
+                            />
+                          </FormField>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Botones */}
+                    <div className="flex gap-2 justify-end pt-3 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingChar(null);
+                          setEditForm(null);
+                        }}
+                        className="px-3 py-1.5 bg-secondary hover:bg-muted rounded text-sm font-medium text-foreground transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveCharacter(character.id)}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                      >
+                        {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Raza: {character.raza}</p>
+                    <p>
+                      Clases:{" "}
+                      {character.clases
+                        .map((c) => `${c.nombre_clase} (Nv.${c.nivel})`)
+                        .join(", ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Botón cerrar */}
+        <div className="flex justify-end pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }
