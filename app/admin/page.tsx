@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
+import FantasyAlert from "@/components/ui/fantasy-alert";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -2777,6 +2778,7 @@ function ShopItemFormModal({
     orden: number;
   }) => void;
 }) {
+  const [invalidObjectAlertId, setInvalidObjectAlertId] = useState(0);
   const [objetoId, setObjetoId] = useState<number>(
     initial?.objetoId ?? objects[0]?.id ?? 0,
   );
@@ -2797,7 +2799,7 @@ function ShopItemFormModal({
     e.preventDefault();
 
     if (mode === "create" && !objetoId) {
-      alert("Selecciona un objeto válido");
+      setInvalidObjectAlertId((prev) => prev + 1);
       return;
     }
 
@@ -2823,12 +2825,22 @@ function ShopItemFormModal({
     .slice(0, 10);
 
   return (
-    <Modal
-      title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
-      maxWidth="max-w-2xl"
-      onClose={onClose}
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
+    <>
+      <FantasyAlert
+        key={invalidObjectAlertId}
+        open={invalidObjectAlertId > 0}
+        title="Objeto requerido"
+        message="Selecciona un objeto válido"
+        variant="warning"
+        onClose={() => setInvalidObjectAlertId(0)}
+      />
+
+      <Modal
+        title={mode === "create" ? "Añadir artículo a tienda" : "Editar artículo"}
+        maxWidth="max-w-2xl"
+        onClose={onClose}
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
         {mode === "create" && (
           <FormField label="Objeto">
             <div className="relative">
@@ -2942,8 +2954,9 @@ function ShopItemFormModal({
             {mode === "create" ? "Añadir" : "Guardar"}
           </button>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }
 
