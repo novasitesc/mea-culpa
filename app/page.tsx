@@ -331,8 +331,8 @@ export default function HomePage() {
               <p className="text-xs text-muted-foreground text-center">
                 Slot de PJ bloqueados y que se desbloquean pagando
               </p>
-              <button className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans">
-                Desbloquear Slot
+              <button className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                Contacta con un administrador
               </button>
             </div>
           </aside>
