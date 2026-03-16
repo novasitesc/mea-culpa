@@ -366,13 +366,17 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
 function BagItemCard({
   item,
   selectedSlot,
+  selectedFromBag = false,
   onEquip,
+  onSelectFromBag,
   readOnly = false,
   onReadOnlyAttempt,
 }: {
   item: Item;
   selectedSlot: SlotKey | null;
+  selectedFromBag?: boolean;
   onEquip: (item: Item) => void;
+  onSelectFromBag?: () => void;
   readOnly?: boolean;
   onReadOnlyAttempt?: () => void;
 }) {
@@ -392,7 +396,9 @@ function BagItemCard({
         }
         if (isCompatible) {
           onEquip(item);
+          return;
         }
+        if (!selectedSlot) onSelectFromBag?.();
       }}
       title={
         selectedSlot
@@ -406,11 +412,13 @@ function BagItemCard({
         "transition-all duration-200",
         isCompatible
           ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a] animate-pulse-gold"
+          : selectedFromBag
+          ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a]"
           : readOnly
           ? "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518] cursor-pointer"
           : selectedSlot
           ? "opacity-40 cursor-not-allowed border-[#3a3020] bg-[#141210]"
-          : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518] cursor-default",
+          : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518] cursor-pointer",
       ].join(" ")}
       style={
         isCompatible
@@ -453,11 +461,36 @@ export default function EquipmentModal({
   );
   const [bagItems, setBagItems] = useState<Item[]>(character.bag.items);
   const [selectedSlot, setSelectedSlot] = useState<SlotKey | null>(null);
+  const [selectedBagIndex, setSelectedBagIndex] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
   const [isSaving, setIsSaving] = useState(false);
 
   const selectSlot = useCallback(
     (slotKey: SlotKey) => {
+      if (selectedBagIndex !== null) {
+        const item = bagItems[selectedBagIndex];
+        if (!item) {
+          setSelectedBagIndex(null);
+          return;
+        }
+        const cfg = SLOT_CONFIG[slotKey];
+        if (!cfg.accepts.includes(item.type)) {
+          setStatusMsg(`⚠ ${item.name} no es compatible con ${cfg.label}`);
+          return;
+        }
+
+        const oldItem = equipped[slotKey];
+        const newBag = bagItems.filter((_, idx) => idx !== selectedBagIndex);
+        if (oldItem) newBag.push(oldItem);
+
+        setEquipped((prev) => ({ ...prev, [slotKey]: item }));
+        setBagItems(newBag);
+        setSelectedBagIndex(null);
+        setSelectedSlot(null);
+        setStatusMsg(`✓ ${item.name} equipado en ${cfg.label}`);
+        return;
+      }
+
       if (selectedSlot === slotKey) {
         // Toggle off, or unequip if something is there
         if (equipped[slotKey]) {
@@ -480,7 +513,21 @@ export default function EquipmentModal({
         `Slot ${cfg.label} seleccionado — elige un objeto compatible`
       );
     },
-    [selectedSlot, equipped, bagItems.length, character.bag.maxSlots]
+    [selectedSlot, selectedBagIndex, equipped, bagItems, character.bag.maxSlots]
+  );
+
+  const selectBagItem = useCallback(
+    (index: number) => {
+      if (selectedSlot) return;
+      if (selectedBagIndex === index) {
+        setSelectedBagIndex(null);
+        setStatusMsg("Sin cambios pendientes");
+        return;
+      }
+      setSelectedBagIndex(index);
+      setStatusMsg("Objeto seleccionado — haz clic en un slot para equiparlo");
+    },
+    [selectedBagIndex, selectedSlot]
   );
 
   const equipItem = useCallback(
@@ -504,6 +551,7 @@ export default function EquipmentModal({
       setBagItems((prev) => prev.filter((b) => b.name !== item.name));
       setStatusMsg(`✓ ${item.name} equipado en ${cfg.label}`);
       setSelectedSlot(null);
+      setSelectedBagIndex(null);
     },
     [selectedSlot]
   );
@@ -669,7 +717,9 @@ export default function EquipmentModal({
                     key={`${item.name}-${idx}`}
                     item={item}
                     selectedSlot={selectedSlot}
+                    selectedFromBag={selectedBagIndex === idx}
                     onEquip={equipItem}
+                    onSelectFromBag={() => selectBagItem(idx)}
                   />
                 ))}
                 {Array.from({ length: emptySlots }).map((_, i) => (
