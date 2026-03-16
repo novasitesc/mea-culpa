@@ -1446,7 +1446,7 @@ function UsersTab({
                   Email <SortIcon field="email" />
                 </th>
                 <th className={thCls} onClick={() => handleSort("role")}>
-                  Rol <SortIcon field="role" />
+                  Gremio <SortIcon field="role" />
                 </th>
                 <th className={thCls} onClick={() => handleSort("level")}>
                   Nivel <SortIcon field="level" />
@@ -1761,7 +1761,7 @@ function UserFormModal({
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Rol / Clase">
+          <FormField label="Gremio">
             <input
               className={inputCls}
               value={form.role}
