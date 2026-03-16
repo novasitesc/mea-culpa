@@ -457,6 +457,7 @@ export default function ProfilePage() {
                       src={character.portrait || "/characters/profileplaceholder.webp"}
                       alt={`${character.name} portrait`}
                       fill
+                      quality={100}
                       className="object-cover"
                     />
                   </div>
@@ -480,7 +481,7 @@ export default function ProfilePage() {
                         <p className="text-xs text-muted-foreground mb-2">
                           Elige una imagen disponible
                         </p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                           {AVAILABLE_PORTRAITS.map((portraitPath) => {
                             const isSelected =
                               (character.portrait ||
@@ -509,8 +510,12 @@ export default function ProfilePage() {
                                   src={portraitPath}
                                   alt={portraitPath.split("/").pop() ?? "Retrato"}
                                   fill
+                                  quality={100}
+                                  unoptimized
+                                  priority={isSelected}
+                                  loading="eager"
                                   className="object-cover"
-                                  sizes="96px"
+                                  sizes="(max-width: 768px) 33vw, 120px"
                                 />
                               </button>
                             );
