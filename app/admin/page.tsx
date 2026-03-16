@@ -2793,7 +2793,9 @@ function ShopItemFormModal({
       ? ""
       : String(initial.inventario),
   );
-  const [orden, setOrden] = useState<number>(initial?.orden ?? 0);
+  const [orden, setOrden] = useState<string>(
+    initial?.orden || initial?.orden === 0 ? String(initial.orden) : ""
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2805,11 +2807,12 @@ function ShopItemFormModal({
 
     const inventario =
       inventarioRaw.trim() === "" ? null : Number(inventarioRaw.trim());
+    const ordenNum = orden.trim() === "" ? 0 : Number(orden.trim());
 
     onSubmit({
       ...(mode === "create" ? { objetoId } : {}),
       inventario,
-      orden,
+      orden: ordenNum,
     });
   };
 
@@ -2925,7 +2928,12 @@ function ShopItemFormModal({
               type="number"
               min={0}
               value={orden}
-              onChange={(e) => setOrden(Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  setOrden(val);
+                }
+              }}
             />
           </FormField>
         </div>
@@ -3155,7 +3163,7 @@ function ObjectFormModal({
     icon: initial?.icon ?? "📦",
     itemType: initial?.itemType ?? "misc",
     rarity: initial?.rarity ?? "común",
-    price: initial?.price ?? 0,
+    price: initial?.price ? String(initial.price) : "",
     bonusStats: initial?.bonusStats
       ? JSON.stringify(initial.bonusStats, null, 2)
       : "",
@@ -3179,13 +3187,15 @@ function ObjectFormModal({
       }
     }
 
+    const priceNum = form.price === "" ? 0 : Number(form.price);
+
     onSubmit({
       name: form.name,
       description: form.description,
       icon: form.icon,
       itemType: form.itemType,
       rarity: form.rarity,
-      price: form.price,
+      price: priceNum,
       bonusStats: parsedBonus,
     });
   };
@@ -3259,7 +3269,12 @@ function ObjectFormModal({
               type="number"
               min={0}
               value={form.price}
-              onChange={(e) => set("price", Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  set("price", val === "" ? "" : Number(val));
+                }
+              }}
               required
             />
           </FormField>
