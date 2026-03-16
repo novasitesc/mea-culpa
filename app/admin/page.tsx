@@ -2847,7 +2847,9 @@ function ShopItemFormModal({
                   <div className="flex items-center gap-2">
                     <span>{selectedObject.icon}</span>
                     <span className="font-medium text-foreground">{selectedObject.name}</span>
-                    <span className="text-muted-foreground text-xs">({selectedObject.itemType})</span>
+                    <span className="text-muted-foreground text-xs">
+                      ({selectedObject.itemType}) · {selectedObject.price.toLocaleString()} 🪙
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -2891,7 +2893,9 @@ function ShopItemFormModal({
                           >
                             <span>{obj.icon}</span>
                             <span className="font-medium">{obj.name}</span>
-                            <span className="text-muted-foreground text-xs">ID: {obj.id} • {obj.itemType}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ID: {obj.id} • {obj.itemType} • {obj.price.toLocaleString()} 🪙
+                            </span>
                           </div>
                         ))
                       )}
@@ -3039,9 +3043,12 @@ function ObjectsTab({
               </p>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
-                <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
-                  {obj.rarity}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
+                    {obj.rarity}
+                  </span>
+                  <span className="text-gold">{obj.price.toLocaleString()} 🪙</span>
+                </div>
                 <span>{formatDate(obj.createdAt)}</span>
               </div>
             </div>

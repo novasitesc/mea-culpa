@@ -49,6 +49,7 @@ type ItemType =
 type Item = {
   name: string;
   type: ItemType;
+  price?: number;
 };
 
 type Bag = {

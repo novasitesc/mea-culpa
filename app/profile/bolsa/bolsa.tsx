@@ -22,6 +22,7 @@ type ItemType =
 type Item = {
   name: string;
   type: ItemType;
+  price?: number;
 };
 
 type ArmorSlots = {
@@ -420,6 +421,9 @@ function BagItemCard({
       <span className="text-xl leading-none">{icon}</span>
       <span className="text-[11px] text-[#e8d8b0] text-center leading-tight max-w-18">
         {item.name}
+      </span>
+      <span className="text-[10px] text-[#D4AF37] leading-none">
+        {(item.price ?? 0).toLocaleString()} 🪙
       </span>
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
         {item.type}

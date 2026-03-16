@@ -38,7 +38,7 @@ export async function GET(request: Request) {
         collar, anillo1, anillo2, amuleto,
         mano_izquierda, mano_derecha
       ),
-      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item ) )
+      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item, precio ) )
     `,
     )
     .eq("usuario_id", userId)
@@ -138,6 +138,7 @@ export async function GET(request: Request) {
           .map((bi: any) => ({
             name: bi.objetos?.nombre ?? "Objeto desconocido",
             type: bi.objetos?.tipo_item ?? "misc",
+            price: bi.objetos?.precio ?? 0,
           })),
         maxSlots: p.capacidad_bolsa,
       },
