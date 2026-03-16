@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       comentario: comment,
       creada_por: session.userId,
     })
-    .select("id, creado_en, estado")
+    .select("id, creada_en, estado")
     .single();
 
   if (partidaError || !partida) {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       id: (partida as any).id,
-      createdAt: (partida as any).creado_en,
+      createdAt: (partida as any).creada_en,
       status: (partida as any).estado,
       participants: participantes?.length ?? 0,
     },
