@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
         cabeza, pecho, guante, botas,
-        collar, anillo1, anillo2, amuleto,
+        collar, anillo1, anillo2, amuleto, cinturon,
         mano_izquierda, mano_derecha
       ),
       bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item, precio ) )
@@ -58,6 +58,7 @@ export async function GET(request: Request) {
       equip.anillo1,
       equip.anillo2,
       equip.amuleto,
+      equip.cinturon,
       equip.mano_izquierda,
       equip.mano_derecha,
     ]) {
@@ -121,6 +122,8 @@ export async function GET(request: Request) {
           equip?.anillo2 != null ? equipIdToName.get(equip.anillo2) : undefined,
         amuleto:
           equip?.amuleto != null ? equipIdToName.get(equip.amuleto) : undefined,
+        cinturon:
+          equip?.cinturon != null ? equipIdToName.get(equip.cinturon) : undefined,
       },
       weapons: {
         manoIzquierda:

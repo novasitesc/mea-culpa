@@ -9,6 +9,7 @@ const VALID_TYPES = [
   "collar",
   "anillo",
   "amuleto",
+  "cinturón",
   "arma",
   "consumible",
   "ingrediente",

@@ -9,6 +9,7 @@ export type ItemType =
   | "collar"
   | "anillo"
   | "amuleto"
+  | "cinturón"
   | "arma";
 
 export type Item = {
@@ -28,6 +29,7 @@ export type AccessorySlots = {
   anillo1?: string;
   anillo2?: string;
   amuleto?: string;
+  cinturon?: string;
 };
 
 export type WeaponSlots = {

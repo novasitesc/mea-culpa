@@ -158,6 +158,7 @@ const ITEM_TYPES = [
   "collar",
   "anillo",
   "amuleto",
+  "cinturón",
   "arma",
   "consumible",
   "ingrediente",

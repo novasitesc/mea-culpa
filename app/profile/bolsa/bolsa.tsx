@@ -13,10 +13,10 @@ type ItemType =
   | "collar"
   | "anillo"
   | "amuleto"
+  | "cinturón"
   | "arma"
   | "piernas"
   | "manos"
-  | "pies"
   | "colgante";
 
 type Item = {
@@ -37,6 +37,7 @@ type AccessorySlots = {
   anillo1?: string;
   anillo2?: string;
   amuleto?: string;
+  cinturon?: string;
 };
 
 type WeaponSlots = {
@@ -65,6 +66,7 @@ type Character = {
 type SlotKey =
   | "cabeza"
   | "colgante"
+  | "cinturon"
   | "pecho"
   | "manoizq"
   | "manoderecha"
@@ -77,6 +79,7 @@ type SlotKey =
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
   colgante:    { accepts: ["collar", "amuleto", "colgante"],   label: "Colgante",  icon: "💎" },
+  cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
   pecho:       { accepts: ["pecho"],                           label: "Pecho",     icon: "🧥" },
   manoizq:     { accepts: ["arma"],                            label: "Mano Izq",  icon: "🗡" },
   manoderecha: { accepts: ["arma"],                            label: "Mano Der",  icon: "🗡" },
@@ -84,13 +87,14 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
   anillo1:     { accepts: ["anillo"],                          label: "Anillo 1",  icon: "✨" },
   anillo2:     { accepts: ["anillo"],                          label: "Anillo 2",  icon: "✨" },
   piernas:     { accepts: ["piernas", "botas"],                label: "Piernas",   icon: "🦺" },
-  pies:        { accepts: ["pies", "botas"],                   label: "Pies",      icon: "🥾" },
+  pies:        { accepts: ["botas"],                           label: "Pies",      icon: "🥾" },
 };
 
 const ITEM_ICONS: Partial<Record<ItemType, string>> = {
   arma: "⚔️", cabeza: "👑", pecho: "🧥", guante: "🧤", manos: "🧤",
-  botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
+  botas: "🥾", anillo: "💍", collar: "📿",
   amuleto: "🔮", colgante: "💎", piernas: "🦺",
+  cinturón: "🪢",
 };
 
 // ─── Helper: build a flat equipped map from Character slots ──────────────────
@@ -105,6 +109,7 @@ function buildEquippedMap(character: Character): EquippedMap {
     pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas"    } : null,
     colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar"  } :
                  character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto" } : null,
+    cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón" } : null,
     anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo"  } : null,
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo"  } : null,
     manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma" } : null,
@@ -130,6 +135,7 @@ function equippedMapToCharacter(
     accessories: {
       collar:  equipped.colgante?.type === "collar"  ? equipped.colgante.name : undefined,
       amuleto: equipped.colgante?.type === "amuleto" ? equipped.colgante.name : undefined,
+      cinturon: equipped.cinturon?.name,
       anillo1: equipped.anillo1?.name,
       anillo2: equipped.anillo2?.name,
     },
@@ -164,6 +170,7 @@ function SlotButton({
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
       colgante:    { top: "100px", left: "50%", transform: "translateX(-50%)" },
+      cinturon:    { top: "272px", left: "50%", transform: "translateX(-50%)" },
       pecho:       { top: "150px", left: "50%", transform: "translateX(-50%)" },
       manoizq:     { top: "145px", left: "14px" },
       manoderecha: { top: "145px", right: "14px" },
@@ -221,11 +228,11 @@ const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   guante:   "bg-purple-900/20 text-purple-300",
   manos:    "bg-purple-900/20 text-purple-300",
   botas:    "bg-purple-900/20 text-purple-300",
-  pies:     "bg-purple-900/20 text-purple-300",
   piernas:  "bg-purple-900/20 text-purple-300",
   anillo:   "bg-yellow-900/20 text-yellow-400",
   collar:   "bg-yellow-900/20 text-yellow-400",
   amuleto:  "bg-yellow-900/20 text-yellow-400",
+  cinturón: "bg-yellow-900/20 text-yellow-400",
   colgante: "bg-yellow-900/20 text-yellow-400",
 };
 

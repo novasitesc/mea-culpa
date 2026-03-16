@@ -29,6 +29,7 @@ type AccessorySlots = {
   anillo1?: string;
   anillo2?: string;
   amuleto?: string;
+  cinturon?: string;
 };
 
 type WeaponSlots = {
@@ -44,6 +45,7 @@ type ItemType =
   | "collar"
   | "anillo"
   | "amuleto"
+  | "cinturón"
   | "arma";
 
 type Item = {
