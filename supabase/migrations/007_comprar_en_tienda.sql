@@ -7,7 +7,9 @@
 --   2. Validar stock de cada artículo.
 --   3. Verificar que el usuario tiene oro suficiente.
 --   4. Reducir stock en articulos_tienda.
---   5. Añadir objetos a bolsa_objetos (stacking si ya existe).
+--   5. Añadir objetos a bolsa_objetos:
+--      · CONSUMIBLES: se apilan (stacking) en una entrada con cantidad = n
+--      · NO CONSUMIBLES: se crean n entradas separadas, cada una con cantidad = 1
 --   6. Descontar oro vía modificar_oro (que además registra la transacción).
 --
 -- Si cualquier paso falla, TODA la operación se revierte (ROLLBACK).
@@ -30,12 +32,14 @@ DECLARE
   v_precio        INT;
   v_stock         INT;
   v_obj_id        BIGINT;
+  v_tipo_item     TEXT;
   v_total_costo   INT := 0;
   v_nuevo_oro     INT;
   v_existing_id   BIGINT;
   v_next_orden    INT;
   v_bag_count     INT;
   v_bag_capacity  INT;
+  v_i              INT;
 BEGIN
   -- ── 1. Verificar que el personaje pertenece al usuario ──────────────────
   SELECT capacidad_bolsa INTO v_bag_capacity
@@ -56,10 +60,11 @@ BEGIN
       RAISE EXCEPTION 'Cantidad inválida para artículo %', v_articulo_id;
     END IF;
 
-    SELECT precio, inventario, objeto_id
-    INTO   v_precio, v_stock, v_obj_id
-    FROM   articulos_tienda
-    WHERE  id = v_articulo_id;
+    SELECT at.precio, at.inventario, at.objeto_id, o.tipo_item
+    INTO   v_precio, v_stock, v_obj_id, v_tipo_item
+    FROM   articulos_tienda at
+    INNER JOIN objetos o ON at.objeto_id = o.id
+    WHERE  at.id = v_articulo_id;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Artículo % no encontrado en ninguna tienda', v_articulo_id;
@@ -86,10 +91,11 @@ BEGIN
     v_articulo_id := (v_elem->>'articulo_tienda_id')::BIGINT;
     v_qty         := (v_elem->>'qty')::INT;
 
-    SELECT precio, inventario, objeto_id
-    INTO   v_precio, v_stock, v_obj_id
-    FROM   articulos_tienda
-    WHERE  id = v_articulo_id;
+    SELECT at.precio, at.inventario, at.objeto_id, o.tipo_item
+    INTO   v_precio, v_stock, v_obj_id, v_tipo_item
+    FROM   articulos_tienda at
+    INNER JOIN objetos o ON at.objeto_id = o.id
+    WHERE  at.id = v_articulo_id;
 
     -- Reducir stock si es finito
     IF v_stock IS NOT NULL THEN
@@ -98,32 +104,55 @@ BEGIN
       WHERE id = v_articulo_id;
     END IF;
 
-    -- Si el personaje ya tiene el objeto en la bolsa, apilar (stacking)
-    SELECT id INTO v_existing_id
-    FROM   bolsa_objetos
-    WHERE  personaje_id = p_personaje_id AND objeto_id = v_obj_id;
-
-    IF FOUND THEN
-      UPDATE bolsa_objetos
-        SET cantidad = cantidad + v_qty
-      WHERE id = v_existing_id;
-    ELSE
-      -- Verificar capacidad de bolsa antes de ocupar un nuevo slot
-      SELECT COUNT(*) INTO v_bag_count
+    -- Si es CONSUMIBLE: usar stacking (una entrada con cantidad = n)
+    -- Si NO es consumible: crear una entrada por cada unidad (n entradas con cantidad = 1)
+    IF v_tipo_item = 'consumible' THEN
+      SELECT id INTO v_existing_id
       FROM   bolsa_objetos
-      WHERE  personaje_id = p_personaje_id;
+      WHERE  personaje_id = p_personaje_id AND objeto_id = v_obj_id;
 
-      IF v_bag_count >= v_bag_capacity THEN
-        RAISE EXCEPTION 'Bolsa llena: capacidad máxima de % slots alcanzada para este personaje',
-          v_bag_capacity;
+      IF FOUND THEN
+        UPDATE bolsa_objetos
+          SET cantidad = cantidad + v_qty
+        WHERE id = v_existing_id;
+      ELSE
+        -- Verificar capacidad de bolsa antes de ocupar un nuevo slot
+        SELECT COUNT(*) INTO v_bag_count
+        FROM   bolsa_objetos
+        WHERE  personaje_id = p_personaje_id;
+
+        IF v_bag_count >= v_bag_capacity THEN
+          RAISE EXCEPTION 'Bolsa llena: capacidad máxima de % slots alcanzada para este personaje',
+            v_bag_capacity;
+        END IF;
+
+        SELECT COALESCE(MAX(orden), -1) + 1 INTO v_next_orden
+        FROM   bolsa_objetos
+        WHERE  personaje_id = p_personaje_id;
+
+        INSERT INTO bolsa_objetos (personaje_id, objeto_id, cantidad, orden)
+        VALUES (p_personaje_id, v_obj_id, v_qty, v_next_orden);
       END IF;
+    ELSE
+      -- NO es consumible: crear una entrada por cada unidad
+      FOR v_i IN 1..v_qty LOOP
+        -- Verificar capacidad de bolsa antes de cada insert
+        SELECT COUNT(*) INTO v_bag_count
+        FROM   bolsa_objetos
+        WHERE  personaje_id = p_personaje_id;
 
-      SELECT COALESCE(MAX(orden), -1) + 1 INTO v_next_orden
-      FROM   bolsa_objetos
-      WHERE  personaje_id = p_personaje_id;
+        IF v_bag_count >= v_bag_capacity THEN
+          RAISE EXCEPTION 'Bolsa llena: capacidad máxima de % slots alcanzada para este personaje',
+            v_bag_capacity;
+        END IF;
 
-      INSERT INTO bolsa_objetos (personaje_id, objeto_id, cantidad, orden)
-      VALUES (p_personaje_id, v_obj_id, v_qty, v_next_orden);
+        SELECT COALESCE(MAX(orden), -1) + 1 INTO v_next_orden
+        FROM   bolsa_objetos
+        WHERE  personaje_id = p_personaje_id;
+
+        INSERT INTO bolsa_objetos (personaje_id, objeto_id, cantidad, orden)
+        VALUES (p_personaje_id, v_obj_id, 1, v_next_orden);
+      END LOOP;
     END IF;
   END LOOP;
 
