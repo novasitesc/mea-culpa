@@ -7,6 +7,7 @@ import Header from "../components/header";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
+import FantasyAlert from "@/components/ui/fantasy-alert";
 
 type Player = {
   name: string;
@@ -79,6 +80,13 @@ type ProfileResponse = {
   characters: Character[];
 };
 
+type ProfileAlert = {
+  id: number;
+  title: string;
+  message: string;
+  variant: "info" | "success" | "warning" | "error";
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -91,6 +99,7 @@ export default function ProfilePage() {
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
   const [newCharacter, setNewCharacter] = useState<{
     name: string;
     race: string;
@@ -102,6 +111,19 @@ export default function ProfilePage() {
     multiclass: [{ className: "", level: 1 }],
     alignment: "",
   });
+
+  const showProfileAlert = (
+    title: string,
+    message: string,
+    variant: ProfileAlert["variant"],
+  ) => {
+    setProfileAlert({
+      id: Date.now(),
+      title,
+      message,
+      variant,
+    });
+  };
 
   const saveBagChanges = async (
     characterId: number,
@@ -152,7 +174,11 @@ export default function ProfilePage() {
       setOpenBagModal(null);
     } catch (error) {
       console.error("Error saving bag changes:", error);
-      alert("Error al guardar los cambios. Inténtalo de nuevo.");
+      showProfileAlert(
+        "Error al guardar",
+        "Error al guardar los cambios. Inténtalo de nuevo.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -190,12 +216,20 @@ export default function ProfilePage() {
         alignment: "",
       });
       setShowCreateModal(false);
-      alert("¡Personaje creado exitosamente!");
+      showProfileAlert(
+        "Personaje creado",
+        "¡Personaje creado exitosamente!",
+        "success",
+      );
     } catch (error) {
       console.error("Error creating character:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      alert(`Error al crear el personaje: ${errorMessage}`);
+      showProfileAlert(
+        "Error al crear personaje",
+        `Error al crear el personaje: ${errorMessage}`,
+        "error",
+      );
     } finally {
       setIsCreating(false);
     }
@@ -253,6 +287,17 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {profileAlert && (
+        <FantasyAlert
+          key={profileAlert.id}
+          open
+          title={profileAlert.title}
+          message={profileAlert.message}
+          variant={profileAlert.variant}
+          onClose={() => setProfileAlert(null)}
+        />
+      )}
+
       {/* Background texture */}
       <div
         className="fixed inset-0 opacity-5 pointer-events-none"
