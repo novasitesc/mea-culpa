@@ -871,7 +871,6 @@ export default function EquipmentModal({
             <div className="mt-3 rounded-md border border-[#3a3020] bg-black/20 p-3 text-xs text-[#cbb58a] space-y-1">
               <p>Precio base: {(selectedBagItem.price ?? 0).toLocaleString()} oro</p>
               <p>Recibirás: {selectedBagItemSaleGold.toLocaleString()} oro (50%)</p>
-              <p>Concepto de la transferencia: {sellConcept}</p>
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
