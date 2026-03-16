@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import PortraitPicker from "./components/portrait-picker";
 
 type Player = {
   name: string;
@@ -90,22 +91,6 @@ type ProfileAlert = {
   variant: "info" | "success" | "warning" | "error";
 };
 
-const AVAILABLE_PORTRAITS = [
-  "/characters/barbaro.webp",
-  "/characters/bardo.webp",
-  "/characters/brujo.webp",
-  "/characters/clerigo.webp",
-  "/characters/druida.webp",
-  "/characters/explorador.webp",
-  "/characters/guerrero.webp",
-  "/characters/hechicero.webp",
-  "/characters/mago.webp",
-  "/characters/monje.webp",
-  "/characters/paladin.webp",
-  "/characters/picaro.webp",
-  "/characters/profileplaceholder.webp",
-];
-
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -119,10 +104,6 @@ export default function ProfilePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
-  const [portraitPickerCharacterId, setPortraitPickerCharacterId] = useState<
-    number | null
-  >(null);
-  const [isUpdatingPortrait, setIsUpdatingPortrait] = useState(false);
   const [newCharacter, setNewCharacter] = useState<{
     name: string;
     race: string;
@@ -255,62 +236,6 @@ export default function ProfilePage() {
       );
     } finally {
       setIsCreating(false);
-    }
-  };
-
-  const updateCharacterPortrait = async (
-    characterId: number,
-    portrait: string,
-  ) => {
-    if (!profile || !user) return;
-
-    setIsUpdatingPortrait(true);
-    try {
-      const response = await fetch("/api/profile/update-portrait", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          characterId,
-          portrait,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "No se pudo actualizar el retrato");
-      }
-
-      setProfile((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          characters: prev.characters.map((char) =>
-            char.id === characterId ? { ...char, portrait } : char,
-          ),
-        };
-      });
-
-      setCurrentCharacter((prev) =>
-        prev && prev.id === characterId ? { ...prev, portrait } : prev,
-      );
-
-      setPortraitPickerCharacterId(null);
-      showProfileAlert(
-        "Retrato actualizado",
-        "La imagen del personaje se guardó correctamente.",
-        "success",
-      );
-    } catch (error) {
-      console.error("Error updating portrait:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "No se pudo actualizar el retrato";
-      showProfileAlert("Error al actualizar", message, "error");
-    } finally {
-      setIsUpdatingPortrait(false);
     }
   };
 
@@ -461,69 +386,33 @@ export default function ProfilePage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 rounded border border-[#B8860B] text-[#D4AF37] text-sm font-semibold hover:bg-[#D4AF37]/10 transition"
-                      onClick={() =>
-                        setPortraitPickerCharacterId((prev) =>
-                          prev === character.id ? null : character.id,
-                        )
-                      }
-                    >
-                      {portraitPickerCharacterId === character.id
-                        ? "Ocultar retratos"
-                        : "Cambiar foto"}
-                    </button>
+                  {user && (
+                    <PortraitPicker
+                      userId={user.id}
+                      characterId={character.id}
+                      currentPortrait={character.portrait}
+                      onPortraitUpdated={(characterId, portrait) => {
+                        setProfile((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            characters: prev.characters.map((char) =>
+                              char.id === characterId
+                                ? { ...char, portrait }
+                                : char,
+                            ),
+                          };
+                        });
 
-                    {portraitPickerCharacterId === character.id && (
-                      <div className="rounded border border-border/60 bg-secondary/30 p-3">
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Elige una imagen disponible
-                        </p>
-                        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                          {AVAILABLE_PORTRAITS.map((portraitPath) => {
-                            const isSelected =
-                              (character.portrait ||
-                                "/characters/profileplaceholder.webp") ===
-                              portraitPath;
-
-                            return (
-                              <button
-                                key={portraitPath}
-                                type="button"
-                                disabled={isUpdatingPortrait}
-                                onClick={() =>
-                                  updateCharacterPortrait(
-                                    character.id,
-                                    portraitPath,
-                                  )
-                                }
-                                className={`relative aspect-square rounded overflow-hidden border-2 transition ${
-                                  isSelected
-                                    ? "border-[#D4AF37]"
-                                    : "border-border hover:border-[#B8860B]"
-                                } disabled:opacity-60 disabled:cursor-not-allowed`}
-                                title={portraitPath.split("/").pop()}
-                              >
-                                <Image
-                                  src={portraitPath}
-                                  alt={portraitPath.split("/").pop() ?? "Retrato"}
-                                  fill
-                                  quality={100}
-                                  unoptimized
-                                  priority={isSelected}
-                                  loading="eager"
-                                  className="object-cover"
-                                  sizes="(max-width: 768px) 33vw, 120px"
-                                />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                        setCurrentCharacter((prev) =>
+                          prev && prev.id === characterId
+                            ? { ...prev, portrait }
+                            : prev,
+                        );
+                      }}
+                      onAlert={showProfileAlert}
+                    />
+                  )}
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground tracking-[0.3em] uppercase">
                       {character.race}
