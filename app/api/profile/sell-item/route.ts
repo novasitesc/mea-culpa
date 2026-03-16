@@ -4,7 +4,6 @@ import { modifyGold } from "@/lib/goldService";
 
 export async function POST(request: Request) {
   try {
-    const concepto = "venta_objeto";
     const { userId, characterId, bagIndex } = await request.json();
 
     if (!userId || !characterId || !Number.isInteger(bagIndex) || bagIndex < 0) {
@@ -53,6 +52,8 @@ export async function POST(request: Request) {
     const itemName = row.objetos?.nombre ?? "Objeto desconocido";
     const itemPrice = Number(row.objetos?.precio ?? 0);
     const saleGold = Math.max(0, Math.floor(itemPrice / 2));
+    const safeItemName = itemName.replace(/"/g, "'");
+    const concepto = `venta_objeto "${safeItemName}"`;
 
     const { error: deleteError } = await db
       .from("bolsa_objetos")

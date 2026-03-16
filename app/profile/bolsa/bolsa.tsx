@@ -283,7 +283,7 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
             className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
             style={{ background: "rgba(0,0,0,0.15)" }}
           >
-            <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-sans">
+            <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
               Personaje
             </span>
 
@@ -330,10 +330,10 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
 
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] font-sans">
+              <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
                 ⚜ Bolsa
               </h3>
-              <span className="text-xs text-[#8a7a5a] font-sans">
+              <span className="text-xs text-[#8a7a5a]">
                 {bagItems.length} / {character.bag.maxSlots} espacios
               </span>
             </div>
@@ -666,7 +666,7 @@ export default function EquipmentModal({
             }}
           >
             <div>
-              <h2 className="font-serif text-sm tracking-[0.2em] uppercase text-[#D4AF37]">
+              <h2 className="text-sm tracking-[0.2em] uppercase text-[#D4AF37]">
                 ⚔ Equipo de {character.name}
               </h2>
               <p className="text-xs text-[#8a7a5a] mt-0.5">
@@ -786,7 +786,7 @@ export default function EquipmentModal({
 
               {/* Hint */}
               <div
-                className="text-xs text-center py-2 px-3 rounded-md italic font-serif transition-all duration-300"
+                className="text-xs text-center py-2 px-3 rounded-md italic transition-all duration-300"
                 style={{
                   border: selectedSlot
                     ? "1px solid rgba(212,175,55,0.4)"
@@ -835,7 +835,7 @@ export default function EquipmentModal({
                 "linear-gradient(90deg, #0f0e0c 0%, #1a1814 50%, #0f0e0c 100%)",
             }}
           >
-            <p className="flex-1 text-xs text-[#8a7a5a] italic font-serif">
+            <p className="flex-1 text-xs text-[#8a7a5a] italic">
               {statusMsg}
             </p>
             <p className="text-[10px] text-[#5a5040] hidden sm:block">
@@ -857,7 +857,7 @@ export default function EquipmentModal({
       </div>
 
       {showSellConfirm && selectedBagItem && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div
             className="w-full max-w-md rounded-xl border border-[#8B7355] p-5"
             style={{ background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)" }}
