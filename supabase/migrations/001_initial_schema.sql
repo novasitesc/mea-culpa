@@ -62,7 +62,7 @@ CREATE TABLE personajes (
   nombre          TEXT        NOT NULL,
   raza            TEXT        NOT NULL,
   alineamiento    TEXT        NOT NULL,
-  retrato         TEXT        NOT NULL DEFAULT '/characters/default-portrait.png',
+  retrato         TEXT        NOT NULL DEFAULT '/characters/profileplaceholder.webp',
   capacidad_bolsa INT         NOT NULL DEFAULT 10,
   creado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
   actualizado_en  TIMESTAMPTZ NOT NULL DEFAULT now(),

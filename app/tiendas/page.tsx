@@ -227,9 +227,24 @@ export default function TiendasPage() {
       }
 
       // Éxito — limpiar estado, actualizar oro y mostrar notificación
+      const purchasedCart = [...cart];
       const newPurchased = new Set(purchasedItems);
-      cart.forEach((e) => newPurchased.add(e.id));
+      purchasedCart.forEach((e) => newPurchased.add(e.id));
       setPurchasedItems(newPurchased);
+      setActiveShop((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((item) => {
+            const purchased = purchasedCart.find((e) => e.id === item.id);
+            if (!purchased || item.stock === null) return item;
+            return {
+              ...item,
+              stock: Math.max(0, item.stock - purchased.qty),
+            };
+          }),
+        };
+      });
       setCart([]);
       setBuyModalOpen(false);
       setCartOpen(false);
@@ -237,11 +252,18 @@ export default function TiendasPage() {
       setCharacters((prev) =>
         prev.map((c) =>
           c.id === selectedCharId
-            ? { ...c, bagUsed: c.bagUsed + cart.length }
+            ? { ...c, bagUsed: c.bagUsed + purchasedCart.length }
             : c,
         ),
       );
       await refreshUser();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("auth:refresh", {
+            detail: { oro: typeof data?.oro === "number" ? data.oro : undefined },
+          }),
+        );
+      }
       showNotification(
         `✅ Compra completada · Saldo: ${(data.oro ?? 0).toLocaleString()} 🪙`,
       );
@@ -446,7 +468,7 @@ export default function TiendasPage() {
                           }`}
                         >
                           <img
-                            src={char.portrait}
+                            src={char.portrait || "/characters/profileplaceholder.webp"}
                             alt={char.name}
                             className="w-12 h-12 rounded object-cover shrink-0 bg-secondary"
                           />

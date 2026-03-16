@@ -64,6 +64,22 @@ export function useAuth() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleAuthRefresh = (event: Event) => {
+      if (!user) return;
+      const detail = (event as CustomEvent<{ oro?: number }>).detail;
+      const oro = detail?.oro;
+      if (typeof oro === "number") {
+        setUser((prev) => (prev ? { ...prev, oro } : prev));
+        return;
+      }
+      hydrateProfile(user.id, user.email);
+    };
+
+    window.addEventListener("auth:refresh", handleAuthRefresh);
+    return () => window.removeEventListener("auth:refresh", handleAuthRefresh);
+  }, [user]);
+
   /** Lee el perfil de la tabla `perfiles` y construye el objeto User */
   async function hydrateProfile(uid: string, email: string) {
     const { data } = await getSupabase()

@@ -459,7 +459,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
                     <Image
-                      src={character.portrait}
+                      src={character.portrait || "/characters/profileplaceholder.webp"}
                       alt={`${character.name} portrait`}
                       fill
                       className="object-cover"
@@ -484,28 +484,6 @@ export default function ProfilePage() {
                               Nv.{entry.level}
                             </span>
                           </span>
-                          <button
-                            title="Subir nivel de clase"
-                            className="text-xs px-1.5 py-0.5 rounded border border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition leading-none"
-                            onClick={() => {
-                              const updated = (character.multiclass ?? []).map(
-                                (c, i) =>
-                                  i === idx
-                                    ? { ...c, level: Math.min(20, c.level + 1) }
-                                    : c,
-                              );
-                              setProfile({
-                                ...profile!,
-                                characters: profile!.characters.map((ch) =>
-                                  ch.id === character.id
-                                    ? { ...ch, multiclass: updated }
-                                    : ch,
-                                ),
-                              });
-                            }}
-                          >
-                            +
-                          </button>
                         </div>
                       ))}
                     </div>
@@ -986,30 +964,7 @@ export default function ProfilePage() {
                             </option>
                           ))}
                       </select>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          Nv.
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={entry.level}
-                          onChange={(e) => {
-                            const val = Math.max(
-                              1,
-                              Math.min(20, Number(e.target.value)),
-                            );
-                            setNewCharacter((prev) => ({
-                              ...prev,
-                              multiclass: prev.multiclass.map((c, i) =>
-                                i === idx ? { ...c, level: val } : c,
-                              ),
-                            }));
-                          }}
-                          className="w-14 px-2 py-2 rounded border border-border bg-secondary/30 text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        />
-                      </div>
+
                       {newCharacter.multiclass.length > 1 && (
                         <button
                           type="button"

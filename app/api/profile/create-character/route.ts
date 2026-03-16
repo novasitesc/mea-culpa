@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         nombre: name.trim(),
         raza: race.trim(),
         alineamiento: alignment,
-        retrato: "/characters/default-portrait.png",
+        retrato: "/characters/profileplaceholder.webp",
         capacidad_bolsa: capacidadBolsa,
       })
       .select("id")
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
         multiclass,
         race: race.trim(),
         alignment,
-        portrait: "/characters/default-portrait.png",
+        portrait: "/characters/profileplaceholder.webp",
         stats: {
           str: stats.fuerza,
           dex: stats.destreza,

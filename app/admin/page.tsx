@@ -599,6 +599,15 @@ function PartidasTab({
   const createId = (prefix: string) =>
     `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
+  const [characterSearch, setCharacterSearch] = useState<Record<string, string>>(
+    {},
+  );
+  const [characterDropdown, setCharacterDropdown] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
+  const [itemDropdown, setItemDropdown] = useState<Record<string, boolean>>({});
+
   const loadOptions = useCallback(async () => {
     setLoading(true);
     const headers = { Authorization: `Bearer ${token}` };
@@ -818,24 +827,110 @@ function PartidasTab({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <FormField label="Personaje">
-                    <select
-                      className={inputCls}
-                      value={p.characterId}
-                      onChange={(e) =>
-                        updateParticipant(p.id, {
-                          characterId: e.target.value
-                            ? Number(e.target.value)
-                            : "",
-                        })
-                      }
-                    >
-                      <option value="">Selecciona personaje</option>
-                      {characters.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} · {c.userName} (Slot {c.slot})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      {p.characterId ? (
+                        <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">
+                              {characters.find((c) => c.id === p.characterId)?.name ?? "Personaje"}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              {characters.find((c) => c.id === p.characterId)?.userName ?? ""}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateParticipant(p.id, { characterId: "" })
+                            }
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className={inputCls}
+                            placeholder="Buscar por nombre o usuario..."
+                            value={characterSearch[p.id] ?? ""}
+                            onChange={(e) => {
+                              setCharacterSearch((s) => ({
+                                ...s,
+                                [p.id]: e.target.value,
+                              }));
+                              setCharacterDropdown((s) => ({
+                                ...s,
+                                [p.id]: true,
+                              }));
+                            }}
+                            onFocus={() =>
+                              setCharacterDropdown((s) => ({
+                                ...s,
+                                [p.id]: true,
+                              }))
+                            }
+                            onBlur={() =>
+                              setTimeout(
+                                () =>
+                                  setCharacterDropdown((s) => ({
+                                    ...s,
+                                    [p.id]: false,
+                                  })),
+                                200,
+                              )
+                            }
+                          />
+                          {characterDropdown[p.id] && (
+                            <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
+                              {characters
+                                .filter((c) => {
+                                  const term = (characterSearch[p.id] ?? "").toLowerCase();
+                                  return (
+                                    c.name.toLowerCase().includes(term) ||
+                                    c.userName.toLowerCase().includes(term)
+                                  );
+                                })
+                                .slice(0, 10)
+                                .map((c) => (
+                                  <div
+                                    key={c.id}
+                                    className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
+                                    onClick={() => {
+                                      updateParticipant(p.id, { characterId: c.id });
+                                      setCharacterSearch((s) => ({
+                                        ...s,
+                                        [p.id]: "",
+                                      }));
+                                      setCharacterDropdown((s) => ({
+                                        ...s,
+                                        [p.id]: false,
+                                      }));
+                                    }}
+                                  >
+                                    <span className="font-medium whitespace-normal">{c.name}</span>
+                                    <span className="text-muted-foreground text-xs whitespace-normal">
+                                      {c.userName} (Slot {c.slot})
+                                    </span>
+                                  </div>
+                                ))}
+                              {characters.filter((c) => {
+                                const term = (characterSearch[p.id] ?? "").toLowerCase();
+                                return (
+                                  c.name.toLowerCase().includes(term) ||
+                                  c.userName.toLowerCase().includes(term)
+                                );
+                              }).length === 0 && (
+                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                  No se encontraron personajes
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </FormField>
                   <FormField label="Oro a otorgar">
                     <input
@@ -902,24 +997,111 @@ function PartidasTab({
                           key={item.id}
                           className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
                         >
-                          <select
-                            className={inputCls}
-                            value={item.objectId}
-                            onChange={(e) =>
-                              updateItem(p.id, item.id, {
-                                objectId: e.target.value
-                                  ? Number(e.target.value)
-                                  : "",
-                              })
-                            }
-                          >
-                            <option value="">Selecciona objeto</option>
-                            {objects.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.icon} {o.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            {item.objectId ? (
+                              <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {objects.find((o) => o.id === item.objectId)?.icon ?? "📦"}
+                                  </span>
+                                  <span className="font-medium text-foreground">
+                                    {objects.find((o) => o.id === item.objectId)?.name ?? "Objeto"}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateItem(p.id, item.id, { objectId: "" })
+                                  }
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  className={inputCls}
+                                  placeholder="Buscar por nombre o tipo..."
+                                  value={itemSearch[item.id] ?? ""}
+                                  onChange={(e) => {
+                                    setItemSearch((s) => ({
+                                      ...s,
+                                      [item.id]: e.target.value,
+                                    }));
+                                    setItemDropdown((s) => ({
+                                      ...s,
+                                      [item.id]: true,
+                                    }));
+                                  }}
+                                  onFocus={() =>
+                                    setItemDropdown((s) => ({
+                                      ...s,
+                                      [item.id]: true,
+                                    }))
+                                  }
+                                  onBlur={() =>
+                                    setTimeout(
+                                      () =>
+                                        setItemDropdown((s) => ({
+                                          ...s,
+                                          [item.id]: false,
+                                        })),
+                                      200,
+                                    )
+                                  }
+                                />
+                                {itemDropdown[item.id] && (
+                                  <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
+                                    {objects
+                                      .filter((o) => {
+                                        const term = (itemSearch[item.id] ?? "").toLowerCase();
+                                        return (
+                                          o.name.toLowerCase().includes(term) ||
+                                          o.itemType.toLowerCase().includes(term)
+                                        );
+                                      })
+                                      .slice(0, 10)
+                                      .map((o) => (
+                                        <div
+                                          key={o.id}
+                                          className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
+                                          onClick={() => {
+                                            updateItem(p.id, item.id, { objectId: o.id });
+                                            setItemSearch((s) => ({
+                                              ...s,
+                                              [item.id]: "",
+                                            }));
+                                            setItemDropdown((s) => ({
+                                              ...s,
+                                              [item.id]: false,
+                                            }));
+                                          }}
+                                        >
+                                          <span>{o.icon}</span>
+                                          <span className="font-medium whitespace-normal">{o.name}</span>
+                                          <span className="text-muted-foreground text-xs whitespace-normal">
+                                            {o.itemType}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    {objects.filter((o) => {
+                                      const term = (itemSearch[item.id] ?? "").toLowerCase();
+                                      return (
+                                        o.name.toLowerCase().includes(term) ||
+                                        o.itemType.toLowerCase().includes(term)
+                                      );
+                                    }).length === 0 && (
+                                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                                        No se encontraron objetos
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="number"
                             min={1}
@@ -1164,10 +1346,12 @@ function UsersTab({
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
+  const [editCharacterTarget, setEditCharacterTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
   const [sortAsc, setSortAsc] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -1211,21 +1395,29 @@ function UsersTab({
   const thCls =
     "px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
 
+  const filtered = users.filter((u) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      u.name.toLowerCase().includes(search) ||
+      u.email.toLowerCase().includes(search) ||
+      u.role.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header de sección */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {users.length} usuario{users.length !== 1 ? "s" : ""} registrado
-          {users.length !== 1 ? "s" : ""}
+          {filtered.length} de {users.length} usuario{users.length !== 1 ? "s" : ""}
         </p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo usuario
-        </button>
+        <input
+          type="text"
+          placeholder="Buscar por nombre, email o rol..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 max-w-xs px-3 py-2 rounded border border-border bg-secondary/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+        />
       </div>
 
       {/* Tabla */}
@@ -1265,7 +1457,14 @@ function UsersTab({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((u, i) => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                    No se encontraron usuarios que coincidan con "{searchTerm}"
+                  </td>
+                </tr>
+              ) : (
+                sorted.filter((u) => filtered.includes(u)).map((u, i) => (
                 <tr
                   key={u.id}
                   className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors ${
@@ -1317,17 +1516,11 @@ function UsersTab({
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1340,6 +1533,10 @@ function UsersTab({
           initial={editTarget}
           onClose={() => setEditTarget(null)}
           loading={actionLoading}
+          onEditCharacters={() => {
+            setEditCharacterTarget(editTarget);
+            setEditTarget(null);
+          }}
           onSubmit={async (data) => {
             setActionLoading(true);
             const res = await fetch(`/api/admin/users?id=${editTarget.id}`, {
@@ -1413,6 +1610,16 @@ function UsersTab({
         />
       )}
 
+      {/* Modal Editar Personajes */}
+      {editCharacterTarget && (
+        <CharactersFormModal
+          user={editCharacterTarget}
+          onClose={() => setEditCharacterTarget(null)}
+          onToast={onToast}
+          token={token}
+        />
+      )}
+
       {/* Modal Eliminar */}
       {deleteTarget && (
         <ConfirmDelete
@@ -1449,12 +1656,14 @@ function UserFormModal({
   onClose,
   onSubmit,
   loading,
+  onEditCharacters,
 }: {
   title: string;
   initial: AdminUser | null;
   onClose: () => void;
   onSubmit: (data: Partial<AdminUser> & { password?: string }) => void;
   loading: boolean;
+  onEditCharacters?: () => void;
 }) {
   const isEdit = initial !== null;
 
@@ -1560,6 +1769,15 @@ function UserFormModal({
         {/* El toggle de Admin está reservado para SUPER_ADMIN (próximamente) */}
 
         <div className="flex gap-3 justify-end pt-2 border-t border-border">
+          {isEdit && onEditCharacters && (
+            <button
+              type="button"
+              onClick={onEditCharacters}
+              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors"
+            >
+              Editar Personajes
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -1672,6 +1890,290 @@ function GoldFormModal({
           </button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+// ─── Modal para Editar Personajes ────────────────────────────────────────────
+
+type Character = {
+  id: number;
+  nombre: string;
+  raza: string;
+  clases: Array<{
+    nombre_clase: string;
+    nivel: number;
+  }>;
+  estadisticas: {
+    fuerza: number;
+    destreza: number;
+    constitucion: number;
+    inteligencia: number;
+    sabiduria: number;
+    carisma: number;
+  } | null;
+};
+
+function CharactersFormModal({
+  user,
+  onClose,
+  onToast,
+  token,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onToast: (msg: string, type: "success" | "error") => void;
+  token: string;
+}) {
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingChar, setEditingChar] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{
+    raza: string;
+    clases: Array<{ nombre_clase: string; nivel: number }>;
+    estadisticas: {
+      fuerza: number;
+      destreza: number;
+      constitucion: number;
+      inteligencia: number;
+      sabiduria: number;
+      carisma: number;
+    };
+  } | null>(null);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    const loadCharacters = async () => {
+      try {
+        const res = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (res.ok) {
+          setCharacters(await res.json());
+        } else {
+          onToast("Error al cargar personajes", "error");
+        }
+      } catch (error) {
+        onToast("Error al cargar personajes", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCharacters();
+  }, [user.id, token, headers, onToast]);
+
+  const saveCharacter = async (characterId: number) => {
+    if (!editForm) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/characters", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          characterId,
+          raza: editForm.raza,
+          clases: editForm.clases,
+          estadisticas: editForm.estadisticas,
+        }),
+      });
+
+      if (res.ok) {
+        onToast("Personaje actualizado", "success");
+        setEditingChar(null);
+        setEditForm(null);
+        // Recargar personajes
+        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (charsRes.ok) {
+          setCharacters(await charsRes.json());
+        }
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al guardar", "error");
+      }
+    } catch (error) {
+      onToast("Error al guardar personaje", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={`Personajes de ${user.name}`} onClose={onClose} maxWidth="max-w-4xl">
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-gold" />
+          </div>
+        ) : characters.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            Este usuario no tiene personajes
+          </p>
+        ) : (
+          <>
+            {characters.map((character) => (
+              <div
+                key={character.id}
+                className="p-4 rounded border border-border bg-secondary/20 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {character.nombre}
+                  </h3>
+                  {editingChar !== character.id && (
+                    <button
+                      onClick={() => {
+                        setEditingChar(character.id);
+                        setEditForm({
+                          raza: character.raza,
+                          clases: character.clases,
+                          estadisticas: character.estadisticas || {
+                            fuerza: 10,
+                            destreza: 10,
+                            constitucion: 10,
+                            inteligencia: 10,
+                            sabiduria: 10,
+                            carisma: 10,
+                          },
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+
+                {editingChar === character.id && editForm ? (
+                  <div className="space-y-3">
+                    {/* Raza */}
+                    <FormField label="Raza">
+                      <input
+                        type="text"
+                        value={editForm.raza}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, raza: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="Ej: Elfo, Humano, etc."
+                      />
+                    </FormField>
+
+                    {/* Clases y Niveles */}
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Clases
+                      </label>
+                      <div className="space-y-2">
+                        {editForm.clases.map((clase, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <span className="text-sm text-foreground min-w-[100px]">
+                              {clase.nombre_clase}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">
+                                Nv.
+                              </span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={clase.nivel}
+                                onChange={(e) => {
+                                  const newClases = [...editForm.clases];
+                                  newClases[idx].nivel = Math.max(
+                                    1,
+                                    Math.min(20, Number(e.target.value))
+                                  );
+                                  setEditForm({ ...editForm, clases: newClases });
+                                }}
+                                className={`${inputCls} w-16`}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Estadísticas */}
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Puntos de Habilidad
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(editForm.estadisticas).map(([stat, value]) => (
+                          <FormField key={stat} label={stat.charAt(0).toUpperCase() + stat.slice(1)}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={value}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  estadisticas: {
+                                    ...editForm.estadisticas,
+                                    [stat]: Math.max(1, Math.min(30, Number(e.target.value))),
+                                  },
+                                })
+                              }
+                              className={inputCls}
+                            />
+                          </FormField>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Botones */}
+                    <div className="flex gap-2 justify-end pt-3 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingChar(null);
+                          setEditForm(null);
+                        }}
+                        className="px-3 py-1.5 bg-secondary hover:bg-muted rounded text-sm font-medium text-foreground transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveCharacter(character.id)}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background rounded text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                      >
+                        {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Raza: {character.raza}</p>
+                    <p>
+                      Clases:{" "}
+                      {character.clases
+                        .map((c) => `${c.nombre_clase} (Nv.${c.nivel})`)
+                        .join(", ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Botón cerrar */}
+        <div className="flex justify-end pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }
