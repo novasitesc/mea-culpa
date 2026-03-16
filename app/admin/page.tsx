@@ -1401,13 +1401,6 @@ function UsersTab({
           {users.length} usuario{users.length !== 1 ? "s" : ""} registrado
           {users.length !== 1 ? "s" : ""}
         </p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo usuario
-        </button>
       </div>
 
       {/* Tabla */}
@@ -1498,13 +1491,6 @@ function UsersTab({
                         title="Editar"
                       >
                         <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
