@@ -15,7 +15,7 @@ type ItemType =
   | "amuleto"
   | "cinturón"
   | "arma"
-  | "piernas"
+  | "pies"
   | "manos"
   | "colgante";
 
@@ -73,7 +73,6 @@ type SlotKey =
   | "manos"
   | "anillo1"
   | "anillo2"
-  | "piernas"
   | "pies";
 
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
@@ -86,14 +85,13 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
   manos:       { accepts: ["guante", "manos"],                 label: "Manos",     icon: "🧤" },
   anillo1:     { accepts: ["anillo"],                          label: "Anillo 1",  icon: "✨" },
   anillo2:     { accepts: ["anillo"],                          label: "Anillo 2",  icon: "✨" },
-  piernas:     { accepts: ["piernas", "botas"],                label: "Piernas",   icon: "🦺" },
   pies:        { accepts: ["botas"],                           label: "Pies",      icon: "🥾" },
 };
 
 const ITEM_ICONS: Partial<Record<ItemType, string>> = {
   arma: "⚔️", cabeza: "👑", pecho: "🧥", guante: "🧤", manos: "🧤",
-  botas: "🥾", anillo: "💍", collar: "📿",
-  amuleto: "🔮", colgante: "💎", piernas: "🦺",
+  botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
+  amuleto: "🔮", colgante: "💎",
   cinturón: "🪢",
 };
 
@@ -114,7 +112,6 @@ function buildEquippedMap(character: Character): EquippedMap {
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo"  } : null,
     manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma" } : null,
     manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma" } : null,
-    piernas:     null, // add your own legs field if you have one
   };
 }
 
@@ -170,14 +167,13 @@ function SlotButton({
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
       colgante:    { top: "100px", left: "50%", transform: "translateX(-50%)" },
-      cinturon:    { top: "272px", left: "50%", transform: "translateX(-50%)" },
+      cinturon:    { top: "220px", left: "50%", transform: "translateX(-50%)" },
       pecho:       { top: "150px", left: "50%", transform: "translateX(-50%)" },
       manoizq:     { top: "145px", left: "14px" },
       manoderecha: { top: "145px", right: "14px" },
       manos:       { top: "207px", left: "16px" },
       anillo1:     { top: "200px", right: "16px" },
       anillo2:     { top: "254px", right: "16px" },
-      piernas:     { top: "240px", left: "50%", transform: "translateX(-50%)" },
       pies:        { top: "315px", left: "50%", transform: "translateX(-50%)" },
     };
     return { ...base, ...positions[slotKey] };
@@ -228,7 +224,7 @@ const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   guante:   "bg-purple-900/20 text-purple-300",
   manos:    "bg-purple-900/20 text-purple-300",
   botas:    "bg-purple-900/20 text-purple-300",
-  piernas:  "bg-purple-900/20 text-purple-300",
+  pies:     "bg-purple-900/20 text-purple-300",
   anillo:   "bg-yellow-900/20 text-yellow-400",
   collar:   "bg-yellow-900/20 text-yellow-400",
   amuleto:  "bg-yellow-900/20 text-yellow-400",
