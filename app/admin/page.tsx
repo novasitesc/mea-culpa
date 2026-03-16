@@ -883,7 +883,7 @@ function PartidasTab({
                             }
                           />
                           {characterDropdown[p.id] && (
-                            <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                            <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
                               {characters
                                 .filter((c) => {
                                   const term = (characterSearch[p.id] ?? "").toLowerCase();
@@ -896,7 +896,7 @@ function PartidasTab({
                                 .map((c) => (
                                   <div
                                     key={c.id}
-                                    className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
+                                    className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
                                     onClick={() => {
                                       updateParticipant(p.id, { characterId: c.id });
                                       setCharacterSearch((s) => ({
@@ -909,8 +909,8 @@ function PartidasTab({
                                       }));
                                     }}
                                   >
-                                    <span className="font-medium">{c.name}</span>
-                                    <span className="text-muted-foreground text-xs">
+                                    <span className="font-medium whitespace-normal">{c.name}</span>
+                                    <span className="text-muted-foreground text-xs whitespace-normal">
                                       {c.userName} (Slot {c.slot})
                                     </span>
                                   </div>
@@ -1053,7 +1053,7 @@ function PartidasTab({
                                   }
                                 />
                                 {itemDropdown[item.id] && (
-                                  <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                  <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
                                     {objects
                                       .filter((o) => {
                                         const term = (itemSearch[item.id] ?? "").toLowerCase();
@@ -1066,7 +1066,7 @@ function PartidasTab({
                                       .map((o) => (
                                         <div
                                           key={o.id}
-                                          className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
+                                          className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
                                           onClick={() => {
                                             updateItem(p.id, item.id, { objectId: o.id });
                                             setItemSearch((s) => ({
@@ -1080,8 +1080,8 @@ function PartidasTab({
                                           }}
                                         >
                                           <span>{o.icon}</span>
-                                          <span className="font-medium">{o.name}</span>
-                                          <span className="text-muted-foreground text-xs">
+                                          <span className="font-medium whitespace-normal">{o.name}</span>
+                                          <span className="text-muted-foreground text-xs whitespace-normal">
                                             {o.itemType}
                                           </span>
                                         </div>
