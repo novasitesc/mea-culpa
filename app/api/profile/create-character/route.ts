@@ -14,25 +14,37 @@ function generateStatsForClass(className: string) {
   };
   switch (className.toLowerCase()) {
     case "barbarian":
+    case "bárbaro":
     case "fighter":
+    case "guerrero":
       return { ...base, fuerza: 16, constitucion: 14, destreza: 12 };
     case "paladin":
+    case "paladín":
       return { ...base, fuerza: 16, carisma: 14, constitucion: 12 };
     case "ranger":
+    case "explorador":
     case "monk":
+    case "monje":
       return { ...base, destreza: 16, sabiduria: 14, constitucion: 12 };
     case "rogue":
+    case "pícaro":
       return { ...base, destreza: 16, carisma: 14, inteligencia: 12 };
     case "bard":
+    case "bardo":
       return { ...base, carisma: 16, destreza: 14, constitucion: 12 };
     case "cleric":
+    case "clérigo":
       return { ...base, sabiduria: 16, constitucion: 14, fuerza: 12 };
     case "druid":
+    case "druida":
       return { ...base, sabiduria: 16, constitucion: 14, destreza: 12 };
     case "sorcerer":
+    case "hechicero":
     case "warlock":
+    case "brujo":
       return { ...base, carisma: 16, constitucion: 14, destreza: 12 };
     case "wizard":
+    case "mago":
       return { ...base, inteligencia: 16, constitucion: 14, destreza: 12 };
     default:
       return base;

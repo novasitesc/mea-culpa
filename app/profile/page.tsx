@@ -620,18 +620,18 @@ export default function ProfilePage() {
                       >
                         <option value="">Selecciona una clase</option>
                         {[
-                          { value: "Barbarian", label: "Bárbaro" },
-                          { value: "Bard", label: "Bardo" },
-                          { value: "Cleric", label: "Clérigo" },
-                          { value: "Druid", label: "Druida" },
-                          { value: "Fighter", label: "Guerrero" },
-                          { value: "Monk", label: "Monje" },
-                          { value: "Paladin", label: "Paladín" },
-                          { value: "Ranger", label: "Explorador" },
-                          { value: "Rogue", label: "Pícaro" },
-                          { value: "Sorcerer", label: "Hechicero" },
-                          { value: "Warlock", label: "Brujo" },
-                          { value: "Wizard", label: "Mago" },
+                          { value: "Bárbaro", label: "Bárbaro" },
+                          { value: "Bardo", label: "Bardo" },
+                          { value: "Clérigo", label: "Clérigo" },
+                          { value: "Druida", label: "Druida" },
+                          { value: "Guerrero", label: "Guerrero" },
+                          { value: "Monje", label: "Monje" },
+                          { value: "Paladín", label: "Paladín" },
+                          { value: "Explorador", label: "Explorador" },
+                          { value: "Pícaro", label: "Pícaro" },
+                          { value: "Hechicero", label: "Hechicero" },
+                          { value: "Brujo", label: "Brujo" },
+                          { value: "Mago", label: "Mago" },
                         ]
                           .filter(
                             (cls) =>
