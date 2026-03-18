@@ -152,7 +152,7 @@ type PartidaHistoryEntry = {
 
 const ITEM_TYPES = [
   "cabeza",
-  "pecho",
+  "armadura",
   "guante",
   "botas",
   "collar",

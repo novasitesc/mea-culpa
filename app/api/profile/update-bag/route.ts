@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     if (armor || accessories || weapons) {
       const slotNames = [
         armor?.cabeza,
+        armor?.armadura,
         armor?.pecho,
         armor?.guante,
         armor?.botas,
@@ -50,10 +51,18 @@ export async function POST(request: Request) {
 
       const nameToId = new Map<string, number>();
       if (slotNames.length > 0) {
-        const { data: objEquip } = await db
+        const { data: objEquip, error: equipLookupError } = await db
           .from("objetos")
           .select("id, nombre")
           .in("nombre", slotNames);
+
+        if (equipLookupError) {
+          return NextResponse.json(
+            { error: "Failed to resolve equipment items" },
+            { status: 500 },
+          );
+        }
+
         for (const o of objEquip ?? []) nameToId.set(o.nombre, o.id);
       }
 
@@ -62,8 +71,9 @@ export async function POST(request: Request) {
         equipUpdate.cabeza = armor.cabeza
           ? (nameToId.get(armor.cabeza) ?? null)
           : null;
-        equipUpdate.pecho = armor.pecho
-          ? (nameToId.get(armor.pecho) ?? null)
+        const chestName = armor.armadura ?? armor.pecho;
+        equipUpdate.pecho = chestName
+          ? (nameToId.get(chestName) ?? null)
           : null;
         equipUpdate.guante = armor.guante
           ? (nameToId.get(armor.guante) ?? null)
@@ -98,23 +108,52 @@ export async function POST(request: Request) {
           : null;
       }
 
-      await db
+      const { error: equipUpsertError } = await db
         .from("equipamiento_personaje")
-        .update(equipUpdate)
-        .eq("personaje_id", characterId);
+        .upsert(
+          {
+            personaje_id: characterId,
+            ...equipUpdate,
+          },
+          { onConflict: "personaje_id" },
+        );
+
+      if (equipUpsertError) {
+        return NextResponse.json(
+          { error: "Failed to update character equipment" },
+          { status: 500 },
+        );
+      }
     }
 
     // Actualizar bolsa: borrar todo y re-insertar
     if (bagItems) {
-      await db.from("bolsa_objetos").delete().eq("personaje_id", characterId);
+      const { error: deleteBagError } = await db
+        .from("bolsa_objetos")
+        .delete()
+        .eq("personaje_id", characterId);
+
+      if (deleteBagError) {
+        return NextResponse.json(
+          { error: "Failed to clear bag before update" },
+          { status: 500 },
+        );
+      }
 
       if (Array.isArray(bagItems) && bagItems.length > 0) {
         // Buscar IDs de objetos por nombre
         const nombres = bagItems.map((item: any) => item.name);
-        const { data: objetos } = await db
+        const { data: objetos, error: bagLookupError } = await db
           .from("objetos")
           .select("id, nombre")
           .in("nombre", nombres);
+
+        if (bagLookupError) {
+          return NextResponse.json(
+            { error: "Failed to resolve bag item IDs" },
+            { status: 500 },
+          );
+        }
 
         const nombreToId = new Map(
           (objetos ?? []).map((o: any) => [o.nombre, o.id]),
@@ -127,7 +166,16 @@ export async function POST(request: Request) {
           orden: i + 1,
         }));
 
-        await db.from("bolsa_objetos").insert(rows);
+        const { error: insertBagError } = await db
+          .from("bolsa_objetos")
+          .insert(rows);
+
+        if (insertBagError) {
+          return NextResponse.json(
+            { error: "Failed to update bag items" },
+            { status: 500 },
+          );
+        }
       }
     }
 

@@ -20,6 +20,7 @@ type Player = {
 
 type ArmorSlots = {
   cabeza?: string;
+  armadura?: string;
   pecho?: string;
   guante?: string;
   botas?: string;
@@ -40,6 +41,7 @@ type WeaponSlots = {
 
 type ItemType =
   | "cabeza"
+  | "armadura"
   | "pecho"
   | "guante"
   | "botas"
