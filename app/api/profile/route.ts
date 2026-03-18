@@ -47,7 +47,9 @@ export async function GET(request: Request) {
   // Resolver IDs de equipamiento a nombres de objetos (la DB guarda BIGINTs)
   const allEquipIds = new Set<number>();
   for (const p of (personajes ?? []) as any[]) {
-    const equip = p.equipamiento_personaje;
+    const equip = Array.isArray(p.equipamiento_personaje)
+      ? p.equipamiento_personaje[0]
+      : p.equipamiento_personaje;
     if (!equip) continue;
     for (const val of [
       equip.cabeza,
@@ -81,8 +83,12 @@ export async function GET(request: Request) {
 
   // Transformar a la forma que espera el frontend
   const characters = (personajes ?? []).map((p: any) => {
-    const stats = p.estadisticas_personaje;
-    const equip = p.equipamiento_personaje;
+    const stats = Array.isArray(p.estadisticas_personaje)
+      ? p.estadisticas_personaje[0]
+      : p.estadisticas_personaje;
+    const equip = Array.isArray(p.equipamiento_personaje)
+      ? p.equipamiento_personaje[0]
+      : p.equipamiento_personaje;
     const clases = (p.clases_personaje ?? []).sort(
       (a: any, b: any) => a.orden - b.orden,
     );
