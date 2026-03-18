@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     if (armor || accessories || weapons) {
       const slotNames = [
         armor?.cabeza,
+        armor?.armadura,
         armor?.pecho,
         armor?.guante,
         armor?.botas,
@@ -70,8 +71,9 @@ export async function POST(request: Request) {
         equipUpdate.cabeza = armor.cabeza
           ? (nameToId.get(armor.cabeza) ?? null)
           : null;
-        equipUpdate.pecho = armor.pecho
-          ? (nameToId.get(armor.pecho) ?? null)
+        const chestName = armor.armadura ?? armor.pecho;
+        equipUpdate.pecho = chestName
+          ? (nameToId.get(chestName) ?? null)
           : null;
         equipUpdate.guante = armor.guante
           ? (nameToId.get(armor.guante) ?? null)

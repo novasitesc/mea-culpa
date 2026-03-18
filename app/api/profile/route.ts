@@ -136,6 +136,8 @@ export async function GET(request: Request) {
       armor: {
         cabeza:
           equip?.cabeza != null ? equipIdToName.get(equip.cabeza) : undefined,
+        armadura:
+          equip?.pecho != null ? equipIdToName.get(equip.pecho) : undefined,
         pecho:
           equip?.pecho != null ? equipIdToName.get(equip.pecho) : undefined,
         guante:
@@ -171,7 +173,10 @@ export async function GET(request: Request) {
           .sort((a: any, b: any) => a.orden - b.orden)
           .map((bi: any) => ({
             name: bi.objetos?.nombre ?? "Objeto desconocido",
-            type: bi.objetos?.tipo_item ?? "misc",
+            type:
+              bi.objetos?.tipo_item === "pecho"
+                ? "armadura"
+                : (bi.objetos?.tipo_item ?? "misc"),
             price: bi.objetos?.precio ?? 0,
           })),
         maxSlots: p.capacidad_bolsa,

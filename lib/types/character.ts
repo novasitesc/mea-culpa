@@ -3,6 +3,7 @@
 
 export type ItemType =
   | "cabeza"
+  | "armadura"
   | "pecho"
   | "guante"
   | "botas"
@@ -19,6 +20,7 @@ export type Item = {
 
 export type ArmorSlots = {
   cabeza?: string;
+  armadura?: string;
   pecho?: string;
   guante?: string;
   botas?: string;

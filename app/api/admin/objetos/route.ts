@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/adminAuth";
 
 const VALID_TYPES = [
   "cabeza",
+  "armadura",
   "pecho",
   "guante",
   "botas",
@@ -15,6 +16,14 @@ const VALID_TYPES = [
   "ingrediente",
   "misc",
 ] as const;
+
+function mapItemTypeToDb(itemType: string): string {
+  return itemType === "armadura" ? "pecho" : itemType;
+}
+
+function mapItemTypeFromDb(itemType: string): string {
+  return itemType === "pecho" ? "armadura" : itemType;
+}
 
 const VALID_RARITIES_DB = ["común", "poco común", "raro", "épico", "legendario"] as const;
 
@@ -75,7 +84,7 @@ export async function GET(request: NextRequest) {
       name: o.nombre,
       description: o.descripcion,
       icon: o.icono,
-      itemType: o.tipo_item,
+      itemType: mapItemTypeFromDb(o.tipo_item),
       rarity: mapRarityFromDb(o.rareza),
       price: o.precio,
       bonusStats: o.bono_estadisticas,
@@ -111,7 +120,7 @@ export async function POST(request: NextRequest) {
       nombre: name,
       descripcion: description ?? "",
       icono: icon?.trim() || "📦",
-      tipo_item: itemType,
+      tipo_item: mapItemTypeToDb(itemType),
       rareza: rarityNormalized,
       precio: Number(price),
       bono_estadisticas: bonusStats ?? null,
@@ -127,7 +136,7 @@ export async function POST(request: NextRequest) {
       name: (data as any).nombre,
       description: (data as any).descripcion,
       icon: (data as any).icono,
-      itemType: (data as any).tipo_item,
+      itemType: mapItemTypeFromDb((data as any).tipo_item),
       rarity: mapRarityFromDb((data as any).rareza),
       price: (data as any).precio,
       bonusStats: (data as any).bono_estadisticas,
@@ -160,7 +169,7 @@ export async function PATCH(request: NextRequest) {
     if (!VALID_TYPES.includes(itemType)) {
       return NextResponse.json({ error: "Tipo de objeto invalido" }, { status: 400 });
     }
-    updates.tipo_item = itemType;
+    updates.tipo_item = mapItemTypeToDb(itemType);
   }
   if (rarity !== undefined) {
     const normalized = normalizeRarity(rarity);
@@ -191,7 +200,7 @@ export async function PATCH(request: NextRequest) {
     name: (data as any).nombre,
     description: (data as any).descripcion,
     icon: (data as any).icono,
-    itemType: (data as any).tipo_item,
+    itemType: mapItemTypeFromDb((data as any).tipo_item),
     rarity: mapRarityFromDb((data as any).rareza),
     price: (data as any).precio,
     bonusStats: (data as any).bono_estadisticas,

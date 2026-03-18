@@ -7,6 +7,7 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 
 type ItemType =
   | "cabeza"
+  | "armadura"
   | "pecho"
   | "guante"
   | "botas"
@@ -27,6 +28,7 @@ type Item = {
 
 type ArmorSlots = {
   cabeza?: string;
+  armadura?: string;
   pecho?: string;
   guante?: string;
   botas?: string;
@@ -79,7 +81,7 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
   colgante:    { accepts: ["collar", "amuleto", "colgante"],   label: "Colgante",  icon: "💎" },
   cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
-  pecho:       { accepts: ["pecho"],                           label: "Pecho",     icon: "🧥" },
+  pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "🧥" },
   manoizq:     { accepts: ["arma"],                            label: "Mano Izq",  icon: "🗡" },
   manoderecha: { accepts: ["arma"],                            label: "Mano Der",  icon: "🗡" },
   manos:       { accepts: ["guante", "manos"],                 label: "Manos",     icon: "🧤" },
@@ -89,7 +91,7 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
 };
 
 const ITEM_ICONS: Partial<Record<ItemType, string>> = {
-  arma: "⚔️", cabeza: "👑", pecho: "🧥", guante: "🧤", manos: "🧤",
+  arma: "⚔️", cabeza: "👑", armadura: "🧥", pecho: "🧥", guante: "🧤", manos: "🧤",
   botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
   amuleto: "🔮", colgante: "💎",
   cinturón: "🪢",
@@ -106,7 +108,13 @@ function buildEquippedMap(character: Character): EquippedMap {
 
   return {
     cabeza:      character.armor.cabeza      ? { name: character.armor.cabeza,      type: "cabeza",   price: equipmentPriceByName[character.armor.cabeza] } : null,
-    pecho:       character.armor.pecho       ? { name: character.armor.pecho,       type: "pecho",    price: equipmentPriceByName[character.armor.pecho] } : null,
+    pecho:       (character.armor.armadura ?? character.armor.pecho)
+                 ? {
+                     name: character.armor.armadura ?? character.armor.pecho!,
+                     type: "armadura",
+                     price: equipmentPriceByName[character.armor.armadura ?? character.armor.pecho!],
+                   }
+                 : null,
     manos:       character.armor.guante      ? { name: character.armor.guante,      type: "guante",   price: equipmentPriceByName[character.armor.guante] } : null,
     pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas",    price: equipmentPriceByName[character.armor.botas] } : null,
     colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar",  price: equipmentPriceByName[character.accessories.collar] } :
@@ -129,7 +137,7 @@ function equippedMapToCharacter(
     ...character,
     armor: {
       cabeza: equipped.cabeza?.name,
-      pecho:  equipped.pecho?.name,
+      armadura: equipped.pecho?.name,
       guante: equipped.manos?.name,
       botas:  equipped.pies?.name,
     },
@@ -223,6 +231,7 @@ function SlotButton({
 const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   arma:     "bg-red-900/30 text-red-400",
   cabeza:   "bg-blue-900/20 text-blue-300",
+  armadura: "bg-green-900/20 text-green-300",
   pecho:    "bg-green-900/20 text-green-300",
   guante:   "bg-purple-900/20 text-purple-300",
   manos:    "bg-purple-900/20 text-purple-300",
