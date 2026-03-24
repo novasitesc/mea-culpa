@@ -43,7 +43,7 @@ type AdminUser = {
   rolSistema: string;
   createdAt: string;
 };
-
+// Para simplificar, el tipo de tienda incluye el conteo de objetos y el nombre del keeper
 type AdminShop = {
   id: string;
   name: string;
