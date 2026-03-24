@@ -200,7 +200,7 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-visible`}>
+      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col`}>
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-bold text-gold">{title}</h2>
           <button
@@ -210,7 +210,7 @@ function Modal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto min-h-0">{children}</div>
       </div>
     </div>
   );
@@ -2623,7 +2623,7 @@ function ShopItemsModal({
             Esta tienda no tiene objetos configurados aún.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="max-h-[55vh] overflow-auto rounded-lg border border-border">
             <table className="w-full text-xs">
               <thead className="bg-secondary/50 border-b border-border">
                 <tr>
@@ -3256,7 +3256,7 @@ function ObjectFormModal({
           />
         </FormField>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Tipo de objeto">
             <select
               className={inputCls}
