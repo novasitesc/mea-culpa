@@ -49,7 +49,10 @@ type ItemType =
   | "anillo"
   | "amuleto"
   | "cinturón"
-  | "arma";
+  | "capa"
+  | "arma"
+  | "accesorio-arma"
+  | "accesorio-capa";
 
 type Item = {
   name: string;
@@ -169,6 +172,7 @@ export default function ProfilePage() {
           char.id === characterId
             ? {
                 ...char,
+                ...(updatedCharacter ?? {}),
                 bag: { ...char.bag, items: itemsToSave },
                 armor: characterToSave.armor,
                 accessories: characterToSave.accessories,
