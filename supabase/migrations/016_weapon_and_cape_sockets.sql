@@ -1,6 +1,6 @@
 -- Añade soporte de sockets para armas y capa.
 -- Armas: 3 sockets por mano para items tipo 'accesorio-arma'
--- Capa:  slot principal + 3 sockets para items tipo 'accesorio-capa' deploy supa
+-- Capa:  slot principal + 3 sockets para items tipo 'accesorio-capa' deploy supa 2
 
 BEGIN;
 
