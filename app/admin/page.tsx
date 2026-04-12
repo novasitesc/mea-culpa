@@ -96,29 +96,6 @@ type AdminTransaction = {
   creado_en: string;
 };
 
-type AdminCharacter = {
-  id: number;
-  name: string;
-  slot: number;
-  userId: string;
-  userName: string;
-};
-
-type PartidaItemDraft = {
-  id: string;
-  objectId: number | "";
-  qty: number;
-};
-
-type PartidaParticipantDraft = {
-  id: string;
-  characterId: number | "";
-  gold: number;
-  comment: string;
-  dead: boolean;
-  items: PartidaItemDraft[];
-};
-
 type PartidaHistoryItem = {
   characterId: number;
   objectId: number;
@@ -143,6 +120,15 @@ type PartidaHistoryEntry = {
   title: string;
   comment: string;
   status: string;
+  minPlayers: number;
+  maxPlayers: number;
+  playerLimit: number;
+  participantCount: number;
+  floor: number;
+  startTime: string | null;
+  tier: number;
+  isFull: boolean;
+  isJoinable: boolean;
   createdAt: string;
   finalizedAt: string | null;
   createdBy: string | null;
@@ -173,6 +159,7 @@ type Tab =
   | "objetos"
   | "transacciones"
   | "partidas"
+  | "partidas-activas"
   | "historial-partidas";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -587,128 +574,13 @@ function PartidasTab({
   token: string;
   onToast: (msg: string, type: "success" | "error") => void;
 }) {
-  const [characters, setCharacters] = useState<AdminCharacter[]>([]);
-  const [objects, setObjects] = useState<AdminObject[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [title, setTitle] = useState("");
   const [comment, setComment] = useState("");
-  const [participants, setParticipants] = useState<PartidaParticipantDraft[]>([
-    {
-      id: "p-1",
-      characterId: "",
-      gold: 0,
-      comment: "",
-      dead: false,
-      items: [],
-    },
-  ]);
-
-  const createId = (prefix: string) =>
-    `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
-
-  const [characterSearch, setCharacterSearch] = useState<Record<string, string>>(
-    {},
-  );
-  const [characterDropdown, setCharacterDropdown] = useState<Record<string, boolean>>(
-    {},
-  );
-  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
-  const [itemDropdown, setItemDropdown] = useState<Record<string, boolean>>({});
-
-  const loadOptions = useCallback(async () => {
-    setLoading(true);
-    const headers = { Authorization: `Bearer ${token}` };
-    const [charsRes, objsRes] = await Promise.all([
-      fetch("/api/admin/personajes", { headers }),
-      fetch("/api/admin/objetos", { headers }),
-    ]);
-
-    if (charsRes.ok) {
-      setCharacters(await charsRes.json());
-    } else {
-      onToast("Error cargando personajes", "error");
-    }
-
-    if (objsRes.ok) {
-      setObjects(await objsRes.json());
-    } else {
-      onToast("Error cargando objetos", "error");
-    }
-
-    setLoading(false);
-  }, [token, onToast]);
-
-  useEffect(() => {
-    loadOptions();
-  }, [loadOptions]);
-
-  const updateParticipant = (
-    id: string,
-    updates: Partial<PartidaParticipantDraft>,
-  ) =>
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-    );
-
-  const addParticipant = () =>
-    setParticipants((prev) => [
-      ...prev,
-      {
-        id: createId("p"),
-        characterId: "",
-        gold: 0,
-        comment: "",
-        dead: false,
-        items: [],
-      },
-    ]);
-
-  const removeParticipant = (id: string) =>
-    setParticipants((prev) => prev.filter((p) => p.id !== id));
-
-  const addItem = (participantId: string) =>
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId
-          ? {
-              ...p,
-              items: [
-                ...p.items,
-                { id: createId("i"), objectId: "", qty: 1 },
-              ],
-            }
-          : p,
-      ),
-    );
-
-  const updateItem = (
-    participantId: string,
-    itemId: string,
-    updates: Partial<PartidaItemDraft>,
-  ) =>
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId
-          ? {
-              ...p,
-              items: p.items.map((item) =>
-                item.id === itemId ? { ...item, ...updates } : item,
-              ),
-            }
-          : p,
-      ),
-    );
-
-  const removeItem = (participantId: string, itemId: string) =>
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId
-          ? { ...p, items: p.items.filter((item) => item.id !== itemId) }
-          : p,
-      ),
-    );
+  const [playerLimit, setPlayerLimit] = useState(6);
+  const [floor, setFloor] = useState(1);
+  const [startTime, setStartTime] = useState("");
+  const [tier, setTier] = useState<1 | 2>(1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -718,9 +590,18 @@ function PartidasTab({
       return;
     }
 
-    const validParticipants = participants.filter((p) => p.characterId !== "");
-    if (validParticipants.length === 0) {
-      onToast("Agrega al menos un participante", "error");
+    if (!Number.isFinite(playerLimit) || playerLimit < 5 || playerLimit > 6) {
+      onToast("La cantidad de jugadores debe estar entre 5 y 6", "error");
+      return;
+    }
+
+    if (!Number.isFinite(floor) || floor < 1 || floor > 20) {
+      onToast("El piso debe estar entre 1 y 20", "error");
+      return;
+    }
+
+    if (tier !== 1 && tier !== 2) {
+      onToast("El tier debe ser 1 o 2", "error");
       return;
     }
 
@@ -734,36 +615,22 @@ function PartidasTab({
       body: JSON.stringify({
         title: trimmedTitle,
         comment: comment.trim(),
-        participants: validParticipants.map((p) => ({
-          characterId: p.characterId,
-          gold: p.gold,
-          comment: p.comment,
-          dead: p.dead,
-          items: p.items
-            .filter((item) => item.objectId !== "")
-            .map((item) => ({
-              objectId: item.objectId,
-              qty: item.qty,
-            })),
-        })),
+        playerLimit: Math.floor(playerLimit),
+        floor: Math.floor(floor),
+        startTime: startTime ? new Date(startTime).toISOString() : null,
+        tier,
       }),
     });
     setSaving(false);
 
     if (res.ok) {
-      onToast("Partida creada", "success");
+      onToast("Partida publicada", "success");
       setTitle("");
       setComment("");
-      setParticipants([
-        {
-          id: "p-1",
-          characterId: "",
-          gold: 0,
-          comment: "",
-          dead: false,
-          items: [],
-        },
-      ]);
+      setPlayerLimit(6);
+      setFloor(1);
+      setStartTime("");
+      setTier(1);
     } else {
       const err = await res.json().catch(() => ({}));
       onToast(err.error ?? "Error al crear partida", "error");
@@ -772,411 +639,526 @@ function PartidasTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Publica una partida abierta. Los jugadores se inscriben hasta completar el cupo.
+      </p>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 border border-border rounded-xl p-4 bg-secondary/10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <FormField label="Nombre de la partida">
+            <input
+              className={inputCls}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ej: Asalto a la Torre"
+              required
+            />
+          </FormField>
+
+          <FormField label="Jugadores (mínimo 5, máximo 6)">
+            <input
+              type="number"
+              min={5}
+              max={6}
+              className={inputCls}
+              value={playerLimit}
+              onChange={(e) => setPlayerLimit(Math.max(5, Math.min(6, Number(e.target.value) || 6)))}
+            />
+          </FormField>
+
+          <FormField label="Piso (1-20)">
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className={inputCls}
+              value={floor}
+              onChange={(e) => setFloor(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+            />
+          </FormField>
+
+          <FormField label="Hora de inicio">
+            <input
+              type="datetime-local"
+              className={inputCls}
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </FormField>
+
+          <FormField label="Tier">
+            <select
+              className={inputCls}
+              value={tier}
+              onChange={(e) => setTier((Number(e.target.value) === 2 ? 2 : 1) as 1 | 2)}
+            >
+              <option value={1}>Tier 1</option>
+              <option value={2}>Tier 2</option>
+            </select>
+          </FormField>
+
+          <FormField label="Comentario (opcional)">
+            <input
+              className={inputCls}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Notas del master"
+            />
+          </FormField>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2 border-t border-border">
+          <button
+            type="button"
+            onClick={() => {
+              setTitle("");
+              setComment("");
+              setPlayerLimit(6);
+              setFloor(1);
+              setStartTime("");
+              setTier(1);
+            }}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+          >
+            Limpiar
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            Publicar partida
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ActivePartidasTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [games, setGames] = useState<PartidaHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [objects, setObjects] = useState<AdminObject[]>([]);
+  const [loadingObjects, setLoadingObjects] = useState(false);
+  const [rewardTarget, setRewardTarget] = useState<PartidaHistoryEntry | null>(null);
+  const [rewards, setRewards] = useState<
+    Record<
+      number,
+      {
+        gold: number;
+        levelUps: number;
+        items: { id: string; objectId: number | null; qty: number }[];
+      }
+    >
+  >({});
+
+  const createId = (prefix: string) =>
+    `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const loadGames = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/partidas?status=abierta", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      setGames(await res.json());
+    } else {
+      onToast("Error cargando partidas activas", "error");
+    }
+    setLoading(false);
+  }, [token, onToast]);
+
+  useEffect(() => {
+    loadGames();
+  }, [loadGames]);
+
+  const loadObjects = useCallback(async () => {
+    if (objects.length > 0) return;
+    setLoadingObjects(true);
+    const res = await fetch("/api/admin/objetos", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      setObjects(await res.json());
+    } else {
+      onToast("Error cargando objetos", "error");
+    }
+    setLoadingObjects(false);
+  }, [objects.length, token, onToast]);
+
+  const openCloseModal = async (entry: PartidaHistoryEntry) => {
+    await loadObjects();
+    const initialRewards: Record<
+      number,
+      { gold: number; levelUps: number; items: { id: string; objectId: number | null; qty: number }[] }
+    > = {};
+
+    for (const participant of entry.participants) {
+      initialRewards[participant.characterId] = {
+        gold: 0,
+        levelUps: 0,
+        items: [],
+      };
+    }
+
+    setRewards(initialRewards);
+    setRewardTarget(entry);
+  };
+
+  const updateReward = (
+    characterId: number,
+    updates: Partial<{ gold: number; levelUps: number }>,
+  ) => {
+    setRewards((prev) => ({
+      ...prev,
+      [characterId]: {
+        ...(prev[characterId] ?? { gold: 0, levelUps: 0, items: [] }),
+        ...updates,
+      },
+    }));
+  };
+
+  const addItemToReward = (characterId: number) => {
+    setRewards((prev) => {
+      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
+      return {
+        ...prev,
+        [characterId]: {
+          ...current,
+          items: [
+            ...current.items,
+            {
+              id: createId("ri"),
+              objectId: null,
+              qty: 1,
+            },
+          ],
+        },
+      };
+    });
+  };
+
+  const updateRewardItem = (
+    characterId: number,
+    itemId: string,
+    updates: Partial<{ objectId: number | null; qty: number }>,
+  ) => {
+    setRewards((prev) => {
+      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
+      return {
+        ...prev,
+        [characterId]: {
+          ...current,
+          items: current.items.map((item) =>
+            item.id === itemId ? { ...item, ...updates } : item,
+          ),
+        },
+      };
+    });
+  };
+
+  const removeRewardItem = (characterId: number, itemId: string) => {
+    setRewards((prev) => {
+      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
+      return {
+        ...prev,
+        [characterId]: {
+          ...current,
+          items: current.items.filter((item) => item.id !== itemId),
+        },
+      };
+    });
+  };
+
+  const closeGame = async (partidaId: string, participantRewards?: unknown[]) => {
+    setClosingId(partidaId);
+    const res = await fetch("/api/admin/partidas", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        partidaId,
+        action: "close",
+        participantRewards: participantRewards ?? [],
+      }),
+    });
+    setClosingId(null);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      onToast(err.error ?? "No se pudo cerrar la partida", "error");
+      return;
+    }
+
+    onToast("Partida cerrada", "success");
+    await loadGames();
+  };
+
+  const submitCloseWithRewards = async () => {
+    if (!rewardTarget) return;
+
+    const participantRewards = rewardTarget.participants.map((participant) => {
+      const reward = rewards[participant.characterId] ?? {
+        gold: 0,
+        levelUps: 0,
+        items: [],
+      };
+      return {
+        characterId: participant.characterId,
+        gold: Math.max(0, Number(reward.gold) || 0),
+        levelUps: Math.max(0, Math.floor(Number(reward.levelUps) || 0)),
+        items: reward.items
+          .filter((it) => it.objectId != null)
+          .map((it) => ({
+            objectId: Number(it.objectId),
+            qty: Math.max(1, Number(it.qty) || 1),
+          })),
+      };
+    });
+
+    const partidaId = rewardTarget.id;
+    await closeGame(partidaId, participantRewards);
+    setRewardTarget(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="w-5 h-5 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+        No hay partidas activas.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Crea una nueva partida e invita personajes
+          Partidas en curso (abiertas a inscripción)
         </p>
         <button
           type="button"
-          onClick={addParticipant}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
+          onClick={loadGames}
+          className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
         >
-          <Plus className="w-4 h-4" />
-          Agregar participante
+          Actualizar
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-gold" />
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Nombre de la partida">
-              <input
-                className={inputCls}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej: Asalto a la Torre"
-                required
-              />
-            </FormField>
-            <FormField label="Comentario general (opcional)">
-              <input
-                className={inputCls}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Notas del master"
-              />
-            </FormField>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-foreground">Invitados</h3>
-            {participants.map((p, index) => (
-              <div
-                key={p.id}
-                className="border border-border rounded-xl p-4 bg-secondary/20 flex flex-col gap-4"
+      <div className="flex flex-col gap-3">
+        {games.map((entry) => (
+          <div
+            key={entry.id}
+            className="border border-border rounded-xl p-4 bg-secondary/10 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{entry.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {entry.participantCount}/{entry.maxPlayers} jugadores
+                  {entry.isFull ? " · Completa" : " · Abierta"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Min {entry.minPlayers} · Piso {entry.floor} · Tier {entry.tier}
+                  {entry.startTime
+                    ? ` · Inicio ${new Date(entry.startTime).toLocaleString("es-ES")}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openCloseModal(entry)}
+                disabled={closingId === entry.id}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
               >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">
-                    Participante {index + 1}
-                  </p>
-                  {participants.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeParticipant(p.id)}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
-                    >
-                      Quitar
-                    </button>
-                  )}
-                </div>
+                {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Cerrar y asignar
+              </button>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  <FormField label="Personaje">
-                    <div className="relative">
-                      {p.characterId ? (
-                        <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">
-                              {characters.find((c) => c.id === p.characterId)?.name ?? "Personaje"}
-                            </span>
-                            <span className="text-muted-foreground text-xs">
-                              {characters.find((c) => c.id === p.characterId)?.userName ?? ""}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateParticipant(p.id, { characterId: "" })
-                            }
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <input
-                            type="text"
-                            className={inputCls}
-                            placeholder="Buscar por nombre o usuario..."
-                            value={characterSearch[p.id] ?? ""}
-                            onChange={(e) => {
-                              setCharacterSearch((s) => ({
-                                ...s,
-                                [p.id]: e.target.value,
-                              }));
-                              setCharacterDropdown((s) => ({
-                                ...s,
-                                [p.id]: true,
-                              }));
-                            }}
-                            onFocus={() =>
-                              setCharacterDropdown((s) => ({
-                                ...s,
-                                [p.id]: true,
-                              }))
-                            }
-                            onBlur={() =>
-                              setTimeout(
-                                () =>
-                                  setCharacterDropdown((s) => ({
-                                    ...s,
-                                    [p.id]: false,
-                                  })),
-                                200,
-                              )
-                            }
-                          />
-                          {characterDropdown[p.id] && (
-                            <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
-                              {characters
-                                .filter((c) => {
-                                  const term = (characterSearch[p.id] ?? "").toLowerCase();
-                                  return (
-                                    c.name.toLowerCase().includes(term) ||
-                                    c.userName.toLowerCase().includes(term)
-                                  );
-                                })
-                                .slice(0, 10)
-                                .map((c) => (
-                                  <div
-                                    key={c.id}
-                                    className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
-                                    onClick={() => {
-                                      updateParticipant(p.id, { characterId: c.id });
-                                      setCharacterSearch((s) => ({
-                                        ...s,
-                                        [p.id]: "",
-                                      }));
-                                      setCharacterDropdown((s) => ({
-                                        ...s,
-                                        [p.id]: false,
-                                      }));
-                                    }}
-                                  >
-                                    <span className="font-medium whitespace-normal">{c.name}</span>
-                                    <span className="text-muted-foreground text-xs whitespace-normal">
-                                      {c.userName} (Slot {c.slot})
-                                    </span>
-                                  </div>
-                                ))}
-                              {characters.filter((c) => {
-                                const term = (characterSearch[p.id] ?? "").toLowerCase();
-                                return (
-                                  c.name.toLowerCase().includes(term) ||
-                                  c.userName.toLowerCase().includes(term)
-                                );
-                              }).length === 0 && (
-                                <div className="px-3 py-2 text-sm text-muted-foreground">
-                                  No se encontraron personajes
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </FormField>
-                  <FormField label="Oro a otorgar">
-                    <input
-                      type="number"
-                      min={0}
-                      className={inputCls}
-                      value={p.gold}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "" || /^\d+$/.test(val)) {
-                          updateParticipant(p.id, {
-                            gold: val === "" ? 0 : Math.max(0, Number(val)),
-                          });
-                        }
-                      }}
-                    />
-                  </FormField>
-                  <FormField label="Comentario">
-                    <input
-                      className={inputCls}
-                      value={p.comment}
-                      onChange={(e) =>
-                        updateParticipant(p.id, { comment: e.target.value })
-                      }
-                      placeholder="Notas individuales"
-                    />
-                  </FormField>
-                  <div className="flex items-center gap-2 pt-6">
-                    <input
-                      id={`dead-${p.id}`}
-                      type="checkbox"
-                      checked={p.dead}
-                      onChange={(e) =>
-                        updateParticipant(p.id, { dead: e.target.checked })
-                      }
-                      className="w-4 h-4 accent-red-500"
-                    />
-                    <label
-                      htmlFor={`dead-${p.id}`}
-                      className="text-sm text-muted-foreground"
-                    >
-                      Se murio
-                    </label>
-                  </div>
-                </div>
+            {entry.participants.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                {entry.participants.map((p) => p.characterName).join(", ")}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
-                <div className="border-t border-border pt-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">Objetos</p>
-                    <button
-                      type="button"
-                      onClick={() => addItem(p.id)}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
-                    >
-                      Agregar objeto
-                    </button>
-                  </div>
+      {rewardTarget && (
+        <Modal
+          title={`Cerrar partida: ${rewardTarget.title}`}
+          onClose={() => setRewardTarget(null)}
+          maxWidth="max-w-4xl"
+        >
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Asigna recompensas finales por personaje antes de cerrar la partida.
+            </p>
 
-                  {p.items.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Sin objetos asignados
-                    </p>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {p.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
-                        >
-                          <div className="relative">
-                            {item.objectId ? (
-                              <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
-                                <div className="flex items-center gap-2">
-                                  <span>
-                                    {objects.find((o) => o.id === item.objectId)?.icon ?? "📦"}
-                                  </span>
-                                  <span className="font-medium text-foreground">
-                                    {objects.find((o) => o.id === item.objectId)?.name ?? "Objeto"}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    updateItem(p.id, item.id, { objectId: "" })
-                                  }
-                                  className="text-muted-foreground hover:text-destructive"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  className={inputCls}
-                                  placeholder="Buscar por nombre o tipo..."
-                                  value={itemSearch[item.id] ?? ""}
-                                  onChange={(e) => {
-                                    setItemSearch((s) => ({
-                                      ...s,
-                                      [item.id]: e.target.value,
-                                    }));
-                                    setItemDropdown((s) => ({
-                                      ...s,
-                                      [item.id]: true,
-                                    }));
-                                  }}
-                                  onFocus={() =>
-                                    setItemDropdown((s) => ({
-                                      ...s,
-                                      [item.id]: true,
-                                    }))
-                                  }
-                                  onBlur={() =>
-                                    setTimeout(
-                                      () =>
-                                        setItemDropdown((s) => ({
-                                          ...s,
-                                          [item.id]: false,
-                                        })),
-                                      200,
-                                    )
-                                  }
-                                />
-                                {itemDropdown[item.id] && (
-                                  <div className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-full bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto overscroll-contain pr-1">
-                                    {objects
-                                      .filter((o) => {
-                                        const term = (itemSearch[item.id] ?? "").toLowerCase();
-                                        return (
-                                          o.name.toLowerCase().includes(term) ||
-                                          o.itemType.toLowerCase().includes(term)
-                                        );
-                                      })
-                                      .slice(0, 10)
-                                      .map((o) => (
-                                        <div
-                                          key={o.id}
-                                          className="px-4 py-3 text-sm hover:bg-secondary cursor-pointer flex items-start gap-2 leading-relaxed"
-                                          onClick={() => {
-                                            updateItem(p.id, item.id, { objectId: o.id });
-                                            setItemSearch((s) => ({
-                                              ...s,
-                                              [item.id]: "",
-                                            }));
-                                            setItemDropdown((s) => ({
-                                              ...s,
-                                              [item.id]: false,
-                                            }));
-                                          }}
-                                        >
-                                          <span>{o.icon}</span>
-                                          <span className="font-medium whitespace-normal">{o.name}</span>
-                                          <span className="text-muted-foreground text-xs whitespace-normal">
-                                            {o.itemType}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    {objects.filter((o) => {
-                                      const term = (itemSearch[item.id] ?? "").toLowerCase();
-                                      return (
-                                        o.name.toLowerCase().includes(term) ||
-                                        o.itemType.toLowerCase().includes(term)
-                                      );
-                                    }).length === 0 && (
-                                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                                        No se encontraron objetos
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+            {loadingObjects ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-gold" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {rewardTarget.participants.map((participant) => {
+                  const reward = rewards[participant.characterId] ?? {
+                    gold: 0,
+                    levelUps: 0,
+                    items: [],
+                  };
+
+                  return (
+                    <div
+                      key={participant.id}
+                      className="border border-border rounded-lg p-4 bg-secondary/10 flex flex-col gap-3"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {participant.characterName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{participant.userName}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <FormField label="Oro a asignar">
                           <input
                             type="number"
-                            min={1}
+                            min={0}
                             className={inputCls}
-                            value={item.qty}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "" || /^\d+$/.test(val)) {
-                                updateItem(p.id, item.id, {
-                                  qty: val === "" ? 1 : Math.max(1, Number(val)),
-                                });
-                              }
-                            }}
+                            value={reward.gold}
+                            onChange={(e) =>
+                              updateReward(participant.characterId, {
+                                gold: Math.max(0, Number(e.target.value) || 0),
+                              })
+                            }
                           />
+                        </FormField>
+
+                        <FormField label="Subidas de nivel (clase principal)">
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            className={inputCls}
+                            value={reward.levelUps}
+                            onChange={(e) =>
+                              updateReward(participant.characterId, {
+                                levelUps: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                              })
+                            }
+                          />
+                        </FormField>
+                      </div>
+
+                      <div className="border-t border-border pt-3 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-foreground">Objetos</p>
                           <button
                             type="button"
-                            onClick={() => removeItem(p.id, item.id)}
-                            className="px-3 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-muted"
+                            onClick={() => addItemToReward(participant.characterId)}
+                            className="px-2 py-1 text-xs rounded border border-border hover:bg-muted"
                           >
-                            Quitar
+                            Agregar objeto
                           </button>
                         </div>
-                      ))}
+
+                        {reward.items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Sin objetos</p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {reward.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="grid grid-cols-1 md:grid-cols-3 gap-2"
+                              >
+                                <select
+                                  className={inputCls}
+                                  value={item.objectId ?? ""}
+                                  onChange={(e) =>
+                                    updateRewardItem(participant.characterId, item.id, {
+                                      objectId: e.target.value ? Number(e.target.value) : null,
+                                    })
+                                  }
+                                >
+                                  <option value="">Selecciona objeto</option>
+                                  {objects.map((obj) => (
+                                    <option key={obj.id} value={obj.id}>
+                                      {obj.icon} {obj.name}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className={inputCls}
+                                  value={item.qty}
+                                  onChange={(e) =>
+                                    updateRewardItem(participant.characterId, item.id, {
+                                      qty: Math.max(1, Number(e.target.value) || 1),
+                                    })
+                                  }
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeRewardItem(participant.characterId, item.id)}
+                                  className="px-3 py-2 text-xs rounded border border-border hover:bg-muted"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-border">
-            <button
-              type="button"
-              onClick={() => {
-                setTitle("");
-                setComment("");
-                setParticipants([
-                  {
-                    id: "p-1",
-                    characterId: "",
-                    gold: 0,
-                    comment: "",
-                    dead: false,
-                    items: [],
-                  },
-                ]);
-              }}
-              className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
-            >
-              Limpiar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              Crear partida
-            </button>
+            <div className="flex justify-end gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => setRewardTarget(null)}
+                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={submitCloseWithRewards}
+                disabled={closingId === rewardTarget.id}
+                className="px-4 py-2 rounded bg-destructive/80 hover:bg-destructive text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {closingId === rewardTarget.id ? "Cerrando..." : "Cerrar y guardar recompensas"}
+              </button>
+            </div>
           </div>
-        </form>
+        </Modal>
       )}
-
     </div>
   );
 }
@@ -3375,7 +3357,8 @@ export default function AdminPage() {
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
-    { id: "partidas", label: "Partidas", icon: Shield },
+    { id: "partidas", label: "Publicar Partida", icon: Shield },
+    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
     { id: "historial-partidas", label: "Historial", icon: Shield },
   ];
 
@@ -3447,6 +3430,9 @@ export default function AdminPage() {
             )}
             {activeTab === "partidas" && (
               <PartidasTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "partidas-activas" && (
+              <ActivePartidasTab token={token} onToast={showToast} />
             )}
             {activeTab === "historial-partidas" && (
               <PartidasHistoryTab token={token} onToast={showToast} />
