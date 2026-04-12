@@ -190,7 +190,7 @@ function formatDate(iso: string) {
 function Modal({
   title,
   onClose,
-  maxWidth = "max-w-lg", // default
+  maxWidth = "max-w-lg", // defaultw
   children,
 }: {
   title: string;

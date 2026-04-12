@@ -15,7 +15,10 @@ type ItemType =
   | "anillo"
   | "amuleto"
   | "cinturón"
+  | "capa"
   | "arma"
+  | "accesorio-arma"
+  | "accesorio-capa"
   | "pies"
   | "manos"
   | "colgante";
@@ -68,6 +71,7 @@ type Character = {
 type SlotKey =
   | "cabeza"
   | "colgante"
+  | "capa"
   | "cinturon"
   | "pecho"
   | "manoizq"
@@ -77,9 +81,126 @@ type SlotKey =
   | "anillo2"
   | "pies";
 
+type WeaponSlotKey = "manoizq" | "manoderecha";
+
+type WeaponSocketItem = Item | null;
+
+type WeaponSockets = Record<WeaponSlotKey, [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem]>;
+type CapeSockets = [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem];
+
+const SIMULATED_WEAPON_LEVEL_BY_NAME: Record<string, number> = {
+  "Espada Corta": 2,
+  "Espada Larga": 4,
+  "Hacha de Batalla": 5,
+  "Espada Corta +1": 6,
+  "Escudo de Hierro": 3,
+  "Varilla de Fuerza": 6,
+};
+
+const SIMULATED_CAPE_LEVEL_BY_NAME: Record<string, number> = {
+  "Capa de Evasión": 4,
+  "Capa Sombría": 5,
+  "Capa del Errante": 2,
+};
+
+const DEFAULT_SIMULATED_WEAPON_LEVEL = 1;
+const DEFAULT_SIMULATED_CAPE_LEVEL = 1;
+
+function getUnlockedWeaponSocketCount(weaponLevel: number): number {
+  if (weaponLevel >= 5) return 3;
+  if (weaponLevel >= 3) return 2;
+  return 1;
+}
+
+function getUnlockedCapeSocketCount(capeLevel: number): number {
+  if (capeLevel >= 5) return 3;
+  if (capeLevel >= 3) return 2;
+  return 1;
+}
+
+function getCapeNameFromEquipped(equipped: EquippedMap): string | undefined {
+  return equipped.capa?.name;
+}
+
+function getWeaponNameFromEquipped(
+  equipped: EquippedMap,
+  weaponSlot: WeaponSlotKey,
+): string | undefined {
+  return weaponSlot === "manoizq"
+    ? equipped.manoizq?.name
+    : equipped.manoderecha?.name;
+}
+
+function getWeaponLevelForSlot(
+  character: Character,
+  equipped: EquippedMap,
+  weaponSlot: WeaponSlotKey,
+): number {
+  const weaponName = getWeaponNameFromEquipped(equipped, weaponSlot);
+  if (!weaponName) return 0;
+
+  // Future backend hook: expose weapon levels in this field to replace the simulation.
+  const backendWeaponLevelByName =
+    (character as { weaponLevelByName?: Record<string, number> }).weaponLevelByName ??
+    {};
+  const backendLevel = backendWeaponLevelByName[weaponName];
+  if (typeof backendLevel === "number" && backendLevel > 0) {
+    return backendLevel;
+  }
+
+  return (
+    SIMULATED_WEAPON_LEVEL_BY_NAME[weaponName] ?? DEFAULT_SIMULATED_WEAPON_LEVEL
+  );
+}
+
+function getCapeLevel(character: Character, equipped: EquippedMap): number {
+  const capeName = getCapeNameFromEquipped(equipped);
+  if (!capeName) return 0;
+
+  const backendCapeLevelByName =
+    (character as { capeLevelByName?: Record<string, number> }).capeLevelByName ??
+    {};
+  const backendLevel = backendCapeLevelByName[capeName];
+  if (typeof backendLevel === "number" && backendLevel > 0) {
+    return backendLevel;
+  }
+
+  return SIMULATED_CAPE_LEVEL_BY_NAME[capeName] ?? DEFAULT_SIMULATED_CAPE_LEVEL;
+}
+
+function buildWeaponSockets(character: Character): WeaponSockets {
+  const raw =
+    (character as {
+      weaponSockets?: Partial<Record<WeaponSlotKey, Array<Item | null | undefined>>>;
+    }).weaponSockets ?? {};
+
+  const toFixed3 = (
+    arr: Array<Item | null | undefined> | undefined,
+  ): [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem] => [
+    arr?.[0] ?? null,
+    arr?.[1] ?? null,
+    arr?.[2] ?? null,
+  ];
+
+  return {
+    manoizq: toFixed3(raw.manoizq),
+    manoderecha: toFixed3(raw.manoderecha),
+  };
+}
+
+function buildCapeSockets(character: Character): CapeSockets {
+  const raw =
+    (character as {
+      capeSockets?: Array<Item | null | undefined>;
+    }).capeSockets ?? [];
+
+  return [raw[0] ?? null, raw[1] ?? null, raw[2] ?? null];
+}
+
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
   colgante:    { accepts: ["collar", "amuleto", "colgante"],   label: "Colgante",  icon: "💎" },
+  capa:        { accepts: ["capa"],                            label: "Capa",      icon: "🧥" },
   cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
   pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "🧥" },
   manoizq:     { accepts: ["arma"],                            label: "Mano Izq",  icon: "🗡" },
@@ -93,8 +214,8 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
 const ITEM_ICONS: Partial<Record<ItemType, string>> = {
   arma: "⚔️", cabeza: "👑", armadura: "🧥", pecho: "🧥", guante: "🧤", manos: "🧤",
   botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
-  amuleto: "🔮", colgante: "💎",
-  cinturón: "🪢",
+  amuleto: "🔮", colgante: "💎", capa: "🧥",
+  cinturón: "🪢", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
 };
 
 // ─── Helper: build a flat equipped map from Character slots ──────────────────
@@ -108,6 +229,16 @@ function buildEquippedMap(character: Character): EquippedMap {
 
   return {
     cabeza:      character.armor.cabeza      ? { name: character.armor.cabeza,      type: "cabeza",   price: equipmentPriceByName[character.armor.cabeza] } : null,
+    capa:        ((character as { cape?: { capa?: string } }).cape?.capa)
+                 ? {
+                     name: (character as { cape?: { capa?: string } }).cape!.capa!,
+                     type: "capa",
+                     price:
+                       equipmentPriceByName[
+                         (character as { cape?: { capa?: string } }).cape!.capa!
+                       ],
+                   }
+                 : null,
     pecho:       (character.armor.armadura ?? character.armor.pecho)
                  ? {
                      name: character.armor.armadura ?? character.armor.pecho!,
@@ -135,6 +266,9 @@ function equippedMapToCharacter(
 ): Character {
   return {
     ...character,
+    cape: {
+      capa: equipped.capa?.name,
+    },
     armor: {
       cabeza: equipped.cabeza?.name,
       armadura: equipped.pecho?.name,
@@ -162,6 +296,14 @@ function SlotButton({
   item,
   selected,
   onSelect,
+  weaponLevel,
+  weaponSocketItems,
+  weaponSelectedSocketIndex,
+  onSelectWeaponSocket,
+  capeLevel,
+  capeSocketItems,
+  capeSelectedSocketIndex,
+  onSelectCapeSocket,
   readOnly = false,
   onReadOnlyAttempt,
 }: {
@@ -169,20 +311,33 @@ function SlotButton({
   item: Item | null;
   selected: boolean;
   onSelect: (key: SlotKey) => void;
+  weaponLevel?: number;
+  weaponSocketItems?: [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem];
+  weaponSelectedSocketIndex?: number | null;
+  onSelectWeaponSocket?: (weaponSlot: WeaponSlotKey, socketIndex: number) => void;
+  capeLevel?: number;
+  capeSocketItems?: CapeSockets;
+  capeSelectedSocketIndex?: number | null;
+  onSelectCapeSocket?: (socketIndex: number) => void;
   readOnly?: boolean;
   onReadOnlyAttempt?: () => void;
 }) {
   const cfg = SLOT_CONFIG[slotKey];
+  const isWeaponSlot = slotKey === "manoizq" || slotKey === "manoderecha";
+  const isCapeSlot = slotKey === "capa";
+  const unlockedWeaponSockets = getUnlockedWeaponSocketCount(weaponLevel ?? 0);
+  const unlockedCapeSockets = getUnlockedCapeSocketCount(capeLevel ?? 0);
 
   const positionStyle: React.CSSProperties = (() => {
     const base: React.CSSProperties = { position: "absolute" };
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
       colgante:    { top: "100px", left: "50%", transform: "translateX(-50%)" },
+      capa:        { top: "40px", right: "-190px" },
       cinturon:    { top: "220px", left: "50%", transform: "translateX(-50%)" },
       pecho:       { top: "150px", left: "50%", transform: "translateX(-50%)" },
-      manoizq:     { top: "145px", left: "14px" },
-      manoderecha: { top: "145px", right: "14px" },
+      manoizq:     { top: "40px", left: "-375px" },
+      manoderecha: { top: "40px", left: "-200px" },
       manos:       { top: "207px", left: "16px" },
       anillo1:     { top: "200px", right: "16px" },
       anillo2:     { top: "254px", right: "16px" },
@@ -203,7 +358,9 @@ function SlotButton({
       title={item ? item.name : cfg.label}
       style={positionStyle}
       className={[
-        "w-15 h-13 flex flex-col items-center justify-center gap-0.5",
+        isWeaponSlot || isCapeSlot
+          ? "w-36 h-72 flex flex-col items-center justify-start gap-3 pt-8"
+          : "w-15 h-13 flex flex-col items-center justify-center gap-0.5",
         "rounded-lg border text-center transition-all duration-200",
         readOnly ? "cursor-default" : "cursor-pointer",
         selected
@@ -213,14 +370,132 @@ function SlotButton({
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518]",
       ].join(" ")}
     >
-      <span className="text-lg leading-none">{cfg.icon}</span>
-      <span className="text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none">
+      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none" : "text-lg leading-none"}>
+        {cfg.icon}
+      </span>
+      <span
+        className={
+          isWeaponSlot || isCapeSlot
+            ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none"
+            : "text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none"
+        }
+      >
         {cfg.label}
       </span>
       {item && (
-        <span className="text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5">
+        <span
+          className={
+            isWeaponSlot || isCapeSlot
+              ? "text-sm text-[#D4AF37] leading-tight max-w-28 truncate px-2"
+              : "text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5"
+          }
+        >
           {item.name}
         </span>
+      )}
+      {isWeaponSlot && (
+        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+          <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
+            Nv. {weaponLevel ?? 0} · {unlockedWeaponSockets}/3
+          </span>
+          {[0, 1, 2].map((i) => {
+            const unlocked = i < unlockedWeaponSockets;
+            const socketItem = weaponSocketItems?.[i] ?? null;
+            const isSelected = weaponSelectedSocketIndex === i;
+
+            return (
+              <div
+                key={`${slotKey}-socket-${i}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (readOnly) {
+                    onReadOnlyAttempt?.();
+                    return;
+                  }
+                  if (!unlocked) {
+                    return;
+                  }
+                  onSelectWeaponSocket?.(slotKey, i);
+                }}
+                className={[
+                  "h-8 rounded border text-[9px] flex items-center justify-center px-1 text-center",
+                  unlocked
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed opacity-45",
+                  isSelected
+                    ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
+                    : unlocked
+                    ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
+                    : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
+                ].join(" ")}
+                title={
+                  unlocked
+                    ? socketItem
+                      ? socketItem.name
+                      : "Slot vacío"
+                    : "Bloqueado por nivel de arma"
+                }
+              >
+                {!unlocked
+                  ? `Slot ${i + 1} bloqueado`
+                  : socketItem
+                  ? socketItem.name
+                  : `Slot ${i + 1} vacío`}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {isCapeSlot && (
+        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+          <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
+            Nv. {capeLevel ?? 0} · {unlockedCapeSockets}/3
+          </span>
+          {[0, 1, 2].map((i) => {
+            const unlocked = i < unlockedCapeSockets;
+            const socketItem = capeSocketItems?.[i] ?? null;
+            const isSelected = capeSelectedSocketIndex === i;
+
+            return (
+              <div
+                key={`${slotKey}-cape-socket-${i}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (readOnly) {
+                    onReadOnlyAttempt?.();
+                    return;
+                  }
+                  if (!unlocked) return;
+                  onSelectCapeSocket?.(i);
+                }}
+                className={[
+                  "h-8 rounded border text-[9px] flex items-center justify-center px-1 text-center",
+                  unlocked
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed opacity-45",
+                  isSelected
+                    ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
+                    : unlocked
+                    ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
+                    : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
+                ].join(" ")}
+                title={
+                  unlocked
+                    ? socketItem
+                      ? socketItem.name
+                      : "Slot vacío"
+                    : "Bloqueado por nivel de capa"
+                }
+              >
+                {!unlocked
+                  ? `Slot ${i + 1} bloqueado`
+                  : socketItem
+                  ? socketItem.name
+                  : `Slot ${i + 1} vacío`}
+              </div>
+            );
+          })}
+        </div>
       )}
     </button>
   );
@@ -230,6 +505,9 @@ function SlotButton({
 
 const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   arma:     "bg-red-900/30 text-red-400",
+  "accesorio-arma": "bg-orange-900/30 text-orange-300",
+  "accesorio-capa": "bg-cyan-900/30 text-cyan-300",
+  capa:     "bg-indigo-900/30 text-indigo-300",
   cabeza:   "bg-blue-900/20 text-blue-300",
   armadura: "bg-green-900/20 text-green-300",
   pecho:    "bg-green-900/20 text-green-300",
@@ -250,6 +528,8 @@ interface EquipmentPreviewProps {
 
 export function EquipmentPreview({ character }: EquipmentPreviewProps) {
   const equipped = buildEquippedMap(character);
+  const weaponSockets = buildWeaponSockets(character);
+  const capeSockets = buildCapeSockets(character);
   const bagItems = character.bag.items;
   const emptySlots = character.bag.maxSlots - bagItems.length;
   const [noticeId, setNoticeId] = useState(0);
@@ -287,7 +567,7 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[300px,1fr] gap-0">
+        <div className="grid grid-cols-1 xl:grid-cols-[620px,1fr] gap-0">
           <div
             className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
             style={{ background: "rgba(0,0,0,0.15)" }}
@@ -323,17 +603,34 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
                 <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
               </svg>
 
-              {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
-                <SlotButton
-                  key={key}
-                  slotKey={key}
-                  item={equipped[key]}
-                  selected={false}
-                  onSelect={() => {}}
-                  readOnly
-                  onReadOnlyAttempt={notifyOpenBag}
-                />
-              ))}
+              {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
+                const weaponSlot =
+                  key === "manoizq" || key === "manoderecha" ? key : null;
+
+                return (
+                  <SlotButton
+                    key={key}
+                    slotKey={key}
+                    item={equipped[key]}
+                    selected={false}
+                    onSelect={() => {}}
+                    weaponLevel={
+                      weaponSlot
+                        ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                        : undefined
+                    }
+                    weaponSocketItems={
+                      weaponSlot ? weaponSockets[weaponSlot] : undefined
+                    }
+                    weaponSelectedSocketIndex={null}
+                    capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                    capeSocketItems={key === "capa" ? capeSockets : undefined}
+                    capeSelectedSocketIndex={null}
+                    readOnly
+                    onReadOnlyAttempt={notifyOpenBag}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -478,6 +775,17 @@ export default function EquipmentModal({
   const [bagItems, setBagItems] = useState<Item[]>(character.bag.items);
   const [selectedSlot, setSelectedSlot] = useState<SlotKey | null>(null);
   const [selectedBagIndex, setSelectedBagIndex] = useState<number | null>(null);
+  const [weaponSockets, setWeaponSockets] = useState<WeaponSockets>(() =>
+    buildWeaponSockets(character),
+  );
+  const [capeSockets, setCapeSockets] = useState<CapeSockets>(() =>
+    buildCapeSockets(character),
+  );
+  const [selectedWeaponSocket, setSelectedWeaponSocket] = useState<{
+    weaponSlot: WeaponSlotKey;
+    socketIndex: number;
+  } | null>(null);
+  const [selectedCapeSocket, setSelectedCapeSocket] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
   const [isSaving, setIsSaving] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
@@ -490,6 +798,209 @@ export default function EquipmentModal({
     Math.floor((selectedBagItem?.price ?? 0) / 2),
   );
   const sellConcept = "venta_objeto";
+
+  const moveSocketItemsToBag = useCallback(
+    (weaponSlot: WeaponSlotKey, targetBag: Item[]) => {
+      for (const socketItem of weaponSockets[weaponSlot]) {
+        if (socketItem) targetBag.push(socketItem);
+      }
+    },
+    [weaponSockets],
+  );
+
+  const moveCapeSocketItemsToBag = useCallback(
+    (targetBag: Item[]) => {
+      for (const socketItem of capeSockets) {
+        if (socketItem) targetBag.push(socketItem);
+      }
+    },
+    [capeSockets],
+  );
+
+  const selectWeaponSocket = useCallback(
+    (weaponSlot: WeaponSlotKey, socketIndex: number) => {
+      const weaponName = getWeaponNameFromEquipped(equipped, weaponSlot);
+      if (!weaponName) {
+        setStatusMsg("⚠ Equipa un arma primero para usar sus slots.");
+        return;
+      }
+
+      const weaponLevel = getWeaponLevelForSlot(character, equipped, weaponSlot);
+      const unlocked = getUnlockedWeaponSocketCount(weaponLevel);
+      if (socketIndex >= unlocked) {
+        setStatusMsg(
+          `⚠ Slot bloqueado. El arma es nivel ${weaponLevel} y solo habilita ${unlocked} slot(s).`,
+        );
+        return;
+      }
+
+      if (selectedBagIndex !== null) {
+        const bagItem = bagItems[selectedBagIndex];
+        if (!bagItem) {
+          setSelectedBagIndex(null);
+          return;
+        }
+        if (bagItem.type !== "accesorio-arma") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-arma.");
+          return;
+        }
+
+        const newBag = bagItems.filter((_, idx) => idx !== selectedBagIndex);
+        const oldSocketItem = weaponSockets[weaponSlot][socketIndex];
+        if (oldSocketItem) newBag.push(oldSocketItem);
+
+        setWeaponSockets((prev) => {
+          const copy: WeaponSockets = {
+            manoizq: [...prev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+            manoderecha: [...prev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+          };
+          copy[weaponSlot][socketIndex] = bagItem;
+          return copy;
+        });
+
+        setBagItems(newBag);
+        setSelectedBagIndex(null);
+        setSelectedSlot(null);
+        setSelectedWeaponSocket(null);
+        setSelectedCapeSocket(null);
+        setStatusMsg(`✓ ${bagItem.name} insertado en slot ${socketIndex + 1} de ${SLOT_CONFIG[weaponSlot].label}`);
+        return;
+      }
+
+      if (
+        selectedWeaponSocket?.weaponSlot === weaponSlot &&
+        selectedWeaponSocket.socketIndex === socketIndex
+      ) {
+        const current = weaponSockets[weaponSlot][socketIndex];
+        if (!current) {
+          setSelectedWeaponSocket(null);
+          setStatusMsg("Sin cambios pendientes");
+          return;
+        }
+
+        if (bagItems.length >= character.bag.maxSlots) {
+          setStatusMsg("⚠ La bolsa está llena. No puedes retirar el accesorio.");
+          return;
+        }
+
+        setWeaponSockets((prev) => {
+          const copy: WeaponSockets = {
+            manoizq: [...prev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+            manoderecha: [...prev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+          };
+          copy[weaponSlot][socketIndex] = null;
+          return copy;
+        });
+        setBagItems((prev) => [...prev, current]);
+        setSelectedWeaponSocket(null);
+        setStatusMsg(`↩ ${current.name} devuelto a la bolsa`);
+        return;
+      }
+
+      setSelectedSlot(null);
+      setSelectedCapeSocket(null);
+      setSelectedWeaponSocket({ weaponSlot, socketIndex });
+      setStatusMsg(
+        `Slot de arma ${socketIndex + 1} activo — elige un item de tipo accesorio-arma`,
+      );
+    },
+    [
+      equipped,
+      character,
+      selectedBagIndex,
+      bagItems,
+      weaponSockets,
+      selectedWeaponSocket,
+    ],
+  );
+
+  const selectCapeSocket = useCallback(
+    (socketIndex: number) => {
+      const capeName = getCapeNameFromEquipped(equipped);
+      if (!capeName) {
+        setStatusMsg("⚠ Equipa una capa primero para usar sus slots.");
+        return;
+      }
+
+      const capeLevel = getCapeLevel(character, equipped);
+      const unlocked = getUnlockedCapeSocketCount(capeLevel);
+      if (socketIndex >= unlocked) {
+        setStatusMsg(
+          `⚠ Slot bloqueado. La capa es nivel ${capeLevel} y solo habilita ${unlocked} slot(s).`,
+        );
+        return;
+      }
+
+      if (selectedBagIndex !== null) {
+        const bagItem = bagItems[selectedBagIndex];
+        if (!bagItem) {
+          setSelectedBagIndex(null);
+          return;
+        }
+        if (bagItem.type !== "accesorio-capa") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-capa.");
+          return;
+        }
+
+        const newBag = bagItems.filter((_, idx) => idx !== selectedBagIndex);
+        const oldSocketItem = capeSockets[socketIndex];
+        if (oldSocketItem) newBag.push(oldSocketItem);
+
+        setCapeSockets((prev) => {
+          const copy: CapeSockets = [...prev] as CapeSockets;
+          copy[socketIndex] = bagItem;
+          return copy;
+        });
+
+        setBagItems(newBag);
+        setSelectedBagIndex(null);
+        setSelectedSlot(null);
+        setSelectedWeaponSocket(null);
+        setSelectedCapeSocket(null);
+        setStatusMsg(`✓ ${bagItem.name} insertado en slot ${socketIndex + 1} de Capa`);
+        return;
+      }
+
+      if (selectedCapeSocket === socketIndex) {
+        const current = capeSockets[socketIndex];
+        if (!current) {
+          setSelectedCapeSocket(null);
+          setStatusMsg("Sin cambios pendientes");
+          return;
+        }
+
+        if (bagItems.length >= character.bag.maxSlots) {
+          setStatusMsg("⚠ La bolsa está llena. No puedes retirar el accesorio.");
+          return;
+        }
+
+        setCapeSockets((prev) => {
+          const copy: CapeSockets = [...prev] as CapeSockets;
+          copy[socketIndex] = null;
+          return copy;
+        });
+        setBagItems((prev) => [...prev, current]);
+        setSelectedCapeSocket(null);
+        setStatusMsg(`↩ ${current.name} devuelto a la bolsa`);
+        return;
+      }
+
+      setSelectedSlot(null);
+      setSelectedWeaponSocket(null);
+      setSelectedCapeSocket(socketIndex);
+      setStatusMsg(
+        `Slot de capa ${socketIndex + 1} activo — elige un item de tipo accesorio-capa`,
+      );
+    },
+    [
+      equipped,
+      character,
+      selectedBagIndex,
+      bagItems,
+      capeSockets,
+      selectedCapeSocket,
+    ],
+  );
 
   const selectSlot = useCallback(
     (slotKey: SlotKey) => {
@@ -509,10 +1020,24 @@ export default function EquipmentModal({
         const newBag = bagItems.filter((_, idx) => idx !== selectedBagIndex);
         if (oldItem) newBag.push(oldItem);
 
+        if (slotKey === "manoizq" || slotKey === "manoderecha") {
+          moveSocketItemsToBag(slotKey, newBag);
+          setWeaponSockets((prev) => ({
+            ...prev,
+            [slotKey]: [null, null, null],
+          }));
+        }
+        if (slotKey === "capa") {
+          moveCapeSocketItemsToBag(newBag);
+          setCapeSockets([null, null, null]);
+        }
+
         setEquipped((prev) => ({ ...prev, [slotKey]: item }));
         setBagItems(newBag);
         setSelectedBagIndex(null);
         setSelectedSlot(null);
+        setSelectedWeaponSocket(null);
+        setSelectedCapeSocket(null);
         setStatusMsg(`✓ ${item.name} equipado en ${cfg.label}`);
         return;
       }
@@ -527,37 +1052,132 @@ export default function EquipmentModal({
           }
           const item = equipped[slotKey]!;
           setEquipped((prev) => ({ ...prev, [slotKey]: null }));
-          setBagItems((prev) => [...prev, item]);
+          setBagItems((prev) => {
+            const nextBag = [...prev, item];
+            if (slotKey === "manoizq" || slotKey === "manoderecha") {
+              moveSocketItemsToBag(slotKey, nextBag);
+              setWeaponSockets((socketPrev) => ({
+                ...socketPrev,
+                [slotKey]: [null, null, null],
+              }));
+            }
+            if (slotKey === "capa") {
+              moveCapeSocketItemsToBag(nextBag);
+              setCapeSockets([null, null, null]);
+            }
+            return nextBag;
+          });
           setStatusMsg(`↩ ${item.name} devuelto a la bolsa`);
         }
         setSelectedSlot(null);
+        setSelectedWeaponSocket(null);
+        setSelectedCapeSocket(null);
         return;
       }
+      setSelectedCapeSocket(null);
+      setSelectedWeaponSocket(null);
       setSelectedSlot(slotKey);
       const cfg = SLOT_CONFIG[slotKey];
       setStatusMsg(
         `Slot ${cfg.label} seleccionado — elige un objeto compatible`
       );
     },
-    [selectedSlot, selectedBagIndex, equipped, bagItems, character.bag.maxSlots]
+    [
+      selectedSlot,
+      selectedBagIndex,
+      equipped,
+      bagItems,
+      character.bag.maxSlots,
+      moveSocketItemsToBag,
+      moveCapeSocketItemsToBag,
+    ]
   );
 
   const selectBagItem = useCallback(
     (index: number) => {
-      if (selectedSlot) return;
+      if (selectedSlot && !selectedWeaponSocket && selectedCapeSocket === null) return;
       if (selectedBagIndex === index) {
         setSelectedBagIndex(null);
         setStatusMsg("Sin cambios pendientes");
         return;
       }
       setSelectedBagIndex(index);
+      if (selectedWeaponSocket) {
+        setStatusMsg("Objeto seleccionado — haz clic en el sub-slot del arma para insertarlo");
+        return;
+      }
+      if (selectedCapeSocket !== null) {
+        setStatusMsg("Objeto seleccionado — haz clic en el sub-slot de la capa para insertarlo");
+        return;
+      }
       setStatusMsg("Objeto seleccionado — haz clic en un slot para equiparlo");
     },
-    [selectedBagIndex, selectedSlot]
+    [selectedBagIndex, selectedSlot, selectedWeaponSocket, selectedCapeSocket]
   );
 
   const equipItem = useCallback(
     (item: Item) => {
+      if (selectedWeaponSocket) {
+        if (item.type !== "accesorio-arma") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-arma.");
+          return;
+        }
+
+        const bagIndex = bagItems.findIndex((b) => b.name === item.name);
+        if (bagIndex === -1) {
+          setStatusMsg("⚠ No se encontró el item en la bolsa.");
+          return;
+        }
+
+        const { weaponSlot, socketIndex } = selectedWeaponSocket;
+        const newBag = bagItems.filter((_, idx) => idx !== bagIndex);
+        const oldSocketItem = weaponSockets[weaponSlot][socketIndex];
+        if (oldSocketItem) newBag.push(oldSocketItem);
+
+        setWeaponSockets((prev) => {
+          const copy: WeaponSockets = {
+            manoizq: [...prev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+            manoderecha: [...prev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+          };
+          copy[weaponSlot][socketIndex] = item;
+          return copy;
+        });
+        setBagItems(newBag);
+        setSelectedBagIndex(null);
+        setSelectedWeaponSocket(null);
+        setSelectedCapeSocket(null);
+        setStatusMsg(`✓ ${item.name} insertado en slot ${socketIndex + 1}`);
+        return;
+      }
+
+      if (selectedCapeSocket !== null) {
+        if (item.type !== "accesorio-capa") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-capa.");
+          return;
+        }
+
+        const bagIndex = bagItems.findIndex((b) => b.name === item.name);
+        if (bagIndex === -1) {
+          setStatusMsg("⚠ No se encontró el item en la bolsa.");
+          return;
+        }
+
+        const newBag = bagItems.filter((_, idx) => idx !== bagIndex);
+        const oldSocketItem = capeSockets[selectedCapeSocket];
+        if (oldSocketItem) newBag.push(oldSocketItem);
+
+        setCapeSockets((prev) => {
+          const copy: CapeSockets = [...prev] as CapeSockets;
+          copy[selectedCapeSocket] = item;
+          return copy;
+        });
+        setBagItems(newBag);
+        setSelectedBagIndex(null);
+        setSelectedCapeSocket(null);
+        setStatusMsg(`✓ ${item.name} insertado en slot de capa ${selectedCapeSocket + 1}`);
+        return;
+      }
+
       if (!selectedSlot) return;
       const cfg = SLOT_CONFIG[selectedSlot];
       if (!cfg.accepts.includes(item.type)) {
@@ -571,6 +1191,30 @@ export default function EquipmentModal({
         if (newMap[selectedSlot]) {
           setBagItems((b) => [...b, newMap[selectedSlot]!]);
         }
+
+        if (selectedSlot === "manoizq" || selectedSlot === "manoderecha") {
+          setWeaponSockets((socketPrev) => {
+            const copied: WeaponSockets = {
+              manoizq: [...socketPrev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+              manoderecha: [...socketPrev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+            };
+            const socketItems = copied[selectedSlot].filter(Boolean) as Item[];
+            if (socketItems.length > 0) {
+              setBagItems((bagPrev) => [...bagPrev, ...socketItems]);
+            }
+            copied[selectedSlot] = [null, null, null];
+            return copied;
+          });
+        }
+
+        if (selectedSlot === "capa") {
+          const capeSocketItems = capeSockets.filter(Boolean) as Item[];
+          if (capeSocketItems.length > 0) {
+            setBagItems((bagPrev) => [...bagPrev, ...capeSocketItems]);
+          }
+          setCapeSockets([null, null, null]);
+        }
+
         newMap[selectedSlot] = item;
         return newMap;
       });
@@ -578,13 +1222,19 @@ export default function EquipmentModal({
       setStatusMsg(`✓ ${item.name} equipado en ${cfg.label}`);
       setSelectedSlot(null);
       setSelectedBagIndex(null);
+      setSelectedWeaponSocket(null);
+      setSelectedCapeSocket(null);
     },
-    [selectedSlot]
+    [selectedSlot, selectedWeaponSocket, selectedCapeSocket, bagItems, weaponSockets, capeSockets]
   );
 
   const handleSave = async () => {
     setIsSaving(true);
-    const updatedCharacter = equippedMapToCharacter(character, equipped);
+    const updatedCharacter = {
+      ...equippedMapToCharacter(character, equipped),
+      weaponSockets,
+      capeSockets,
+    };
     try {
       await onSave(updatedCharacter, bagItems);
       setStatusMsg("✓ Cambios guardados exitosamente");
@@ -626,6 +1276,7 @@ export default function EquipmentModal({
       setBagItems((prev) => prev.filter((_, idx) => idx !== selectedBagIndex));
       setSelectedBagIndex(null);
       setSelectedSlot(null);
+      setSelectedCapeSocket(null);
       setStatusMsg(
         `💰 Venta: ${soldItemName} por +${gainedGold} oro (concepto: ${concept})`,
       );
@@ -660,7 +1311,7 @@ export default function EquipmentModal({
       >
         {/* Modal */}
         <div
-          className="relative w-full max-w-4xl rounded-xl flex flex-col overflow-hidden max-h-[92vh]"
+          className="relative w-full max-w-[1650px] rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
           style={{
             background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
             border: "1px solid #8B7355",
@@ -694,7 +1345,7 @@ export default function EquipmentModal({
           <div className="flex overflow-hidden flex-1 min-h-0">
             {/* LEFT: Character figure */}
             <div
-              className="w-75 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
+              className="w-[900px] shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
               <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
@@ -702,7 +1353,7 @@ export default function EquipmentModal({
               </span>
 
               {/* Figure */}
-              <div className="relative w-65 h-92.5">
+              <div className="relative w-65 h-92.5 md:ml-34 xl:ml-72">
                 {/* SVG silhouette */}
                 <svg
                   viewBox="0 0 280 380"
@@ -746,6 +1397,8 @@ export default function EquipmentModal({
                       selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
                     const isCompatibleWithSelectedBagItem =
                       !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
+                    const weaponSlot =
+                      key === "manoizq" || key === "manoderecha" ? key : null;
 
                     return (
                   <SlotButton
@@ -754,6 +1407,24 @@ export default function EquipmentModal({
                     item={equipped[key]}
                     selected={selectedSlot === key || isCompatibleWithSelectedBagItem}
                     onSelect={selectSlot}
+                    weaponLevel={
+                      weaponSlot
+                        ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                        : undefined
+                    }
+                    weaponSocketItems={
+                      weaponSlot ? weaponSockets[weaponSlot] : undefined
+                    }
+                    weaponSelectedSocketIndex={
+                      weaponSlot && selectedWeaponSocket?.weaponSlot === weaponSlot
+                        ? selectedWeaponSocket.socketIndex
+                        : null
+                    }
+                    onSelectWeaponSocket={selectWeaponSocket}
+                    capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                    capeSocketItems={key === "capa" ? capeSockets : undefined}
+                    capeSelectedSocketIndex={key === "capa" ? selectedCapeSocket : null}
+                    onSelectCapeSocket={selectCapeSocket}
                   />
                     );
                   })()
@@ -762,7 +1433,7 @@ export default function EquipmentModal({
             </div>
 
             {/* RIGHT: Bag */}
-            <div className="flex-1 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
+            <div className="w-[560px] shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
               {/* Bag header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
@@ -808,7 +1479,11 @@ export default function EquipmentModal({
               >
                 {selectedSlot
                   ? `Slot activo: ${SLOT_CONFIG[selectedSlot].label} — elige un objeto compatible o haz clic en el slot para desequipar`
-                  : "Selecciona un slot del personaje para activarlo"}
+                  : selectedWeaponSocket
+                    ? "Sub-slot de arma activo — elige un item de tipo accesorio-arma"
+                  : selectedCapeSocket !== null
+                  ? "Sub-slot de capa activo — elige un item de tipo accesorio-capa"
+                    : "Selecciona un slot del personaje para activarlo"}
               </div>
 
               {/* Grid */}
