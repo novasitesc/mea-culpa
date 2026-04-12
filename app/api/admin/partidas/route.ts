@@ -270,7 +270,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: participantesPartida, error: participantesPartidaError } = await session.db
     .from("partida_participantes")
-    .select("id, personaje_id, usuario_id")
+    .select("id, personaje_id, usuario_id, muerto")
     .eq("partida_id", partidaId);
 
   if (participantesPartidaError) {
@@ -366,9 +366,10 @@ export async function PATCH(request: NextRequest) {
         }
 
         const currentLevel = Number((classLevelData as any).nivel ?? 1);
+        const nextLevel = Math.min(20, Math.max(1, currentLevel + levelUps));
         const { error: updateLevelError } = await session.db
           .from("clases_personaje")
-          .update({ nivel: currentLevel + levelUps })
+          .update({ nivel: nextLevel })
           .eq("id", classRow.id);
 
         if (updateLevelError) {
@@ -428,13 +429,8 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: bagCountError.message }, { status: 500 });
       }
 
-      const newSlotsNeeded = uniqueObjectIds.filter((id) => !existingMap.has(id)).length;
-      if ((bagCount ?? 0) + newSlotsNeeded > (personaje as any).capacidad_bolsa) {
-        return NextResponse.json(
-          { error: "Bolsa llena para uno de los personajes" },
-          { status: 400 },
-        );
-      }
+      const bagCapacity = Number((personaje as any).capacidad_bolsa ?? 0);
+      let freeSlots = Math.max(0, bagCapacity - Number(bagCount ?? 0));
 
       const { data: maxOrdenRow, error: maxOrdenError } = await session.db
         .from("bolsa_objetos")
@@ -462,6 +458,11 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: updateError.message }, { status: 500 });
           }
         } else {
+          if (freeSlots <= 0) {
+            // Si no hay espacio en bolsa, el objeto se descarta sin bloquear el cierre.
+            continue;
+          }
+
           nextOrden += 1;
           const { error: insertError } = await session.db
             .from("bolsa_objetos")
@@ -475,6 +476,8 @@ export async function PATCH(request: NextRequest) {
           if (insertError) {
             return NextResponse.json({ error: insertError.message }, { status: 500 });
           }
+
+          freeSlots -= 1;
         }
 
         itemsPayload.push({
@@ -511,6 +514,71 @@ export async function PATCH(request: NextRequest) {
       { error: updateError?.message ?? "No se pudo cerrar la partida" },
       { status: 500 },
     );
+  }
+
+  const participantUserIds = Array.from(
+    new Set(
+      (participantesPartida ?? [])
+        .map((row: any) => String(row.usuario_id ?? ""))
+        .filter((id) => id.length > 0),
+    ),
+  );
+
+  if (participantUserIds.length > 0) {
+    const { data: perfilesActuales, error: perfilesActualesError } = await session.db
+      .from("perfiles")
+      .select("id, ultima_partida_finalizada_en")
+      .in("id", participantUserIds);
+
+    if (perfilesActualesError) {
+      return NextResponse.json({ error: perfilesActualesError.message }, { status: 500 });
+    }
+
+    const profileIdsToUpdate = (perfilesActuales ?? [])
+      .filter((perfil: any) => {
+        const previous = perfil.ultima_partida_finalizada_en
+          ? new Date(String(perfil.ultima_partida_finalizada_en)).getTime()
+          : null;
+        return previous == null || previous < new Date(finalizedAt).getTime();
+      })
+      .map((perfil: any) => String(perfil.id));
+
+    if (profileIdsToUpdate.length > 0) {
+      const { error: profileCooldownError } = await session.db
+        .from("perfiles")
+        .update({ ultima_partida_finalizada_en: finalizedAt })
+        .in("id", profileIdsToUpdate);
+
+      if (profileCooldownError) {
+        return NextResponse.json({ error: profileCooldownError.message }, { status: 500 });
+      }
+    }
+  }
+
+  const pendingSleepPayload = (participantesPartida ?? [])
+    .filter((row: any) => !row.muerto)
+    .map((row: any) => ({
+      usuario_id: row.usuario_id,
+      personaje_id: Number(row.personaje_id),
+      partida_id: partidaId,
+      creado_en: finalizedAt,
+    }))
+    .filter(
+      (row) =>
+        typeof row.usuario_id === "string" &&
+        row.usuario_id.length > 0 &&
+        Number.isFinite(row.personaje_id) &&
+        row.personaje_id > 0,
+    );
+
+  if (pendingSleepPayload.length > 0) {
+    const { error: pendingSleepError } = await session.db
+      .from("descansos_pendientes")
+      .upsert(pendingSleepPayload, { onConflict: "personaje_id" });
+
+    if (pendingSleepError) {
+      return NextResponse.json({ error: pendingSleepError.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({

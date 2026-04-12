@@ -180,7 +180,7 @@ export async function POST(request: Request) {
       (c: { className: string; level: number }, i: number) => ({
         personaje_id: charId,
         nombre_clase: c.className,
-        nivel: c.level || 1,
+        nivel: Math.min(20, Math.max(1, Math.floor(Number(c.level) || 1))),
         orden: i + 1,
       }),
     );

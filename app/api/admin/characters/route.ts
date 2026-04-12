@@ -102,9 +102,13 @@ export async function PATCH(request: NextRequest) {
     // Actualizar nivel de clases
     if (clases && Array.isArray(clases)) {
       for (const clase of clases) {
+        const boundedLevel = Math.min(
+          20,
+          Math.max(1, Math.floor(Number(clase.nivel) || 1)),
+        );
         const { error: clasError } = await session.db
           .from("clases_personaje")
-          .update({ nivel: clase.nivel })
+          .update({ nivel: boundedLevel })
           .eq("personaje_id", characterId)
           .eq("nombre_clase", clase.nombre_clase);
 

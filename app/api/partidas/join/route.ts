@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   const { data: perfil, error: perfilError } = await db
     .from("perfiles")
-    .select("nivel")
+    .select("nivel, ultima_partida_finalizada_en")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -34,6 +34,57 @@ export async function POST(request: Request) {
   }
 
   const accountLevel = normalizeAccountLevel((perfil as any)?.nivel ?? 1);
+
+  const { data: recentParticipations, error: recentParticipationsError } = await db
+    .from("partida_participantes")
+    .select(
+      `
+        partida:partida_id (
+          id,
+          estado,
+          finalizada_en
+        )
+      `,
+    )
+    .eq("usuario_id", user.id);
+
+  if (recentParticipationsError) {
+    return NextResponse.json({ error: recentParticipationsError.message }, { status: 500 });
+  }
+
+  let lastFinishedAtMs: number | null = null;
+  const profileLastFinishedRaw = (perfil as any)?.ultima_partida_finalizada_en;
+  if (profileLastFinishedRaw) {
+    const profileLastFinishedMs = new Date(String(profileLastFinishedRaw)).getTime();
+    if (Number.isFinite(profileLastFinishedMs)) {
+      lastFinishedAtMs = profileLastFinishedMs;
+    }
+  }
+  for (const row of recentParticipations ?? []) {
+    const partida = (row as any).partida;
+    const estado = String(partida?.estado ?? "");
+    const finalizadaEnRaw = partida?.finalizada_en;
+    if (estado !== "finalizada" || !finalizadaEnRaw) continue;
+
+    const finalizadaMs = new Date(String(finalizadaEnRaw)).getTime();
+    if (!Number.isFinite(finalizadaMs)) continue;
+    if (lastFinishedAtMs == null || finalizadaMs > lastFinishedAtMs) {
+      lastFinishedAtMs = finalizadaMs;
+    }
+  }
+
+  if (lastFinishedAtMs != null) {
+    const cooldownEndsAtMs = lastFinishedAtMs + 24 * 60 * 60 * 1000;
+    if (Date.now() < cooldownEndsAtMs) {
+      return NextResponse.json(
+        {
+          error: "Debes esperar 24 horas después de tu última partida finalizada",
+          cooldownEndsAt: new Date(cooldownEndsAtMs).toISOString(),
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   let body: { partidaId?: unknown; characterId?: unknown };
   try {
@@ -65,6 +116,23 @@ export async function POST(request: Request) {
 
   if (!personaje) {
     return NextResponse.json({ error: "Personaje no válido" }, { status: 403 });
+  }
+
+  const { data: pendingSleep, error: pendingSleepError } = await db
+    .from("descansos_pendientes")
+    .select("id")
+    .eq("personaje_id", characterId)
+    .maybeSingle();
+
+  if (pendingSleepError) {
+    return NextResponse.json({ error: pendingSleepError.message }, { status: 500 });
+  }
+
+  if (pendingSleep) {
+    return NextResponse.json(
+      { error: "Debes elegir donde dormir antes de volver a jugar" },
+      { status: 409 },
+    );
   }
 
   const { data: partida, error: partidaError } = await db
