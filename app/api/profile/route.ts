@@ -38,7 +38,15 @@ export async function GET(request: Request) {
         collar, anillo1, anillo2, amuleto, cinturon,
         mano_izquierda, mano_derecha
       ),
-      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item, precio ) )
+      bolsa_objetos (
+        id,
+        objeto_id,
+        cantidad,
+        orden,
+        fue_comerciado,
+        publicado_en_trade,
+        objetos:objeto_id ( nombre, tipo_item, precio )
+      )
     `,
     )
     .eq("usuario_id", userId)
@@ -172,12 +180,17 @@ export async function GET(request: Request) {
         items: (p.bolsa_objetos ?? [])
           .sort((a: any, b: any) => a.orden - b.orden)
           .map((bi: any) => ({
+            bagRowId: bi.id,
+            objectId: bi.objeto_id,
             name: bi.objetos?.nombre ?? "Objeto desconocido",
             type:
               bi.objetos?.tipo_item === "pecho"
                 ? "armadura"
                 : (bi.objetos?.tipo_item ?? "misc"),
             price: bi.objetos?.precio ?? 0,
+            cantidad: bi.cantidad ?? 1,
+            fueComerciado: Boolean(bi.fue_comerciado),
+            publicadoEnTrade: Boolean(bi.publicado_en_trade),
           })),
         maxSlots: p.capacidad_bolsa,
       },

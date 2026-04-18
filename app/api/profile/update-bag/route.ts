@@ -126,27 +126,49 @@ export async function POST(request: Request) {
       }
     }
 
-    // Actualizar bolsa: borrar todo y re-insertar
+    // Actualizar bolsa preservando identidad de filas y flags de comercio
     if (bagItems) {
-      const { error: deleteBagError } = await db
-        .from("bolsa_objetos")
-        .delete()
-        .eq("personaje_id", characterId);
+      const normalizedBagItems = Array.isArray(bagItems) ? bagItems : [];
 
-      if (deleteBagError) {
+      const { data: existingRows, error: existingBagError } = await db
+        .from("bolsa_objetos")
+        .select("id, objeto_id, cantidad, orden, fue_comerciado, publicado_en_trade, objetos:objeto_id(nombre)")
+        .eq("personaje_id", characterId)
+        .order("orden", { ascending: true });
+
+      if (existingBagError) {
         return NextResponse.json(
-          { error: "Failed to clear bag before update" },
+          { error: "Failed to load current bag state" },
           { status: 500 },
         );
       }
 
-      if (Array.isArray(bagItems) && bagItems.length > 0) {
-        // Buscar IDs de objetos por nombre
-        const nombres = bagItems.map((item: any) => item.name);
+      const existingById = new Map<number, any>();
+      const existingByName = new Map<string, any[]>();
+
+      for (const row of existingRows ?? []) {
+        existingById.set(row.id, row);
+        const name = (row as any).objetos?.nombre;
+        if (!name) continue;
+        const queue = existingByName.get(name) ?? [];
+        queue.push(row);
+        existingByName.set(name, queue);
+      }
+
+      const namesToResolve = Array.from(
+        new Set(
+          normalizedBagItems
+            .map((item: any) => String(item?.name ?? "").trim())
+            .filter(Boolean),
+        ),
+      );
+
+      let nameToId = new Map<string, number>();
+      if (namesToResolve.length > 0) {
         const { data: objetos, error: bagLookupError } = await db
           .from("objetos")
           .select("id, nombre")
-          .in("nombre", nombres);
+          .in("nombre", namesToResolve);
 
         if (bagLookupError) {
           return NextResponse.json(
@@ -155,24 +177,115 @@ export async function POST(request: Request) {
           );
         }
 
-        const nombreToId = new Map(
-          (objetos ?? []).map((o: any) => [o.nombre, o.id]),
-        );
+        nameToId = new Map((objetos ?? []).map((o: any) => [o.nombre, o.id]));
+      }
 
-        const rows = bagItems.map((item: any, i: number) => ({
+      const matchedExistingIds = new Set<number>();
+
+      const rowsToApply = normalizedBagItems.map((item: any, i: number) => {
+        const explicitId = Number(item?.bagRowId);
+        let existing = Number.isFinite(explicitId)
+          ? existingById.get(explicitId)
+          : undefined;
+
+        const itemName = String(item?.name ?? "").trim();
+        if (!existing && itemName) {
+          const queue = existingByName.get(itemName) ?? [];
+          while (queue.length > 0) {
+            const candidate = queue.shift();
+            if (candidate && !matchedExistingIds.has(candidate.id)) {
+              existing = candidate;
+              break;
+            }
+          }
+          existingByName.set(itemName, queue);
+        }
+
+        if (existing) {
+          matchedExistingIds.add(existing.id);
+        }
+
+        const resolvedObjectId =
+          Number(item?.objectId) || existing?.objeto_id || nameToId.get(itemName) || null;
+
+        const resolvedCantidad = Number(item?.cantidad);
+        const cantidad = Number.isFinite(resolvedCantidad) && resolvedCantidad > 0
+          ? Math.floor(resolvedCantidad)
+          : Number(existing?.cantidad ?? 1);
+
+        return {
+          id: existing?.id ?? null,
           personaje_id: characterId,
-          objeto_id: nombreToId.get(item.name) ?? null,
-          cantidad: 1,
+          objeto_id: resolvedObjectId,
+          cantidad: cantidad > 0 ? cantidad : 1,
           orden: i + 1,
-        }));
+          fue_comerciado: Boolean(existing?.fue_comerciado ?? false),
+          publicado_en_trade: Boolean(existing?.publicado_en_trade ?? false),
+        };
+      });
+
+      const idsToKeep = new Set(
+        rowsToApply
+          .map((row) => row.id)
+          .filter((id): id is number => Number.isFinite(Number(id))),
+      );
+
+      const idsToDelete = (existingRows ?? [])
+        .map((row) => row.id)
+        .filter((id) => !idsToKeep.has(id));
+
+      if (idsToDelete.length > 0) {
+        const { error: deleteBagError } = await db
+          .from("bolsa_objetos")
+          .delete()
+          .eq("personaje_id", characterId)
+          .in("id", idsToDelete);
+
+        if (deleteBagError) {
+          return NextResponse.json(
+            { error: "Failed to remove old bag items" },
+            { status: 500 },
+          );
+        }
+      }
+
+      for (const row of rowsToApply) {
+        if (row.id) {
+          const { error: updateBagError } = await db
+            .from("bolsa_objetos")
+            .update({
+              objeto_id: row.objeto_id,
+              cantidad: row.cantidad,
+              orden: row.orden,
+              fue_comerciado: row.fue_comerciado,
+              publicado_en_trade: row.publicado_en_trade,
+            })
+            .eq("id", row.id)
+            .eq("personaje_id", characterId);
+
+          if (updateBagError) {
+            return NextResponse.json(
+              { error: "Failed to update bag items" },
+              { status: 500 },
+            );
+          }
+          continue;
+        }
 
         const { error: insertBagError } = await db
           .from("bolsa_objetos")
-          .insert(rows);
+          .insert({
+            personaje_id: characterId,
+            objeto_id: row.objeto_id,
+            cantidad: row.cantidad,
+            orden: row.orden,
+            fue_comerciado: false,
+            publicado_en_trade: false,
+          });
 
         if (insertBagError) {
           return NextResponse.json(
-            { error: "Failed to update bag items" },
+            { error: "Failed to insert new bag items" },
             { status: 500 },
           );
         }

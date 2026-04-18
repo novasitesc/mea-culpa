@@ -47,10 +47,9 @@ export const sidebarItems = [
     id: "comercio",
     label: "Comercio",
     icon: ShoppingBag,
-    hasIndicator: false,
-    href: null as string | null,
+    hasIndicator: true,
+    href: "/comercio",
     subtitle: "(compra y venta entre pj)",
-    disabled: true,
   },
 ];
 
