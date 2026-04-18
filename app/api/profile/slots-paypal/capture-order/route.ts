@@ -35,11 +35,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Pago PayPal no encontrado" }, { status: 404 });
     }
 
+    const { data: profile, error: profileError } = await db
+      .from("perfiles")
+      .select("max_personajes")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    const currentSlots = profile?.max_personajes ?? 2;
+
+    if (currentSlots >= 5 && payment.estado !== "completed") {
+      return NextResponse.json(
+        { error: "Ya alcanzaste el maximo de slots (5/5)" },
+        { status: 409 },
+      );
+    }
+
     if (payment.estado === "completed") {
       return NextResponse.json({
         success: true,
         status: "completed",
         awaitingWebhook: false,
+        alreadyCaptured: true,
+        newMaxCharacterSlots: currentSlots,
       });
     }
 
@@ -99,11 +120,22 @@ export async function POST(request: Request) {
       }
     }
 
+    const { data: updatedProfile, error: updatedProfileError } = await db
+      .from("perfiles")
+      .select("max_personajes")
+      .eq("id", user.id)
+      .single();
+
+    if (updatedProfileError) {
+      return NextResponse.json({ error: updatedProfileError.message }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: mappedStatus === "completed",
       status: mappedStatus,
       awaitingWebhook: false,
       captureId,
+      newMaxCharacterSlots: updatedProfile?.max_personajes ?? currentSlots,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error interno";

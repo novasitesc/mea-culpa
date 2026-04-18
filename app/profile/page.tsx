@@ -496,17 +496,13 @@ export default function ProfilePage() {
 
     const data = (await res.json()) as {
       orderId?: string;
-      alreadyUnlocked?: boolean;
+      fromSlots?: number;
+      toSlots?: number;
       error?: string;
     };
 
     if (!res.ok || !data.orderId) {
       throw new Error(data.error ?? "No se pudo crear la orden PayPal");
-    }
-
-    if (data.alreadyUnlocked) {
-      setSlotUpgradeMessage("Los slots premium ya estaban desbloqueados.");
-      await loadProfile();
     }
 
     return data.orderId;
@@ -528,7 +524,9 @@ export default function ProfilePage() {
 
     const data = (await res.json()) as {
       success?: boolean;
-      awaitingWebhook?: boolean;
+      status?: string;
+      alreadyCaptured?: boolean;
+      newMaxCharacterSlots?: number;
       error?: string;
     };
 
@@ -536,11 +534,16 @@ export default function ProfilePage() {
       throw new Error(data.error ?? "No se pudo capturar el pago");
     }
 
-    setSlotUpgradeMessage(
-      data.awaitingWebhook
-        ? "Pago capturado. Esperando confirmacion final por webhook para activar los slots premium."
-        : "Upgrade confirmado.",
-    );
+    if (data.success) {
+      const slotsLabel = data.newMaxCharacterSlots
+        ? `${data.newMaxCharacterSlots}/5`
+        : "actualizado";
+      setSlotUpgradeMessage(
+        data.alreadyCaptured
+          ? `Este pago ya estaba confirmado. Slots: ${slotsLabel}.`
+          : `Upgrade confirmado. Slots actuales: ${slotsLabel}.`,
+      );
+    }
 
     await loadProfile();
   };
@@ -589,6 +592,7 @@ export default function ProfilePage() {
   const maxCharacterSlots = player?.maxCharacterSlots ?? 2;
   const reachedCharacterLimit = characters.length >= maxCharacterSlots;
   const canUnlockMoreSlots = maxCharacterSlots < 5;
+  const nextSlotTarget = Math.min(5, maxCharacterSlots + 1);
   const pendingSleepCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
   const hasPendingSleep = !!pendingSleepCharacter;
 
@@ -677,87 +681,91 @@ export default function ProfilePage() {
                 Slots de personaje: <span className="text-foreground font-semibold">{characters.length}/{maxCharacterSlots}</span>
               </p>
 
-              {reachedCharacterLimit && canUnlockMoreSlots && (
-                <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-3">
+              <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-3">
+                {canUnlockMoreSlots ? (
                   <p className="text-sm text-amber-200">
-                    Desbloquea slots premium (hasta 5 personajes) por $4.99 USD.
+                    Desbloquea +1 slot por $4.99 USD. Pasaras de {maxCharacterSlots} a {nextSlotTarget} slots.
                   </p>
+                ) : (
+                  <p className="text-sm text-emerald-200">
+                    Ya tienes el maximo de slots desbloqueados (5/5).
+                  </p>
+                )}
 
-                  {!paypalClientId ? (
-                    <p className="text-xs text-amber-300">
-                      Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el pago.
-                    </p>
-                  ) : (
-                    <PayPalScriptProvider
-                      options={{
-                        clientId: paypalClientId,
-                        "client-id": paypalClientId,
-                        currency: "USD",
-                        intent: "capture",
-                      }}
-                    >
-                      <PayPalButtons
-                        style={{ layout: "horizontal", label: "paypal" }}
-                        disabled={isUpgradingSlots}
-                        createOrder={async () => {
-                          setSlotUpgradeMessage(null);
-                          setIsUpgradingSlots(true);
-                          try {
-                            return await createSlotUnlockOrder();
-                          } catch (error: unknown) {
-                            setIsUpgradingSlots(false);
-                            throw error;
-                          }
-                        }}
-                        onApprove={async (data) => {
-                          if (!data.orderID) {
-                            showProfileAlert(
-                              "Error de pago",
-                              "PayPal no devolvio orderID.",
-                              "error",
-                            );
-                            setIsUpgradingSlots(false);
-                            return;
-                          }
-
-                          try {
-                            await captureSlotUnlockOrder(data.orderID);
-                            showProfileAlert(
-                              "Pago recibido",
-                              "Tu upgrade fue capturado. Se activara al confirmar el webhook.",
-                              "success",
-                            );
-                          } catch (error: unknown) {
-                            showProfileAlert(
-                              "Error de pago",
-                              error instanceof Error ? error.message : "No se pudo confirmar el pago",
-                              "error",
-                            );
-                          } finally {
-                            setIsUpgradingSlots(false);
-                          }
-                        }}
-                        onCancel={() => {
-                          setSlotUpgradeMessage("Pago cancelado por el usuario.");
+                {!paypalClientId ? (
+                  <p className="text-xs text-amber-300">
+                    Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el pago.
+                  </p>
+                ) : (
+                  <PayPalScriptProvider
+                    options={{
+                      clientId: paypalClientId,
+                      "client-id": paypalClientId,
+                      currency: "USD",
+                      intent: "capture",
+                    }}
+                  >
+                    <PayPalButtons
+                      style={{ layout: "horizontal", label: "paypal" }}
+                      disabled={isUpgradingSlots || !canUnlockMoreSlots}
+                      createOrder={async () => {
+                        setSlotUpgradeMessage(null);
+                        setIsUpgradingSlots(true);
+                        try {
+                          return await createSlotUnlockOrder();
+                        } catch (error: unknown) {
                           setIsUpgradingSlots(false);
-                        }}
-                        onError={(error) => {
+                          throw error;
+                        }
+                      }}
+                      onApprove={async (data) => {
+                        if (!data.orderID) {
                           showProfileAlert(
-                            "Error de PayPal",
-                            error instanceof Error ? error.message : "No se pudo procesar el pago",
+                            "Error de pago",
+                            "PayPal no devolvio orderID.",
                             "error",
                           );
                           setIsUpgradingSlots(false);
-                        }}
-                      />
-                    </PayPalScriptProvider>
-                  )}
+                          return;
+                        }
 
-                  {slotUpgradeMessage && (
-                    <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
-                  )}
-                </div>
-              )}
+                        try {
+                          await captureSlotUnlockOrder(data.orderID);
+                          showProfileAlert(
+                            "Pago confirmado",
+                            "Tu slot adicional ya fue activado.",
+                            "success",
+                          );
+                        } catch (error: unknown) {
+                          showProfileAlert(
+                            "Error de pago",
+                            error instanceof Error ? error.message : "No se pudo confirmar el pago",
+                            "error",
+                          );
+                        } finally {
+                          setIsUpgradingSlots(false);
+                        }
+                      }}
+                      onCancel={() => {
+                        setSlotUpgradeMessage("Pago cancelado por el usuario.");
+                        setIsUpgradingSlots(false);
+                      }}
+                      onError={(error) => {
+                        showProfileAlert(
+                          "Error de PayPal",
+                          error instanceof Error ? error.message : "No se pudo procesar el pago",
+                          "error",
+                        );
+                        setIsUpgradingSlots(false);
+                      }}
+                    />
+                  </PayPalScriptProvider>
+                )}
+
+                {slotUpgradeMessage && (
+                  <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
+                )}
+              </div>
             </div>
           </section>
 
