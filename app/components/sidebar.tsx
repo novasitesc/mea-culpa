@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll } from "lucide-react";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6 } from "lucide-react";
 
 // ─── Definición de ítems ──────────────────────────────────────────────────
 
@@ -19,6 +19,13 @@ export const sidebarItems = [
     icon: Store,
     hasIndicator: true,
     href: "/tiendas",
+  },
+  {
+    id: "ruleta",
+    label: "Ruleta",
+    icon: Dice6,
+    hasIndicator: true,
+    href: null as string | null,
   },
   {
     id: "balance",

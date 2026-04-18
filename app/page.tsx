@@ -6,6 +6,7 @@ import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
+import PrizeWheel from "./components/prize-wheel";
 import { useAuth } from "@/lib/useAuth";
 
 type NoticiaImage = {
@@ -49,7 +50,7 @@ type CharacterSlot = {
 };
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -131,76 +132,82 @@ export default function HomePage() {
             onSectionChange={setActiveSection}
           />
 
-          {/* Center - Newspaper image */}
-          <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
-            {noticias.length === 0 ? (
-              <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
-                <p className="font-serif text-sm text-parchment-dark/50">
-                  Sin noticias por el momento
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Imagen cubriendo todo el main */}
-                <Image
-                  key={noticias[noticiaIdx].url}
-                  src={noticias[noticiaIdx].url}
-                  alt={noticias[noticiaIdx].alt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 600px"
-                />
-
-                {/* Controles superpuestos */}
-                {noticias.length > 1 && (
-                  <>
-                    <button
-                      onClick={prevNoticia}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={nextNoticia}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
-
-                {/* Contador */}
-                <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
-                  {noticiaIdx + 1} / {noticias.length}
+          {/* Center */}
+          {activeSection === "ruleta" ? (
+            <main className="min-h-125">
+              <PrizeWheel token={token} />
+            </main>
+          ) : (
+            <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
+              {noticias.length === 0 ? (
+                <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
+                  <p className="font-serif text-sm text-parchment-dark/50">
+                    Sin noticias por el momento
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Imagen cubriendo todo el main */}
+                  <Image
+                    key={noticias[noticiaIdx].url}
+                    src={noticias[noticiaIdx].url}
+                    alt={noticias[noticiaIdx].alt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 600px"
+                  />
 
-                {/* Miniaturas */}
-                {noticias.length > 1 && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-                    {noticias.map((img, i) => (
+                  {/* Controles superpuestos */}
+                  {noticias.length > 1 && (
+                    <>
                       <button
-                        key={img.filename}
-                        onClick={() => setNoticiaIdx(i)}
-                        className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
-                          i === noticiaIdx
-                            ? "border-gold scale-110"
-                            : "border-gold-dim/30 opacity-60 hover:opacity-100"
-                        }`}
+                        onClick={prevNoticia}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
                       >
-                        <Image
-                          src={img.url}
-                          alt={img.alt}
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
+                        <ChevronLeft className="w-5 h-5" />
                       </button>
-                    ))}
+                      <button
+                        onClick={nextNoticia}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Contador */}
+                  <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
+                    {noticiaIdx + 1} / {noticias.length}
                   </div>
-                )}
-              </>
-            )}
-          </main>
+
+                  {/* Miniaturas */}
+                  {noticias.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                      {noticias.map((img, i) => (
+                        <button
+                          key={img.filename}
+                          onClick={() => setNoticiaIdx(i)}
+                          className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
+                            i === noticiaIdx
+                              ? "border-gold scale-110"
+                              : "border-gold-dim/30 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <Image
+                            src={img.url}
+                            alt={img.alt}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </main>
+          )}
 
           {/* Right Sidebar - Character Panel */}
           <aside className="space-y-4">
