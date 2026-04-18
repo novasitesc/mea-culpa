@@ -292,7 +292,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         <div className="relative mx-auto w-full max-w-100">
           <div className="relative aspect-square">
             <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
-              <div className="w-0 h-0 border-x-4 border-x-transparent border-b-8 border-b-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.6)]" />
+              <div className="w-0 h-0 border-x-4 border-x-transparent border-t-8 border-t-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.6)]" />
             </div>
 
             <div className="absolute inset-0 rounded-full bg-black/20 p-2 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
