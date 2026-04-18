@@ -24,6 +24,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const { data: pendingSpin, error: pendingSpinError } = await db
+      .from("ruleta_tiradas")
+      .select("id")
+      .eq("usuario_id", user.id)
+      .eq("cobro_pendiente", true)
+      .order("creado_en", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingSpinError) {
+      return NextResponse.json({ error: pendingSpinError.message }, { status: 500 });
+    }
+
+    if (pendingSpin) {
+      return NextResponse.json(
+        {
+          error: "Tienes una tirada USD pendiente de pago",
+          pendingSpinId: pendingSpin.id,
+        },
+        { status: 409 },
+      );
+    }
+
     const { count, error: countError } = await db
       .from("ruleta_tiradas")
       .select("id", { count: "exact", head: true })

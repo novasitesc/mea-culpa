@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Sparkles, Trophy } from "lucide-react";
+import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +17,7 @@ type PlayerState = {
   spinCount: number;
   nextCost: RouletteCostStep;
   lastSpin: {
+    id: string;
     slot: number;
     categoria: RouletteCategory;
     premio_label: string;
@@ -43,6 +45,12 @@ type SpinResponse = {
   oro: number | null;
   nextCost: RouletteCostStep;
   spinCount: number;
+};
+
+type PayPalOrderResponse = {
+  orderId: string;
+  reused?: boolean;
+  alreadyPaid?: boolean;
 };
 
 const categoryLabels: Record<RouletteCategory, string> = {
@@ -85,6 +93,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const WAIT_SPIN_DEG_PER_MS = 0.42;
   const MIN_WAIT_MS = 650;
   const MIN_SETTLE_MS = 900;
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
 
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +105,8 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [spinResult, setSpinResult] = useState<SpinResponse | null>(null);
   const [pendingSpinResult, setPendingSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [isPayingPendingSpin, setIsPayingPendingSpin] = useState(false);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
@@ -241,11 +252,86 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     settleDurationRef.current = Math.max(1, (2 * distance) / WAIT_SPIN_DEG_PER_MS);
   };
 
+  const pendingSpinToPay = useMemo(() => {
+    if (spinResult?.cobroPendiente) {
+      return {
+        tiradaId: spinResult.tiradaId,
+        amountUsd: spinResult.cost.amount,
+      };
+    }
+
+    const fromConfig = config?.playerState?.lastSpin;
+    if (fromConfig?.cobro_pendiente && fromConfig?.costo_tipo === "usd") {
+      return {
+        tiradaId: fromConfig.id,
+        amountUsd: fromConfig.costo_monto,
+      };
+    }
+
+    return null;
+  }, [config?.playerState?.lastSpin, spinResult]);
+
+  const createPendingSpinOrder = async (tiradaId: string): Promise<string> => {
+    const res = await fetch("/api/profile/ruleta-paypal/create-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ tiradaId }),
+    });
+
+    const data = (await res.json()) as PayPalOrderResponse & { error?: string };
+    if (!res.ok || !data.orderId) {
+      throw new Error(data.error ?? "No se pudo crear la orden PayPal");
+    }
+
+    if (data.alreadyPaid) {
+      setPaymentMessage("Este cobro ya estaba completado. Actualizando estado...");
+      await fetchConfig();
+    }
+
+    return data.orderId;
+  };
+
+  const capturePendingSpinOrder = async (params: {
+    tiradaId: string;
+    orderId: string;
+  }) => {
+    const res = await fetch("/api/profile/ruleta-paypal/capture-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    const data = (await res.json()) as {
+      success?: boolean;
+      awaitingWebhook?: boolean;
+      error?: string;
+    };
+
+    if (!res.ok) {
+      throw new Error(data.error ?? "No se pudo capturar el pago");
+    }
+
+    if (data.awaitingWebhook) {
+      setPaymentMessage(
+        "Pago capturado en PayPal. Esperando confirmacion final por webhook...",
+      );
+    }
+
+    await fetchConfig();
+  };
+
   const handleSpin = async () => {
     if (!token || isSpinning || animationPhase !== "idle" || !config?.enabled) return;
 
     setIsSpinning(true);
     setError(null);
+    setPaymentMessage(null);
     setSpinResult(null);
     setPendingSpinResult(null);
 
@@ -322,6 +408,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
             spinCount: data.spinCount,
             nextCost: data.nextCost,
             lastSpin: {
+              id: data.tiradaId,
               slot: data.slot,
               categoria: data.category,
               premio_label: data.rewardLabel,
@@ -438,6 +525,12 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
           </div>
         )}
 
+        {paymentMessage && (
+          <div className="rounded-lg border border-amber-300/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            {paymentMessage}
+          </div>
+        )}
+
         <div className="relative mx-auto w-full max-w-100">
           <div className="relative aspect-square">
             <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
@@ -518,7 +611,13 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
             <Button
               onClick={handleSpin}
-              disabled={!token || !config.enabled || isSpinning || animationPhase !== "idle"}
+              disabled={
+                !token ||
+                !config.enabled ||
+                isSpinning ||
+                animationPhase !== "idle" ||
+                !!pendingSpinToPay
+              }
               className="w-full bg-white text-black hover:bg-zinc-200"
             >
               {isSpinning ? (
@@ -533,6 +632,83 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                 </>
               )}
             </Button>
+
+            {pendingSpinToPay && (
+              <div className="space-y-2 rounded-lg border border-amber-300/40 bg-amber-950/30 p-3">
+                <p className="text-xs text-amber-200">
+                  Tienes una tirada con cobro pendiente: ${pendingSpinToPay.amountUsd.toFixed(2)} USD.
+                </p>
+                {!paypalClientId ? (
+                  <p className="text-xs text-amber-300">
+                    Falta configurar NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el cobro.
+                  </p>
+                ) : (
+                  <PayPalScriptProvider
+                    options={{
+                      clientId: paypalClientId,
+                      "client-id": paypalClientId,
+                      currency: "USD",
+                      intent: "capture",
+                    }}
+                  >
+                    <PayPalButtons
+                      style={{ layout: "vertical", label: "paypal" }}
+                      disabled={isPayingPendingSpin}
+                      createOrder={async () => {
+                        setError(null);
+                        setPaymentMessage(null);
+                        setIsPayingPendingSpin(true);
+                        try {
+                          return await createPendingSpinOrder(pendingSpinToPay.tiradaId);
+                        } catch (err: unknown) {
+                          const message =
+                            err instanceof Error
+                              ? err.message
+                              : "No se pudo crear el cobro PayPal";
+                          setError(message);
+                          setIsPayingPendingSpin(false);
+                          throw err;
+                        }
+                      }}
+                      onApprove={async (data) => {
+                        if (!data.orderID) {
+                          setError("PayPal no devolvio orderID");
+                          setIsPayingPendingSpin(false);
+                          return;
+                        }
+
+                        try {
+                          await capturePendingSpinOrder({
+                            tiradaId: pendingSpinToPay.tiradaId,
+                            orderId: data.orderID,
+                          });
+                        } catch (err: unknown) {
+                          const message =
+                            err instanceof Error
+                              ? err.message
+                              : "No se pudo confirmar el pago";
+                          setError(message);
+                        } finally {
+                          setIsPayingPendingSpin(false);
+                        }
+                      }}
+                      onError={(err) => {
+                        setError(
+                          err instanceof Error
+                            ? err.message
+                            : "Error en PayPal al procesar el pago",
+                        );
+                        setIsPayingPendingSpin(false);
+                      }}
+                      onCancel={() => {
+                        setPaymentMessage("Pago cancelado por el usuario.");
+                        setIsPayingPendingSpin(false);
+                      }}
+                    />
+                  </PayPalScriptProvider>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
