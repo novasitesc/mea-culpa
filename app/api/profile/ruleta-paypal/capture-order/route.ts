@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     }
     const captureId = getCaptureIdFromCaptureResponse(capture);
 
-    const mappedStatus = capture.status === "COMPLETED" ? "captured" : "failed";
+    const mappedStatus = capture.status === "COMPLETED" ? "completed" : "failed";
 
     const { error: updateError } = await db
       .from("pagos_paypal")
@@ -97,10 +97,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    if (mappedStatus === "completed") {
+      const { error: applyError } = await db.rpc("paypal_aplicar_efecto", {
+        p_pago_id: payment.id,
+      });
+
+      if (applyError) {
+        return NextResponse.json({ error: applyError.message }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({
-      success: mappedStatus === "captured",
+      success: mappedStatus === "completed",
       status: mappedStatus,
-      awaitingWebhook: mappedStatus === "captured",
+      awaitingWebhook: false,
       captureId,
     });
   } catch (error: unknown) {
