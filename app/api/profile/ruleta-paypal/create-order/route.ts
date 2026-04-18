@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { createPayPalOrder } from "@/lib/paypal";
+import { getNextSpinCost } from "@/lib/roulette";
 
 export async function POST(request: Request) {
   try {
@@ -12,61 +13,59 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => null)) as { tiradaId?: string } | null;
-    const tiradaId = body?.tiradaId?.trim();
-
-    if (!tiradaId) {
-      return NextResponse.json({ error: "tiradaId es requerido" }, { status: 400 });
-    }
-
-    const { data: spin, error: spinError } = await db
+    const { count, error: countError } = await db
       .from("ruleta_tiradas")
-      .select("id, usuario_id, costo_tipo, costo_monto, cobro_pendiente")
-      .eq("id", tiradaId)
-      .eq("usuario_id", user.id)
-      .maybeSingle();
+      .select("id", { count: "exact", head: true })
+      .eq("usuario_id", user.id);
 
-    if (spinError) {
-      return NextResponse.json({ error: spinError.message }, { status: 500 });
+    if (countError) {
+      return NextResponse.json({ error: countError.message }, { status: 500 });
     }
 
-    if (!spin) {
-      return NextResponse.json({ error: "Tirada no encontrada" }, { status: 404 });
-    }
+    const nextCost = getNextSpinCost(count ?? 0);
 
-    if (spin.costo_tipo !== "usd") {
+    if (nextCost.type !== "usd") {
       return NextResponse.json(
-        { error: "La tirada no requiere cobro en USD" },
+        { error: "La proxima tirada no requiere cobro en USD" },
         { status: 409 },
       );
     }
 
-    if (!spin.cobro_pendiente) {
+    const { data: paidCredit, error: paidCreditError } = await db
+      .from("pagos_paypal")
+      .select("id")
+      .eq("usuario_id", user.id)
+      .eq("concepto", "ruleta_usd_spin")
+      .eq("estado", "completed")
+      .eq("effect_applied", false)
+      .is("referencia_id", null)
+      .order("creado_en", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (paidCreditError) {
+      return NextResponse.json({ error: paidCreditError.message }, { status: 500 });
+    }
+
+    if (paidCredit) {
       return NextResponse.json(
-        { error: "La tirada ya fue cobrada", alreadyPaid: true },
-        { status: 409 },
+        { alreadyPaid: true },
+        { status: 200 },
       );
     }
 
     const { data: existing } = await db
       .from("pagos_paypal")
-      .select("id, paypal_order_id, estado")
+      .select("id, estado")
       .eq("usuario_id", user.id)
       .eq("concepto", "ruleta_usd_spin")
-      .eq("referencia_id", spin.id)
-      .in("estado", ["created", "approved", "captured", "completed"])
+      .in("estado", ["created", "approved", "captured"])
+      .is("referencia_id", null)
       .order("creado_en", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (existing?.estado === "completed") {
-      return NextResponse.json({
-        orderId: existing.paypal_order_id,
-        alreadyPaid: true,
-      });
-    }
-
-    if (existing && existing.estado !== "completed") {
+    if (existing) {
       await db
         .from("pagos_paypal")
         .update({
@@ -79,28 +78,30 @@ export async function POST(request: Request) {
         .eq("id", existing.id);
     }
 
-    const amountUsd = Number(spin.costo_monto ?? 0);
+    const amountUsd = Number(nextCost.amount ?? 0);
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
       return NextResponse.json(
-        { error: "Monto USD invalido en la tirada" },
+        { error: "Monto USD invalido para la proxima tirada" },
         { status: 422 },
       );
     }
 
     const order = await createPayPalOrder({
       amountUsd,
-      description: `Ruleta paso USD - tirada ${spin.id}`,
-      customId: `ruleta:${spin.id}`,
+      description: `Ruleta prepay paso ${nextCost.step}`,
+      customId: `ruleta-prepay:${user.id}:${nextCost.step}`,
     });
 
     const { error: insertError } = await db.from("pagos_paypal").insert({
       usuario_id: user.id,
       concepto: "ruleta_usd_spin",
-      referencia_id: spin.id,
+      referencia_id: null,
       monto_usd: amountUsd,
       paypal_order_id: order.id,
       estado: "created",
       metadata: {
+        step: nextCost.step,
+        expectedAmountUsd: amountUsd,
         orderStatus: order.status,
       },
     });

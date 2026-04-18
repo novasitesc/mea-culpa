@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     const { data: payment, error: paymentError } = await db
       .from("pagos_paypal")
-      .select("id, estado")
+      .select("id, estado, concepto")
       .or(
         [
           orderId ? `paypal_order_id.eq.${orderId}` : "",
@@ -105,12 +105,14 @@ export async function POST(request: Request) {
         }
       }
 
-      const { error: applyError } = await db.rpc("paypal_aplicar_efecto", {
-        p_pago_id: payment.id,
-      });
+      if (payment.concepto === "character_slot_unlock") {
+        const { error: applyError } = await db.rpc("paypal_aplicar_efecto", {
+          p_pago_id: payment.id,
+        });
 
-      if (applyError) {
-        return NextResponse.json({ error: applyError.message }, { status: 500 });
+        if (applyError) {
+          return NextResponse.json({ error: applyError.message }, { status: 500 });
+        }
       }
     }
 

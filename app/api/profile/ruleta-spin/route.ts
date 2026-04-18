@@ -24,29 +24,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { data: pendingSpin, error: pendingSpinError } = await db
-      .from("ruleta_tiradas")
-      .select("id")
-      .eq("usuario_id", user.id)
-      .eq("cobro_pendiente", true)
-      .order("creado_en", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (pendingSpinError) {
-      return NextResponse.json({ error: pendingSpinError.message }, { status: 500 });
-    }
-
-    if (pendingSpin) {
-      return NextResponse.json(
-        {
-          error: "Tienes una tirada USD pendiente de pago",
-          pendingSpinId: pendingSpin.id,
-        },
-        { status: 409 },
-      );
-    }
-
     const { count, error: countError } = await db
       .from("ruleta_tiradas")
       .select("id", { count: "exact", head: true })
@@ -59,6 +36,40 @@ export async function POST(request: Request) {
     const totalSpins = count ?? 0;
     const nextCost = getNextSpinCost(totalSpins);
     const spin = rollRoulette();
+
+    let prepaidPayment:
+      | {
+          id: string;
+          metadata: Record<string, unknown> | null;
+        }
+      | null = null;
+
+    if (nextCost.type === "usd") {
+      const { data: paid, error: paidError } = await db
+        .from("pagos_paypal")
+        .select("id, metadata")
+        .eq("usuario_id", user.id)
+        .eq("concepto", "ruleta_usd_spin")
+        .eq("estado", "completed")
+        .eq("effect_applied", false)
+        .is("referencia_id", null)
+        .order("creado_en", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (paidError) {
+        return NextResponse.json({ error: paidError.message }, { status: 500 });
+      }
+
+      if (!paid) {
+        return NextResponse.json(
+          { error: "Debes pagar la tirada USD antes de usar la ruleta" },
+          { status: 402 },
+        );
+      }
+
+      prepaidPayment = paid as { id: string; metadata: Record<string, unknown> | null };
+    }
 
     const { data, error } = await db.rpc("ruleta_registrar_tirada", {
       p_usuario_id: user.id,
@@ -85,6 +96,37 @@ export async function POST(request: Request) {
 
     const row = Array.isArray(data) ? data[0] : data;
 
+    if (nextCost.type === "usd" && row?.tirada_id && prepaidPayment) {
+      const { error: spinUpdateError } = await db
+        .from("ruleta_tiradas")
+        .update({ cobro_pendiente: false })
+        .eq("id", row.tirada_id)
+        .eq("usuario_id", user.id);
+
+      if (spinUpdateError) {
+        return NextResponse.json({ error: spinUpdateError.message }, { status: 500 });
+      }
+
+      const { error: consumeError } = await db
+        .from("pagos_paypal")
+        .update({
+          effect_applied: true,
+          referencia_id: row.tirada_id,
+          metadata: {
+            ...(prepaidPayment.metadata ?? {}),
+            consumedBy: "ruleta_spin",
+            consumedSpinId: row.tirada_id,
+            consumedAt: new Date().toISOString(),
+          },
+        })
+        .eq("id", prepaidPayment.id)
+        .eq("effect_applied", false);
+
+      if (consumeError) {
+        return NextResponse.json({ error: consumeError.message }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({
       tiradaId: row?.tirada_id,
       slot: spin.slot,
@@ -95,7 +137,7 @@ export async function POST(request: Request) {
         type: nextCost.type,
         amount: nextCost.amount,
       },
-      cobroPendiente: Boolean(row?.cobro_pendiente),
+      cobroPendiente: false,
       oro: row?.oro_resultante ?? null,
       nextCost: getNextSpinCost(totalSpins + 1),
       spinCount: totalSpins + 1,

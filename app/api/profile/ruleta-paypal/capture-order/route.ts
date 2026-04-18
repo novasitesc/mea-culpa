@@ -12,16 +12,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => null)) as
-      | { tiradaId?: string; orderId?: string }
-      | null;
-
-    const tiradaId = body?.tiradaId?.trim();
+    const body = (await request.json().catch(() => null)) as { orderId?: string } | null;
     const orderId = body?.orderId?.trim();
 
-    if (!tiradaId || !orderId) {
+    if (!orderId) {
       return NextResponse.json(
-        { error: "tiradaId y orderId son requeridos" },
+        { error: "orderId es requerido" },
         { status: 400 },
       );
     }
@@ -31,7 +27,6 @@ export async function POST(request: Request) {
       .select("id, estado, paypal_order_id")
       .eq("usuario_id", user.id)
       .eq("concepto", "ruleta_usd_spin")
-      .eq("referencia_id", tiradaId)
       .eq("paypal_order_id", orderId)
       .maybeSingle();
 
@@ -95,16 +90,6 @@ export async function POST(request: Request) {
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    if (mappedStatus === "completed") {
-      const { error: applyError } = await db.rpc("paypal_aplicar_efecto", {
-        p_pago_id: payment.id,
-      });
-
-      if (applyError) {
-        return NextResponse.json({ error: applyError.message }, { status: 500 });
-      }
     }
 
     return NextResponse.json({

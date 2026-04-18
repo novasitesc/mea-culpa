@@ -66,6 +66,26 @@ export async function GET(request: Request) {
   }
 
   const spinCount = count ?? 0;
+  const nextCost = getNextSpinCost(spinCount);
+
+  let hasUsdSpinPayment = false;
+  if (nextCost.type === "usd") {
+    const { data: paid, error: paidError } = await db
+      .from("pagos_paypal")
+      .select("id")
+      .eq("usuario_id", user.id)
+      .eq("concepto", "ruleta_usd_spin")
+      .eq("estado", "completed")
+      .eq("effect_applied", false)
+      .is("referencia_id", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (paidError) {
+      return NextResponse.json({ error: paidError.message }, { status: 500 });
+    }
+    hasUsdSpinPayment = Boolean(paid);
+  }
 
   return NextResponse.json({
     enabled,
@@ -73,7 +93,8 @@ export async function GET(request: Request) {
     slots: getRouletteSlots(),
     playerState: {
       spinCount,
-      nextCost: getNextSpinCost(spinCount),
+      nextCost,
+      hasUsdSpinPayment,
       lastSpin,
     },
   });

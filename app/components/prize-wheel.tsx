@@ -16,6 +16,7 @@ import type { RouletteCategory, RouletteCostStep } from "@/lib/roulette";
 type PlayerState = {
   spinCount: number;
   nextCost: RouletteCostStep;
+  hasUsdSpinPayment?: boolean;
   lastSpin: {
     id: string;
     slot: number;
@@ -49,7 +50,6 @@ type SpinResponse = {
 
 type PayPalOrderResponse = {
   orderId: string;
-  reused?: boolean;
   alreadyPaid?: boolean;
 };
 
@@ -106,7 +106,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [pendingSpinResult, setPendingSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
-  const [isPayingPendingSpin, setIsPayingPendingSpin] = useState(false);
+  const [isPayingUsdStep, setIsPayingUsdStep] = useState(false);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
@@ -252,33 +252,14 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     settleDurationRef.current = Math.max(1, (2 * distance) / WAIT_SPIN_DEG_PER_MS);
   };
 
-  const pendingSpinToPay = useMemo(() => {
-    if (spinResult?.cobroPendiente) {
-      return {
-        tiradaId: spinResult.tiradaId,
-        amountUsd: spinResult.cost.amount,
-      };
-    }
-
-    const fromConfig = config?.playerState?.lastSpin;
-    if (fromConfig?.cobro_pendiente && fromConfig?.costo_tipo === "usd") {
-      return {
-        tiradaId: fromConfig.id,
-        amountUsd: fromConfig.costo_monto,
-      };
-    }
-
-    return null;
-  }, [config?.playerState?.lastSpin, spinResult]);
-
-  const createPendingSpinOrder = async (tiradaId: string): Promise<string> => {
+  const createUsdSpinOrder = async (): Promise<string> => {
     const res = await fetch("/api/profile/ruleta-paypal/create-order", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ tiradaId }),
+      body: JSON.stringify({}),
     });
 
     const data = (await res.json()) as PayPalOrderResponse & { error?: string };
@@ -287,24 +268,21 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     }
 
     if (data.alreadyPaid) {
-      setPaymentMessage("Este cobro ya estaba completado. Actualizando estado...");
+      setPaymentMessage("Pago USD ya registrado para la siguiente tirada. Ya puedes tirar.");
       await fetchConfig();
     }
 
     return data.orderId;
   };
 
-  const capturePendingSpinOrder = async (params: {
-    tiradaId: string;
-    orderId: string;
-  }) => {
+  const captureUsdSpinOrder = async (orderId: string) => {
     const res = await fetch("/api/profile/ruleta-paypal/capture-order", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ orderId }),
     });
 
     const data = (await res.json()) as {
@@ -317,11 +295,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       throw new Error(data.error ?? "No se pudo capturar el pago");
     }
 
-    if (data.awaitingWebhook) {
-      setPaymentMessage(
-        "Pago capturado en PayPal. Esperando confirmacion final por webhook...",
-      );
-    }
+    setPaymentMessage("Pago confirmado. Ya puedes tirar la ruleta.");
 
     await fetchConfig();
   };
@@ -454,6 +428,8 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   );
 
   const nextCost = config?.playerState?.nextCost ?? config?.costCycle?.[0] ?? null;
+  const shouldPrepayUsd = nextCost?.type === "usd";
+  const hasUsdSpinPayment = Boolean(config?.playerState?.hasUsdSpinPayment);
 
   const visualSegments = useMemo<VisualSegment[]>(() => {
     if (!config?.slots?.length) return [];
@@ -601,8 +577,8 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                 <p>
                   Paso {nextCost.step} de 6 - {nextCost.amount} {nextCost.type === "oro" ? "oro" : "USD"}
                 </p>
-                {nextCost.type === "usd" && (
-                  <p className="text-xs text-amber-300 mt-1">Cobro USD pendiente (temporal).</p>
+                {nextCost.type === "usd" && !hasUsdSpinPayment && (
+                  <p className="text-xs text-amber-300 mt-1">Debes pagar este paso antes de tirar.</p>
                 )}
               </div>
             ) : (
@@ -616,7 +592,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                 !config.enabled ||
                 isSpinning ||
                 animationPhase !== "idle" ||
-                !!pendingSpinToPay
+                (shouldPrepayUsd && !hasUsdSpinPayment)
               }
               className="w-full bg-white text-black hover:bg-zinc-200"
             >
@@ -633,10 +609,10 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
               )}
             </Button>
 
-            {pendingSpinToPay && (
+            {shouldPrepayUsd && !hasUsdSpinPayment && (
               <div className="space-y-2 rounded-lg border border-amber-300/40 bg-amber-950/30 p-3">
                 <p className="text-xs text-amber-200">
-                  Tienes una tirada con cobro pendiente: ${pendingSpinToPay.amountUsd.toFixed(2)} USD.
+                  Paga ${Number(nextCost?.amount ?? 0).toFixed(2)} USD para habilitar la tirada.
                 </p>
                 {!paypalClientId ? (
                   <p className="text-xs text-amber-300">
@@ -653,35 +629,32 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                   >
                     <PayPalButtons
                       style={{ layout: "vertical", label: "paypal" }}
-                      disabled={isPayingPendingSpin}
+                      disabled={isPayingUsdStep}
                       createOrder={async () => {
                         setError(null);
                         setPaymentMessage(null);
-                        setIsPayingPendingSpin(true);
+                        setIsPayingUsdStep(true);
                         try {
-                          return await createPendingSpinOrder(pendingSpinToPay.tiradaId);
+                          return await createUsdSpinOrder();
                         } catch (err: unknown) {
                           const message =
                             err instanceof Error
                               ? err.message
                               : "No se pudo crear el cobro PayPal";
                           setError(message);
-                          setIsPayingPendingSpin(false);
+                          setIsPayingUsdStep(false);
                           throw err;
                         }
                       }}
                       onApprove={async (data) => {
                         if (!data.orderID) {
                           setError("PayPal no devolvio orderID");
-                          setIsPayingPendingSpin(false);
+                          setIsPayingUsdStep(false);
                           return;
                         }
 
                         try {
-                          await capturePendingSpinOrder({
-                            tiradaId: pendingSpinToPay.tiradaId,
-                            orderId: data.orderID,
-                          });
+                          await captureUsdSpinOrder(data.orderID);
                         } catch (err: unknown) {
                           const message =
                             err instanceof Error
@@ -689,7 +662,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                               : "No se pudo confirmar el pago";
                           setError(message);
                         } finally {
-                          setIsPayingPendingSpin(false);
+                          setIsPayingUsdStep(false);
                         }
                       }}
                       onError={(err) => {
@@ -698,11 +671,11 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                             ? err.message
                             : "Error en PayPal al procesar el pago",
                         );
-                        setIsPayingPendingSpin(false);
+                        setIsPayingUsdStep(false);
                       }}
                       onCancel={() => {
                         setPaymentMessage("Pago cancelado por el usuario.");
-                        setIsPayingPendingSpin(false);
+                        setIsPayingUsdStep(false);
                       }}
                     />
                   </PayPalScriptProvider>
@@ -721,9 +694,6 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
             <p className="text-xs text-zinc-300 mt-1">
               Costo aplicado: {spinResult.cost.amount} {spinResult.cost.type === "oro" ? "oro" : "USD"} (paso {spinResult.cost.step}/6)
             </p>
-            {spinResult.cobroPendiente && (
-              <p className="text-xs text-amber-300 mt-1">Pago en USD marcado como pendiente de cobro.</p>
-            )}
           </div>
         )}
       </CardContent>

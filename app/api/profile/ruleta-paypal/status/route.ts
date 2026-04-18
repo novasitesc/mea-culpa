@@ -12,21 +12,25 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const tiradaId = searchParams.get("tiradaId")?.trim();
+    const orderId = searchParams.get("orderId")?.trim();
 
-    if (!tiradaId) {
-      return NextResponse.json({ error: "tiradaId es requerido" }, { status: 400 });
-    }
-
-    const { data: payment, error: paymentError } = await db
+    let query = db
       .from("pagos_paypal")
       .select("id, estado, paypal_order_id, paypal_capture_id, effect_applied, actualizado_en")
       .eq("usuario_id", user.id)
-      .eq("concepto", "ruleta_usd_spin")
-      .eq("referencia_id", tiradaId)
-      .order("creado_en", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq("concepto", "ruleta_usd_spin");
+
+    if (orderId) {
+      query = query.eq("paypal_order_id", orderId);
+    } else {
+      query = query
+        .eq("estado", "completed")
+        .eq("effect_applied", false)
+        .is("referencia_id", null)
+        .order("creado_en", { ascending: false });
+    }
+
+    const { data: payment, error: paymentError } = await query.limit(1).maybeSingle();
 
     if (paymentError) {
       return NextResponse.json({ error: paymentError.message }, { status: 500 });
@@ -34,6 +38,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       payment: payment ?? null,
+      hasUsdSpinPayment: Boolean(
+        payment && payment.estado === "completed" && !payment.effect_applied,
+      ),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error interno";
