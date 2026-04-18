@@ -65,22 +65,17 @@ const categoryColors: Record<RouletteCategory, string> = {
 
 type VisualSegment = {
   index: number;
-  category: RouletteCategory;
-  label: string;
   color: string;
 };
 
-const WHEEL_PALETTE = [
-  "#ef4444",
-  "#e58a2b",
-  "#f2cc4d",
-  "#5e61ad",
-  "#42a5dc",
-  "#a8cf47",
-  "#61d3c8",
-  "#8b3fa3",
-  "#1f2331",
-];
+const categoryAccentColors: Record<RouletteCategory, string> = {
+  jackpot: "#fff17a",
+  muy_grande: "#d94be8",
+  nada: "#8f97a6",
+  grande: "#3bb5d1",
+  mediano: "#2ec79c",
+  pequeno: "#82796c",
+};
 
 type PrizeWheelProps = {
   token: string;
@@ -212,7 +207,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
   const distributionText = useMemo(
     () => [
-      "1 jackpot",
+      "1 jackpot: 10 dolares de credito en el servidor",
       "4 muy grandes",
       "5 nada",
       "10 grandes",
@@ -225,21 +220,15 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const nextCost = config?.playerState?.nextCost ?? config?.costCycle?.[0] ?? null;
 
   const visualSegments = useMemo<VisualSegment[]>(() => {
-    const segmentCount = 16;
     if (!config?.slots?.length) return [];
 
-    return Array.from({ length: segmentCount }, (_, index) => {
-      const start = Math.floor((index * 100) / segmentCount);
-      const end = Math.floor(((index + 1) * 100) / segmentCount) - 1;
-      const middle = Math.min(99, Math.max(0, Math.floor((start + end) / 2)));
-      const sampleSlot = middle + 1;
-      const category = config.slots[middle];
+    return config.slots.map((category, index) => {
+      const base = categoryColors[category];
+      const accent = categoryAccentColors[category];
 
       return {
         index,
-        category,
-        label: `${sampleSlot}`,
-        color: WHEEL_PALETTE[index % WHEEL_PALETTE.length],
+        color: index % 2 === 0 ? base : accent,
       };
     });
   }, [config?.slots]);
@@ -317,27 +306,15 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                     style={{ backgroundImage: wheelBackground }}
                   />
 
-                  {visualSegments.map((segment) => {
-                    const angle = (360 / visualSegments.length) * segment.index + 360 / visualSegments.length / 2;
-                    return (
-                      <div
-                        key={segment.index}
-                        className="absolute left-1/2 top-1/2"
-                        style={{ transform: `rotate(${angle}deg) translateY(-178px)` }}
-                      >
-                        <span
-                          className="block text-white font-black text-[30px] leading-none tracking-tight drop-shadow-[0_2px_1px_rgba(0,0,0,0.7)] select-none"
-                          style={{ transform: "rotate(90deg)" }}
-                        >
-                          {segment.label}
-                        </span>
-                      </div>
-                    );
-                  })}
+                  <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                    backgroundImage:
+                      "repeating-conic-gradient(rgba(0,0,0,0.34) 0deg 0.22deg, transparent 0.22deg 3.6deg)",
+                  }} />
 
                   <div className="absolute inset-0 rounded-full pointer-events-none" style={{
                     backgroundImage:
-                      "repeating-conic-gradient(rgba(0,0,0,0.28) 0deg 0.65deg, transparent 0.65deg 22.5deg)",
+                      "repeating-conic-gradient(rgba(255,255,255,0.26) 0deg 0.05deg, transparent 0.05deg 3.6deg)",
+                    mixBlendMode: "screen",
                   }} />
                 </div>
 
@@ -349,11 +326,12 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
           <div className="mt-3 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-xs text-center text-white">
             {highlightSlot ? (
               <p>
-                Cayo en: <span className="text-gold font-semibold">#{highlightSlot}</span> ({categoryLabels[config.slots[highlightSlot - 1]]})
+                Cayo en: <span className="text-gold font-semibold">{categoryLabels[config.slots[highlightSlot - 1]]}</span>
               </p>
             ) : (
               <p className="text-zinc-300">Aun sin tiradas en esta sesion.</p>
             )}
+            <p className="text-[11px] text-zinc-400 mt-1">Ruleta visual segmentada en 100 slots</p>
           </div>
         </div>
 
@@ -421,7 +399,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         {spinResult && (
           <div className="rounded-lg border border-gold/40 bg-black/30 p-3 text-sm">
             <p className="text-gold font-semibold">
-              Resultado: Slot {spinResult.slot} - {categoryLabels[spinResult.category]}
+              Resultado: {categoryLabels[spinResult.category]}
             </p>
             <p className="text-zinc-100">{spinResult.rewardLabel}</p>
             <p className="text-xs text-zinc-300 mt-1">
