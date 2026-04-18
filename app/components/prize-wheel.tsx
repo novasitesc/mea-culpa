@@ -82,14 +82,21 @@ type PrizeWheelProps = {
 };
 
 export default function PrizeWheel({ token }: PrizeWheelProps) {
+  const WAIT_SPIN_DURATION_MS = 900;
+  const WAIT_SPIN_DEG_PER_MS = 360 / WAIT_SPIN_DURATION_MS;
+
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [isAwaitingResult, setIsAwaitingResult] = useState(false);
   const [highlightSlot, setHighlightSlot] = useState<number | null>(null);
   const [wheelRotation, setWheelRotation] = useState(0);
+  const [spinDurationMs, setSpinDurationMs] = useState(950);
   const [spinResult, setSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
+  const waitingSpinStartMsRef = useRef<number | null>(null);
+  const waitingStartRotationRef = useRef(0);
 
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
@@ -139,6 +146,12 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     setError(null);
     setSpinResult(null);
 
+    // Giro continuo y fluido mientras llega la respuesta del backend.
+    setSpinDurationMs(0);
+    setIsAwaitingResult(true);
+    waitingStartRotationRef.current = wheelRotation;
+    waitingSpinStartMsRef.current = performance.now();
+
     if (spinAudioRef.current) {
       spinAudioRef.current.currentTime = 0;
       void spinAudioRef.current.play().catch(() => {
@@ -163,10 +176,33 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
       const slotAngle = 360 / 100;
       const slotCenter = (data.slot - 1) * slotAngle + slotAngle / 2;
-      const target = 360 - slotCenter;
-      const extraTurns = 7 * 360;
 
-      setWheelRotation((prev) => prev + extraTurns + target);
+      const now = performance.now();
+      const elapsed = waitingSpinStartMsRef.current
+        ? now - waitingSpinStartMsRef.current
+        : 0;
+      const currentRotation =
+        waitingStartRotationRef.current + elapsed * WAIT_SPIN_DEG_PER_MS;
+
+      setIsAwaitingResult(false);
+      setSpinDurationMs(0);
+      setWheelRotation(currentRotation);
+
+      // Aterrizaje único desacelerado para evitar tirones.
+      requestAnimationFrame(() => {
+        setSpinDurationMs(980);
+        setWheelRotation((prev) => {
+          const normalized = ((prev % 360) + 360) % 360;
+          const target = 360 - slotCenter;
+          const deltaToTarget = ((target - normalized) + 360) % 360;
+          const extraTurns = 720;
+          return prev + extraTurns + deltaToTarget;
+        });
+      });
+
+      waitingSpinStartMsRef.current = null;
+      waitingStartRotationRef.current = currentRotation;
+
       setHighlightSlot(data.slot);
       setSpinResult(data);
 
@@ -200,10 +236,22 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No se pudo tirar";
       setError(message);
+      setIsAwaitingResult(false);
+      waitingSpinStartMsRef.current = null;
     } finally {
       setIsSpinning(false);
     }
   };
+
+  const wheelRootTransform = `rotate(${wheelRotation}deg)`;
+  const wheelRootTransition =
+    spinDurationMs > 0
+      ? `transform ${spinDurationMs}ms cubic-bezier(0.18,0.9,0.22,1)`
+      : "none";
+
+  const waitingSpinAnimation = isAwaitingResult
+    ? `spin ${WAIT_SPIN_DURATION_MS}ms linear infinite`
+    : undefined;
 
   const distributionText = useMemo(
     () => [
@@ -298,23 +346,31 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
             <div className="absolute inset-0 rounded-full bg-black/20 p-2 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
               <div className="relative h-full w-full rounded-full border-4 border-white/70 bg-black/15">
                 <div
-                  className="absolute inset-0 rounded-full transition-transform duration-4300 ease-[cubic-bezier(0.18,0.9,0.22,1)]"
-                  style={{ transform: `rotate(${wheelRotation}deg)` }}
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    transform: wheelRootTransform,
+                    transition: wheelRootTransition,
+                  }}
                 >
                   <div
                     className="absolute inset-0 rounded-full"
-                    style={{ backgroundImage: wheelBackground }}
+                    style={{
+                      backgroundImage: wheelBackground,
+                      animation: waitingSpinAnimation,
+                    }}
                   />
 
                   <div className="absolute inset-0 rounded-full pointer-events-none" style={{
                     backgroundImage:
                       "repeating-conic-gradient(rgba(0,0,0,0.34) 0deg 0.22deg, transparent 0.22deg 3.6deg)",
+                    animation: waitingSpinAnimation,
                   }} />
 
                   <div className="absolute inset-0 rounded-full pointer-events-none" style={{
                     backgroundImage:
                       "repeating-conic-gradient(rgba(255,255,255,0.26) 0deg 0.05deg, transparent 0.05deg 3.6deg)",
                     mixBlendMode: "screen",
+                    animation: waitingSpinAnimation,
                   }} />
                 </div>
 
