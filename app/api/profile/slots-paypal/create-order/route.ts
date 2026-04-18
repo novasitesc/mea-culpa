@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     const { data: existing } = await db
       .from("pagos_paypal")
-      .select("paypal_order_id, estado")
+      .select("id, paypal_order_id, estado")
       .eq("usuario_id", user.id)
       .eq("concepto", "character_slot_unlock")
       .in("estado", ["created", "approved", "captured", "completed"])
@@ -48,11 +48,17 @@ export async function POST(request: Request) {
       });
     }
 
-    if (existing?.paypal_order_id) {
-      return NextResponse.json({
-        orderId: existing.paypal_order_id,
-        reused: true,
-      });
+    if (existing && existing.estado !== "completed") {
+      await db
+        .from("pagos_paypal")
+        .update({
+          estado: "failed",
+          metadata: {
+            invalidatedBy: "new_order_requested",
+            previousStatus: existing.estado,
+          },
+        })
+        .eq("id", existing.id);
     }
 
     const order = await createPayPalOrder({

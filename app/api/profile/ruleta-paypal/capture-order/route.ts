@@ -51,7 +51,33 @@ export async function POST(request: Request) {
       });
     }
 
-    const capture = await capturePayPalOrder(orderId);
+    let capture;
+    try {
+      capture = await capturePayPalOrder(orderId);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error al capturar orden";
+      if (message.includes("RESOURCE_NOT_FOUND") || message.includes("INVALID_RESOURCE_ID")) {
+        await db
+          .from("pagos_paypal")
+          .update({
+            estado: "failed",
+            metadata: {
+              captureError: message,
+              reason: "resource_not_found_or_expired",
+            },
+          })
+          .eq("id", payment.id);
+
+        return NextResponse.json(
+          {
+            error:
+              "La orden PayPal ya no existe o expiro. Vuelve a intentar el pago para generar una orden nueva.",
+          },
+          { status: 409 },
+        );
+      }
+      throw error;
+    }
     const captureId = getCaptureIdFromCaptureResponse(capture);
 
     const mappedStatus = capture.status === "COMPLETED" ? "captured" : "failed";
