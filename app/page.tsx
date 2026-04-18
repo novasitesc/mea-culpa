@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "./components/header";
@@ -50,9 +50,14 @@ type CharacterSlot = {
   character?: Character;
 };
 
-export default function HomePage() {
+type HomePageProps = {
+  forcedSection?: "inicio" | "ruleta";
+};
+
+export default function HomePage({ forcedSection }: HomePageProps) {
   const { user, token } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
@@ -91,6 +96,43 @@ export default function HomePage() {
       .then((data: NoticiaImage[]) => setNoticias(data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (forcedSection) {
+      setActiveSection(forcedSection);
+      return;
+    }
+
+    const section = searchParams.get("section");
+    if (!section) {
+      setActiveSection("inicio");
+      return;
+    }
+
+    if (section === "ruleta" || section === "inicio") {
+      setActiveSection(section);
+      return;
+    }
+
+    setActiveSection("inicio");
+  }, [forcedSection, searchParams]);
+
+  const handleSectionChange = (sectionId: string) => {
+    if (sectionId === "inicio") {
+      setActiveSection("inicio");
+      router.push("/");
+      return;
+    }
+
+    if (sectionId === "ruleta") {
+      setActiveSection("ruleta");
+      router.push("/ruleta");
+      return;
+    }
+
+    setActiveSection("inicio");
+    router.push("/");
+  };
 
   const prevNoticia = () =>
     setNoticiaIdx((i) => (i - 1 + noticias.length) % noticias.length);
@@ -133,7 +175,7 @@ export default function HomePage() {
           {/* Left Sidebar */}
           <Sidebar
             activeSection={activeSection}
-            onSectionChange={setActiveSection}
+            onSectionChange={handleSectionChange}
           />
 
           {/* Center */}

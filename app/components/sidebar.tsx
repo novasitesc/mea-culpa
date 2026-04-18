@@ -11,7 +11,7 @@ export const sidebarItems = [
     label: "Inicio",
     icon: Scroll,
     hasIndicator: true,
-    href: null as string | null,
+    href: "/",
   },
   {
     id: "tiendas",
@@ -25,7 +25,7 @@ export const sidebarItems = [
     label: "Ruleta",
     icon: Dice6,
     hasIndicator: true,
-    href: null as string | null,
+    href: "/ruleta",
   },
   {
     id: "balance",
