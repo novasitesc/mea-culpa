@@ -473,17 +473,6 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
               </div>
             </div>
           </div>
-
-          <div className="mt-3 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-xs text-center text-white">
-            {highlightSlot ? (
-              <p>
-                Cayo en: <span className="text-gold font-semibold">{categoryLabels[config.slots[highlightSlot - 1]]}</span>
-              </p>
-            ) : (
-              <p className="text-zinc-300">Aun sin tiradas en esta sesion.</p>
-            )}
-            <p className="text-[11px] text-zinc-400 mt-1">Ruleta visual segmentada en 100 slots</p>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
