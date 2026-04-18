@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Sparkles, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,15 +45,6 @@ type SpinResponse = {
   spinCount: number;
 };
 
-const categoryClasses: Record<RouletteCategory, string> = {
-  jackpot: "bg-amber-300 border-amber-100 text-black",
-  muy_grande: "bg-fuchsia-700 border-fuchsia-400 text-white",
-  nada: "bg-neutral-600 border-neutral-400 text-white",
-  grande: "bg-cyan-700 border-cyan-400 text-white",
-  mediano: "bg-emerald-700 border-emerald-400 text-white",
-  pequeno: "bg-stone-700 border-stone-500 text-white",
-};
-
 const categoryLabels: Record<RouletteCategory, string> = {
   jackpot: "Jackpot",
   muy_grande: "Muy grande",
@@ -62,6 +53,34 @@ const categoryLabels: Record<RouletteCategory, string> = {
   mediano: "Mediano",
   pequeno: "Pequeno",
 };
+
+const categoryColors: Record<RouletteCategory, string> = {
+  jackpot: "#fde047",
+  muy_grande: "#c026d3",
+  nada: "#6b7280",
+  grande: "#0891b2",
+  mediano: "#059669",
+  pequeno: "#57534e",
+};
+
+type VisualSegment = {
+  index: number;
+  category: RouletteCategory;
+  label: string;
+  color: string;
+};
+
+const WHEEL_PALETTE = [
+  "#ef4444",
+  "#e58a2b",
+  "#f2cc4d",
+  "#5e61ad",
+  "#42a5dc",
+  "#a8cf47",
+  "#61d3c8",
+  "#8b3fa3",
+  "#1f2331",
+];
 
 type PrizeWheelProps = {
   token: string;
@@ -72,8 +91,10 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
   const [highlightSlot, setHighlightSlot] = useState<number | null>(null);
+  const [wheelRotation, setWheelRotation] = useState(0);
   const [spinResult, setSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const spinAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
@@ -104,12 +125,31 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     fetchConfig();
   }, [fetchConfig]);
 
+  useEffect(() => {
+    const audio = new Audio("/sounds/spin.mp3");
+    audio.preload = "auto";
+    audio.volume = 0.5;
+    spinAudioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      spinAudioRef.current = null;
+    };
+  }, []);
+
   const handleSpin = async () => {
     if (!token || isSpinning || !config?.enabled) return;
 
     setIsSpinning(true);
     setError(null);
     setSpinResult(null);
+
+    if (spinAudioRef.current) {
+      spinAudioRef.current.currentTime = 0;
+      void spinAudioRef.current.play().catch(() => {
+        // Ignorar bloqueo de autoplay del navegador.
+      });
+    }
 
     try {
       const res = await fetch("/api/profile/ruleta-spin", {
@@ -126,12 +166,13 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         throw new Error(data.error ?? "No se pudo completar la tirada");
       }
 
-      const animatedTarget = data.slot;
-      for (let i = 0; i < 8; i += 1) {
-        setHighlightSlot(((animatedTarget + i * 13) % 100) + 1);
-        await new Promise((resolve) => setTimeout(resolve, 60));
-      }
-      setHighlightSlot(animatedTarget);
+      const slotAngle = 360 / 100;
+      const slotCenter = (data.slot - 1) * slotAngle + slotAngle / 2;
+      const target = 360 - slotCenter;
+      const extraTurns = 7 * 360;
+
+      setWheelRotation((prev) => prev + extraTurns + target);
+      setHighlightSlot(data.slot);
       setSpinResult(data);
 
       setConfig((prev) => {
@@ -183,6 +224,37 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
   const nextCost = config?.playerState?.nextCost ?? config?.costCycle?.[0] ?? null;
 
+  const visualSegments = useMemo<VisualSegment[]>(() => {
+    const segmentCount = 16;
+    if (!config?.slots?.length) return [];
+
+    return Array.from({ length: segmentCount }, (_, index) => {
+      const start = Math.floor((index * 100) / segmentCount);
+      const end = Math.floor(((index + 1) * 100) / segmentCount) - 1;
+      const middle = Math.min(99, Math.max(0, Math.floor((start + end) / 2)));
+      const sampleSlot = middle + 1;
+      const category = config.slots[middle];
+
+      return {
+        index,
+        category,
+        label: `${sampleSlot}`,
+        color: WHEEL_PALETTE[index % WHEEL_PALETTE.length],
+      };
+    });
+  }, [config?.slots]);
+
+  const wheelBackground = useMemo(() => {
+    if (!visualSegments.length) return "";
+    const slotAngle = 360 / visualSegments.length;
+    const pieces = visualSegments.map((segment, index) => {
+      const start = (index * slotAngle).toFixed(3);
+      const end = ((index + 1) * slotAngle).toFixed(3);
+      return `${segment.color} ${start}deg ${end}deg`;
+    });
+    return `conic-gradient(${pieces.join(",")})`;
+  }, [visualSegments]);
+
   if (isLoading) {
     return (
       <Card className="h-full border-gold-dim medieval-border">
@@ -204,13 +276,13 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   }
 
   return (
-    <Card className="h-full border-gold-dim medieval-border">
+    <Card className="h-full border-gold-dim medieval-border bg-linear-to-br from-[#4c3b6f] via-[#3f315e] to-[#35294f]">
       <CardHeader>
         <CardTitle className="text-gold flex items-center gap-2">
           <Trophy className="w-5 h-5" />
           Ruleta de premios
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-zinc-200/90">
           100 slots de premios. Esta ruleta entrega categorias, no apuestas de casino.
         </CardDescription>
       </CardHeader>
@@ -228,40 +300,93 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-10 gap-1 rounded-xl border border-border bg-background/60 p-2">
-          {config.slots.map((category, index) => {
-            const slotNumber = index + 1;
-            const isHighlighted = highlightSlot === slotNumber;
-            return (
-              <div
-                key={slotNumber}
-                title={`Slot ${slotNumber}: ${categoryLabels[category]}`}
-                className={`h-8 rounded border text-[10px] font-bold flex items-center justify-center transition-all ${categoryClasses[category]} ${
-                  isHighlighted ? "ring-2 ring-gold scale-110" : "opacity-90"
-                }`}
-              >
-                {slotNumber}
+        <div className="relative mx-auto w-full max-w-100">
+          <div className="relative aspect-square">
+            <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
+              <div className="w-0 h-0 border-x-4 border-x-transparent border-b-8 border-b-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.6)]" />
+            </div>
+
+            <div className="absolute inset-0 rounded-full bg-black/20 p-2 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+              <div className="relative h-full w-full rounded-full border-4 border-white/70 bg-black/15">
+                <div
+                  className="absolute inset-0 rounded-full transition-transform duration-4300 ease-[cubic-bezier(0.18,0.9,0.22,1)]"
+                  style={{ transform: `rotate(${wheelRotation}deg)` }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{ backgroundImage: wheelBackground }}
+                  />
+
+                  {visualSegments.map((segment) => {
+                    const angle = (360 / visualSegments.length) * segment.index + 360 / visualSegments.length / 2;
+                    return (
+                      <div
+                        key={segment.index}
+                        className="absolute left-1/2 top-1/2"
+                        style={{ transform: `rotate(${angle}deg) translateY(-178px)` }}
+                      >
+                        <span
+                          className="block text-white font-black text-[30px] leading-none tracking-tight drop-shadow-[0_2px_1px_rgba(0,0,0,0.7)] select-none"
+                          style={{ transform: "rotate(90deg)" }}
+                        >
+                          {segment.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                    backgroundImage:
+                      "repeating-conic-gradient(rgba(0,0,0,0.28) 0deg 0.65deg, transparent 0.65deg 22.5deg)",
+                  }} />
+                </div>
+
+                <div className="absolute left-1/2 top-1/2 z-20 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-zinc-800 border-2 border-zinc-100 shadow-[0_4px_14px_rgba(0,0,0,0.5)]" />
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-xs text-center text-white">
+            {highlightSlot ? (
+              <p>
+                Cayo en: <span className="text-gold font-semibold">#{highlightSlot}</span> ({categoryLabels[config.slots[highlightSlot - 1]]})
+              </p>
+            ) : (
+              <p className="text-zinc-300">Aun sin tiradas en esta sesion.</p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border p-3">
-            <p className="text-xs text-muted-foreground mb-2">Tabla de premios</p>
+          <div className="rounded-lg border border-white/20 bg-black/25 p-3">
+            <p className="text-xs text-zinc-200 mb-2">Tabla de premios</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {distributionText.map((item) => (
-                <span key={item} className="text-foreground">
+                <span key={item} className="text-zinc-100">
                   {item}
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+              {(Object.keys(categoryLabels) as RouletteCategory[]).map((category) => (
+                <span
+                  key={category}
+                  className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/25 px-2 py-1 text-zinc-100"
+                >
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: categoryColors[category] }}
+                  />
+                  {categoryLabels[category]}
                 </span>
               ))}
             </div>
           </div>
 
-          <div className="rounded-lg border border-border p-3 space-y-2">
-            <p className="text-xs text-muted-foreground">Proxima tirada</p>
+          <div className="rounded-lg border border-white/20 bg-black/25 p-3 space-y-2">
+            <p className="text-xs text-zinc-200">Proxima tirada</p>
             {nextCost ? (
-              <div className="text-sm text-foreground">
+              <div className="text-sm text-zinc-100">
                 <p>
                   Paso {nextCost.step} de 6 - {nextCost.amount} {nextCost.type === "oro" ? "oro" : "USD"}
                 </p>
@@ -270,13 +395,13 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Sin datos de costo</p>
+              <p className="text-sm text-zinc-300">Sin datos de costo</p>
             )}
 
             <Button
               onClick={handleSpin}
               disabled={!token || !config.enabled || isSpinning}
-              className="w-full"
+              className="w-full bg-white text-black hover:bg-zinc-200"
             >
               {isSpinning ? (
                 <>
@@ -294,12 +419,12 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         </div>
 
         {spinResult && (
-          <div className="rounded-lg border border-gold-dim bg-gold/10 p-3 text-sm">
+          <div className="rounded-lg border border-gold/40 bg-black/30 p-3 text-sm">
             <p className="text-gold font-semibold">
               Resultado: Slot {spinResult.slot} - {categoryLabels[spinResult.category]}
             </p>
-            <p className="text-foreground">{spinResult.rewardLabel}</p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-zinc-100">{spinResult.rewardLabel}</p>
+            <p className="text-xs text-zinc-300 mt-1">
               Costo aplicado: {spinResult.cost.amount} {spinResult.cost.type === "oro" ? "oro" : "USD"} (paso {spinResult.cost.step}/6)
             </p>
             {spinResult.cobroPendiente && (
