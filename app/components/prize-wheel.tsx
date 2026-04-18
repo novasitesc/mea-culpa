@@ -84,6 +84,7 @@ type PrizeWheelProps = {
 export default function PrizeWheel({ token }: PrizeWheelProps) {
   const WAIT_SPIN_DEG_PER_MS = 0.42;
   const MIN_WAIT_MS = 650;
+  const MIN_SETTLE_MS = 900;
 
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,23 +170,16 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         }
         rotationRef.current += dt * WAIT_SPIN_DEG_PER_MS;
       } else if (animationPhaseRef.current === "settling") {
-        // Settling phase: mostly linear motion with soft brake near the end
+        // Settling phase: kinematic motion with constant deceleration.
+        // Starts at WAIT speed and decreases smoothly to zero at the target.
         if (settleStartTsRef.current === null) {
           settleStartTsRef.current = ts;
           settleStartRotationRef.current = rotationRef.current;
         }
 
         const elapsed = ts - settleStartTsRef.current;
-        const t = Math.min(1, elapsed / settleDurationRef.current);
-        const tailStart = 0.82;
-        let eased = t;
-        if (t > tailStart) {
-          const tailT = (t - tailStart) / (1 - tailStart);
-          // Hermite brake: g(0)=0, g(1)=1, g'(0)=1, g'(1)=0
-          // Keeps speed continuous at tail start and smoothly brakes to zero.
-          const tailEased = -Math.pow(tailT, 3) + Math.pow(tailT, 2) + tailT;
-          eased = tailStart + (1 - tailStart) * tailEased;
-        }
+        const u = Math.min(1, elapsed / settleDurationRef.current);
+        const eased = 2 * u - u * u;
 
         const delta = settleTargetRef.current - settleStartRotationRef.current;
         const newRotation = settleStartRotationRef.current + delta * eased;
@@ -193,7 +187,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         rotationRef.current = newRotation;
 
         // End settling phase when complete - return to idle
-        if (t >= 1) {
+        if (u >= 1) {
           animationPhaseRef.current = "idle";
           waitingStartTsRef.current = null;
           lastFrameTsRef.current = null;
@@ -227,10 +221,9 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     settleStartRotationRef.current = rotationRef.current;
     settleTargetRef.current = targetAbsoluteRotation;
 
-    // Keep settle speed close to waiting speed to avoid sudden acceleration.
+    // Kinematics: T = 2D / V0 so we start at current waiting speed and end at zero.
     const distance = Math.max(0, targetAbsoluteRotation - settleStartRotationRef.current);
-    const settleSpeedDegPerMs = 0.46;
-    settleDurationRef.current = Math.max(900, Math.min(2200, distance / settleSpeedDegPerMs));
+    settleDurationRef.current = Math.max(1, (2 * distance) / WAIT_SPIN_DEG_PER_MS);
   };
 
   const handleSpin = async () => {
@@ -289,8 +282,13 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
 
-      // One extra turn is enough and avoids visible speed spikes.
-      const settleTarget = current + 360 + deltaToTarget;
+      // Guarantee enough braking distance for a smooth stop.
+      const minSettleDistance = (WAIT_SPIN_DEG_PER_MS * MIN_SETTLE_MS) / 2;
+      while (deltaToTarget < minSettleDistance) {
+        deltaToTarget += 360;
+      }
+
+      const settleTarget = current + deltaToTarget;
       
       // Transition to settling without stopping the animation loop
       transitionToSettling(settleTarget);
