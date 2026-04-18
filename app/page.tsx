@@ -20,6 +20,7 @@ type Player = {
   role: string;
   level: number;
   home: string;
+  maxCharacterSlots?: number;
 };
 
 type ClassEntry = {
@@ -95,18 +96,21 @@ export default function HomePage() {
     setNoticiaIdx((i) => (i - 1 + noticias.length) % noticias.length);
   const nextNoticia = () => setNoticiaIdx((i) => (i + 1) % noticias.length);
 
-  const characterSlots: CharacterSlot[] = Array.from(
-    { length: 5 },
-    (_, index) => {
-      const character = profile?.characters[index];
-
-      if (character) {
-        return { id: index + 1, locked: false, character };
-      }
-
-      return { id: index + 1, locked: true };
-    },
+  const maxCharacterSlots = Math.max(
+    2,
+    Math.min(5, profile?.player?.maxCharacterSlots ?? 2),
   );
+
+  const characterSlots: CharacterSlot[] = Array.from({ length: 5 }, (_, index) => {
+    const character = profile?.characters[index];
+    const isUnlocked = index < maxCharacterSlots;
+
+    if (character) {
+      return { id: index + 1, locked: false, character };
+    }
+
+    return { id: index + 1, locked: !isUnlocked };
+  });
 
   const activeCharacter = characterSlots[activeSlot - 1]?.character;
 
@@ -272,7 +276,9 @@ export default function HomePage() {
                         Slot vacio
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Desbloquea un personaje
+                        {activeSlot <= maxCharacterSlots
+                          ? "Espacio disponible"
+                          : "Desbloquea un personaje"}
                       </p>
                     </>
                   )}
@@ -336,10 +342,13 @@ export default function HomePage() {
             {/* Unlock Message */}
             <div className="bg-card rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground text-center">
-                Slot de PJ bloqueados y que se desbloquean pagando
+                Slots: {profile?.characters?.length ?? 0}/{maxCharacterSlots}. Puedes ampliar hasta 5 con pago.
               </p>
-              <button className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Contacta con un administrador
+              <button
+                className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans"
+                onClick={() => router.push("/profile")}
+              >
+                Comprar slot de personaje
               </button>
             </div>
           </aside>

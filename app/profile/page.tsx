@@ -706,7 +706,12 @@ export default function ProfilePage() {
                     }}
                   >
                     <PayPalButtons
-                      style={{ layout: "horizontal", label: "paypal" }}
+                      style={{
+                        layout: "horizontal",
+                        label: "paypal",
+                        color: "gold",
+                        tagline: false,
+                      }}
                       disabled={isUpgradingSlots || !canUnlockMoreSlots}
                       createOrder={async () => {
                         setSlotUpgradeMessage(null);
