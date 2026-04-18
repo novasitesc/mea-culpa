@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
@@ -96,9 +96,55 @@ type ProfileAlert = {
   variant: "info" | "success" | "warning" | "error";
 };
 
+type OpenPartida = {
+  id: string;
+  title: string;
+  comment: string;
+  status: string;
+  minPlayers: number;
+  maxPlayers: number;
+  playerLimit: number;
+  participantCount: number;
+  slotsRemaining: number;
+  floor: number;
+  startTime: string | null;
+  tier: number;
+  isFull: boolean;
+  inCooldown: boolean;
+  cooldownEndsAt: string | null;
+  cooldownSecondsRemaining: number;
+  createdAt: string;
+  createdBy: string | null;
+  joinedCharacterIds: number[];
+};
+
+type SleepOption = {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  homeLabel: string;
+};
+
+type SleepPendingCharacter = {
+  pendingId: string;
+  characterId: number;
+  characterName: string;
+  partidaId: string | null;
+  partidaTitle: string;
+  requiredAt: string | null;
+  partidaFinalizedAt: string | null;
+};
+
+type SleepStatusResponse = {
+  playerGold: number;
+  options: SleepOption[];
+  pendingCharacters: SleepPendingCharacter[];
+};
+
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, token } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [openBagModal, setOpenBagModal] = useState<number | null>(null);
   const [bagItems, setBagItems] = useState<Item[]>([]);
@@ -109,6 +155,16 @@ export default function ProfilePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
+  const [openGames, setOpenGames] = useState<OpenPartida[]>([]);
+  const [loadingOpenGames, setLoadingOpenGames] = useState(false);
+  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
+  const [selectedCharacterByGame, setSelectedCharacterByGame] = useState<
+    Record<string, number>
+  >({});
+  const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
+  const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
+  const [resolvingSleep, setResolvingSleep] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [newCharacter, setNewCharacter] = useState<{
     name: string;
     race: string;
@@ -132,6 +188,181 @@ export default function ProfilePage() {
       message,
       variant,
     });
+  };
+
+  const formatCooldown = (seconds: number) => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safe / 3600);
+    const mins = Math.floor((safe % 3600) / 60);
+    return `${hours}h ${mins}m`;
+  };
+
+  const loadProfile = useCallback(async () => {
+    if (!isAuthenticated || !user) return;
+
+    const res = await fetch(`/api/profile?userId=${user.id}`);
+    const data = (await res.json()) as ProfileResponse;
+
+    setProfile({
+      ...data,
+      player: {
+        name: user.name,
+        role: user.role,
+        level: user.level,
+        home: data.player.home,
+        oro: user.oro,
+      },
+    });
+  }, [isAuthenticated, user]);
+
+  const loadSleepStatus = useCallback(async () => {
+    if (!isAuthenticated || !token) return;
+
+    setLoadingSleepStatus(true);
+    try {
+      const res = await fetch("/api/profile/sleep-options", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudo cargar el estado de descanso");
+      }
+
+      const data = (await res.json()) as SleepStatusResponse;
+      setSleepStatus(data);
+    } catch (error) {
+      console.error("Error loading sleep status:", error);
+    } finally {
+      setLoadingSleepStatus(false);
+    }
+  }, [isAuthenticated, token]);
+
+  const resolveSleepDecision = async (
+    pendingId: string,
+    action: "pay" | "decline",
+    optionId?: string,
+  ) => {
+    if (!token) return;
+
+    setResolvingSleep(true);
+    try {
+      const res = await fetch("/api/profile/sleep-options", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pendingId, action, optionId: optionId ?? null }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      const message = String(data.message ?? "No se pudo resolver el descanso");
+
+      if (!res.ok && !data.eliminated) {
+        throw new Error(String(data.error ?? message));
+      }
+
+      showProfileAlert(
+        data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
+        message,
+        data.eliminated ? "error" : "success",
+      );
+
+      setShowDeleteConfirmModal(false);
+
+      if (typeof data.newGold === "number") {
+        window.dispatchEvent(
+          new CustomEvent("auth:refresh", {
+            detail: { oro: data.newGold },
+          }),
+        );
+      }
+
+      await Promise.all([loadSleepStatus(), loadProfile(), loadOpenGames()]);
+    } catch (error) {
+      console.error("Error resolving sleep decision:", error);
+      showProfileAlert(
+        "No se pudo resolver",
+        error instanceof Error ? error.message : "Error desconocido",
+        "error",
+      );
+    } finally {
+      setResolvingSleep(false);
+    }
+  };
+
+  const loadOpenGames = useCallback(async () => {
+    if (!token) return;
+
+    setLoadingOpenGames(true);
+    try {
+      const res = await fetch("/api/partidas", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudieron cargar las partidas");
+      }
+
+      const data = (await res.json()) as OpenPartida[];
+      setOpenGames(data);
+    } catch (error) {
+      console.error("Error loading open games:", error);
+      showProfileAlert(
+        "Error",
+        "No se pudieron cargar las partidas activas.",
+        "error",
+      );
+    } finally {
+      setLoadingOpenGames(false);
+    }
+  }, [token]);
+
+  const joinGame = async (gameId: string) => {
+    if (!token) return;
+    const characterId = selectedCharacterByGame[gameId];
+
+    if (!characterId) {
+      showProfileAlert(
+        "Selecciona personaje",
+        "Debes elegir un personaje para unirte a la partida.",
+        "warning",
+      );
+      return;
+    }
+
+    setJoiningGameId(gameId);
+    try {
+      const res = await fetch("/api/partidas/join", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ partidaId: gameId, characterId }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo unir a la partida");
+      }
+
+      showProfileAlert(
+        "Inscripción completada",
+        "Te uniste correctamente a la partida.",
+        "success",
+      );
+      await loadOpenGames();
+    } catch (error) {
+      console.error("Error joining game:", error);
+      showProfileAlert(
+        "No se pudo unir",
+        error instanceof Error ? error.message : "Error desconocido",
+        "error",
+      );
+    } finally {
+      setJoiningGameId(null);
+    }
   };
 
   const saveBagChanges = async (
@@ -253,32 +484,24 @@ export default function ProfilePage() {
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    loadProfile();
+  }, [loadProfile]);
 
-    let isMounted = true;
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    loadOpenGames();
+    loadSleepStatus();
+  }, [isAuthenticated, token, loadOpenGames, loadSleepStatus]);
 
-    fetch(`/api/profile?userId=${user.id}`)
-      .then((res) => res.json())
-      .then((data: ProfileResponse) => {
-        if (isMounted) {
-          // Sobrescribir con datos del usuario autenticado
-          setProfile({
-            ...data,
-            player: {
-              name: user.name,
-              role: user.role,
-              level: user.level,
-              home: data.player.home,
-              oro: user.oro,
-            },
-          });
-        }
-      });
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
 
-    return () => {
-      isMounted = false;
-    };
-  }, [user, isAuthenticated]);
+    const intervalId = window.setInterval(() => {
+      loadSleepStatus();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isAuthenticated, token, loadSleepStatus]);
 
   // Mostrar loading mientras se verifica autenticación
   if (isLoading || !isAuthenticated) {
@@ -294,6 +517,8 @@ export default function ProfilePage() {
 
   const player = profile?.player;
   const characters = profile?.characters ?? [];
+  const pendingSleepCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
+  const hasPendingSleep = !!pendingSleepCharacter;
 
   return (
     <div className="min-h-screen bg-background">
@@ -374,6 +599,121 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+          </section>
+
+          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">
+                  Partidas Públicas
+                </p>
+                <h2 className="text-xl font-serif text-[#D4AF37] mt-1">
+                  Únete a una partida activa
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={loadOpenGames}
+                disabled={loadingOpenGames}
+                className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
+              >
+                {loadingOpenGames ? "Cargando..." : "Actualizar"}
+              </button>
+            </div>
+
+            {loadingOpenGames ? (
+              <p className="text-sm text-muted-foreground">Buscando partidas activas...</p>
+            ) : openGames.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay partidas abiertas en este momento.</p>
+            ) : (
+              <div className="space-y-3">
+                {openGames.map((game) => {
+                  const alreadyJoined = game.joinedCharacterIds.length > 0;
+                  const canJoin = !game.isFull && !alreadyJoined && !game.inCooldown;
+
+                  return (
+                    <article
+                      key={game.id}
+                      className="rounded border border-border/70 bg-secondary/20 p-4 space-y-3"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                          <h3 className="text-lg font-semibold text-foreground">{game.title}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {game.participantCount}/{game.maxPlayers} jugadores · {game.slotsRemaining} cupos libres
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Min {game.minPlayers} · Piso {game.floor} · Tier {game.tier}
+                            {game.startTime
+                              ? ` · Inicio ${new Date(game.startTime).toLocaleString("es-ES")}`
+                              : ""}
+                          </p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded border border-border text-muted-foreground">
+                          {game.inCooldown
+                            ? "En cooldown"
+                            : game.isFull
+                              ? "Completa"
+                              : "Abierta"}
+                        </span>
+                      </div>
+
+                      {game.comment && (
+                        <p className="text-sm text-muted-foreground">{game.comment}</p>
+                      )}
+
+                      {game.inCooldown && (
+                        <p className="text-sm text-amber-400">
+                          Cooldown activo: puedes volver a unirte en {formatCooldown(game.cooldownSecondsRemaining)}.
+                        </p>
+                      )}
+
+                      <div className="flex flex-col md:flex-row md:items-center gap-3">
+                        <select
+                          value={selectedCharacterByGame[game.id] ?? ""}
+                          onChange={(e) =>
+                            setSelectedCharacterByGame((prev) => ({
+                              ...prev,
+                              [game.id]: e.target.value ? Number(e.target.value) : 0,
+                            }))
+                          }
+                          disabled={!canJoin || characters.length === 0}
+                          className="px-3 py-2 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 [&>option]:bg-background [&>option]:text-foreground"
+                        >
+                          <option value="">Selecciona personaje</option>
+                          {characters.map((character) => (
+                            <option
+                              key={character.id}
+                              value={character.id}
+                              disabled={game.joinedCharacterIds.includes(character.id)}
+                            >
+                              {character.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => joinGame(game.id)}
+                          disabled={!canJoin || joiningGameId === game.id || characters.length === 0}
+                          className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {joiningGameId === game.id
+                            ? "Uniéndote..."
+                            : alreadyJoined
+                              ? "Ya estás inscrito"
+                              : game.inCooldown
+                                ? "Cooldown 24h"
+                              : game.isFull
+                                ? "Partida completa"
+                                : "Unirme"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="space-y-6">
@@ -523,6 +863,105 @@ export default function ProfilePage() {
           </section>
         </div>
       </div>
+
+      {hasPendingSleep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-[#B8860B]">
+                Descanso Obligatorio
+              </p>
+              <h2 className="text-2xl font-serif text-[#D4AF37] mt-2">
+                {pendingSleepCharacter.characterName} debe elegir donde dormir
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                La partida "{pendingSleepCharacter.partidaTitle}" finalizo. Si no pagas descanso,
+                el personaje sera eliminado de la base de datos.
+              </p>
+            </div>
+
+            <div className="rounded border border-border/70 bg-secondary/20 p-3 text-sm text-muted-foreground">
+              Oro disponible: <span className="text-yellow-400 font-semibold">{(sleepStatus?.playerGold ?? 0).toLocaleString()}</span>
+            </div>
+
+            <div className="space-y-3">
+              {(sleepStatus?.options ?? []).map((option) => {
+                const canPay = (sleepStatus?.playerGold ?? 0) >= option.cost;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      resolveSleepDecision(
+                        pendingSleepCharacter.pendingId,
+                        "pay",
+                        option.id,
+                      )
+                    }
+                    disabled={resolvingSleep || loadingSleepStatus}
+                    className="w-full text-left rounded border border-border bg-background/60 p-4 hover:border-[#D4AF37] hover:bg-background transition disabled:opacity-60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold text-foreground">{option.name}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[#D4AF37] font-bold">{option.cost} oro</p>
+                        {!canPay && <p className="text-xs text-red-400">No alcanza</p>}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirmModal(true)}
+                disabled={resolvingSleep || loadingSleepStatus}
+                className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
+              >
+                No pagar (eliminar personaje de la base de datos)
+              </button>
+            </div>
+          </div>
+
+          {showDeleteConfirmModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70">
+              <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
+                <h3 className="text-lg font-semibold text-red-300">
+                  Confirmar eliminación
+                </h3>
+                <p className="text-sm text-red-100/90 leading-relaxed">
+                  El personaje va a ser eliminado permanentemente, ¿estás seguro?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirmModal(false)}
+                    disabled={resolvingSleep}
+                    className="flex-1 px-4 py-2 rounded border border-border text-foreground hover:bg-secondary/40 transition disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      resolveSleepDecision(pendingSleepCharacter.pendingId, "decline")
+                    }
+                    disabled={resolvingSleep}
+                    className="flex-1 px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 transition disabled:opacity-60"
+                  >
+                    Sí, eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal de Crear Personaje */}
       {showCreateModal && (

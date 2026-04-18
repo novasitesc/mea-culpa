@@ -86,6 +86,12 @@ export async function POST(request: Request) {
 
   if (error) {
     const msg = error.message ?? "";
+    if (msg.includes("esta en una partida abierta")) {
+      return NextResponse.json(
+        { error: "No puedes comprar en tienda mientras tu personaje esta en una partida abierta" },
+        { status: 409 },
+      );
+    }
     if (msg.includes("Oro insuficiente")) {
       return NextResponse.json({ error: "Oro insuficiente" }, { status: 422 });
     }
