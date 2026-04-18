@@ -82,8 +82,8 @@ type PrizeWheelProps = {
 };
 
 export default function PrizeWheel({ token }: PrizeWheelProps) {
-  const WAIT_SPIN_DURATION_MS = 900;
-  const WAIT_SPIN_DEG_PER_MS = 360 / WAIT_SPIN_DURATION_MS;
+  const WAIT_SPIN_DEG_PER_MS = 0.42;
+  const MIN_WAIT_MS = 650;
 
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,12 +91,20 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [isAwaitingResult, setIsAwaitingResult] = useState(false);
   const [highlightSlot, setHighlightSlot] = useState<number | null>(null);
   const [wheelRotation, setWheelRotation] = useState(0);
-  const [spinDurationMs, setSpinDurationMs] = useState(950);
   const [spinResult, setSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
-  const waitingSpinStartMsRef = useRef<number | null>(null);
-  const waitingStartRotationRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
+  const lastFrameTsRef = useRef<number | null>(null);
+  const rotationRef = useRef(0);
+  
+  // Animation phase state
+  const animationPhaseRef = useRef<"idle" | "waiting" | "settling">("idle");
+  const waitingStartTsRef = useRef<number | null>(null);
+  const settleStartTsRef = useRef<number | null>(null);
+  const settleStartRotationRef = useRef(0);
+  const settleTargetRef = useRef(0);
+  const settleDurationRef = useRef(980);
 
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
@@ -139,6 +147,92 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     };
   }, []);
 
+  // Initialize persistent RAF loop on mount - runs continuously forever
+  useEffect(() => {
+    let frameCountRef = 0;
+
+    const tick = (ts: number) => {
+      // Initialize timestamp tracking
+      if (lastFrameTsRef.current === null) {
+        lastFrameTsRef.current = ts;
+      }
+      const dt = ts - (lastFrameTsRef.current ?? ts);
+      lastFrameTsRef.current = ts;
+
+      if (animationPhaseRef.current === "idle") {
+        // Idle phase: do nothing, wheel stays still
+        // Do NOT update rotation
+      } else if (animationPhaseRef.current === "waiting") {
+        // Waiting phase: constant velocity rotation
+        if (waitingStartTsRef.current === null) {
+          waitingStartTsRef.current = ts;
+        }
+        rotationRef.current += dt * WAIT_SPIN_DEG_PER_MS;
+      } else if (animationPhaseRef.current === "settling") {
+        // Settling phase: mostly linear motion with soft brake near the end
+        if (settleStartTsRef.current === null) {
+          settleStartTsRef.current = ts;
+          settleStartRotationRef.current = rotationRef.current;
+        }
+
+        const elapsed = ts - settleStartTsRef.current;
+        const t = Math.min(1, elapsed / settleDurationRef.current);
+        const tailStart = 0.82;
+        let eased = t;
+        if (t > tailStart) {
+          const tailT = (t - tailStart) / (1 - tailStart);
+          // Hermite brake: g(0)=0, g(1)=1, g'(0)=1, g'(1)=0
+          // Keeps speed continuous at tail start and smoothly brakes to zero.
+          const tailEased = -Math.pow(tailT, 3) + Math.pow(tailT, 2) + tailT;
+          eased = tailStart + (1 - tailStart) * tailEased;
+        }
+
+        const delta = settleTargetRef.current - settleStartRotationRef.current;
+        const newRotation = settleStartRotationRef.current + delta * eased;
+
+        rotationRef.current = newRotation;
+
+        // End settling phase when complete - return to idle
+        if (t >= 1) {
+          animationPhaseRef.current = "idle";
+          waitingStartTsRef.current = null;
+          lastFrameTsRef.current = null;
+          settleStartTsRef.current = null;
+        }
+      }
+
+      // Update React state less frequently to avoid excessive re-renders
+      frameCountRef += 1;
+      if (frameCountRef % 2 === 0) {
+        setWheelRotation(rotationRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    rafIdRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, []);
+
+  const transitionToSettling = (targetAbsoluteRotation: number) => {
+    // Smoothly transition to settling phase without stopping the loop
+    animationPhaseRef.current = "settling";
+    settleStartTsRef.current = null;
+    settleStartRotationRef.current = rotationRef.current;
+    settleTargetRef.current = targetAbsoluteRotation;
+
+    // Keep settle speed close to waiting speed to avoid sudden acceleration.
+    const distance = Math.max(0, targetAbsoluteRotation - settleStartRotationRef.current);
+    const settleSpeedDegPerMs = 0.46;
+    settleDurationRef.current = Math.max(900, Math.min(2200, distance / settleSpeedDegPerMs));
+  };
+
   const handleSpin = async () => {
     if (!token || isSpinning || !config?.enabled) return;
 
@@ -146,11 +240,11 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     setError(null);
     setSpinResult(null);
 
-    // Giro continuo y fluido mientras llega la respuesta del backend.
-    setSpinDurationMs(0);
     setIsAwaitingResult(true);
-    waitingStartRotationRef.current = wheelRotation;
-    waitingSpinStartMsRef.current = performance.now();
+    // Transition to waiting phase (loop already running persistently)
+    animationPhaseRef.current = "waiting";
+    waitingStartTsRef.current = null;
+    lastFrameTsRef.current = null;
 
     if (spinAudioRef.current) {
       spinAudioRef.current.currentTime = 0;
@@ -176,32 +270,31 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
       const slotAngle = 360 / 100;
       const slotCenter = (data.slot - 1) * slotAngle + slotAngle / 2;
+      
+      const current = rotationRef.current;
+      const normalized = ((current % 360) + 360) % 360;
+      const target = 360 - slotCenter;
+      let deltaToTarget = ((target - normalized) + 360) % 360;
+      if (deltaToTarget < 24) {
+        deltaToTarget += 360;
+      }
+      const elapsedWaiting =
+        waitingStartTsRef.current === null
+          ? MIN_WAIT_MS
+          : performance.now() - waitingStartTsRef.current;
 
-      const now = performance.now();
-      const elapsed = waitingSpinStartMsRef.current
-        ? now - waitingSpinStartMsRef.current
-        : 0;
-      const currentRotation =
-        waitingStartRotationRef.current + elapsed * WAIT_SPIN_DEG_PER_MS;
+      // Ensure spin does not cut too quickly if API responds instantly.
+      if (elapsedWaiting < MIN_WAIT_MS) {
+        const remaining = MIN_WAIT_MS - elapsedWaiting;
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
 
+      // One extra turn is enough and avoids visible speed spikes.
+      const settleTarget = current + 360 + deltaToTarget;
+      
+      // Transition to settling without stopping the animation loop
+      transitionToSettling(settleTarget);
       setIsAwaitingResult(false);
-      setSpinDurationMs(0);
-      setWheelRotation(currentRotation);
-
-      // Aterrizaje único desacelerado para evitar tirones.
-      requestAnimationFrame(() => {
-        setSpinDurationMs(980);
-        setWheelRotation((prev) => {
-          const normalized = ((prev % 360) + 360) % 360;
-          const target = 360 - slotCenter;
-          const deltaToTarget = ((target - normalized) + 360) % 360;
-          const extraTurns = 720;
-          return prev + extraTurns + deltaToTarget;
-        });
-      });
-
-      waitingSpinStartMsRef.current = null;
-      waitingStartRotationRef.current = currentRotation;
 
       setHighlightSlot(data.slot);
       setSpinResult(data);
@@ -237,21 +330,12 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       const message = err instanceof Error ? err.message : "No se pudo tirar";
       setError(message);
       setIsAwaitingResult(false);
-      waitingSpinStartMsRef.current = null;
+      // Reset to idle on error
+      animationPhaseRef.current = "idle";
     } finally {
       setIsSpinning(false);
     }
   };
-
-  const wheelRootTransform = `rotate(${wheelRotation}deg)`;
-  const wheelRootTransition =
-    spinDurationMs > 0
-      ? `transform ${spinDurationMs}ms cubic-bezier(0.18,0.9,0.22,1)`
-      : "none";
-
-  const waitingSpinAnimation = isAwaitingResult
-    ? `spin ${WAIT_SPIN_DURATION_MS}ms linear infinite`
-    : undefined;
 
   const distributionText = useMemo(
     () => [
@@ -348,29 +432,23 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    transform: wheelRootTransform,
-                    transition: wheelRootTransition,
+                    transform: `rotate(${wheelRotation}deg)`,
                   }}
                 >
                   <div
                     className="absolute inset-0 rounded-full"
-                    style={{
-                      backgroundImage: wheelBackground,
-                      animation: waitingSpinAnimation,
-                    }}
+                    style={{ backgroundImage: wheelBackground }}
                   />
 
                   <div className="absolute inset-0 rounded-full pointer-events-none" style={{
                     backgroundImage:
                       "repeating-conic-gradient(rgba(0,0,0,0.34) 0deg 0.22deg, transparent 0.22deg 3.6deg)",
-                    animation: waitingSpinAnimation,
                   }} />
 
                   <div className="absolute inset-0 rounded-full pointer-events-none" style={{
                     backgroundImage:
                       "repeating-conic-gradient(rgba(255,255,255,0.26) 0deg 0.05deg, transparent 0.05deg 3.6deg)",
                     mixBlendMode: "screen",
-                    animation: waitingSpinAnimation,
                   }} />
                 </div>
 
