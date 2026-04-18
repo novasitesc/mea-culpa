@@ -107,6 +107,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [error, setError] = useState<string | null>(null);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [isPayingUsdStep, setIsPayingUsdStep] = useState(false);
+  const [configTokenSnapshot, setConfigTokenSnapshot] = useState<string | null>(null);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
@@ -120,29 +121,47 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const settleStartRotationRef = useRef(0);
   const settleTargetRef = useRef(0);
   const settleDurationRef = useRef(980);
+  const configRequestSeqRef = useRef(0);
+
+  useEffect(() => {
+    setConfigTokenSnapshot(null);
+  }, [token]);
 
   const fetchConfig = useCallback(async () => {
+    const requestId = ++configRequestSeqRef.current;
+    const tokenSnapshot = token;
+
     setIsLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/ruleta/config", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: tokenSnapshot ? { Authorization: `Bearer ${tokenSnapshot}` } : {},
       });
       const data = (await res.json()) as ConfigResponse;
+
+      if (requestId !== configRequestSeqRef.current) {
+        return;
+      }
 
       if (!res.ok) {
         throw new Error((data as { error?: string }).error ?? "Error cargando ruleta");
       }
 
       setConfig(data);
+      setConfigTokenSnapshot(tokenSnapshot);
       if (data.playerState?.lastSpin?.slot) {
         setHighlightSlot(data.playerState.lastSpin.slot);
       }
     } catch (err: unknown) {
+      if (requestId !== configRequestSeqRef.current) {
+        return;
+      }
       const message = err instanceof Error ? err.message : "Error cargando ruleta";
       setError(message);
     } finally {
-      setIsLoading(false);
+      if (requestId === configRequestSeqRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [token]);
 
@@ -301,7 +320,16 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   };
 
   const handleSpin = async () => {
-    if (!token || isSpinning || animationPhase !== "idle" || !config?.enabled) return;
+    if (
+      !token ||
+      configTokenSnapshot !== token ||
+      !config ||
+      isSpinning ||
+      animationPhase !== "idle" ||
+      !config.enabled
+    ) {
+      return;
+    }
 
     setIsSpinning(true);
     setError(null);
@@ -430,6 +458,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const nextCost = config?.playerState?.nextCost ?? config?.costCycle?.[0] ?? null;
   const shouldPrepayUsd = nextCost?.type === "usd";
   const hasUsdSpinPayment = Boolean(config?.playerState?.hasUsdSpinPayment);
+  const isSpinStateReady = configTokenSnapshot === token && Boolean(config);
 
   const visualSegments = useMemo<VisualSegment[]>(() => {
     if (!config?.slots?.length) return [];
@@ -589,6 +618,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
               onClick={handleSpin}
               disabled={
                 !token ||
+                !isSpinStateReady ||
                 !config.enabled ||
                 isSpinning ||
                 animationPhase !== "idle" ||
