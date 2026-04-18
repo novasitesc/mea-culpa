@@ -90,14 +90,17 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isAwaitingResult, setIsAwaitingResult] = useState(false);
+  const [animationPhase, setAnimationPhase] = useState<"idle" | "waiting" | "settling">("idle");
   const [highlightSlot, setHighlightSlot] = useState<number | null>(null);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [spinResult, setSpinResult] = useState<SpinResponse | null>(null);
+  const [pendingSpinResult, setPendingSpinResult] = useState<SpinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
   const rotationRef = useRef(0);
+  const pendingSpinResultRef = useRef<SpinResponse | null>(null);
   
   // Animation phase state
   const animationPhaseRef = useRef<"idle" | "waiting" | "settling">("idle");
@@ -148,6 +151,10 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     };
   }, []);
 
+  useEffect(() => {
+    pendingSpinResultRef.current = pendingSpinResult;
+  }, [pendingSpinResult]);
+
   // Initialize persistent RAF loop on mount - runs continuously forever
   useEffect(() => {
     let frameCountRef = 0;
@@ -189,9 +196,16 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         // End settling phase when complete - return to idle
         if (u >= 1) {
           animationPhaseRef.current = "idle";
+          setAnimationPhase("idle");
           waitingStartTsRef.current = null;
           lastFrameTsRef.current = null;
           settleStartTsRef.current = null;
+
+          if (pendingSpinResultRef.current) {
+            setSpinResult(pendingSpinResultRef.current);
+            setPendingSpinResult(null);
+            pendingSpinResultRef.current = null;
+          }
         }
       }
 
@@ -217,6 +231,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const transitionToSettling = (targetAbsoluteRotation: number) => {
     // Smoothly transition to settling phase without stopping the loop
     animationPhaseRef.current = "settling";
+    setAnimationPhase("settling");
     settleStartTsRef.current = null;
     settleStartRotationRef.current = rotationRef.current;
     settleTargetRef.current = targetAbsoluteRotation;
@@ -227,15 +242,17 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   };
 
   const handleSpin = async () => {
-    if (!token || isSpinning || !config?.enabled) return;
+    if (!token || isSpinning || animationPhase !== "idle" || !config?.enabled) return;
 
     setIsSpinning(true);
     setError(null);
     setSpinResult(null);
+    setPendingSpinResult(null);
 
     setIsAwaitingResult(true);
     // Transition to waiting phase (loop already running persistently)
     animationPhaseRef.current = "waiting";
+    setAnimationPhase("waiting");
     waitingStartTsRef.current = null;
     lastFrameTsRef.current = null;
 
@@ -295,7 +312,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       setIsAwaitingResult(false);
 
       setHighlightSlot(data.slot);
-      setSpinResult(data);
+      setPendingSpinResult(data);
 
       setConfig((prev) => {
         if (!prev) return prev;
@@ -330,6 +347,8 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       setIsAwaitingResult(false);
       // Reset to idle on error
       animationPhaseRef.current = "idle";
+      setAnimationPhase("idle");
+      setPendingSpinResult(null);
     } finally {
       setIsSpinning(false);
     }
@@ -510,7 +529,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
             <Button
               onClick={handleSpin}
-              disabled={!token || !config.enabled || isSpinning}
+              disabled={!token || !config.enabled || isSpinning || animationPhase !== "idle"}
               className="w-full bg-white text-black hover:bg-zinc-200"
             >
               {isSpinning ? (
@@ -528,7 +547,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
           </div>
         </div>
 
-        {spinResult && (
+        {spinResult && animationPhase === "idle" && (
           <div className="rounded-lg border border-gold/40 bg-black/30 p-3 text-sm">
             <p className="text-gold font-semibold">
               Resultado: {categoryLabels[spinResult.category]}
