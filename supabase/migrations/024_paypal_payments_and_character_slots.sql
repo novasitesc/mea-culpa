@@ -60,11 +60,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_pago public.pagos_paypal%ROWTYPE;
 BEGIN
-  SELECT *
-  INTO v_pago
+  PERFORM 1
   FROM public.pagos_paypal
   WHERE id = p_pago_id
   FOR UPDATE;
@@ -73,28 +70,60 @@ BEGIN
     RAISE EXCEPTION 'Pago PayPal no encontrado';
   END IF;
 
-  IF v_pago.estado <> 'completed' THEN
+  IF EXISTS (
+    SELECT 1
+    FROM public.pagos_paypal
+    WHERE id = p_pago_id
+      AND estado <> 'completed'
+  ) THEN
     RETURN false;
   END IF;
 
-  IF v_pago.effect_applied THEN
+  IF EXISTS (
+    SELECT 1
+    FROM public.pagos_paypal
+    WHERE id = p_pago_id
+      AND effect_applied = true
+  ) THEN
     RETURN true;
   END IF;
 
-  IF v_pago.concepto = 'ruleta_usd_spin' THEN
+  IF EXISTS (
+    SELECT 1
+    FROM public.pagos_paypal
+    WHERE id = p_pago_id
+      AND concepto = 'ruleta_usd_spin'
+  ) THEN
     UPDATE public.ruleta_tiradas
     SET cobro_pendiente = false
-    WHERE id = v_pago.referencia_id
-      AND usuario_id = v_pago.usuario_id
-      AND cobro_pendiente = true;
+    WHERE cobro_pendiente = true
+      AND id = (
+        SELECT referencia_id
+        FROM public.pagos_paypal
+        WHERE id = p_pago_id
+      )
+      AND usuario_id = (
+        SELECT usuario_id
+        FROM public.pagos_paypal
+        WHERE id = p_pago_id
+      );
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'No se encontro una tirada pendiente para el pago';
     END IF;
-  ELSIF v_pago.concepto = 'character_slot_unlock' THEN
+  ELSIF EXISTS (
+    SELECT 1
+    FROM public.pagos_paypal
+    WHERE id = p_pago_id
+      AND concepto = 'character_slot_unlock'
+  ) THEN
     UPDATE public.perfiles
     SET max_personajes = 5
-    WHERE id = v_pago.usuario_id
+    WHERE id = (
+      SELECT usuario_id
+      FROM public.pagos_paypal
+      WHERE id = p_pago_id
+    )
       AND max_personajes < 5;
   ELSE
     RAISE EXCEPTION 'Concepto de pago no soportado';
@@ -103,7 +132,7 @@ BEGIN
   UPDATE public.pagos_paypal
   SET effect_applied = true,
       completado_en = COALESCE(completado_en, now())
-  WHERE id = v_pago.id;
+  WHERE id = p_pago_id;
 
   RETURN true;
 END;
