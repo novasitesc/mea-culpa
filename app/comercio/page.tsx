@@ -94,6 +94,8 @@ export default function ComercioPage() {
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [requestingId, setRequestingId] = useState<number | null>(null);
   const [cancelingId, setCancelingId] = useState<number | null>(null);
+  const [cancelingPublicationId, setCancelingPublicationId] =
+    useState<number | null>(null);
   const [selectedSellerCharacterId, setSelectedSellerCharacterId] = useState<number | null>(null);
   const [selectedBuyerCharacterId, setSelectedBuyerCharacterId] = useState<number | null>(null);
   const [selectedBagRowId, setSelectedBagRowId] = useState<number | null>(null);
@@ -345,6 +347,42 @@ export default function ComercioPage() {
       );
     } finally {
       setCancelingId(null);
+    }
+  };
+
+  const cancelPublication = async (publicationId: number) => {
+    if (!authHeaders) return;
+
+    setCancelingPublicationId(publicationId);
+    try {
+      const res = await fetch(`/api/comercio/publicaciones/${publicationId}/cancelar`, {
+        method: "POST",
+        headers: authHeaders,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo cancelar la publicación");
+      }
+
+      showAlert(
+        "Publicación cancelada",
+        data.refundedGold != null
+          ? "Se canceló y se reembolsó el oro al comprador"
+          : "Se canceló tu publicación",
+        "info",
+      );
+
+      await refreshUser();
+      await loadData();
+    } catch (error) {
+      showAlert(
+        "No se pudo cancelar",
+        error instanceof Error ? error.message : "Error desconocido",
+        "error",
+      );
+    } finally {
+      setCancelingPublicationId(null);
     }
   };
 
@@ -650,6 +688,19 @@ export default function ComercioPage() {
                           <p className="text-sm text-gold font-bold mt-1">
                             {pub.precio.toLocaleString()} 🪙
                           </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => cancelPublication(pub.id)}
+                            disabled={cancelingPublicationId === pub.id}
+                          >
+                            {cancelingPublicationId === pub.id
+                              ? "Cancelando..."
+                              : pub.estado === "solicitado"
+                                ? "Cancelar y reembolsar"
+                                : "Cancelar publicación"}
+                          </Button>
                         </div>
                       ))
                     )}
