@@ -109,6 +109,15 @@ export default function ComercioPage() {
     [],
   );
 
+  const emitAuthRefresh = useCallback((oro?: number) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("auth:refresh", {
+        detail: { oro },
+      }),
+    );
+  }, []);
+
   const authHeaders = useMemo(() => {
     if (!token) return undefined;
     return {
@@ -301,6 +310,7 @@ export default function ComercioPage() {
       }
 
       showAlert("Solicitud enviada", "El vendedor debe aprobar la compra", "success");
+      emitAuthRefresh(typeof data?.oro === "number" ? data.oro : undefined);
       await refreshUser();
       await loadData();
     } catch (error) {
@@ -336,6 +346,9 @@ export default function ComercioPage() {
         "Solicitud cancelada",
         "Se devolvió el oro reservado por esta compra",
         "info",
+      );
+      emitAuthRefresh(
+        typeof data?.refundedGold === "number" ? data.refundedGold : undefined,
       );
       await refreshUser();
       await loadData();
@@ -373,6 +386,7 @@ export default function ComercioPage() {
         "info",
       );
 
+      emitAuthRefresh();
       await refreshUser();
       await loadData();
     } catch (error) {
@@ -409,6 +423,12 @@ export default function ComercioPage() {
           : "La publicación vuelve a estar disponible",
         action === "aceptar" ? "success" : "info",
       );
+
+      if (action === "aceptar") {
+        emitAuthRefresh(
+          typeof data?.sellerGold === "number" ? data.sellerGold : undefined,
+        );
+      }
 
       await refreshUser();
       await loadData();
