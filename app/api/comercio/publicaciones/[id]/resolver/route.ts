@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { modifyGold } from "@/lib/goldService";
 
 export async function POST(
   request: Request,
@@ -36,7 +37,9 @@ export async function POST(
 
   const { data: publication, error: publicationError } = await db
     .from("publicaciones_comercio")
-    .select("id, vendedor_usuario_id, estado, item_bolsa_id")
+    .select(
+      "id, vendedor_usuario_id, estado, item_bolsa_id, comprador_usuario_id, comprador_personaje_id, precio",
+    )
     .eq("id", publicationId)
     .maybeSingle();
 
@@ -60,6 +63,32 @@ export async function POST(
       );
     }
 
+    if (!publication.comprador_usuario_id) {
+      return NextResponse.json(
+        { error: "La publicación no tiene comprador para reembolsar" },
+        { status: 409 },
+      );
+    }
+
+    let refundedGold: number;
+    try {
+      refundedGold = await modifyGold(
+        publication.comprador_usuario_id,
+        Math.floor(Number(publication.precio ?? 0)),
+        "reembolso_compra_comercio",
+      );
+    } catch (refundError) {
+      return NextResponse.json(
+        {
+          error:
+            refundError instanceof Error
+              ? refundError.message
+              : "No se pudo reembolsar el oro al comprador",
+        },
+        { status: 500 },
+      );
+    }
+
     const { data: updated, error: rejectError } = await db
       .from("publicaciones_comercio")
       .update({
@@ -70,6 +99,7 @@ export async function POST(
       })
       .eq("id", publicationId)
       .eq("estado", "solicitado")
+      .eq("comprador_usuario_id", publication.comprador_usuario_id)
       .select("id, estado")
       .maybeSingle();
 
@@ -78,13 +108,19 @@ export async function POST(
     }
 
     if (!updated) {
+      await modifyGold(
+        publication.comprador_usuario_id,
+        -Math.floor(Number(publication.precio ?? 0)),
+        "reversion_reembolso_comercio",
+      ).catch(() => null);
+
       return NextResponse.json(
         { error: "La publicación cambió de estado" },
         { status: 409 },
       );
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, refundedGold });
   }
 
   const { data, error: acceptError } = await db.rpc(

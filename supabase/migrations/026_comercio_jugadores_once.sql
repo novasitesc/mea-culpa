@@ -167,10 +167,17 @@ BEGIN
     RAISE EXCEPTION 'Bolsa llena: capacidad máxima de % slots alcanzada para el comprador', v_comprador_capacidad;
   END IF;
 
-  -- Transferencia de oro con registro de transacción
-  SELECT public.modificar_oro(v_comprador_usuario_id, -v_precio, 'compra_comercio', NULL)
-    INTO v_oro_comprador;
+  -- El comprador ya pagó al momento de solicitar la compra (reserva de oro).
+  SELECT oro
+  INTO v_oro_comprador
+  FROM public.perfiles
+  WHERE id = v_comprador_usuario_id;
 
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Comprador no encontrado';
+  END IF;
+
+  -- Aceptar transfiere el monto reservado al vendedor.
   SELECT public.modificar_oro(v_vendedor_usuario_id, v_precio, 'venta_comercio', NULL)
     INTO v_oro_vendedor;
 

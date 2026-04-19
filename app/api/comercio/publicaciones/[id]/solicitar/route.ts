@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { modifyGold } from "@/lib/goldService";
 
 export async function POST(
   request: Request,
@@ -51,7 +52,7 @@ export async function POST(
 
   const { data: publication, error: publicationError } = await db
     .from("publicaciones_comercio")
-    .select("id, vendedor_usuario_id, estado")
+    .select("id, vendedor_usuario_id, estado, precio")
     .eq("id", publicationId)
     .maybeSingle();
 
@@ -71,6 +72,10 @@ export async function POST(
     return NextResponse.json({ error: "La publicación ya no está disponible" }, { status: 409 });
   }
 
+  if (Number(publication.precio ?? 0) <= 0) {
+    return NextResponse.json({ error: "La publicación tiene un precio inválido" }, { status: 409 });
+  }
+
   const { data: updated, error: updateError } = await db
     .from("publicaciones_comercio")
     .update({
@@ -81,7 +86,7 @@ export async function POST(
     })
     .eq("id", publicationId)
     .eq("estado", "publicado")
-    .select("id, estado, comprador_usuario_id, comprador_personaje_id")
+    .select("id, estado, comprador_usuario_id, comprador_personaje_id, precio")
     .maybeSingle();
 
   if (updateError) {
@@ -95,5 +100,35 @@ export async function POST(
     );
   }
 
-  return NextResponse.json(updated);
+  try {
+    const oro = await modifyGold(
+      user.id,
+      -Math.floor(Number(updated.precio ?? publication.precio ?? 0)),
+      "reserva_compra_comercio",
+    );
+
+    return NextResponse.json({
+      ...updated,
+      oro,
+    });
+  } catch (goldError) {
+    await db
+      .from("publicaciones_comercio")
+      .update({
+        estado: "publicado",
+        comprador_usuario_id: null,
+        comprador_personaje_id: null,
+        actualizado_en: new Date().toISOString(),
+      })
+      .eq("id", publicationId)
+      .eq("estado", "solicitado")
+      .eq("comprador_usuario_id", user.id);
+
+    const message =
+      goldError instanceof Error ? goldError.message : "No se pudo reservar el oro";
+    if (message.toLowerCase().includes("insuficiente")) {
+      return NextResponse.json({ error: "No tienes oro suficiente para solicitar esta compra" }, { status: 422 });
+    }
+    return NextResponse.json({ error: "No se pudo reservar el oro para la solicitud" }, { status: 500 });
+  }
 }

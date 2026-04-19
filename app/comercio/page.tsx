@@ -93,6 +93,7 @@ export default function ComercioPage() {
   const [publishing, setPublishing] = useState(false);
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [requestingId, setRequestingId] = useState<number | null>(null);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
   const [selectedSellerCharacterId, setSelectedSellerCharacterId] = useState<number | null>(null);
   const [selectedBuyerCharacterId, setSelectedBuyerCharacterId] = useState<number | null>(null);
   const [selectedBagRowId, setSelectedBagRowId] = useState<number | null>(null);
@@ -219,6 +220,14 @@ export default function ComercioPage() {
     [market, user?.id],
   );
 
+  const myRequestedPublications = useMemo(
+    () =>
+      mine.filter(
+        (p) => p.compradorUsuarioId === user?.id && p.estado === "solicitado",
+      ),
+    [mine, user?.id],
+  );
+
   const publishItem = async () => {
     if (!authHeaders) return;
     if (!selectedSellerCharacterId || !selectedBagRowId) {
@@ -290,6 +299,7 @@ export default function ComercioPage() {
       }
 
       showAlert("Solicitud enviada", "El vendedor debe aprobar la compra", "success");
+      await refreshUser();
       await loadData();
     } catch (error) {
       showAlert(
@@ -299,6 +309,42 @@ export default function ComercioPage() {
       );
     } finally {
       setRequestingId(null);
+    }
+  };
+
+  const cancelRequest = async (publicationId: number) => {
+    if (!authHeaders) return;
+
+    setCancelingId(publicationId);
+    try {
+      const res = await fetch(
+        `/api/comercio/publicaciones/${publicationId}/cancelar-solicitud`,
+        {
+          method: "POST",
+          headers: authHeaders,
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo cancelar la solicitud");
+      }
+
+      showAlert(
+        "Solicitud cancelada",
+        "Se devolvió el oro reservado por esta compra",
+        "info",
+      );
+      await refreshUser();
+      await loadData();
+    } catch (error) {
+      showAlert(
+        "No se pudo cancelar",
+        error instanceof Error ? error.message : "Error desconocido",
+        "error",
+      );
+    } finally {
+      setCancelingId(null);
     }
   };
 
@@ -480,6 +526,11 @@ export default function ComercioPage() {
                     <div className="space-y-3">
                       {marketItems.map((pub) => {
                         const isAvailable = pub.estado === "publicado";
+                        const isMyPendingRequest =
+                          pub.estado === "solicitado" &&
+                          pub.compradorUsuarioId === user?.id;
+                        const userGold = Number(user?.oro ?? profile?.player?.oro ?? 0);
+                        const canAfford = userGold >= pub.precio;
                         return (
                           <div
                             key={pub.id}
@@ -497,15 +548,30 @@ export default function ComercioPage() {
                               </p>
                             </div>
                             <Button
-                              onClick={() => requestPurchase(pub.id)}
-                              disabled={!isAvailable || requestingId === pub.id}
+                              onClick={() =>
+                                isMyPendingRequest
+                                  ? cancelRequest(pub.id)
+                                  : requestPurchase(pub.id)
+                              }
+                              disabled={
+                                requestingId === pub.id ||
+                                cancelingId === pub.id ||
+                                (!isMyPendingRequest &&
+                                  (!isAvailable || !canAfford))
+                              }
                               size="sm"
                             >
                               {requestingId === pub.id
                                 ? "Solicitando..."
-                                : isAvailable
-                                  ? "Solicitar compra"
-                                  : "No disponible"}
+                                : cancelingId === pub.id
+                                  ? "Cancelando..."
+                                  : isMyPendingRequest
+                                    ? "Cancelar solicitud"
+                                    : isAvailable
+                                      ? canAfford
+                                        ? "Solicitar compra"
+                                        : "Oro insuficiente"
+                                      : "No disponible"}
                             </Button>
                           </div>
                         );
@@ -567,7 +633,7 @@ export default function ComercioPage() {
 
                 <Card className="medieval-border">
                   <CardHeader className="border-b border-border pb-4">
-                    <CardTitle className="text-gold">Tus publicaciones</CardTitle>
+                    <CardTitle className="text-gold">Tus publicaciones y solicitudes</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-2">
                     {myActivePublications.length === 0 ? (
@@ -586,6 +652,34 @@ export default function ComercioPage() {
                           </p>
                         </div>
                       ))
+                    )}
+
+                    {myRequestedPublications.length > 0 && (
+                      <>
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground pt-3">
+                          Solicitudes que tú hiciste
+                        </p>
+                        {myRequestedPublications.map((pub) => (
+                          <div key={`request-${pub.id}`} className="rounded-lg border border-border p-3 bg-card/40">
+                            <p className="text-sm font-semibold">
+                              {pub.item.icono} {pub.item.nombre} x{pub.item.cantidad}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Estado: {pub.estado}</p>
+                            <p className="text-sm text-gold font-bold mt-1">
+                              Reservado: {pub.precio.toLocaleString()} 🪙
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => cancelRequest(pub.id)}
+                              disabled={cancelingId === pub.id}
+                            >
+                              {cancelingId === pub.id ? "Cancelando..." : "Cancelar solicitud"}
+                            </Button>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </CardContent>
                 </Card>
