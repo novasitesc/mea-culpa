@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { emitAuthRefresh } from "@/lib/authRefresh";
 import type { RouletteCategory, RouletteCostStep } from "@/lib/roulette";
 
 type PlayerState = {
@@ -423,13 +424,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
         };
       });
 
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("auth:refresh", {
-            detail: { oro: data.oro ?? undefined },
-          }),
-        );
-      }
+      emitAuthRefresh(data.oro ?? undefined);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No se pudo tirar";
       setError(message);

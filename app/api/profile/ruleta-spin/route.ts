@@ -2,6 +2,21 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getNextSpinCost, rollRoulette } from "@/lib/roulette";
 
+async function getCurrentGold(userId: string): Promise<number | null> {
+  const db = createServerClient();
+  const { data, error } = await db
+    .from("perfiles")
+    .select("oro")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data?.oro === "number" ? data.oro : null;
+}
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("Authorization");
@@ -95,6 +110,18 @@ export async function POST(request: Request) {
     }
 
     const row = Array.isArray(data) ? data[0] : data;
+    let resolvedGold =
+      typeof row?.oro_resultante === "number" ? row.oro_resultante : null;
+
+    if (nextCost.type === "oro" && resolvedGold === null) {
+      resolvedGold = await getCurrentGold(user.id);
+      if (resolvedGold === null) {
+        return NextResponse.json(
+          { error: "No se pudo resolver el saldo tras la tirada" },
+          { status: 500 },
+        );
+      }
+    }
 
     if (nextCost.type === "usd" && row?.tirada_id && prepaidPayment) {
       const { error: spinUpdateError } = await db
@@ -138,7 +165,7 @@ export async function POST(request: Request) {
         amount: nextCost.amount,
       },
       cobroPendiente: false,
-      oro: row?.oro_resultante ?? null,
+      oro: resolvedGold,
       nextCost: getNextSpinCost(totalSpins + 1),
       spinCount: totalSpins + 1,
     });
