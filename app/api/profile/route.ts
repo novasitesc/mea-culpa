@@ -178,6 +178,7 @@ export async function GET(request: Request) {
           equipmentPriceByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
+          .filter((bi: any) => !bi.publicado_en_trade)
           .sort((a: any, b: any) => a.orden - b.orden)
           .map((bi: any) => ({
             bagRowId: bi.id,
