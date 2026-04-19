@@ -1311,7 +1311,7 @@ export default function EquipmentModal({
       >
         {/* Modal */}
         <div
-          className="relative w-full max-w-[1650px] rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
+          className="relative w-full max-w-412.5 rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
           style={{
             background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
             border: "1px solid #8B7355",
@@ -1345,7 +1345,7 @@ export default function EquipmentModal({
           <div className="flex overflow-hidden flex-1 min-h-0">
             {/* LEFT: Character figure */}
             <div
-              className="w-[900px] shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
+              className="w-225 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
               <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
@@ -1433,7 +1433,7 @@ export default function EquipmentModal({
             </div>
 
             {/* RIGHT: Bag */}
-            <div className="w-[560px] shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
+            <div className="w-140 shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
               {/* Bag header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
