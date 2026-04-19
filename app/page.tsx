@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
@@ -54,7 +54,15 @@ type HomePageProps = {
   forcedSection?: "inicio" | "ruleta";
 };
 
-export default function HomePage({ forcedSection }: HomePageProps) {
+export default function HomePage(props: HomePageProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <HomePageContent {...props} />
+    </Suspense>
+  );
+}
+
+function HomePageContent({ forcedSection }: HomePageProps) {
   const { user, token } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
