@@ -61,8 +61,7 @@ export async function POST(
   try {
     refundedGold = await modifyGold(
       user.id,
--      Math.floor(Number(publication.precio ?? 0)),
-+      refundAmount,
+      refundAmount,
       "cancelacion_solicitud_comercio",
     );
   } catch (refundError) {
