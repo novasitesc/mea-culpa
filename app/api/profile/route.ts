@@ -1,6 +1,52 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
+import { getUserFromRequest } from "@/lib/apiAuth";
+
+function normalizeNivel20Url(rawValue: unknown): {
+  value: string | null;
+  error: string | null;
+} {
+  if (rawValue == null) {
+    return { value: null, error: null };
+  }
+
+  if (typeof rawValue !== "string") {
+    return { value: null, error: "nivel20Url debe ser texto o null" };
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return { value: null, error: null };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { value: null, error: "Ingresa una URL valida" };
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return {
+      value: null,
+      error: "La URL debe iniciar con http:// o https://",
+    };
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  const isNivel20Domain =
+    hostname === "nivel20.com" || hostname.endsWith(".nivel20.com");
+
+  if (!isNivel20Domain) {
+    return {
+      value: null,
+      error: "Solo se permiten enlaces de nivel20.com",
+    };
+  }
+
+  return { value: parsed.toString(), error: null };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +61,7 @@ export async function GET(request: Request) {
   // Obtener perfil del jugador
   const { data: perfil } = await db
     .from("perfiles")
-    .select("nombre, rol, nivel, hogar, oro, max_personajes")
+    .select("nombre, rol, nivel, hogar, oro, max_personajes, nivel20_url")
     .eq("id", userId)
     .single();
 
@@ -206,8 +252,53 @@ export async function GET(request: Request) {
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
       maxCharacterSlots: perfil?.max_personajes ?? 2,
+      nivel20Url: perfil?.nivel20_url ?? null,
     },
     characters,
     userId,
+  });
+}
+
+export async function PATCH(request: Request) {
+  const db = createServerClient();
+  const { user, error: authError } = await getUserFromRequest(db, request);
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  let body: { nivel20Url?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo JSON invalido" }, { status: 400 });
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(body, "nivel20Url")) {
+    return NextResponse.json(
+      { error: "nivel20Url es requerido" },
+      { status: 400 },
+    );
+  }
+
+  const normalized = normalizeNivel20Url(body.nivel20Url);
+  if (normalized.error) {
+    return NextResponse.json({ error: normalized.error }, { status: 400 });
+  }
+
+  const { data, error } = await db
+    .from("perfiles")
+    .update({ nivel20_url: normalized.value })
+    .eq("id", user.id)
+    .select("nivel20_url")
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    nivel20Url: data?.nivel20_url ?? normalized.value,
   });
 }

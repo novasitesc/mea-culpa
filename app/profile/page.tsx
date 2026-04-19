@@ -18,6 +18,7 @@ type Player = {
   home: string;
   oro: number;
   maxCharacterSlots: number;
+  nivel20Url: string | null;
 };
 
 type ArmorSlots = {
@@ -170,6 +171,8 @@ export default function ProfilePage() {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [slotUpgradeMessage, setSlotUpgradeMessage] = useState<string | null>(null);
   const [isUpgradingSlots, setIsUpgradingSlots] = useState(false);
+  const [nivel20UrlInput, setNivel20UrlInput] = useState("");
+  const [savingNivel20Url, setSavingNivel20Url] = useState(false);
   const [newCharacter, setNewCharacter] = useState<{
     name: string;
     race: string;
@@ -217,9 +220,113 @@ export default function ProfilePage() {
         home: data.player.home,
         oro: user.oro,
         maxCharacterSlots: data.player.maxCharacterSlots ?? 2,
+        nivel20Url: data.player.nivel20Url ?? null,
       },
     });
+
+    setNivel20UrlInput(data.player.nivel20Url ?? "");
   }, [isAuthenticated, user]);
+
+  const normalizeNivel20UrlForClient = (rawValue: string): {
+    value: string | null;
+    error: string | null;
+  } => {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return { value: null, error: null };
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return { value: null, error: "Ingresa una URL valida" };
+    }
+
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return {
+        value: null,
+        error: "La URL debe iniciar con http:// o https://",
+      };
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const isNivel20Domain =
+      hostname === "nivel20.com" || hostname.endsWith(".nivel20.com");
+
+    if (!isNivel20Domain) {
+      return {
+        value: null,
+        error: "Solo se permiten enlaces de nivel20.com",
+      };
+    }
+
+    return { value: parsed.toString(), error: null };
+  };
+
+  const saveNivel20Url = async () => {
+    if (!token || !profile) return;
+
+    const normalized = normalizeNivel20UrlForClient(nivel20UrlInput);
+    if (normalized.error) {
+      showProfileAlert("URL invalida", normalized.error, "warning");
+      return;
+    }
+
+    setSavingNivel20Url(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nivel20Url: normalized.value }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        nivel20Url?: string | null;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo guardar el enlace de Nivel20");
+      }
+
+      const persistedValue = data.nivel20Url ?? normalized.value;
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              player: {
+                ...prev.player,
+                nivel20Url: persistedValue,
+              },
+            }
+          : prev,
+      );
+      setNivel20UrlInput(persistedValue ?? "");
+
+      window.dispatchEvent(new CustomEvent("auth:refresh", { detail: {} }));
+      showProfileAlert(
+        "Perfil actualizado",
+        persistedValue
+          ? "Enlace de Nivel20 guardado correctamente."
+          : "Enlace de Nivel20 eliminado.",
+        "success",
+      );
+    } catch (error) {
+      console.error("Error saving Nivel20 URL:", error);
+      showProfileAlert(
+        "No se pudo guardar",
+        error instanceof Error ? error.message : "Error desconocido",
+        "error",
+      );
+    } finally {
+      setSavingNivel20Url(false);
+    }
+  };
 
   const loadSleepStatus = useCallback(async () => {
     if (!isAuthenticated || !token) return;
@@ -646,6 +753,50 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
+
+                <div className="mt-4 space-y-3 max-w-2xl">
+                  <label className="block text-xs tracking-[0.2em] uppercase text-[#B8860B]">
+                    Link de Nivel20
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={nivel20UrlInput}
+                      onChange={(e) => setNivel20UrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          saveNivel20Url();
+                        }
+                      }}
+                      placeholder="https://nivel20.com/games/dnd-5"
+                      className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveNivel20Url}
+                      disabled={savingNivel20Url}
+                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingNivel20Url ? "Guardando..." : "Guardar"}
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Se permite nivel20.com y subdominios (por ejemplo www.nivel20.com).
+                  </p>
+
+                  {player?.nivel20Url && (
+                    <a
+                      href={player.nivel20Url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-[#D4AF37] hover:text-[#B8860B] underline underline-offset-4"
+                    >
+                      Abrir mi partida en Nivel20
+                    </a>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">

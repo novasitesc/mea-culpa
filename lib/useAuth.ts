@@ -13,6 +13,7 @@ export interface User {
   home: string;
   oro: number;
   isAdmin: boolean;
+  nivel20Url: string | null;
 }
 
 export function useAuth() {
@@ -85,7 +86,7 @@ export function useAuth() {
   async function hydrateProfile(uid: string, email: string) {
     const { data } = await getSupabase()
       .from("perfiles")
-      .select("nombre, rol, nivel, hogar, oro, es_admin")
+      .select("nombre, rol, nivel, hogar, oro, es_admin, nivel20_url")
       .eq("id", uid)
       .single();
 
@@ -98,6 +99,7 @@ export function useAuth() {
       home: data?.hogar ?? "Sin hogar",
       oro: data?.oro ?? 0,
       isAdmin: data?.es_admin ?? false,
+      nivel20Url: data?.nivel20_url ?? null,
     });
   }
 
