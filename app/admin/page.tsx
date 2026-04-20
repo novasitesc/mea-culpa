@@ -3907,6 +3907,7 @@ export default function AdminPage() {
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "ruleta", label: "Ruleta", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
