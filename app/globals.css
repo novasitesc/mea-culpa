@@ -200,6 +200,37 @@
   background: rgba(12, 12, 12, 0.92) !important;
 }
 
+/* Controles +/- de input[type='number'] en estilo oscuro medieval */
+input[type="number"] {
+  color-scheme: dark;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+  margin: 0;
+  width: 1.1rem;
+  min-height: 1.6rem;
+  border-left: 1px solid rgba(139, 115, 85, 0.55);
+  background: linear-gradient(
+    180deg,
+    rgba(24, 20, 16, 0.95) 0%,
+    rgba(45, 34, 24, 0.95) 50%,
+    rgba(24, 20, 16, 0.95) 100%
+  ) !important;
+  cursor: pointer;
+}
+
+input[type="number"]::-webkit-inner-spin-button:hover,
+input[type="number"]::-webkit-outer-spin-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(56, 41, 24, 0.95) 0%,
+    rgba(80, 57, 26, 0.95) 50%,
+    rgba(56, 41, 24, 0.95) 100%
+  ) !important;
+}
+
 /* Marco épico de fantasía D&D - Ultra detallado */
 .logo-frame {
   position: relative;
