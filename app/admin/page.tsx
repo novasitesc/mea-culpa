@@ -3339,7 +3339,9 @@ function TaxesTab({
   token: string;
   onToast: (msg: string, type: "success" | "error") => void;
 }) {
+  const requiredConfirmation = "CONFIRMAR IMPUESTOS";
   const [amount, setAmount] = useState("");
+  const [confirmationText, setConfirmationText] = useState("");
   const [rows, setRows] = useState<AdminTaxRow[]>([]);
   const [summary, setSummary] = useState<AdminTaxSummary | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -3351,6 +3353,11 @@ function TaxesTab({
     const integer = Math.floor(numeric);
     return integer > 0 ? integer : null;
   }, [amount]);
+
+  const isConfirmationValid = useMemo(
+    () => confirmationText.trim().toUpperCase() === requiredConfirmation,
+    [confirmationText, requiredConfirmation],
+  );
 
   const loadPreview = useCallback(async () => {
     if (!parsedAmount) {
@@ -3388,6 +3395,11 @@ function TaxesTab({
       return;
     }
 
+    if (!isConfirmationValid) {
+      onToast(`Debes escribir \"${requiredConfirmation}\" para confirmar`, "error");
+      return;
+    }
+
     setLoadingApply(true);
     const res = await fetch("/api/admin/impuestos/cobrar", {
       method: "POST",
@@ -3395,7 +3407,10 @@ function TaxesTab({
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ amount: parsedAmount }),
+      body: JSON.stringify({
+        amount: parsedAmount,
+        confirmationText,
+      }),
     });
 
     setLoadingApply(false);
@@ -3415,7 +3430,15 @@ function TaxesTab({
       `Cobro ejecutado. Oro cobrado: ${totalCharged}. Muertes aplicadas: ${deathsApplied}.`,
       "success",
     );
-  }, [parsedAmount, token, onToast]);
+    setConfirmationText("");
+  }, [
+    parsedAmount,
+    isConfirmationValid,
+    requiredConfirmation,
+    token,
+    confirmationText,
+    onToast,
+  ]);
 
   const statusLabel = (status: AdminTaxStatus) => {
     if (status === "cobrado_total") return "Cobrado total";
@@ -3440,11 +3463,11 @@ function TaxesTab({
       <div className="bg-secondary/20 p-4 rounded-lg border border-border flex flex-col gap-4">
         <h3 className="text-lg font-semibold text-gold">Cobrar Impuestos Globales</h3>
         <p className="text-sm text-muted-foreground">
-          Se cobrará el mismo monto a todas las cuentas de jugadores. Si una cuenta no alcanza,
-          se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
+          Se cobrará el mismo monto a todas las cuentas de jugadores y admins. Si una cuenta no
+          alcanza, se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,260px)_1fr] gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <FormField label="Monto fijo de impuesto">
             <GoldAmountInput
               className={inputCls}
@@ -3456,7 +3479,17 @@ function TaxesTab({
             />
           </FormField>
 
-          <div className="flex gap-3 md:justify-end">
+          <FormField label={`Escribe \"${requiredConfirmation}\" para habilitar cobro`}>
+            <input
+              className={inputCls}
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              placeholder={requiredConfirmation}
+              autoComplete="off"
+            />
+          </FormField>
+
+          <div className="flex gap-3 md:justify-end md:col-span-2">
             <button
               type="button"
               onClick={loadPreview}
@@ -3469,7 +3502,7 @@ function TaxesTab({
             <button
               type="button"
               onClick={applyTax}
-              disabled={loadingPreview || loadingApply || !parsedAmount}
+              disabled={loadingPreview || loadingApply || !parsedAmount || !isConfirmationValid}
               className="px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
             >
               {loadingApply && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -3844,17 +3877,26 @@ export default function AdminPage() {
     );
   }
 
+  const isSuperAdmin = user.rolSistema === "super_admin";
+
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
-    { id: "impuestos", label: "Cobrar Impuestos", icon: Coins },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
     { id: "historial-partidas", label: "Historial", icon: Shield },
   ];
+
+  if (isSuperAdmin) {
+    tabs.splice(4, 0, {
+      id: "impuestos",
+      label: "Cobrar Impuestos",
+      icon: Coins,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -3922,7 +3964,7 @@ export default function AdminPage() {
             {activeTab === "transacciones" && (
               <TransactionsTab token={token} onToast={showToast} />
             )}
-            {activeTab === "impuestos" && (
+            {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />
             )}
             {activeTab === "muertes" && (

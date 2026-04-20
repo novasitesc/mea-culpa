@@ -140,7 +140,7 @@ async function runMassTax(params: {
   const { data: profilesData, error: profilesError } = await db
     .from("perfiles")
     .select("id, nombre, oro")
-    .eq("rol_sistema", "usuario")
+    .in("rol_sistema", ["usuario", "admin"])
     .order("creado_en", { ascending: true });
 
   if (profilesError) {

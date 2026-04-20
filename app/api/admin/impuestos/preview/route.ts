@@ -7,6 +7,13 @@ export async function POST(request: NextRequest) {
   if ("error" in result) return result.error;
   const { session } = result;
 
+  if (session.rolSistema !== "super_admin") {
+    return NextResponse.json(
+      { error: "Solo un super_admin puede generar vista previa de impuestos" },
+      { status: 403 },
+    );
+  }
+
   let body: { amount?: unknown };
   try {
     body = await request.json();
