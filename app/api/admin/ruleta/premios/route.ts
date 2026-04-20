@@ -28,10 +28,9 @@ export async function GET(request: Request) {
   const { session } = result;
   const { data, error } = await session.db
     .from("ruleta_premios_pool")
-    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, orden, creado_en, actualizado_en, creado_por, actualizado_por, objetos:objeto_id(nombre, icono, precio)")
+    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, creado_en, actualizado_en, creado_por, actualizado_por, objetos:objeto_id(nombre, icono, precio)")
     .order("categoria", { ascending: true })
     .order("activo", { ascending: false })
-    .order("orden", { ascending: true })
     .order("creado_en", { ascending: true });
 
   if (error) {
@@ -53,7 +52,6 @@ export async function GET(request: Request) {
       objectId: row.objeto_id,
       objectQuantity: row.objeto_cantidad,
       active: row.activo,
-      order: row.orden,
       createdAt: row.creado_en,
       updatedAt: row.actualizado_en,
       object: row.objetos
@@ -78,7 +76,6 @@ export async function POST(request: Request) {
   const rewardType = normalizeRewardType(body?.rewardType);
   const label = typeof body?.label === "string" ? body.label.trim() : "";
   const active = typeof body?.active === "boolean" ? body.active : true;
-  const order = Number.isFinite(Number(body?.order)) ? Math.floor(Number(body.order)) : 0;
 
   if (!category) {
     return NextResponse.json({ error: "Categoria invalida" }, { status: 400 });
@@ -91,8 +88,7 @@ export async function POST(request: Request) {
     categoria: category,
     tipo_recompensa: rewardType,
     etiqueta: label,
-    activo,
-    orden,
+    activo: active,
   };
 
   if (rewardType === "oro") {
@@ -134,7 +130,7 @@ export async function POST(request: Request) {
   const { data, error } = await session.db
     .from("ruleta_premios_pool")
     .insert(payload)
-    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, orden, creado_en, actualizado_en")
+    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, creado_en, actualizado_en")
     .single();
 
   if (error) {

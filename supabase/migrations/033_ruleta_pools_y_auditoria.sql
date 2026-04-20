@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS public.ruleta_premios_pool (
   objeto_id BIGINT REFERENCES public.objetos(id) ON DELETE SET NULL,
   objeto_cantidad INT NOT NULL DEFAULT 1 CHECK (objeto_cantidad > 0),
   activo BOOLEAN NOT NULL DEFAULT true,
-  orden INT NOT NULL DEFAULT 0,
   creado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
   actualizado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
   creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -26,8 +25,8 @@ CREATE TABLE IF NOT EXISTS public.ruleta_premios_pool (
   )
 );
 
-CREATE INDEX IF NOT EXISTS idx_ruleta_premios_pool_categoria_activo_orden
-  ON public.ruleta_premios_pool (categoria, activo, orden, creado_en DESC);
+CREATE INDEX IF NOT EXISTS idx_ruleta_premios_pool_categoria_activo
+  ON public.ruleta_premios_pool (categoria, activo, creado_en DESC);
 
 CREATE INDEX IF NOT EXISTS idx_ruleta_premios_pool_objeto
   ON public.ruleta_premios_pool (objeto_id);

@@ -32,7 +32,6 @@ type RuletaPool = {
   objectId: number | null;
   objectQuantity: number;
   active: boolean;
-  order: number;
   object: { name: string; icon: string; price: number } | null;
 };
 
@@ -51,7 +50,6 @@ type TabState = {
   goldAmount: string;
   objectId: number | null;
   objectQuantity: string;
-  order: string;
   active: boolean;
 };
 
@@ -62,7 +60,6 @@ const defaultState: TabState = {
   goldAmount: "1000",
   objectId: null,
   objectQuantity: "1",
-  order: "0",
   active: true,
 };
 
@@ -152,7 +149,6 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
       rewardType: form.rewardType,
       label: form.label,
       active: form.active,
-      order: Number(form.order) || 0,
     };
 
     if (form.rewardType === "oro") {
@@ -294,26 +290,13 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
                   onChange={(e) => setForm((current) => ({ ...current, objectQuantity: e.target.value }))}
                   placeholder="Cantidad"
                 />
-                <input
-                  type="number"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  value={form.order}
-                  onChange={(e) => setForm((current) => ({ ...current, order: e.target.value }))}
-                  placeholder="Orden"
-                />
+                <div className="w-full" />
               </div>
             </label>
           )}
 
           {form.rewardType === "oro" ? (
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                value={form.order}
-                onChange={(e) => setForm((current) => ({ ...current, order: e.target.value }))}
-                placeholder="Orden"
-              />
+            <div className="grid grid-cols-1 gap-3">
               <button
                 type="button"
                 onClick={() => setForm((current) => ({ ...current, active: !current.active }))}
@@ -378,8 +361,6 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
                             {pool.rewardType === "oro"
                               ? `${pool.goldAmount?.toLocaleString("es-ES") ?? 0} oro`
                               : `${pool.objectQuantity} unidad${pool.objectQuantity === 1 ? "" : "es"}`}
-                            {" · "}
-                            Orden {pool.order}
                             {" · "}
                             {pool.active ? "Activa" : "Inactiva"}
                           </p>

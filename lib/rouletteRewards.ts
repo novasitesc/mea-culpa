@@ -12,7 +12,6 @@ export type RoulettePrizePoolRow = {
   objeto_id: number | null;
   objeto_cantidad: number | null;
   activo: boolean;
-  orden: number;
   creado_en?: string | null;
   objetos?: {
     nombre: string | null;
@@ -38,17 +37,35 @@ export async function getActiveRoulettePool(
 ): Promise<RoulettePrizePoolRow[]> {
   const { data, error } = await db
     .from("ruleta_premios_pool")
-    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, orden, creado_en, objetos:objeto_id(nombre, icono)")
+    .select("id, categoria, tipo_recompensa, etiqueta, oro_monto, objeto_id, objeto_cantidad, activo, creado_en, objetos:objeto_id(nombre, icono)")
     .eq("categoria", category)
     .eq("activo", true)
-    .order("orden", { ascending: true })
     .order("creado_en", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []) as RoulettePrizePoolRow[];
+  return (data ?? []).map((row: any) => {
+    const objectRow = Array.isArray(row.objetos) ? row.objetos[0] : row.objetos;
+    return {
+      id: row.id,
+      categoria: row.categoria,
+      tipo_recompensa: row.tipo_recompensa,
+      etiqueta: row.etiqueta,
+      oro_monto: row.oro_monto,
+      objeto_id: row.objeto_id,
+      objeto_cantidad: row.objeto_cantidad,
+      activo: row.activo,
+      creado_en: row.creado_en,
+      objetos: objectRow
+        ? {
+            nombre: objectRow.nombre ?? null,
+            icono: objectRow.icono ?? null,
+          }
+        : null,
+    } satisfies RoulettePrizePoolRow;
+  });
 }
 
 export function pickRoulettePrize(

@@ -40,13 +40,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   if (body?.label !== undefined) updates.etiqueta = String(body.label).trim();
   if (body?.active !== undefined) updates.activo = Boolean(body.active);
-  if (body?.order !== undefined) {
-    const order = Number(body.order);
-    if (!Number.isFinite(order)) {
-      return NextResponse.json({ error: "Orden invalido" }, { status: 400 });
-    }
-    updates.orden = Math.floor(order);
-  }
 
   if (body?.rewardType === "oro" || updates.tipo_recompensa === "oro") {
     const goldAmount = body?.goldAmount !== undefined ? Number(body.goldAmount) : undefined;
