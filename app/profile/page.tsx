@@ -1018,14 +1018,12 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 space-y-3">
-                <p className="text-sm text-red-100">
-                  Revivir personaje muerto: <span className="font-semibold">$10.00 USD</span>
-                </p>
+              {deadCharacters.length > 0 && (
+                <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 space-y-3">
+                  <p className="text-sm text-red-100">
+                    Revivir personaje muerto: <span className="font-semibold">$10.00 USD</span>
+                  </p>
 
-                {deadCharacters.length === 0 ? (
-                  <p className="text-xs text-red-200/80">No tienes personajes muertos para revivir.</p>
-                ) : (
                   <>
                     <select
                       value={selectedDeadCharacterId ?? ""}
@@ -1120,8 +1118,8 @@ export default function ProfilePage() {
 
                     {reviveMessage && <p className="text-xs text-red-100/90">{reviveMessage}</p>}
                   </>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 
