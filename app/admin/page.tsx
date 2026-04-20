@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Coins,
   ArrowRightLeft,
+  Dice6,
   Skull,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -27,6 +28,7 @@ import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
+import { RuletaTab } from "./ruleta-tab";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -211,6 +213,7 @@ type Tab =
   | "partidas-activas"
   | "historial-partidas"
   | "impuestos"
+  | "ruleta"
   | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -3985,6 +3988,9 @@ export default function AdminPage() {
             )}
             {activeTab === "transacciones" && (
               <TransactionsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "ruleta" && (
+              <RuletaTab token={token} onToast={showToast} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />

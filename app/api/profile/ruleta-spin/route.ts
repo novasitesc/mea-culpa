@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getNextSpinCost, rollRoulette } from "@/lib/roulette";
 import { userHasAnyAliveCharacter } from "@/lib/characterLife";
+import {
+  getActiveRoulettePool,
+  pickRoulettePrize,
+  resolveRoulettePrizeSelection,
+} from "@/lib/rouletteRewards";
 
 async function getCurrentGold(userId: string): Promise<number | null> {
   const db = createServerClient();
@@ -64,6 +69,10 @@ export async function POST(request: Request) {
     const nextCost = getNextSpinCost(totalSpins);
     const spin = rollRoulette();
 
+    const prizePools = await getActiveRoulettePool(db, spin.category);
+    const prizePool = pickRoulettePrize(prizePools);
+    const selectedPrize = resolveRoulettePrizeSelection(prizePool);
+
     let prepaidPayment:
       | {
           id: string;
@@ -102,10 +111,16 @@ export async function POST(request: Request) {
       p_usuario_id: user.id,
       p_slot: spin.slot,
       p_categoria: spin.category,
-      p_premio_label: spin.rewardLabel,
+      p_premio_pool_id: selectedPrize.poolId,
+      p_premio_tipo: selectedPrize.type,
+      p_premio_label: selectedPrize.label,
+      p_premio_oro_monto: selectedPrize.goldAmount,
+      p_premio_objeto_id: selectedPrize.objectId,
+      p_premio_objeto_cantidad: selectedPrize.objectQuantity,
       p_costo_tipo: nextCost.type,
       p_costo_monto: nextCost.amount,
       p_ciclo_numero: nextCost.step,
+      p_cobro_pendiente: false,
     });
 
     if (error) {
@@ -170,7 +185,10 @@ export async function POST(request: Request) {
       tiradaId: row?.tirada_id,
       slot: spin.slot,
       category: spin.category,
-      rewardLabel: spin.rewardLabel,
+      rewardLabel: selectedPrize.label,
+      rewardType: selectedPrize.type,
+      rewardObjectName: selectedPrize.objectName,
+      rewardObjectIcon: selectedPrize.objectIcon,
       cost: {
         step: nextCost.step,
         type: nextCost.type,

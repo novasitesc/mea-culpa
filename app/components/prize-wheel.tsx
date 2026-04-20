@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Sparkles, Trophy } from "lucide-react";
+import { History, Loader2, Settings2, Sparkles, Trophy } from "lucide-react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,57 @@ type SpinResponse = {
   oro: number | null;
   nextCost: RouletteCostStep;
   spinCount: number;
+  rewardType?: "oro" | "objeto";
+  rewardObjectName?: string | null;
+  rewardObjectIcon?: string | null;
+};
+
+type RouletteHistoryEntry = {
+  id: string;
+  slot: number;
+  category: RouletteCategory;
+  rewardLabel: string;
+  rewardType?: "oro" | "objeto";
+  rewardGoldAmount?: number | null;
+  rewardObjectQuantity?: number;
+  paymentType?: "oro" | "usd";
+  paymentAmount?: number;
+  createdAt: string;
+  object?: {
+    name?: string | null;
+    icon?: string | null;
+  } | null;
+};
+
+type RouletteHistoryResponse = {
+  tiradas: RouletteHistoryEntry[];
+};
+
+type RouletteAdminPoolItem = {
+  id: string;
+  category: RouletteCategory;
+  rewardType: "oro" | "objeto";
+  label: string;
+  goldAmount: number | null;
+  objectId: number | null;
+  objectQuantity: number;
+  active: boolean;
+  order: number;
+  object?: {
+    name?: string | null;
+    icon?: string | null;
+    price?: number | null;
+  } | null;
+};
+
+type RouletteAdminPoolsResponse = {
+  pools: RouletteAdminPoolItem[];
+};
+
+type AdminObjectOption = {
+  id: number;
+  name: string;
+  icon: string;
 };
 
 type PayPalOrderResponse = {
@@ -88,9 +139,10 @@ const categoryAccentColors: Record<RouletteCategory, string> = {
 
 type PrizeWheelProps = {
   token: string;
+  isAdmin: boolean;
 };
 
-export default function PrizeWheel({ token }: PrizeWheelProps) {
+export default function PrizeWheel({ token, isAdmin }: PrizeWheelProps) {
   const WAIT_SPIN_DEG_PER_MS = 0.42;
   const MIN_WAIT_MS = 650;
   const MIN_SETTLE_MS = 900;
@@ -109,6 +161,24 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [isPayingUsdStep, setIsPayingUsdStep] = useState(false);
   const [configTokenSnapshot, setConfigTokenSnapshot] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"jugar" | "historial" | "config">("jugar");
+  const [historyItems, setHistoryItems] = useState<RouletteHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [adminPools, setAdminPools] = useState<RouletteAdminPoolItem[]>([]);
+  const [adminObjects, setAdminObjects] = useState<AdminObjectOption[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminSaving, setAdminSaving] = useState(false);
+  const [adminDeletingId, setAdminDeletingId] = useState<string | null>(null);
+  const [adminForm, setAdminForm] = useState({
+    category: "jackpot" as RouletteCategory,
+    rewardType: "oro" as "oro" | "objeto",
+    label: "",
+    goldAmount: "1000",
+    objectId: "",
+    objectQuantity: "1",
+    order: "0",
+  });
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
@@ -169,6 +239,74 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  const fetchHistory = useCallback(async () => {
+    if (!token) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const res = await fetch("/api/profile/ruleta-historial?limit=30", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as RouletteHistoryResponse & { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo cargar historial");
+      }
+      setHistoryItems(data.tiradas ?? []);
+    } catch (err: unknown) {
+      setHistoryError(err instanceof Error ? err.message : "No se pudo cargar historial");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [token]);
+
+  const fetchAdminPools = useCallback(async () => {
+    if (!token || !isAdmin) return;
+    setAdminLoading(true);
+    try {
+      const [poolsRes, objectsRes] = await Promise.all([
+        fetch("/api/admin/ruleta/premios", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/admin/objetos", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const poolsData = (await poolsRes.json()) as RouletteAdminPoolsResponse & {
+        error?: string;
+      };
+
+      if (!poolsRes.ok) {
+        throw new Error(poolsData.error ?? "No se pudo cargar la pool");
+      }
+
+      const objectsData = (await objectsRes.json()) as Array<{
+        id: number;
+        name: string;
+        icon: string;
+      }>;
+
+      setAdminPools(poolsData.pools ?? []);
+      setAdminObjects(objectsData ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo cargar configuración de ruleta");
+    } finally {
+      setAdminLoading(false);
+    }
+  }, [token, isAdmin]);
+
+  useEffect(() => {
+    if (activeView === "historial") {
+      void fetchHistory();
+    }
+  }, [activeView, fetchHistory]);
+
+  useEffect(() => {
+    if (activeView === "config" && isAdmin) {
+      void fetchAdminPools();
+    }
+  }, [activeView, fetchAdminPools, isAdmin]);
 
   useEffect(() => {
     const audio = new Audio("/sounds/spin.mp3");
@@ -320,6 +458,74 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     await fetchConfig();
   };
 
+  const handleCreateAdminReward = async () => {
+    if (!token || !isAdmin) return;
+
+    setAdminSaving(true);
+    setError(null);
+    try {
+      const payload: Record<string, unknown> = {
+        category: adminForm.category,
+        rewardType: adminForm.rewardType,
+        label: adminForm.label,
+        order: Number(adminForm.order) || 0,
+        active: true,
+      };
+
+      if (adminForm.rewardType === "oro") {
+        payload.goldAmount = Number(adminForm.goldAmount) || 0;
+      } else {
+        payload.objectId = Number(adminForm.objectId) || 0;
+        payload.objectQuantity = Number(adminForm.objectQuantity) || 1;
+      }
+
+      const res = await fetch("/api/admin/ruleta/premios", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo crear el premio");
+      }
+
+      setPaymentMessage("Premio agregado a la pool.");
+      setAdminForm((prev) => ({ ...prev, label: "", objectId: "" }));
+      await fetchAdminPools();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el premio");
+    } finally {
+      setAdminSaving(false);
+    }
+  };
+
+  const handleDeactivateAdminReward = async (id: string) => {
+    if (!token || !isAdmin) return;
+
+    setAdminDeletingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/ruleta/premios/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo desactivar el premio");
+      }
+      setPaymentMessage("Premio desactivado.");
+      await fetchAdminPools();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo desactivar el premio");
+    } finally {
+      setAdminDeletingId(null);
+    }
+  };
+
   const handleSpin = async () => {
     if (
       !token ||
@@ -425,6 +631,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       });
 
       emitAuthRefresh(data.oro ?? undefined);
+      void fetchHistory();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No se pudo tirar";
       setError(message);
@@ -528,6 +735,48 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
       </CardHeader>
 
       <CardContent className="relative z-10 space-y-4 p-4 md:p-5">
+        <div className="flex flex-wrap gap-2 rounded-lg border border-gold/25 bg-black/25 p-2">
+          <button
+            type="button"
+            onClick={() => setActiveView("jugar")}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              activeView === "jugar"
+                ? "bg-gold/25 text-gold border border-gold/40"
+                : "text-zinc-300 hover:bg-white/10"
+            }`}
+          >
+            Jugar
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("historial")}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors inline-flex items-center gap-1.5 ${
+              activeView === "historial"
+                ? "bg-gold/25 text-gold border border-gold/40"
+                : "text-zinc-300 hover:bg-white/10"
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            Historial
+          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveView("config")}
+              className={`rounded-md px-3 py-1.5 text-sm transition-colors inline-flex items-center gap-1.5 ${
+                activeView === "config"
+                  ? "bg-gold/25 text-gold border border-gold/40"
+                  : "text-zinc-300 hover:bg-white/10"
+              }`}
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Config premios
+            </button>
+          )}
+        </div>
+
+        {activeView === "jugar" && (
+          <>
         {!config.enabled && (
           <div className="rounded-lg border border-amber-400/40 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
             La ruleta esta deshabilitada por administracion. La tab permanece visible, pero no puedes tirar.
@@ -761,6 +1010,220 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
             <p className="text-xs text-zinc-300 mt-1">
               Costo aplicado: {spinResult.cost.amount} {spinResult.cost.type === "oro" ? "oro" : "USD"} (paso {spinResult.cost.step}/6)
             </p>
+          </div>
+        )}
+          </>
+        )}
+
+        {activeView === "historial" && (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-gold/30 bg-black/25 p-3 flex items-center justify-between">
+              <p className="text-sm text-zinc-200">Tus ultimas tiradas</p>
+              <button
+                type="button"
+                onClick={() => void fetchHistory()}
+                className="text-xs text-zinc-300 hover:text-gold"
+              >
+                Recargar
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="rounded-lg border border-white/20 bg-black/25 p-4 text-sm text-zinc-300 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Cargando historial...
+              </div>
+            ) : historyError ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {historyError}
+              </div>
+            ) : historyItems.length === 0 ? (
+              <div className="rounded-lg border border-white/20 bg-black/25 p-3 text-sm text-zinc-300">
+                Aun no tienes tiradas registradas.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-136 overflow-y-auto pr-1">
+                {historyItems.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-white/15 bg-black/25 p-3 text-sm">
+                    <p className="text-gold font-medium">{item.rewardLabel}</p>
+                    <p className="text-zinc-200 text-xs mt-1">
+                      Categoria: {categoryLabels[item.category]} · Slot #{item.slot}
+                    </p>
+                    <p className="text-zinc-300 text-xs mt-1">
+                      Pago: {item.paymentAmount ?? 0} {item.paymentType === "usd" ? "USD" : "oro"}
+                    </p>
+                    <p className="text-zinc-400 text-xs mt-1">
+                      {new Date(item.createdAt).toLocaleString("es-ES")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeView === "config" && isAdmin && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gold/30 bg-black/25 p-3">
+              <p className="text-sm text-zinc-200">Configuracion de premios de ruleta</p>
+              <p className="text-xs text-zinc-400 mt-1">
+                Esta vista es solo para admin y se refleja al instante en la ruleta.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-white/20 bg-black/25 p-3 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="text-xs text-zinc-300 space-y-1">
+                  <span>Categoria</span>
+                  <select
+                    className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                    value={adminForm.category}
+                    onChange={(event) =>
+                      setAdminForm((prev) => ({ ...prev, category: event.target.value as RouletteCategory }))
+                    }
+                  >
+                    {(Object.keys(categoryLabels) as RouletteCategory[]).map((category) => (
+                      <option key={category} value={category}>
+                        {categoryLabels[category]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-xs text-zinc-300 space-y-1">
+                  <span>Tipo de premio</span>
+                  <select
+                    className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                    value={adminForm.rewardType}
+                    onChange={(event) =>
+                      setAdminForm((prev) => ({ ...prev, rewardType: event.target.value as "oro" | "objeto" }))
+                    }
+                  >
+                    <option value="oro">Oro</option>
+                    <option value="objeto">Objeto</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="text-xs text-zinc-300 space-y-1 block">
+                <span>Etiqueta (opcional)</span>
+                <input
+                  className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                  value={adminForm.label}
+                  onChange={(event) => setAdminForm((prev) => ({ ...prev, label: event.target.value }))}
+                  placeholder="Ej: Cofre epico"
+                />
+              </label>
+
+              {adminForm.rewardType === "oro" ? (
+                <label className="text-xs text-zinc-300 space-y-1 block">
+                  <span>Monto de oro</span>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                    value={adminForm.goldAmount}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, goldAmount: event.target.value }))}
+                  />
+                </label>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="text-xs text-zinc-300 space-y-1">
+                    <span>Objeto</span>
+                    <select
+                      className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                      value={adminForm.objectId}
+                      onChange={(event) => setAdminForm((prev) => ({ ...prev, objectId: event.target.value }))}
+                    >
+                      <option value="">Selecciona un objeto...</option>
+                      {adminObjects.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.icon} {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs text-zinc-300 space-y-1">
+                    <span>Cantidad</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                      value={adminForm.objectQuantity}
+                      onChange={(event) =>
+                        setAdminForm((prev) => ({ ...prev, objectQuantity: event.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                <label className="text-xs text-zinc-300 space-y-1 block">
+                  <span>Orden</span>
+                  <input
+                    type="number"
+                    className="w-full rounded-md border border-white/20 bg-black/30 px-2 py-2 text-sm"
+                    value={adminForm.order}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, order: event.target.value }))}
+                  />
+                </label>
+                <Button
+                  onClick={handleCreateAdminReward}
+                  disabled={adminSaving}
+                  className="bg-gold text-background hover:bg-gold-dim"
+                >
+                  {adminSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Agregar premio"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/20 bg-black/25 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-zinc-200">Pool actual</p>
+                <button
+                  type="button"
+                  onClick={() => void fetchAdminPools()}
+                  className="text-xs text-zinc-300 hover:text-gold"
+                >
+                  Recargar
+                </button>
+              </div>
+
+              {adminLoading ? (
+                <p className="text-sm text-zinc-300 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando premios...
+                </p>
+              ) : adminPools.length === 0 ? (
+                <p className="text-sm text-zinc-300">No hay premios configurados todavia.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {adminPools.map((pool) => (
+                    <div key={pool.id} className="rounded-md border border-white/15 bg-black/25 p-2 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-zinc-100">
+                          {pool.rewardType === "oro"
+                            ? `${pool.label || "Premio oro"} - ${pool.goldAmount ?? 0} oro`
+                            : `${pool.object?.icon ?? "📦"} ${pool.label || pool.object?.name || "Objeto"} x${pool.objectQuantity}`}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {categoryLabels[pool.category]} · Orden {pool.order} · {pool.active ? "Activo" : "Inactivo"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeactivateAdminReward(pool.id)}
+                        disabled={adminDeletingId === pool.id}
+                        className="text-xs rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-destructive"
+                      >
+                        {adminDeletingId === pool.id ? "..." : "Desactivar"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

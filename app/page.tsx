@@ -199,7 +199,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
           {/* Center */}
           {activeSection === "ruleta" ? (
             <main className="min-h-125">
-              <PrizeWheel token={token} />
+              <PrizeWheel token={token} isAdmin={Boolean(user?.isAdmin)} />
             </main>
           ) : (
             <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
