@@ -123,12 +123,7 @@ export default function Sidebar({
         }
 
         const data = (await res.json()) as OpenPartida[];
-        const count = (data ?? []).filter(
-          (game) =>
-            !game.isFull &&
-            !game.inCooldown &&
-            (game.joinedCharacterIds?.length ?? 0) === 0,
-        ).length;
+        const count = (data ?? []).filter((game) => !game.isFull).length;
 
         if (isMounted) {
           setAvailableGamesCount(count);
@@ -195,7 +190,7 @@ export default function Sidebar({
               <item.icon className="w-5 h-5" />
               <span className="font-medium font-sans">{item.label}</span>
               {item.id === "partidas" && typeof availableGamesCount === "number" && (
-                <span className="rounded-full border border-gold/40 bg-gold/15 px-2 py-0.5 text-[10px] font-semibold leading-none text-gold">
+                <span className="ml-auto rounded-full border border-gold/40 bg-gold/15 px-2 py-0.5 text-[10px] font-semibold leading-none text-gold">
                   {availableGamesCount}
                 </span>
               )}
@@ -204,7 +199,7 @@ export default function Sidebar({
                   {rouletteDisabled ? "Deshabilitada" : "Próx."}
                 </span>
               ) : (
-                item.hasIndicator && (
+                item.hasIndicator && item.id !== "partidas" && (
                   <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
                 )
               )}
