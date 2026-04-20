@@ -17,6 +17,10 @@ const CATEGORIES: RouletteCategory[] = [
   "pequeno",
 ];
 
+const CONFIGURABLE_CATEGORIES: RouletteCategory[] = CATEGORIES.filter(
+  (category) => category !== "nada",
+);
+
 type RuletaConfig = {
   habilitada: boolean;
   actualizadoEn: string | null;
@@ -287,7 +291,7 @@ export function RuletaTab({
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Categoría</span>
               <Select value={form.category} onChange={(e) => setForm((current) => ({ ...current, category: e.target.value as RouletteCategory }))}>
-                {CATEGORIES.map((category) => (
+                {CONFIGURABLE_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
                     {categoryToLabel(category)}
                   </option>
