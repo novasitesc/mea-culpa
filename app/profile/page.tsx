@@ -102,28 +102,6 @@ type ProfileAlert = {
   variant: "info" | "success" | "warning" | "error";
 };
 
-type OpenPartida = {
-  id: string;
-  title: string;
-  comment: string;
-  status: string;
-  minPlayers: number;
-  maxPlayers: number;
-  playerLimit: number;
-  participantCount: number;
-  slotsRemaining: number;
-  floor: number;
-  startTime: string | null;
-  tier: number;
-  isFull: boolean;
-  inCooldown: boolean;
-  cooldownEndsAt: string | null;
-  cooldownSecondsRemaining: number;
-  createdAt: string;
-  createdBy: string | null;
-  joinedCharacterIds: number[];
-};
-
 type SleepOption = {
   id: string;
   name: string;
@@ -162,12 +140,6 @@ export default function ProfilePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
-  const [openGames, setOpenGames] = useState<OpenPartida[]>([]);
-  const [loadingOpenGames, setLoadingOpenGames] = useState(false);
-  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
-  const [selectedCharacterByGame, setSelectedCharacterByGame] = useState<
-    Record<string, number>
-  >({});
   const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
   const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
   const [resolvingSleep, setResolvingSleep] = useState(false);
@@ -202,13 +174,6 @@ export default function ProfilePage() {
       message,
       variant,
     });
-  };
-
-  const formatCooldown = (seconds: number) => {
-    const safe = Math.max(0, Math.floor(seconds));
-    const hours = Math.floor(safe / 3600);
-    const mins = Math.floor((safe % 3600) / 60);
-    return `${hours}h ${mins}m`;
   };
 
   const loadProfile = useCallback(async () => {
@@ -402,7 +367,7 @@ export default function ProfilePage() {
         );
       }
 
-      await Promise.all([loadSleepStatus(), loadProfile(), loadOpenGames()]);
+      await Promise.all([loadSleepStatus(), loadProfile()]);
     } catch (error) {
       console.error("Error resolving sleep decision:", error);
       showProfileAlert(
@@ -412,80 +377,6 @@ export default function ProfilePage() {
       );
     } finally {
       setResolvingSleep(false);
-    }
-  };
-
-  const loadOpenGames = useCallback(async () => {
-    if (!token) return;
-
-    setLoadingOpenGames(true);
-    try {
-      const res = await fetch("/api/partidas", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudieron cargar las partidas");
-      }
-
-      const data = (await res.json()) as OpenPartida[];
-      setOpenGames(data);
-    } catch (error) {
-      console.error("Error loading open games:", error);
-      showProfileAlert(
-        "Error",
-        "No se pudieron cargar las partidas activas.",
-        "error",
-      );
-    } finally {
-      setLoadingOpenGames(false);
-    }
-  }, [token]);
-
-  const joinGame = async (gameId: string) => {
-    if (!token) return;
-    const characterId = selectedCharacterByGame[gameId];
-
-    if (!characterId) {
-      showProfileAlert(
-        "Selecciona personaje",
-        "Debes elegir un personaje para unirte a la partida.",
-        "warning",
-      );
-      return;
-    }
-
-    setJoiningGameId(gameId);
-    try {
-      const res = await fetch("/api/partidas/join", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ partidaId: gameId, characterId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error ?? "No se pudo unir a la partida");
-      }
-
-      showProfileAlert(
-        "Inscripción completada",
-        "Te uniste correctamente a la partida.",
-        "success",
-      );
-      await loadOpenGames();
-    } catch (error) {
-      console.error("Error joining game:", error);
-      showProfileAlert(
-        "No se pudo unir",
-        error instanceof Error ? error.message : "Error desconocido",
-        "error",
-      );
-    } finally {
-      setJoiningGameId(null);
     }
   };
 
@@ -731,9 +622,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
-    loadOpenGames();
     loadSleepStatus();
-  }, [isAuthenticated, token, loadOpenGames, loadSleepStatus]);
+  }, [isAuthenticated, token, loadSleepStatus]);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -1121,125 +1011,6 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-          </section>
-
-          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">
-                  Partidas Públicas
-                </p>
-                <h2 className="text-xl font-serif text-[#D4AF37] mt-1">
-                  Únete a una partida activa
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={loadOpenGames}
-                disabled={loadingOpenGames}
-                className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
-              >
-                {loadingOpenGames ? "Cargando..." : "Actualizar"}
-              </button>
-            </div>
-
-            {loadingOpenGames ? (
-              <p className="text-sm text-muted-foreground">Buscando partidas activas...</p>
-            ) : openGames.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay partidas abiertas en este momento.</p>
-            ) : (
-              <div className="space-y-3">
-                {openGames.map((game) => {
-                  const alreadyJoined = game.joinedCharacterIds.length > 0;
-                  const canJoin = !game.isFull && !alreadyJoined && !game.inCooldown;
-
-                  return (
-                    <article
-                      key={game.id}
-                      className="rounded border border-border/70 bg-secondary/20 p-4 space-y-3"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <div>
-                          <h3 className="text-lg font-semibold text-foreground">{game.title}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {game.participantCount}/{game.maxPlayers} jugadores · {game.slotsRemaining} cupos libres
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Min {game.minPlayers} · Piso {game.floor} · Tier {game.tier}
-                            {game.startTime
-                              ? ` · Inicio ${new Date(game.startTime).toLocaleString("es-ES")}`
-                              : ""}
-                          </p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded border border-border text-muted-foreground">
-                          {game.inCooldown
-                            ? "En cooldown"
-                            : game.isFull
-                              ? "Completa"
-                              : "Abierta"}
-                        </span>
-                      </div>
-
-                      {game.comment && (
-                        <p className="text-sm text-muted-foreground">{game.comment}</p>
-                      )}
-
-                      {game.inCooldown && (
-                        <p className="text-sm text-amber-400">
-                          Cooldown activo: puedes volver a unirte en {formatCooldown(game.cooldownSecondsRemaining)}.
-                        </p>
-                      )}
-
-                      <div className="flex flex-col md:flex-row md:items-center gap-3">
-                        <select
-                          value={selectedCharacterByGame[game.id] ?? ""}
-                          onChange={(e) =>
-                            setSelectedCharacterByGame((prev) => ({
-                              ...prev,
-                              [game.id]: e.target.value ? Number(e.target.value) : 0,
-                            }))
-                          }
-                          disabled={!canJoin || characters.length === 0}
-                          className="px-3 py-2 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 [&>option]:bg-background [&>option]:text-foreground"
-                        >
-                          <option value="">Selecciona personaje</option>
-                          {characters.map((character) => (
-                            <option
-                              key={character.id}
-                              value={character.id}
-                              disabled={
-                                game.joinedCharacterIds.includes(character.id) ||
-                                character.lifeStatus === "muerto"
-                              }
-                            >
-                              {character.name}
-                              {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          onClick={() => joinGame(game.id)}
-                          disabled={!canJoin || joiningGameId === game.id || characters.length === 0}
-                          className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {joiningGameId === game.id
-                            ? "Uniéndote..."
-                            : alreadyJoined
-                              ? "Ya estás inscrito"
-                              : game.inCooldown
-                                ? "Cooldown 24h"
-                              : game.isFull
-                                ? "Partida completa"
-                                : "Unirme"}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
           </section>
 
           <section className="space-y-6">

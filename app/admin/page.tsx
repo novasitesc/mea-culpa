@@ -650,8 +650,20 @@ function PartidasTab({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = title.trim();
+    const trimmedStartTime = startTime.trim();
     if (!trimmedTitle) {
       onToast("El nombre de la partida es obligatorio", "error");
+      return;
+    }
+
+    if (!trimmedStartTime) {
+      onToast("La fecha y hora de inicio son obligatorias", "error");
+      return;
+    }
+
+    const parsedStartTime = new Date(trimmedStartTime);
+    if (Number.isNaN(parsedStartTime.getTime())) {
+      onToast("La fecha y hora de inicio no son validas", "error");
       return;
     }
 
@@ -682,7 +694,7 @@ function PartidasTab({
         comment: comment.trim(),
         playerLimit: Math.floor(playerLimit),
         floor: Math.floor(floor),
-        startTime: startTime ? new Date(startTime).toISOString() : null,
+        startTime: parsedStartTime.toISOString(),
         tier,
       }),
     });
@@ -748,6 +760,7 @@ function PartidasTab({
               className={inputCls}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
+              required
             />
           </FormField>
 
@@ -840,7 +853,7 @@ function ActivePartidasTab({
 
   const loadGames = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/partidas?status=abierta", {
+    const res = await fetch("/api/admin/partidas?status=activa", {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -1028,7 +1041,7 @@ function ActivePartidasTab({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Partidas en curso (abiertas a inscripción)
+          Partidas activas (abiertas y en progreso)
         </p>
         <button
           type="button"
@@ -1050,7 +1063,11 @@ function ActivePartidasTab({
                 <p className="text-sm font-semibold text-foreground">{entry.title}</p>
                 <p className="text-xs text-muted-foreground">
                   {entry.participantCount}/{entry.maxPlayers} jugadores
-                  {entry.isFull ? " · Completa" : " · Abierta"}
+                  {entry.isFull
+                    ? " · Completa"
+                    : entry.status === "en_progreso"
+                      ? " · En progreso"
+                      : " · Abierta"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Min {entry.minPlayers} · Piso {entry.floor} · Tier {entry.tier}
