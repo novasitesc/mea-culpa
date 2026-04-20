@@ -248,7 +248,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
           <Sidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
-            rouletteEnabled={isRouletteEnabled === true}
+            rouletteEnabled={isRouletteEnabled}
           />
 
           {/* Center */}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield } from "lucide-react";
 
@@ -70,7 +69,7 @@ type SidebarProps = {
   /** Callback cuando se pulsa un ítem sin href. Si no se provee, navega a "/" */
   onSectionChange?: (id: string) => void;
   /** Estado global de la ruleta */
-  rouletteEnabled?: boolean;
+  rouletteEnabled?: boolean | null;
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────
@@ -82,39 +81,6 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [resolvedRouletteEnabled, setResolvedRouletteEnabled] = useState<boolean>(
-    rouletteEnabled === true,
-  );
-
-  useEffect(() => {
-    if (typeof rouletteEnabled === "boolean") {
-      setResolvedRouletteEnabled(rouletteEnabled);
-      return;
-    }
-
-    let isMounted = true;
-
-    const loadRouletteConfig = async () => {
-      try {
-        const res = await fetch("/api/ruleta/config");
-        const data = (await res.json()) as { enabled?: boolean };
-        if (isMounted) {
-          setResolvedRouletteEnabled(Boolean(data.enabled ?? true));
-        }
-      } catch {
-        if (isMounted) {
-          // Fallback cerrado: si no hay config, tratamos como deshabilitada.
-          setResolvedRouletteEnabled(false);
-        }
-      }
-    };
-
-    void loadRouletteConfig();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [rouletteEnabled]);
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -138,8 +104,9 @@ export default function Sidebar({
     <aside className="space-y-3">
       {sidebarItems.map((item) => {
         const staticDisabled = "disabled" in item && item.disabled;
-        const rouletteDisabled = item.id === "ruleta" && !resolvedRouletteEnabled;
-        const disabled = staticDisabled || rouletteDisabled;
+        const roulettePending = item.id === "ruleta" && rouletteEnabled === null;
+        const rouletteDisabled = item.id === "ruleta" && rouletteEnabled === false;
+        const disabled = staticDisabled || rouletteDisabled || roulettePending;
         return (
           <button
             key={item.id}
@@ -156,7 +123,7 @@ export default function Sidebar({
             <div className="flex items-center gap-3">
               <item.icon className="w-5 h-5" />
               <span className="font-medium font-sans">{item.label}</span>
-              {disabled ? (
+              {disabled && !roulettePending ? (
                 <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
                   {rouletteDisabled ? "Deshabilitada" : "Próx."}
                 </span>
