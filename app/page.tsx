@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2 } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import PrizeWheel from "./components/prize-wheel";
@@ -58,6 +58,11 @@ type HomePageProps = {
   forcedSection?: "inicio" | "ruleta";
 };
 
+type PanPoint = {
+  x: number;
+  y: number;
+};
+
 export default function HomePage(props: HomePageProps) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-background" />}>
@@ -77,6 +82,17 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [activeSlot, setActiveSlot] = useState(1);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
+  const [isNoticiaOpen, setIsNoticiaOpen] = useState(false);
+  const [noticiaZoom, setNoticiaZoom] = useState(1);
+  const [noticiaPan, setNoticiaPan] = useState<PanPoint>({ x: 0, y: 0 });
+  const [isDraggingNoticia, setIsDraggingNoticia] = useState(false);
+  const fullscreenViewportRef = useRef<HTMLDivElement | null>(null);
+  const dragStartRef = useRef<PanPoint>({ x: 0, y: 0 });
+  const panStartRef = useRef<PanPoint>({ x: 0, y: 0 });
+
+  const MIN_NOTICIA_ZOOM = 1;
+  const MAX_NOTICIA_ZOOM = 4;
+  const NOTICIA_ZOOM_STEP = 0.25;
 
   useEffect(() => {
     let isMounted = true;
@@ -158,6 +174,50 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     setActiveSection("inicio");
   }, [forcedSection, searchParams, isRouletteEnabled, router]);
 
+  useEffect(() => {
+    if (!isNoticiaOpen) {
+      return;
+    }
+
+    const clampZoom = (value: number) =>
+      Math.min(MAX_NOTICIA_ZOOM, Math.max(MIN_NOTICIA_ZOOM, value));
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsNoticiaOpen(false);
+      }
+
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setNoticiaZoom((z) => clampZoom(z + NOTICIA_ZOOM_STEP));
+      }
+
+      if (event.key === "-") {
+        event.preventDefault();
+        setNoticiaZoom((z) => clampZoom(z - NOTICIA_ZOOM_STEP));
+      }
+
+      if (event.key === "0") {
+        event.preventDefault();
+        setNoticiaZoom(1);
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isNoticiaOpen]);
+
+  useEffect(() => {
+    if (!isNoticiaOpen) {
+      return;
+    }
+    setNoticiaZoom(1);
+    setNoticiaPan({ x: 0, y: 0 });
+  }, [isNoticiaOpen, noticiaIdx]);
+
   const handleSectionChange = (sectionId: string) => {
     if (sectionId === "inicio") {
       setActiveSection("inicio");
@@ -183,6 +243,47 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const prevNoticia = () =>
     setNoticiaIdx((i) => (i - 1 + noticias.length) % noticias.length);
   const nextNoticia = () => setNoticiaIdx((i) => (i + 1) % noticias.length);
+
+  const clampNoticiaPan = (pan: PanPoint, zoom: number): PanPoint => {
+    const viewport = fullscreenViewportRef.current;
+    if (!viewport || zoom <= 1) {
+      return { x: 0, y: 0 };
+    }
+
+    const maxX = ((zoom - 1) * viewport.clientWidth) / 2;
+    const maxY = ((zoom - 1) * viewport.clientHeight) / 2;
+
+    return {
+      x: Math.min(maxX, Math.max(-maxX, pan.x)),
+      y: Math.min(maxY, Math.max(-maxY, pan.y)),
+    };
+  };
+
+  const updateNoticiaZoom = (nextZoom: number) => {
+    const clamped = Math.min(MAX_NOTICIA_ZOOM, Math.max(MIN_NOTICIA_ZOOM, nextZoom));
+    setNoticiaZoom(clamped);
+    setNoticiaPan((prev) => clampNoticiaPan(prev, clamped));
+  };
+
+  const zoomInNoticia = () =>
+    updateNoticiaZoom(noticiaZoom + NOTICIA_ZOOM_STEP);
+  const zoomOutNoticia = () =>
+    updateNoticiaZoom(noticiaZoom - NOTICIA_ZOOM_STEP);
+  const resetNoticiaZoom = () => {
+    setNoticiaZoom(1);
+    setNoticiaPan({ x: 0, y: 0 });
+  };
+
+  const noticiaActual = noticias[noticiaIdx];
+  const noticiaTitulo = noticiaActual
+    ? noticiaActual.alt && noticiaActual.alt.toLowerCase() !== "noticia"
+      ? noticiaActual.alt
+      : noticiaActual.filename
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+    : "";
 
   const maxCharacterSlots = Math.max(
     2,
@@ -231,7 +332,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
               <PrizeWheel token={token} />
             </main>
           ) : (
-            <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
+            <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125 bg-card">
               {noticias.length === 0 ? (
                 <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
                   <p className="font-serif text-sm text-parchment-dark/50">
@@ -240,50 +341,102 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                 </div>
               ) : (
                 <>
-                  {/* Imagen cubriendo todo el main */}
+                  {/* Imagen principal */}
                   <Image
-                    key={noticias[noticiaIdx].url}
-                    src={noticias[noticiaIdx].url}
-                    alt={noticias[noticiaIdx].alt}
+                    key={noticiaActual.url}
+                    src={noticiaActual.url}
+                    alt={noticiaActual.alt}
                     fill
-                    className="object-cover"
+                    className="object-cover scale-[1.01]"
                     sizes="(max-width: 1024px) 100vw, 600px"
                   />
 
-                  {/* Controles superpuestos */}
+                  <button
+                    onClick={() => setIsNoticiaOpen(true)}
+                    className="absolute inset-0 z-5"
+                    aria-label="Ver noticia en grande"
+                  />
+
+                  {/* Capas cinematicas */}
+                  <div className="absolute inset-0 bg-linear-to-t from-background/95 via-background/45 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-r from-background/35 via-transparent to-background/40" />
+
+                  {/* Cabecera de seccion */}
+                  <div className="absolute top-3 left-3 z-10 rounded border border-gold/45 bg-background/75 px-3 py-1.5 backdrop-blur-xs">
+                    <p className="text-[10px] tracking-[0.18em] uppercase text-gold/90 font-sans">
+                      Gaceta del Reino
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setIsNoticiaOpen(true)}
+                    aria-label="Ampliar noticia"
+                    className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 rounded border border-gold-dim/70 bg-background/70 px-2.5 py-1.5 text-[11px] uppercase tracking-wide text-gold transition-colors hover:bg-background/90"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    Ver en grande
+                  </button>
+
+                  {/* Contenido editorial */}
+                  <div className="absolute inset-x-3 bottom-3 z-10 rounded-lg border border-gold-dim/60 bg-background/78 p-3 md:inset-x-4 md:bottom-4 md:p-4 backdrop-blur-xs">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <h2 className="font-serif text-base leading-tight text-gold md:text-xl">
+                          {noticiaTitulo || "Nueva crónica disponible"}
+                        </h2>
+                        <p className="mt-1 text-[11px] text-foreground/80 font-sans md:text-xs">
+                          Parte {noticiaIdx + 1} de {noticias.length}
+                        </p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-1.5">
+                        {noticias.map((img, i) => (
+                          <button
+                            key={`dot-${img.filename}`}
+                            onClick={() => setNoticiaIdx(i)}
+                            aria-label={`Ir a noticia ${i + 1}`}
+                            className={`h-2.5 rounded-full transition-all ${
+                              i === noticiaIdx
+                                ? "w-7 bg-gold shadow-[0_0_10px_rgba(212,175,55,0.45)]"
+                                : "w-2.5 bg-gold-dim/50 hover:bg-gold-dim"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Controles de navegacion */}
                   {noticias.length > 1 && (
                     <>
                       <button
                         onClick={prevNoticia}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                        aria-label="Noticia anterior"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-10 rounded-full border border-gold-dim/80 bg-background/70 p-2 text-gold transition-all hover:scale-105 hover:bg-background/90"
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
                       <button
                         onClick={nextNoticia}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                        aria-label="Siguiente noticia"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 rounded-full border border-gold-dim/80 bg-background/70 p-2 text-gold transition-all hover:scale-105 hover:bg-background/90"
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
                     </>
                   )}
 
-                  {/* Contador */}
-                  <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
-                    {noticiaIdx + 1} / {noticias.length}
-                  </div>
-
                   {/* Miniaturas */}
                   {noticias.length > 1 && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                    <div className="absolute right-3 top-3 z-10 hidden xl:flex flex-col gap-2 rounded-lg border border-gold-dim/60 bg-background/65 p-2 backdrop-blur-xs">
                       {noticias.map((img, i) => (
                         <button
                           key={img.filename}
                           onClick={() => setNoticiaIdx(i)}
-                          className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
+                          aria-label={`Ver noticia ${i + 1}`}
+                          className={`relative h-12 w-12 overflow-hidden rounded border-2 transition-all ${
                             i === noticiaIdx
-                              ? "border-gold scale-110"
-                              : "border-gold-dim/30 opacity-60 hover:opacity-100"
+                              ? "border-gold scale-105"
+                              : "border-gold-dim/40 opacity-70 hover:opacity-100"
                           }`}
                         >
                           <Image
@@ -443,6 +596,123 @@ function HomePageContent({ forcedSection }: HomePageProps) {
           </aside>
         </div>
       </div>
+
+      {isNoticiaOpen && noticiaActual ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 md:p-6">
+          <button
+            aria-label="Cerrar visor"
+            className="absolute inset-0"
+            onClick={() => setIsNoticiaOpen(false)}
+          />
+
+          <div className="relative z-10 w-full max-w-6xl rounded-lg border-2 border-gold-dim bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gold-dim/40 px-3 py-2 md:px-4">
+              <p className="max-w-[75%] truncate font-serif text-sm text-gold md:text-base">
+                {noticiaTitulo || "Crónica del Reino"}
+              </p>
+              <button
+                aria-label="Cerrar"
+                onClick={() => setIsNoticiaOpen(false)}
+                className="rounded border border-gold-dim/70 bg-background/70 p-1.5 text-gold transition-colors hover:bg-background"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative h-[70vh] md:h-[78vh]">
+              <div
+                ref={fullscreenViewportRef}
+                className="absolute inset-0 overflow-hidden"
+                onWheel={(event) => {
+                  event.preventDefault();
+                  const delta = event.deltaY < 0 ? NOTICIA_ZOOM_STEP : -NOTICIA_ZOOM_STEP;
+                  updateNoticiaZoom(noticiaZoom + delta);
+                }}
+                onPointerDown={(event) => {
+                  if (noticiaZoom <= 1) {
+                    return;
+                  }
+                  setIsDraggingNoticia(true);
+                  dragStartRef.current = { x: event.clientX, y: event.clientY };
+                  panStartRef.current = noticiaPan;
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                  if (!isDraggingNoticia || noticiaZoom <= 1) {
+                    return;
+                  }
+
+                  const deltaX = event.clientX - dragStartRef.current.x;
+                  const deltaY = event.clientY - dragStartRef.current.y;
+                  const nextPan = {
+                    x: panStartRef.current.x + deltaX,
+                    y: panStartRef.current.y + deltaY,
+                  };
+
+                  setNoticiaPan(clampNoticiaPan(nextPan, noticiaZoom));
+                }}
+                onPointerUp={(event) => {
+                  setIsDraggingNoticia(false);
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }}
+                onPointerCancel={(event) => {
+                  setIsDraggingNoticia(false);
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }}
+              >
+                <div
+                  className="relative h-full w-full transition-transform duration-200 ease-out"
+                  style={{
+                    transform: `translate(${noticiaPan.x}px, ${noticiaPan.y}px) scale(${noticiaZoom})`,
+                    transformOrigin: "center center",
+                    cursor: noticiaZoom > 1 ? (isDraggingNoticia ? "grabbing" : "grab") : "zoom-in",
+                  }}
+                >
+                  <Image
+                    key={`fullscreen-${noticiaActual.url}`}
+                    src={noticiaActual.url}
+                    alt={noticiaActual.alt}
+                    fill
+                    className="object-contain"
+                    sizes="100vw"
+                    priority
+                  />
+                </div>
+              </div>
+
+              <div className="absolute top-3 left-3 flex items-center gap-2 rounded border border-gold-dim/65 bg-background/75 px-2 py-1.5 text-xs text-gold">
+                <button
+                  onClick={zoomOutNoticia}
+                  disabled={noticiaZoom <= MIN_NOTICIA_ZOOM}
+                  className="rounded border border-gold-dim/70 px-2 py-0.5 disabled:opacity-40"
+                  aria-label="Reducir zoom"
+                >
+                  -
+                </button>
+                <button
+                  onClick={resetNoticiaZoom}
+                  className="rounded border border-gold-dim/70 px-2 py-0.5"
+                  aria-label="Restablecer zoom"
+                >
+                  {Math.round(noticiaZoom * 100)}%
+                </button>
+                <button
+                  onClick={zoomInNoticia}
+                  disabled={noticiaZoom >= MAX_NOTICIA_ZOOM}
+                  className="rounded border border-gold-dim/70 px-2 py-0.5 disabled:opacity-40"
+                  aria-label="Aumentar zoom"
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded bg-background/75 px-2.5 py-1 text-xs text-foreground/90">
+                Arrastra para mover cuando el zoom sea mayor a 100%
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
