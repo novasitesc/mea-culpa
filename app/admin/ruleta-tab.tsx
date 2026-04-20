@@ -180,20 +180,29 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
     await load();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
     setDeletingId(id);
     const res = await fetch(`/api/admin/ruleta/premios/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ active: !currentActive }),
     });
     setDeletingId(null);
 
     if (!res.ok) {
-      onToast("No se pudo desactivar el premio", "error");
+      onToast(
+        currentActive
+          ? "No se pudo desactivar el premio"
+          : "No se pudo activar el premio",
+        "error",
+      );
       return;
     }
 
-    onToast("Premio desactivado", "success");
+    onToast(currentActive ? "Premio desactivado" : "Premio activado", "success");
     await load();
   };
 
@@ -266,7 +275,7 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
               <span className="text-muted-foreground">Monto de oro</span>
               <GoldAmountInput
                 value={Number(form.goldAmount) || 0}
-                onChange={(value) => setForm((current) => ({ ...current, goldAmount: String(value ?? 0) }))}
+                onChangeValue={(value) => setForm((current) => ({ ...current, goldAmount: String(value ?? 0) }))}
                 placeholder="Cantidad de oro"
               />
             </label>
@@ -362,17 +371,21 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
                               ? `${pool.goldAmount?.toLocaleString("es-ES") ?? 0} oro`
                               : `${pool.objectQuantity} unidad${pool.objectQuantity === 1 ? "" : "es"}`}
                             {" · "}
-                            {pool.active ? "Activa" : "Inactiva"}
+                            Estado: {pool.active ? "Activa" : "Inactiva"}
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => void handleDelete(pool.id)}
+                          onClick={() => void handleToggleActive(pool.id, pool.active)}
                           disabled={deletingId === pool.id}
-                          className="inline-flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive disabled:opacity-60"
+                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${
+                            pool.active
+                              ? "border-destructive/40 bg-destructive/10 text-destructive"
+                              : "border-green-700 bg-green-950/30 text-green-300"
+                          }`}
                         >
                           {deletingId === pool.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                          Desactivar
+                          {pool.active ? "Desactivar" : "Activar"}
                         </button>
                       </div>
                     ))
