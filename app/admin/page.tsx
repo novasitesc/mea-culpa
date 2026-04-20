@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Coins,
   ArrowRightLeft,
+  Skull,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
@@ -100,6 +101,66 @@ type AdminTransaction = {
   creado_en: string;
 };
 
+type AdminTaxStatus =
+  | "cobrado_total"
+  | "cobrado_parcial_y_muerto"
+  | "cobrado_parcial_sin_personaje_vivo"
+  | "error";
+
+type AdminTaxRow = {
+  userId: string;
+  userName: string;
+  goldBefore: number;
+  requestedAmount: number;
+  chargedAmount: number;
+  goldAfter: number;
+  shortfall: number;
+  status: AdminTaxStatus;
+  willDie: boolean;
+  deathApplied: boolean;
+  targetCharacterId: number | null;
+  targetCharacterName: string | null;
+  targetCharacterTotalLevel: number | null;
+  tieCandidates: number;
+  errorMessage: string | null;
+};
+
+type AdminTaxSummary = {
+  totalAccounts: number;
+  totalRequested: number;
+  totalCharged: number;
+  totalShortfall: number;
+  fullPaidCount: number;
+  partialWithDeathCount: number;
+  partialWithoutLivingCharacterCount: number;
+  errorCount: number;
+  deathsAppliedCount: number;
+};
+
+type DeadCharacterRow = {
+  id: number;
+  name: string;
+  slot: number;
+  userId: string;
+  userName: string;
+  lifeStatus: string;
+  deadAt: string | null;
+  revivedAt: string | null;
+};
+
+type LifeHistoryRow = {
+  id: string;
+  characterId: number;
+  characterName: string;
+  userId: string;
+  userName: string;
+  event: string;
+  reason: string | null;
+  deadAt: string | null;
+  revivedAt: string | null;
+  createdAt: string | null;
+};
+
 type PartidaHistoryItem = {
   characterId: number;
   objectId: number;
@@ -147,7 +208,9 @@ type Tab =
   | "transacciones"
   | "partidas"
   | "partidas-activas"
-  | "historial-partidas";
+  | "historial-partidas"
+  | "impuestos"
+  | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +219,17 @@ function formatDate(iso: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -3258,6 +3332,483 @@ function ObjectFormModal({
   );
 }
 
+function TaxesTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [rows, setRows] = useState<AdminTaxRow[]>([]);
+  const [summary, setSummary] = useState<AdminTaxSummary | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
+
+  const parsedAmount = useMemo(() => {
+    const numeric = Number(amount);
+    if (!Number.isFinite(numeric)) return null;
+    const integer = Math.floor(numeric);
+    return integer > 0 ? integer : null;
+  }, [amount]);
+
+  const loadPreview = useCallback(async () => {
+    if (!parsedAmount) {
+      onToast("Ingresa un monto de impuesto válido", "error");
+      return;
+    }
+
+    setLoadingPreview(true);
+    const res = await fetch("/api/admin/impuestos/preview", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount: parsedAmount }),
+    });
+
+    setLoadingPreview(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo generar la vista previa", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setRows(data.rows ?? []);
+    setSummary(data.summary ?? null);
+    onToast("Vista previa generada", "success");
+  }, [parsedAmount, token, onToast]);
+
+  const applyTax = useCallback(async () => {
+    if (!parsedAmount) {
+      onToast("Ingresa un monto de impuesto válido", "error");
+      return;
+    }
+
+    setLoadingApply(true);
+    const res = await fetch("/api/admin/impuestos/cobrar", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount: parsedAmount }),
+    });
+
+    setLoadingApply(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo aplicar el impuesto", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setRows(data.rows ?? []);
+    setSummary(data.summary ?? null);
+    const totalCharged = Number(data?.summary?.totalCharged ?? 0);
+    const deathsApplied = Number(data?.summary?.deathsAppliedCount ?? 0);
+    onToast(
+      `Cobro ejecutado. Oro cobrado: ${totalCharged}. Muertes aplicadas: ${deathsApplied}.`,
+      "success",
+    );
+  }, [parsedAmount, token, onToast]);
+
+  const statusLabel = (status: AdminTaxStatus) => {
+    if (status === "cobrado_total") return "Cobrado total";
+    if (status === "cobrado_parcial_y_muerto") return "Cobrado parcial + muerte";
+    if (status === "cobrado_parcial_sin_personaje_vivo") {
+      return "Cobrado parcial sin personaje vivo";
+    }
+    return "Error";
+  };
+
+  const statusClass = (status: AdminTaxStatus) => {
+    if (status === "cobrado_total") return "bg-green-900/30 text-green-300";
+    if (status === "cobrado_parcial_y_muerto") return "bg-orange-900/30 text-orange-300";
+    if (status === "cobrado_parcial_sin_personaje_vivo") {
+      return "bg-amber-900/30 text-amber-300";
+    }
+    return "bg-destructive/30 text-destructive";
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="bg-secondary/20 p-4 rounded-lg border border-border flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-gold">Cobrar Impuestos Globales</h3>
+        <p className="text-sm text-muted-foreground">
+          Se cobrará el mismo monto a todas las cuentas de jugadores. Si una cuenta no alcanza,
+          se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,260px)_1fr] gap-4 items-end">
+          <FormField label="Monto fijo de impuesto">
+            <GoldAmountInput
+              className={inputCls}
+              value={amount}
+              onChangeValue={setAmount}
+              min={1}
+              required
+              placeholder="Ej: 50"
+            />
+          </FormField>
+
+          <div className="flex gap-3 md:justify-end">
+            <button
+              type="button"
+              onClick={loadPreview}
+              disabled={loadingPreview || loadingApply}
+              className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-60 flex items-center gap-2"
+            >
+              {loadingPreview && <Loader2 className="w-4 h-4 animate-spin" />}
+              Vista previa
+            </button>
+            <button
+              type="button"
+              onClick={applyTax}
+              disabled={loadingPreview || loadingApply || !parsedAmount}
+              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              {loadingApply && <Loader2 className="w-4 h-4 animate-spin" />}
+              Confirmar cobro
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Cuentas</p>
+            <p className="text-lg font-semibold text-foreground">{summary.totalAccounts}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Oro cobrado</p>
+            <p className="text-lg font-semibold text-gold">{summary.totalCharged}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Faltante total</p>
+            <p className="text-lg font-semibold text-orange-300">{summary.totalShortfall}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Muertes aplicadas</p>
+            <p className="text-lg font-semibold text-destructive">{summary.deathsAppliedCount}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/50 border-b border-border">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Oro antes</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Impuesto</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Cobrado</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Oro final</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje afectado</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr
+                key={`${row.userId}-${idx}`}
+                className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+              >
+                <td className="px-3 py-3 font-medium text-foreground">{row.userName}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.goldBefore}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.requestedAmount}</td>
+                <td className="px-3 py-3 text-center text-gold font-medium">{row.chargedAmount}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.goldAfter}</td>
+                <td className="px-3 py-3 text-muted-foreground">
+                  {row.targetCharacterName ? (
+                    <span>
+                      {row.targetCharacterName} (Nv. {row.targetCharacterTotalLevel ?? 0})
+                      {row.tieCandidates > 1 ? " · empate al azar" : ""}
+                    </span>
+                  ) : (
+                    <span className="italic text-muted-foreground/70">Sin personaje vivo</span>
+                  )}
+                </td>
+                <td className="px-3 py-3">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${statusClass(row.status)}`}>
+                    {statusLabel(row.status)}
+                  </span>
+                  {row.errorMessage && (
+                    <p className="text-xs text-destructive mt-1">{row.errorMessage}</p>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                  Genera una vista previa para ver el impacto del cobro.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function DeadCharactersTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [view, setView] = useState<"actuales" | "historial">("actuales");
+  const [search, setSearch] = useState("");
+  const [deadRows, setDeadRows] = useState<DeadCharacterRow[]>([]);
+  const [historyRows, setHistoryRows] = useState<LifeHistoryRow[]>([]);
+  const [loadingDead, setLoadingDead] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
+  const loadCurrentDead = useCallback(async () => {
+    setLoadingDead(true);
+    const res = await fetch("/api/admin/personajes/muertos?limit=300", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setLoadingDead(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo cargar personajes muertos", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setDeadRows(data.data ?? []);
+  }, [token, onToast]);
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    const params = new URLSearchParams({
+      page: String(historyPage),
+      limit: "30",
+    });
+
+    const res = await fetch(`/api/admin/personajes/muertes-historial?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setLoadingHistory(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo cargar historial de muertes", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setHistoryRows(data.data ?? []);
+    setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
+  }, [historyPage, token, onToast]);
+
+  useEffect(() => {
+    loadCurrentDead();
+  }, [loadCurrentDead]);
+
+  useEffect(() => {
+    if (view === "historial") {
+      loadHistory();
+    }
+  }, [view, loadHistory]);
+
+  const searchTerm = search.trim().toLowerCase();
+
+  const filteredDeadRows = useMemo(() => {
+    if (!searchTerm) return deadRows;
+    return deadRows.filter((row) => {
+      const haystack = `${row.name} ${row.userName}`.toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }, [deadRows, searchTerm]);
+
+  const filteredHistoryRows = useMemo(() => {
+    if (!searchTerm) return historyRows;
+    return historyRows.filter((row) => {
+      const haystack = `${row.characterName} ${row.userName} ${row.reason ?? ""}`.toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }, [historyRows, searchTerm]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setView("actuales")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "actuales"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Muertos actuales
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setHistoryPage(1);
+              setView("historial");
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "historial"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Historial completo
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar personaje o jugador"
+            className="w-64 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+          />
+          <button
+            type="button"
+            onClick={view === "actuales" ? loadCurrentDead : loadHistory}
+            className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+          >
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      {view === "actuales" && (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          {loadingDead ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-gold" />
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/50 border-b border-border">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Slot</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDeadRows.map((row, idx) => (
+                  <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                    <td className="px-3 py-3 font-medium text-foreground">{row.name}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
+                    <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                  </tr>
+                ))}
+                {filteredDeadRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                      No hay personajes muertos en este momento.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {view === "historial" && (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            {loadingHistory ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-gold" />
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/50 border-b border-border">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Fecha evento</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Evento</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Motivo</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistoryRows.map((row, idx) => (
+                    <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.createdAt)}</td>
+                      <td className="px-3 py-3 font-medium text-foreground">{row.characterName}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
+                      <td className="px-3 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${row.event === "muerto" ? "bg-destructive/25 text-destructive" : "bg-green-900/30 text-green-300"}`}>
+                          {row.event === "muerto" ? "Muerto" : "Revivido"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{row.reason ?? "-"}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                    </tr>
+                  ))}
+                  {filteredHistoryRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                        No hay eventos de historial para mostrar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Página {historyPage} de {historyTotalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                disabled={historyPage <= 1 || loadingHistory}
+                className="px-3 py-1.5 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
+                disabled={historyPage >= historyTotalPages || loadingHistory}
+                className="px-3 py-1.5 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal del panel ───────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -3298,6 +3849,8 @@ export default function AdminPage() {
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "impuestos", label: "Cobrar Impuestos", icon: Coins },
+    { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
     { id: "historial-partidas", label: "Historial", icon: Shield },
@@ -3368,6 +3921,12 @@ export default function AdminPage() {
             )}
             {activeTab === "transacciones" && (
               <TransactionsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "impuestos" && (
+              <TaxesTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "muertes" && (
+              <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
               <PartidasTab token={token} onToast={showToast} />
