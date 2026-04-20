@@ -650,6 +650,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                       "client-id": paypalClientId,
                       currency: "USD",
                       intent: "capture",
+                      "disable-funding": "card,credit",
                     }}
                   >
                     <PayPalButtons
