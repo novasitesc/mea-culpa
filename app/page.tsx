@@ -72,7 +72,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
-  const [isRouletteEnabled, setIsRouletteEnabled] = useState(true);
+  const [isRouletteEnabled, setIsRouletteEnabled] = useState<boolean | null>(null);
   const [activeSlot, setActiveSlot] = useState(1);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
@@ -91,7 +91,8 @@ function HomePageContent({ forcedSection }: HomePageProps) {
         }
       } catch {
         if (isMounted) {
-          setIsRouletteEnabled(true);
+          // Fallback cerrado: sin config válida no habilitamos acceso a ruleta.
+          setIsRouletteEnabled(false);
         }
       }
     };
@@ -144,6 +145,9 @@ function HomePageContent({ forcedSection }: HomePageProps) {
 
   useEffect(() => {
     if (forcedSection) {
+      if (forcedSection === "ruleta" && isRouletteEnabled === null) {
+        return;
+      }
       if (forcedSection === "ruleta" && !isRouletteEnabled) {
         setActiveSection("inicio");
         router.replace("/");
@@ -160,6 +164,9 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     }
 
     if (section === "ruleta") {
+      if (isRouletteEnabled === null) {
+        return;
+      }
       if (!isRouletteEnabled) {
         setActiveSection("inicio");
         router.replace("/");
@@ -185,7 +192,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     }
 
     if (sectionId === "ruleta") {
-      if (!isRouletteEnabled) {
+      if (isRouletteEnabled !== true) {
         setActiveSection("inicio");
         router.push("/");
         return;
@@ -241,7 +248,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
           <Sidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
-            rouletteEnabled={isRouletteEnabled}
+            rouletteEnabled={isRouletteEnabled === true}
           />
 
           {/* Center */}

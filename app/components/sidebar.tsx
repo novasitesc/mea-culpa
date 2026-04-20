@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield } from "lucide-react";
 
@@ -77,10 +78,43 @@ type SidebarProps = {
 export default function Sidebar({
   activeSection,
   onSectionChange,
-  rouletteEnabled = true,
+  rouletteEnabled,
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [resolvedRouletteEnabled, setResolvedRouletteEnabled] = useState<boolean>(
+    rouletteEnabled === true,
+  );
+
+  useEffect(() => {
+    if (typeof rouletteEnabled === "boolean") {
+      setResolvedRouletteEnabled(rouletteEnabled);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadRouletteConfig = async () => {
+      try {
+        const res = await fetch("/api/ruleta/config");
+        const data = (await res.json()) as { enabled?: boolean };
+        if (isMounted) {
+          setResolvedRouletteEnabled(Boolean(data.enabled ?? true));
+        }
+      } catch {
+        if (isMounted) {
+          // Fallback cerrado: si no hay config, tratamos como deshabilitada.
+          setResolvedRouletteEnabled(false);
+        }
+      }
+    };
+
+    void loadRouletteConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rouletteEnabled]);
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -104,7 +138,7 @@ export default function Sidebar({
     <aside className="space-y-3">
       {sidebarItems.map((item) => {
         const staticDisabled = "disabled" in item && item.disabled;
-        const rouletteDisabled = item.id === "ruleta" && !rouletteEnabled;
+        const rouletteDisabled = item.id === "ruleta" && !resolvedRouletteEnabled;
         const disabled = staticDisabled || rouletteDisabled;
         return (
           <button
