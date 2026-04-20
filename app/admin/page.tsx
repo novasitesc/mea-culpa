@@ -3948,21 +3948,23 @@ export default function AdminPage() {
         {/* Contenedor principal con tabs */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-border">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
-                  activeTab === tab.id
-                    ? "border-gold text-gold"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
+          <div className="border-b border-border overflow-x-auto admin-tabs-scroll">
+            <div className="flex min-w-max">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
+                    activeTab === tab.id
+                      ? "border-gold text-gold"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Contenido de pestaña */}

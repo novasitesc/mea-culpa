@@ -138,6 +138,62 @@
     0 0 60px rgba(255, 140, 30, 0.08);
 }
 
+/* Scroll horizontal del tabbar del admin en paleta oscura */
+.admin-tabs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 134, 11, 0.65) rgba(12, 12, 12, 0.95);
+  scrollbar-gutter: stable;
+}
+
+.admin-tabs-scroll::-webkit-scrollbar {
+  height: 10px;
+  background: rgba(12, 12, 12, 0.95) !important;
+}
+
+.admin-tabs-scroll::-webkit-scrollbar-track {
+  background: rgba(12, 12, 12, 0.95) !important;
+}
+
+.admin-tabs-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(139, 115, 85, 0.7), rgba(184, 134, 11, 0.75));
+  border-radius: 999px;
+  border: 2px solid rgba(12, 12, 12, 0.95);
+}
+
+.admin-tabs-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(139, 115, 85, 0.9), rgba(212, 175, 55, 0.9));
+}
+
+/* Fallback global para scrollbars claros en navegadores/OS que ignoran estilos locales */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 134, 11, 0.55) rgba(12, 12, 12, 0.92);
+}
+
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+  background: rgba(12, 12, 12, 0.92) !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(12, 12, 12, 0.92) !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(139, 115, 85, 0.72), rgba(184, 134, 11, 0.72)) !important;
+  border-radius: 999px;
+  border: 2px solid rgba(12, 12, 12, 0.92);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(139, 115, 85, 0.92), rgba(212, 175, 55, 0.9)) !important;
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgba(12, 12, 12, 0.92) !important;
+}
+
 /* Marco épico de fantasía D&D - Ultra detallado */
 .logo-frame {
   position: relative;
