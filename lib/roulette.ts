@@ -47,12 +47,12 @@ if (SLOT_TABLE.length !== 100) {
 }
 
 const REWARD_LABELS: Record<RouletteCategory, string> = {
-  jackpot: "Jackpot (placeholder)",
-  muy_grande: "Premio muy grande (placeholder)",
+  jackpot: "Jackpot",
+  muy_grande: "Premio muy grande",
   nada: "Sin premio",
-  grande: "Premio grande (placeholder)",
-  mediano: "Premio mediano (placeholder)",
-  pequeno: "Premio pequeno (placeholder)",
+  grande: "Premio grande",
+  mediano: "Premio mediano",
+  pequeno: "Premio pequeno",
 };
 
 export function getRouletteSlots(): RouletteCategory[] {

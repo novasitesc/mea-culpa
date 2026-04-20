@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, RotateCw, Shield, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, RotateCw, Shield, Trash2 } from "lucide-react";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
@@ -384,7 +384,13 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
                               : "border-green-700 bg-green-950/30 text-green-300"
                           }`}
                         >
-                          {deletingId === pool.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          {deletingId === pool.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : pool.active ? (
+                            <Trash2 className="w-4 h-4" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4" />
+                          )}
                           {pool.active ? "Desactivar" : "Activar"}
                         </button>
                       </div>
