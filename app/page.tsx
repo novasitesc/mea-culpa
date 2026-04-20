@@ -622,7 +622,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
             <div className="relative h-[70vh] md:h-[78vh]">
               <div
                 ref={fullscreenViewportRef}
-                className="absolute inset-0 overflow-hidden"
+                className="absolute inset-0 overflow-hidden select-none"
                 onWheel={(event) => {
                   event.preventDefault();
                   const delta = event.deltaY < 0 ? NOTICIA_ZOOM_STEP : -NOTICIA_ZOOM_STEP;
@@ -632,6 +632,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                   if (noticiaZoom <= 1) {
                     return;
                   }
+                  event.preventDefault();
                   setIsDraggingNoticia(true);
                   dragStartRef.current = { x: event.clientX, y: event.clientY };
                   panStartRef.current = noticiaPan;
@@ -666,6 +667,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                     transform: `translate(${noticiaPan.x}px, ${noticiaPan.y}px) scale(${noticiaZoom})`,
                     transformOrigin: "center center",
                     cursor: noticiaZoom > 1 ? (isDraggingNoticia ? "grabbing" : "grab") : "zoom-in",
+                    touchAction: "none",
                   }}
                 >
                   <Image
@@ -676,6 +678,8 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                     className="object-contain"
                     sizes="100vw"
                     priority
+                    draggable={false}
+                    onDragStart={(event) => event.preventDefault()}
                   />
                 </div>
               </div>
