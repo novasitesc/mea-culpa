@@ -134,6 +134,7 @@ export default function GremioPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [selectedBagRowId, setSelectedBagRowId] = useState<number | null>(null);
   const [selectedTargetCharacterId, setSelectedTargetCharacterId] = useState<number | null>(null);
+  const [selectedBaulItemId, setSelectedBaulItemId] = useState<number | null>(null);
   const [requestNote, setRequestNote] = useState("");
   const [alert, setAlert] = useState<AlertState>(INITIAL_ALERT);
 
@@ -262,6 +263,33 @@ export default function GremioPage() {
     () => (guildState?.solicitudes ?? []).filter((s) => s.estado === "pendiente"),
     [guildState?.solicitudes],
   );
+
+  const baulOptions = useMemo<ObjectSelectorItem[]>(() => {
+    return (guildState?.baul ?? []).map((item) => ({
+      value: item.id,
+      icon: item.object.icono,
+      name: `${item.object.nombre} - ${item.object.precio.toLocaleString()} oro`,
+      searchText: `${item.object.rareza} ${item.object.tipo} ${item.depositBy.name}`,
+    }));
+  }, [guildState?.baul]);
+
+  const selectedBaulItem = useMemo(
+    () => (guildState?.baul ?? []).find((item) => item.id === selectedBaulItemId) ?? null,
+    [guildState?.baul, selectedBaulItemId],
+  );
+
+  useEffect(() => {
+    if (baulOptions.length === 0) {
+      setSelectedBaulItemId(null);
+      return;
+    }
+
+    setSelectedBaulItemId((prev) => {
+      if (!prev) return baulOptions[0].value;
+      const exists = baulOptions.some((item) => item.value === prev);
+      return exists ? prev : baulOptions[0].value;
+    });
+  }, [baulOptions]);
 
   const createGuild = async () => {
     if (!authHeaders) return;
@@ -663,6 +691,10 @@ export default function GremioPage() {
                       onChange={setSelectedBagRowId}
                       filters={{ excludeTraded: true, excludePublished: true }}
                       showQuantity
+                      searchable
+                      searchPlaceholder="Buscar objeto de la bolsa..."
+                      noSearchResultsLabel="No hay coincidencias"
+                      placeholder="Selecciona un objeto"
                       emptyLabel="Sin objetos disponibles"
                     />
                   </div>
@@ -705,32 +737,47 @@ export default function GremioPage() {
                     />
                   </div>
 
+                  <ObjectSelector
+                    items={baulOptions}
+                    value={selectedBaulItemId}
+                    onChange={setSelectedBaulItemId}
+                    searchable
+                    searchPlaceholder="Buscar objeto del baul..."
+                    noSearchResultsLabel="No hay coincidencias"
+                    placeholder="Selecciona un objeto del baul"
+                    emptyLabel="No hay objetos en el baul"
+                  />
+
                   {(guildState?.baul ?? []).length === 0 ? (
                     <p className="text-sm text-muted-foreground">No hay objetos en el baul.</p>
                   ) : (
-                    (guildState?.baul ?? []).map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-lg border border-border p-3 bg-card/50"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-gold">
-                              {item.object.icono} {item.object.nombre} x{item.cantidad}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Depositado por {item.depositBy.name}
-                            </p>
-                          </div>
-                          <Button
-                            onClick={() => requestItem(item.id)}
-                            disabled={busy === `request-${item.id}`}
-                          >
-                            {busy === `request-${item.id}` ? "Solicitando..." : "Solicitar"}
-                          </Button>
+                    <>
+                      {selectedBaulItem && (
+                        <div className="rounded-lg border border-border p-3 bg-card/50">
+                          <p className="font-semibold text-gold">
+                            {selectedBaulItem.object.icono} {selectedBaulItem.object.nombre}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Valor: {selectedBaulItem.object.precio.toLocaleString()} oro
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Depositado por {selectedBaulItem.depositBy.name}
+                          </p>
                         </div>
-                      </div>
-                    ))
+                      )}
+
+                      <Button
+                        onClick={() => selectedBaulItemId && requestItem(selectedBaulItemId)}
+                        disabled={
+                          selectedBaulItemId === null ||
+                          busy === `request-${selectedBaulItemId}`
+                        }
+                      >
+                        {selectedBaulItemId !== null && busy === `request-${selectedBaulItemId}`
+                          ? "Solicitando..."
+                          : "Solicitar"}
+                      </Button>
+                    </>
                   )}
                 </CardContent>
               </Card>
