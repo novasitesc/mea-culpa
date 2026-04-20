@@ -548,9 +548,6 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
         <div className="mx-auto grid w-full max-w-4xl gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <div className="relative mx-auto w-full max-w-md">
-            <div className="pointer-events-none absolute -inset-3 rounded-full border border-gold/20" />
-            <div className="pointer-events-none absolute inset-2 rounded-full border border-gold/20" />
-
             <div className="relative aspect-square">
               <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
                 <div className="w-0 h-0 border-x-7 border-x-transparent border-t-12 border-t-gold drop-shadow-[0_3px_2px_rgba(0,0,0,0.65)]" />
@@ -587,7 +584,6 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
                     />
                   </div>
 
-                  <div className="pointer-events-none absolute inset-[17%] rounded-full border border-gold/35" />
                   <div className="absolute left-1/2 top-1/2 z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f4e7b7] bg-linear-to-br from-[#8b7355] to-[#33281b] shadow-[0_6px_16px_rgba(0,0,0,0.55)]" />
                   <div className="absolute left-1/2 top-1/2 z-30 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold" />
                 </div>
