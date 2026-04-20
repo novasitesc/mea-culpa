@@ -94,7 +94,7 @@ export async function GET(request: Request) {
         orden,
         fue_comerciado,
         publicado_en_trade,
-        objetos:objeto_id ( nombre, tipo_item, precio )
+        objetos:objeto_id ( nombre, tipo_item, precio, icono )
       )
     `,
     )
@@ -236,6 +236,7 @@ export async function GET(request: Request) {
             bagRowId: bi.id,
             objectId: bi.objeto_id,
             name: bi.objetos?.nombre ?? "Objeto desconocido",
+            icono: bi.objetos?.icono ?? "📦",
             type:
               bi.objetos?.tipo_item === "pecho"
                 ? "armadura"

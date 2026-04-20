@@ -49,7 +49,7 @@ export const sidebarItems = [
     icon: ShoppingBag,
     hasIndicator: true,
     href: "/comercio",
-    subtitle: "(compra y venta entre pj)",
+    subtitle: "(compra y venta entre personajes)",
   },
   {
     id: "gremio",

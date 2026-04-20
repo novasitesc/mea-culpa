@@ -24,6 +24,7 @@ type Character = {
       bagRowId: number;
       objectId: number | null;
       name: string;
+      icono?: string;
       type: string;
       cantidad?: number;
       fueComerciado?: boolean;
@@ -240,7 +241,8 @@ export default function GremioPage() {
       .map((item) => ({
         value: item.bagRowId,
         name: item.name,
-        qty: item.cantidad ?? 1,
+        icon: item.icono ?? "📦",
+        searchText: item.type,
         fueComerciado: item.fueComerciado,
         publicadoEnTrade: item.publicadoEnTrade,
       }));
@@ -529,10 +531,6 @@ export default function GremioPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Sistema de clanes con baul compartido. El chat en tiempo real se
-                implementara en una siguiente fase.
-              </p>
               <p className="text-xs mt-2 text-muted-foreground">
                 Oro disponible: <span className="text-gold font-semibold">{profile?.player.oro ?? 0}</span>
               </p>
@@ -690,7 +688,7 @@ export default function GremioPage() {
                       value={selectedBagRowId}
                       onChange={setSelectedBagRowId}
                       filters={{ excludeTraded: true, excludePublished: true }}
-                      showQuantity
+                      showQuantity={false}
                       searchable
                       searchPlaceholder="Buscar objeto de la bolsa..."
                       noSearchResultsLabel="No hay coincidencias"
