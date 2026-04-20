@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { Crown, Package, Shield, Users } from "lucide-react";
 
@@ -25,6 +26,7 @@ type Character = {
       name: string;
       type: string;
       cantidad?: number;
+      fueComerciado?: boolean;
       publicadoEnTrade?: boolean;
     }>;
   };
@@ -223,8 +225,24 @@ export default function GremioPage() {
     if (!selectedCharacter) return [];
     if (selectedCharacter.lifeStatus === "muerto") return [];
     return selectedCharacter.bag.items.filter(
-      (item) => !item.publicadoEnTrade && Number(item.objectId) > 0,
+      (item) => !item.fueComerciado && !item.publicadoEnTrade && Number(item.objectId) > 0,
     );
+  }, [selectedCharacter]);
+
+  const depositableOptions = useMemo<ObjectSelectorItem[]>(() => {
+    if (!selectedCharacter || selectedCharacter.lifeStatus === "muerto") {
+      return [];
+    }
+
+    return selectedCharacter.bag.items
+      .filter((item) => Number(item.objectId) > 0)
+      .map((item) => ({
+        value: item.bagRowId,
+        name: item.name,
+        qty: item.cantidad ?? 1,
+        fueComerciado: item.fueComerciado,
+        publicadoEnTrade: item.publicadoEnTrade,
+      }));
   }, [selectedCharacter]);
 
   useEffect(() => {
@@ -639,20 +657,14 @@ export default function GremioPage() {
                       ))}
                     </Select>
 
-                    <Select
-                      value={selectedBagRowId?.toString() ?? ""}
-                      onChange={(e) => setSelectedBagRowId(Number(e.target.value))}
-                    >
-                      {depositableItems.length === 0 ? (
-                        <option value="">Sin objetos disponibles</option>
-                      ) : (
-                        depositableItems.map((item) => (
-                          <option key={item.bagRowId} value={item.bagRowId}>
-                            {item.name} x{item.cantidad ?? 1}
-                          </option>
-                        ))
-                      )}
-                    </Select>
+                    <ObjectSelector
+                      items={depositableOptions}
+                      value={selectedBagRowId}
+                      onChange={setSelectedBagRowId}
+                      filters={{ excludeTraded: true, excludePublished: true }}
+                      showQuantity
+                      emptyLabel="Sin objetos disponibles"
+                    />
                   </div>
 
                   <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -22,6 +22,8 @@ import {
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { GoldAmountInput } from "@/components/ui/gold-amount-input";
+import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -760,6 +762,16 @@ function ActivePartidasTab({
     >
   >({});
 
+  const rewardObjectOptions = useMemo<ObjectSelectorItem[]>(
+    () =>
+      objects.map((obj) => ({
+        value: obj.id,
+        name: obj.name,
+        icon: obj.icon,
+      })),
+    [objects],
+  );
+
   const createId = (prefix: string) =>
     `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -1042,14 +1054,15 @@ function ActivePartidasTab({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormField label="Oro a asignar">
-                          <input
-                            type="number"
-                            min={0}
+                          <GoldAmountInput
                             className={inputCls}
                             value={reward.gold}
-                            onChange={(e) =>
+                            min={0}
+                            allowZero
+                            emptyWhenZero
+                            onChangeValue={(value) =>
                               updateReward(participant.characterId, {
-                                gold: Math.max(0, Number(e.target.value) || 0),
+                                gold: value === "" ? 0 : Math.max(0, Number(value) || 0),
                               })
                             }
                           />
@@ -1092,22 +1105,17 @@ function ActivePartidasTab({
                                 key={item.id}
                                 className="grid grid-cols-1 md:grid-cols-3 gap-2"
                               >
-                                <select
+                                <ObjectSelector
                                   className={inputCls}
-                                  value={item.objectId ?? ""}
-                                  onChange={(e) =>
+                                  items={rewardObjectOptions}
+                                  value={item.objectId ?? null}
+                                  onChange={(selectedObjectId) =>
                                     updateRewardItem(participant.characterId, item.id, {
-                                      objectId: e.target.value ? Number(e.target.value) : null,
+                                      objectId: selectedObjectId,
                                     })
                                   }
-                                >
-                                  <option value="">Selecciona objeto</option>
-                                  {objects.map((obj) => (
-                                    <option key={obj.id} value={obj.id}>
-                                      {obj.icon} {obj.name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="Selecciona objeto"
+                                />
 
                                 <input
                                   type="number"
@@ -1863,17 +1871,12 @@ function GoldFormModal({
         </div>
 
         <FormField label="Cantidad">
-          <input
-            type="number"
-            min="1"
+          <GoldAmountInput
             className={inputCls}
             value={amount}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || /^\d+$/.test(val)) {
-                setAmount(val);
-              }
-            }}
+            onChangeValue={setAmount}
+            min={1}
+            allowZero={false}
             required
           />
         </FormField>

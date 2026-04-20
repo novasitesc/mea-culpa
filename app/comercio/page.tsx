@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { GoldAmountInput } from "@/components/ui/gold-amount-input";
+import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { Coins, ShoppingBag, UserRound, Check, X } from "lucide-react";
 
@@ -102,7 +104,7 @@ export default function ComercioPage() {
   const [selectedSellerCharacterId, setSelectedSellerCharacterId] = useState<number | null>(null);
   const [selectedBuyerCharacterId, setSelectedBuyerCharacterId] = useState<number | null>(null);
   const [selectedBagRowId, setSelectedBagRowId] = useState<number | null>(null);
-  const [publishPrice, setPublishPrice] = useState<string>("0");
+  const [publishPrice, setPublishPrice] = useState<string>("");
   const [alert, setAlert] = useState<AlertState>(INITIAL_ALERT);
 
   const showAlert = useCallback(
@@ -208,6 +210,20 @@ export default function ComercioPage() {
     return sellerCharacter.bag.items.filter(
       (item) => !item.fueComerciado && !item.publicadoEnTrade,
     );
+  }, [sellerCharacter]);
+
+  const sellerInventoryOptions = useMemo<ObjectSelectorItem[]>(() => {
+    if (!sellerCharacter || sellerCharacter.lifeStatus === "muerto") {
+      return [];
+    }
+
+    return sellerCharacter.bag.items.map((item) => ({
+      value: item.bagRowId,
+      name: item.name,
+      qty: item.cantidad ?? 1,
+      fueComerciado: item.fueComerciado,
+      publicadoEnTrade: item.publicadoEnTrade,
+    }));
   }, [sellerCharacter]);
 
   const aliveCharacters = useMemo(
@@ -532,21 +548,14 @@ export default function ComercioPage() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">
                     Objeto para publicar
                   </p>
-                  <Select
-                    value={selectedBagRowId?.toString() ?? ""}
-                    onChange={(e) => setSelectedBagRowId(Number(e.target.value))}
-                    disabled={publishableItems.length === 0}
-                  >
-                    {publishableItems.length === 0 ? (
-                      <option value="">Sin objetos disponibles</option>
-                    ) : (
-                      publishableItems.map((item) => (
-                        <option key={item.bagRowId} value={item.bagRowId}>
-                          {item.name} x{item.cantidad ?? 1}
-                        </option>
-                      ))
-                    )}
-                  </Select>
+                  <ObjectSelector
+                    items={sellerInventoryOptions}
+                    value={selectedBagRowId}
+                    onChange={setSelectedBagRowId}
+                    filters={{ excludeTraded: true, excludePublished: true }}
+                    showQuantity
+                    emptyLabel="Sin objetos disponibles"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -554,12 +563,12 @@ export default function ComercioPage() {
                     Precio en oro
                   </p>
                   <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
+                    <GoldAmountInput
                       value={publishPrice}
-                      onChange={(e) => setPublishPrice(e.target.value)}
+                      onChangeValue={setPublishPrice}
+                      min={1}
+                      allowZero={false}
+                      className="text-sm"
                     />
                     <Button
                       onClick={publishItem}
