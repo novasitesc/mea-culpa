@@ -41,6 +41,9 @@ type GuildSummary = {
   descripcion: string | null;
   liderUsuarioId: string;
   miembrosCount: number;
+  limiteIntegrantes: number;
+  limiteBaulItems: number;
+  baulCount: number;
 };
 
 type GuildMember = {
@@ -247,7 +250,7 @@ export default function GremioPage() {
         throw new Error(data.error ?? "No se pudo crear el gremio");
       }
 
-      showAlert("Gremio creado", "Se descontaron 500 de oro", "success");
+      showAlert("Gremio creado", "Se descontaron 100 de oro", "success");
       emitAuthRefresh(typeof data?.oro === "number" ? data.oro : undefined);
       await refreshUser();
       await loadData();
@@ -437,6 +440,11 @@ export default function GremioPage() {
 
   const role = guildState?.myMembership?.role;
   const hasGuild = Boolean(guildState?.hasGuild);
+  const myGuild = guildState?.myGuild ?? null;
+  const isBaulLimitReached =
+    hasGuild && !!myGuild
+      ? (guildState?.baul ?? []).length >= myGuild.limiteBaulItems
+      : false;
 
   return (
     <div className="min-h-screen p-6 text-foreground bg-background relative z-10 space-y-4">
@@ -475,7 +483,7 @@ export default function GremioPage() {
             <>
               <Card className="bg-card/60 border-border">
                 <CardHeader>
-                  <CardTitle>Crear gremio (costo: 500 oro)</CardTitle>
+                  <CardTitle>Crear gremio (costo: 100 oro)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Input
@@ -526,14 +534,21 @@ export default function GremioPage() {
                               {g.descripcion || "Sin descripcion"}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Integrantes: {g.miembrosCount}
+                              Integrantes: {g.miembrosCount}/{g.limiteIntegrantes}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Baul: {g.baulCount}/{g.limiteBaulItems}
                             </p>
                           </div>
                           <Button
                             onClick={() => joinGuild(g.id)}
-                            disabled={busy === `join-${g.id}`}
+                            disabled={busy === `join-${g.id}` || g.miembrosCount >= g.limiteIntegrantes}
                           >
-                            {busy === `join-${g.id}` ? "Uniendo..." : "Unirme"}
+                            {busy === `join-${g.id}`
+                              ? "Uniendo..."
+                              : g.miembrosCount >= g.limiteIntegrantes
+                                ? "Lleno"
+                                : "Unirme"}
                           </Button>
                         </div>
                       </div>
@@ -559,7 +574,10 @@ export default function GremioPage() {
                     Rol actual: <span className="text-gold">{role === "lider" ? "Lider" : "Integrante"}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Miembros: {(guildState?.members ?? []).length}
+                    Miembros: {(guildState?.members ?? []).length}/{myGuild?.limiteIntegrantes ?? 10}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Baul: {(guildState?.baul ?? []).length}/{myGuild?.limiteBaulItems ?? 10}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(guildState?.members ?? []).map((m) => (
@@ -619,10 +637,15 @@ export default function GremioPage() {
 
                   <Button
                     onClick={depositItem}
-                    disabled={busy === "deposit" || depositableItems.length === 0}
+                    disabled={busy === "deposit" || depositableItems.length === 0 || isBaulLimitReached}
                   >
                     {busy === "deposit" ? "Depositando..." : "Depositar objeto"}
                   </Button>
+                  {isBaulLimitReached && (
+                    <p className="text-xs text-amber-300">
+                      El baul del gremio esta lleno. Limite actual: {myGuild?.limiteBaulItems ?? 10} items.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 

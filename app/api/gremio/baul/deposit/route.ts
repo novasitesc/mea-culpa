@@ -81,19 +81,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Objeto invalido para deposito" }, { status: 409 });
   }
 
-  const { data: inserted, error: insertError } = await db
-    .from("gremio_baul")
-    .insert({
-      gremio_id: membership.gremio_id,
-      objeto_id: bagItem.objeto_id,
-      cantidad: bagItem.cantidad,
-      depositante_usuario_id: user.id,
-    })
-    .select("id, gremio_id, objeto_id, cantidad")
-    .single();
+  const { data: inserted, error: rpcError } = await db.rpc("depositar_gremio_baul_con_limite", {
+    p_gremio_id: membership.gremio_id,
+    p_objeto_id: bagItem.objeto_id,
+    p_cantidad: bagItem.cantidad,
+    p_depositante_usuario_id: user.id,
+  });
 
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  if (rpcError) {
+    const msg = rpcError.message ?? "No se pudo depositar en el baul";
+    if (msg.includes("limite de items")) {
+      return NextResponse.json({ error: msg }, { status: 409 });
+    }
+    if (msg.includes("Gremio no encontrado")) {
+      return NextResponse.json({ error: msg }, { status: 404 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   const { error: deleteError } = await db

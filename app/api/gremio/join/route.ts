@@ -22,49 +22,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "gremioId es requerido" }, { status: 400 });
   }
 
-  const { data: existingMembership, error: existingError } = await db
-    .from("gremio_miembros")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
+  const { data, error: rpcError } = await db.rpc("unirse_gremio_con_limite", {
+    p_usuario_id: user.id,
+    p_gremio_id: gremioId,
+  });
 
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
-  }
-
-  if (existingMembership) {
-    return NextResponse.json({ error: "Ya perteneces a un gremio" }, { status: 409 });
-  }
-
-  const { data: guild, error: guildError } = await db
-    .from("gremios")
-    .select("id")
-    .eq("id", gremioId)
-    .maybeSingle();
-
-  if (guildError) {
-    return NextResponse.json({ error: guildError.message }, { status: 500 });
-  }
-
-  if (!guild) {
-    return NextResponse.json({ error: "Gremio no encontrado" }, { status: 404 });
-  }
-
-  const { data, error: insertError } = await db
-    .from("gremio_miembros")
-    .insert({
-      gremio_id: gremioId,
-      usuario_id: user.id,
-      rol: "integrante",
-    })
-    .select("id, gremio_id, rol")
-    .single();
-
-  if (insertError) {
-    if (String((insertError as any).code) === "23505") {
-      return NextResponse.json({ error: "Ya perteneces a un gremio" }, { status: 409 });
+  if (rpcError) {
+    const msg = rpcError.message ?? "No se pudo unir al gremio";
+    if (msg.includes("Ya perteneces")) {
+      return NextResponse.json({ error: msg }, { status: 409 });
     }
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    if (msg.includes("Gremio no encontrado")) {
+      return NextResponse.json({ error: msg }, { status: 404 });
+    }
+    if (msg.includes("limite de integrantes")) {
+      return NextResponse.json({ error: msg }, { status: 409 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

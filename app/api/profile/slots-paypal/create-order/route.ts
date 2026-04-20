@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { createPayPalOrder } from "@/lib/paypal";
 
-const SLOT_UNLOCK_PRICE_USD = 4.99;
+const SLOT_UNLOCK_PRICE_USD = 10.0;
 const SLOT_MIN = 2;
 const SLOT_MAX = 5;
 
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       metadata: {
         fromSlots: currentSlots,
         toSlots: targetSlots,
-        pricingVersion: "v1-fixed-4_99",
+        pricingVersion: "v2-fixed-10_00",
         orderStatus: order.status,
       },
     });

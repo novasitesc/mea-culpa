@@ -835,7 +835,7 @@ export default function ProfilePage() {
               <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-3">
                 {canUnlockMoreSlots ? (
                   <p className="text-sm text-amber-200">
-                    Desbloquea +1 slot por $4.99 USD. Pasaras de {maxCharacterSlots} a {nextSlotTarget} slots.
+                    Desbloquea +1 slot por $10.00 USD. Pasaras de {maxCharacterSlots} a {nextSlotTarget} slots.
                   </p>
                 ) : (
                   <p className="text-sm text-emerald-200">

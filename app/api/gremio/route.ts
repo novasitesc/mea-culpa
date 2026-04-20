@@ -11,6 +11,9 @@ function mapGuildRow(row: any) {
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
     miembrosCount: row.miembros_count ?? 0,
+    limiteIntegrantes: row.limite_integrantes ?? 10,
+    limiteBaulItems: row.limite_baul_items ?? 10,
+    baulCount: row.baul_count ?? 0,
   };
 }
 
@@ -34,7 +37,9 @@ export async function GET(request: Request) {
 
   const { data: guildRows, error: guildsError } = await db
     .from("gremios")
-    .select("id, nombre, descripcion, lider_usuario_id, creado_en, actualizado_en")
+    .select(
+      "id, nombre, descripcion, lider_usuario_id, creado_en, actualizado_en, limite_integrantes, limite_baul_items",
+    )
     .order("creado_en", { ascending: false })
     .limit(50);
 
@@ -45,6 +50,7 @@ export async function GET(request: Request) {
   const guildIds = (guildRows ?? []).map((g) => g.id);
 
   let memberCountsByGuild = new Map<number, number>();
+  let baulCountsByGuild = new Map<number, number>();
   if (guildIds.length > 0) {
     const { data: counts, error: countsError } = await db
       .from("gremio_miembros")
@@ -60,10 +66,29 @@ export async function GET(request: Request) {
       acc.set(key, (acc.get(key) ?? 0) + 1);
       return acc;
     }, new Map<number, number>());
+
+    const { data: baulCounts, error: baulCountsError } = await db
+      .from("gremio_baul")
+      .select("gremio_id")
+      .in("gremio_id", guildIds);
+
+    if (baulCountsError) {
+      return NextResponse.json({ error: baulCountsError.message }, { status: 500 });
+    }
+
+    baulCountsByGuild = (baulCounts ?? []).reduce((acc, row: any) => {
+      const key = Number(row.gremio_id);
+      acc.set(key, (acc.get(key) ?? 0) + 1);
+      return acc;
+    }, new Map<number, number>());
   }
 
   const guilds = (guildRows ?? []).map((g: any) =>
-    mapGuildRow({ ...g, miembros_count: memberCountsByGuild.get(Number(g.id)) ?? 0 }),
+    mapGuildRow({
+      ...g,
+      miembros_count: memberCountsByGuild.get(Number(g.id)) ?? 0,
+      baul_count: baulCountsByGuild.get(Number(g.id)) ?? 0,
+    }),
   );
 
   if (!membership) {
@@ -238,7 +263,7 @@ export async function POST(request: Request) {
     }
     if (msg.toLowerCase().includes("insuficiente")) {
       return NextResponse.json(
-        { error: "No tienes 500 de oro para crear un gremio" },
+        { error: "No tienes 100 de oro para crear un gremio" },
         { status: 422 },
       );
     }
