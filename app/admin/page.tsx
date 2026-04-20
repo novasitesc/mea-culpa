@@ -24,6 +24,8 @@ import Header from "@/app/components/header";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
+import { Select } from "@/components/ui/select";
+import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -137,23 +139,6 @@ type PartidaHistoryEntry = {
   participants: PartidaHistoryParticipant[];
   items: PartidaHistoryItem[];
 };
-
-const ITEM_TYPES = [
-  "cabeza",
-  "armadura",
-  "guante",
-  "botas",
-  "collar",
-  "anillo",
-  "amuleto",
-  "cinturón",
-  "arma",
-  "consumible",
-  "ingrediente",
-  "misc",
-];
-
-const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
 
 type Tab =
   | "usuarios"
@@ -401,7 +386,7 @@ function TransactionsTab({
           />
         </FormField>
         <FormField label="Cambio">
-          <select 
+          <Select
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
             value={fDelta}
             onChange={e => setFDelta(e.target.value as any)}
@@ -409,7 +394,7 @@ function TransactionsTab({
             <option value="all">Todos</option>
             <option value="positive">Ganancias (+)</option>
             <option value="negative">Pérdidas (-)</option>
-          </select>
+          </Select>
         </FormField>
         <FormField label="Desde">
           <input 
@@ -689,14 +674,14 @@ function PartidasTab({
           </FormField>
 
           <FormField label="Tier">
-            <select
+            <Select
               className={inputCls}
               value={tier}
               onChange={(e) => setTier((Number(e.target.value) === 2 ? 2 : 1) as 1 | 2)}
             >
               <option value={1}>Tier 1</option>
               <option value={2}>Tier 2</option>
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Comentario (opcional)">
@@ -2782,13 +2767,19 @@ function ShopItemFormModal({
   }) => void;
 }) {
   const [invalidObjectAlertId, setInvalidObjectAlertId] = useState(0);
-  const [objetoId, setObjetoId] = useState<number>(
-    initial?.objetoId ?? objects[0]?.id ?? 0,
+  const [objetoId, setObjetoId] = useState<number | null>(
+    initial?.objetoId ?? objects[0]?.id ?? null,
   );
-  
-  // --- Estados de búsqueda de objeto ---
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [showDropdown, setShowDropdown] = useState(false);
+
+  const objectOptions = useMemo<ObjectSelectorItem[]>(
+    () =>
+      objects.map((obj) => ({
+        value: obj.id,
+        name: `${obj.name} • ${obj.itemType} • ${obj.price.toLocaleString()} 🪙`,
+        icon: obj.icon,
+      })),
+    [objects],
+  );
 
   const [inventarioRaw, setInventarioRaw] = useState<string>(
     initial?.inventario === null || initial?.inventario === undefined
@@ -2802,7 +2793,7 @@ function ShopItemFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === "create" && !objetoId) {
+    if (mode === "create" && objetoId == null) {
       setInvalidObjectAlertId((prev) => prev + 1);
       return;
     }
@@ -2812,21 +2803,13 @@ function ShopItemFormModal({
     const ordenNum = orden.trim() === "" ? 0 : Number(orden.trim());
 
     onSubmit({
-      ...(mode === "create" ? { objetoId } : {}),
+      ...(mode === "create" ? { objetoId: Number(objetoId) } : {}),
       inventario,
       orden: ordenNum,
     });
   };
 
   const selectedObject = objects.find((o) => o.id === objetoId);
-  const filteredObjects = objects
-    .filter(
-      (obj) =>
-        obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obj.id.toString() === searchTerm ||
-        obj.itemType.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .slice(0, 10);
 
   return (
     <>
@@ -2847,68 +2830,20 @@ function ShopItemFormModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
         {mode === "create" && (
           <FormField label="Objeto">
-            <div className="relative">
+            <div className="flex flex-col gap-2">
+              <ObjectSelector
+                className={inputCls}
+                items={objectOptions}
+                value={objetoId}
+                onChange={setObjetoId}
+                placeholder="Selecciona objeto del catálogo"
+                emptyLabel="No hay objetos en catálogo"
+              />
               {selectedObject ? (
-                <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span>{selectedObject.icon}</span>
-                    <span className="font-medium text-foreground">{selectedObject.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      ({selectedObject.itemType}) · {selectedObject.price.toLocaleString()} 🪙
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setObjetoId(0);
-                      setSearchTerm("");
-                      setShowDropdown(true);
-                    }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    className={inputCls}
-                    placeholder="Buscar por nombre, ID o tipo..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  />
-                  {showDropdown && (
-                    <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                      {filteredObjects.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron objetos</div>
-                      ) : (
-                        filteredObjects.map((obj) => (
-                          <div
-                            key={obj.id}
-                            className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
-                            onClick={() => {
-                              setObjetoId(obj.id);
-                              setShowDropdown(false);
-                            }}
-                          >
-                            <span>{obj.icon}</span>
-                            <span className="font-medium">{obj.name}</span>
-                            <span className="text-muted-foreground text-xs">
-                              ID: {obj.id} • {obj.itemType} • {obj.price.toLocaleString()} 🪙
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                <p className="text-xs text-muted-foreground">
+                  Seleccionado: {selectedObject.icon} {selectedObject.name} ({selectedObject.itemType})
+                </p>
+              ) : null}
             </div>
           </FormField>
         )}
@@ -3243,31 +3178,31 @@ function ObjectFormModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Tipo de objeto">
-            <select
+            <Select
               className={inputCls}
               value={form.itemType}
               onChange={(e) => set("itemType", e.target.value)}
             >
-              {ITEM_TYPES.map((type) => (
+              {ITEM_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Rareza">
-            <select
+            <Select
               className={inputCls}
               value={form.rarity}
               onChange={(e) => set("rarity", e.target.value)}
             >
-              {RARITY_OPTIONS.map((rarity) => (
+              {ITEM_RARITY_OPTIONS.map((rarity) => (
                 <option key={rarity} value={rarity}>
                   {rarity}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Precio base">

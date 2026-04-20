@@ -24,10 +24,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import {
+  ITEM_RARITY_BADGES,
+  ITEM_RARITY_COLORS,
+  type ItemRarity,
+} from "@/lib/item-catalog";
 
 // ─── Tipos (espejo de la API) ─────────────────────────────────────────────
 
-type ItemRarity = "común" | "poco común" | "raro" | "épico" | "legendario";
 type ItemCategory =
   | "consumible"
   | "arma"
@@ -71,24 +75,6 @@ type Shop = {
 type ShopListItem = Omit<Shop, "items"> & { itemCount: number };
 
 type CartEntry = ShopItem & { qty: number };
-
-// ─── Colores por rareza ────────────────────────────────────────────────────
-
-const RARITY_COLORS: Record<ItemRarity, string> = {
-  común: "text-muted-foreground border-border",
-  "poco común": "text-green-400 border-green-800",
-  raro: "text-blue-400 border-blue-800",
-  épico: "text-purple-400 border-purple-800",
-  legendario: "text-gold border-gold-dim",
-};
-
-const RARITY_BADGE: Record<ItemRarity, string> = {
-  común: "bg-secondary text-muted-foreground",
-  "poco común": "bg-green-900/50 text-green-400",
-  raro: "bg-blue-900/50 text-blue-400",
-  épico: "bg-purple-900/50 text-purple-400",
-  legendario: "bg-gold/10 text-gold",
-};
 
 // ─── Componente principal ─────────────────────────────────────────────────
 
@@ -783,7 +769,7 @@ export default function TiendasPage() {
                             return (
                               <Card
                                 key={item.id}
-                                className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                                className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
                               >
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between gap-2">
@@ -791,7 +777,7 @@ export default function TiendasPage() {
                                       {item.icon}
                                     </span>
                                     <span
-                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
+                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
                                     >
                                       {item.rarity}
                                     </span>
