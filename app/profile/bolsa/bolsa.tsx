@@ -370,13 +370,13 @@ function SlotButton({
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518]",
       ].join(" ")}
     >
-      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none" : "text-lg leading-none"}>
+      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none shrink-0" : "text-lg leading-none shrink-0"}>
         {cfg.icon}
       </span>
       <span
         className={
           isWeaponSlot || isCapeSlot
-            ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none"
+            ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none shrink-0"
             : "text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none"
         }
       >
@@ -386,7 +386,7 @@ function SlotButton({
         <span
           className={
             isWeaponSlot || isCapeSlot
-              ? "text-sm text-[#D4AF37] leading-tight max-w-28 truncate px-2"
+              ? "block w-full max-w-28 shrink-0 text-center text-sm text-[#D4AF37] leading-snug px-2 overflow-hidden text-ellipsis whitespace-nowrap"
               : "text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5"
           }
         >
@@ -394,7 +394,7 @@ function SlotButton({
         </span>
       )}
       {isWeaponSlot && (
-        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
           <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
             Nv. {weaponLevel ?? 0} · {unlockedWeaponSockets}/3
           </span>
@@ -447,7 +447,7 @@ function SlotButton({
         </div>
       )}
       {isCapeSlot && (
-        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
           <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
             Nv. {capeLevel ?? 0} · {unlockedCapeSockets}/3
           </span>
