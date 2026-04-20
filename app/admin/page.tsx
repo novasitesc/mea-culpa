@@ -3948,7 +3948,7 @@ export default function AdminPage() {
         {/* Contenedor principal con tabs */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           {/* Tabs */}
-          <div className="border-b border-border overflow-x-auto admin-tabs-scroll">
+          <div className="border-b border-border overflow-x-auto overflow-y-hidden admin-tabs-scroll">
             <div className="flex min-w-max">
               {tabs.map((tab) => (
                 <button

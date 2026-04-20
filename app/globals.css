@@ -143,25 +143,31 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(184, 134, 11, 0.65) rgba(12, 12, 12, 0.95);
   scrollbar-gutter: stable;
+  overflow-y: hidden;
 }
 
-.admin-tabs-scroll::-webkit-scrollbar {
+.admin-tabs-scroll::-webkit-scrollbar:horizontal {
   height: 10px;
   background: rgba(12, 12, 12, 0.95) !important;
 }
 
-.admin-tabs-scroll::-webkit-scrollbar-track {
+.admin-tabs-scroll::-webkit-scrollbar-track:horizontal {
   background: rgba(12, 12, 12, 0.95) !important;
 }
 
-.admin-tabs-scroll::-webkit-scrollbar-thumb {
+.admin-tabs-scroll::-webkit-scrollbar-thumb:horizontal {
   background: linear-gradient(90deg, rgba(139, 115, 85, 0.7), rgba(184, 134, 11, 0.75));
   border-radius: 999px;
   border: 2px solid rgba(12, 12, 12, 0.95);
 }
 
-.admin-tabs-scroll::-webkit-scrollbar-thumb:hover {
+.admin-tabs-scroll::-webkit-scrollbar-thumb:hover:horizontal {
   background: linear-gradient(90deg, rgba(139, 115, 85, 0.9), rgba(212, 175, 55, 0.9));
+}
+
+.admin-tabs-scroll::-webkit-scrollbar:vertical {
+  width: 0;
+  height: 0;
 }
 
 /* Fallback global para scrollbars claros en navegadores/OS que ignoran estilos locales */
