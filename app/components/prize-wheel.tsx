@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { emitAuthRefresh } from "@/lib/authRefresh";
+import { fetchRouletteConfig } from "@/lib/rouletteConfigClient";
 import type { RouletteCategory, RouletteCostStep } from "@/lib/roulette";
 
 type PlayerState = {
@@ -156,24 +157,20 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
     setConfigTokenSnapshot(null);
   }, [token]);
 
-  const fetchConfig = useCallback(async () => {
+  const fetchConfig = useCallback(async (force = false) => {
     const requestId = ++configRequestSeqRef.current;
     const tokenSnapshot = token;
 
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/ruleta/config", {
-        headers: tokenSnapshot ? { Authorization: `Bearer ${tokenSnapshot}` } : {},
-      });
-      const data = (await res.json()) as ConfigResponse;
+      const data = (await fetchRouletteConfig({
+        token: tokenSnapshot,
+        force,
+      })) as ConfigResponse;
 
       if (requestId !== configRequestSeqRef.current) {
         return;
-      }
-
-      if (!res.ok) {
-        throw new Error((data as { error?: string }).error ?? "Error cargando ruleta");
       }
 
       setConfig(data);
@@ -343,7 +340,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
     if (data.alreadyPaid) {
       setPaymentMessage("Pago USD ya registrado para la siguiente tirada. Ya puedes tirar.");
-      await fetchConfig();
+      await fetchConfig(true);
     }
 
     return data.orderId;
@@ -371,7 +368,7 @@ export default function PrizeWheel({ token }: PrizeWheelProps) {
 
     setPaymentMessage("Pago confirmado. Ya puedes tirar la ruleta.");
 
-    await fetchConfig();
+    await fetchConfig(true);
   };
 
   const handleSpin = async () => {

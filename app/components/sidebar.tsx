@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield } from "lucide-react";
+import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 
 // ─── Definición de ítems ──────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { rouletteEnabled: effectiveRouletteEnabled } = useRouletteEnabled({
+    providedEnabled: rouletteEnabled,
+  });
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -104,8 +108,10 @@ export default function Sidebar({
     <aside className="space-y-3">
       {sidebarItems.map((item) => {
         const staticDisabled = "disabled" in item && item.disabled;
-        const roulettePending = item.id === "ruleta" && rouletteEnabled === null;
-        const rouletteDisabled = item.id === "ruleta" && rouletteEnabled === false;
+        const roulettePending =
+          item.id === "ruleta" && effectiveRouletteEnabled === null;
+        const rouletteDisabled =
+          item.id === "ruleta" && effectiveRouletteEnabled === false;
         const disabled = staticDisabled || rouletteDisabled || roulettePending;
         return (
           <button

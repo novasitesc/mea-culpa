@@ -8,6 +8,7 @@ import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import PrizeWheel from "./components/prize-wheel";
 import { useAuth } from "@/lib/useAuth";
+import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 
 type NoticiaImage = {
   filename: string;
@@ -72,37 +73,10 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
-  const [isRouletteEnabled, setIsRouletteEnabled] = useState<boolean | null>(null);
+  const { rouletteEnabled: isRouletteEnabled } = useRouletteEnabled({ token });
   const [activeSlot, setActiveSlot] = useState(1);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadRouletteConfig = async () => {
-      try {
-        const res = await fetch("/api/ruleta/config", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = (await res.json()) as { enabled?: boolean };
-        if (isMounted) {
-          setIsRouletteEnabled(Boolean(data.enabled ?? true));
-        }
-      } catch {
-        if (isMounted) {
-          // Fallback cerrado: sin config válida no habilitamos acceso a ruleta.
-          setIsRouletteEnabled(false);
-        }
-      }
-    };
-
-    void loadRouletteConfig();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [token]);
 
   useEffect(() => {
     let isMounted = true;
