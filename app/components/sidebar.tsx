@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll } from "lucide-react";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield } from "lucide-react";
+import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 
 // ─── Definición de ítems ──────────────────────────────────────────────────
 
@@ -11,7 +12,7 @@ export const sidebarItems = [
     label: "Inicio",
     icon: Scroll,
     hasIndicator: true,
-    href: null as string | null,
+    href: "/",
   },
   {
     id: "tiendas",
@@ -19,6 +20,13 @@ export const sidebarItems = [
     icon: Store,
     hasIndicator: true,
     href: "/tiendas",
+  },
+  {
+    id: "ruleta",
+    label: "Ruleta",
+    icon: Dice6,
+    hasIndicator: true,
+    href: "/ruleta",
   },
   {
     id: "balance",
@@ -40,10 +48,17 @@ export const sidebarItems = [
     id: "comercio",
     label: "Comercio",
     icon: ShoppingBag,
-    hasIndicator: false,
-    href: null as string | null,
-    subtitle: "(compra y venta entre pj)",
-    disabled: true,
+    hasIndicator: true,
+    href: "/comercio",
+    subtitle: "(compra y venta entre personajes)",
+  },
+  {
+    id: "gremio",
+    label: "Gremio",
+    icon: Shield,
+    hasIndicator: true,
+    href: "/gremio",
+    subtitle: "(baul compartido y solicitudes)",
   },
 ];
 
@@ -54,6 +69,8 @@ type SidebarProps = {
   activeSection?: string;
   /** Callback cuando se pulsa un ítem sin href. Si no se provee, navega a "/" */
   onSectionChange?: (id: string) => void;
+  /** Estado global de la ruleta */
+  rouletteEnabled?: boolean | null;
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────
@@ -61,9 +78,13 @@ type SidebarProps = {
 export default function Sidebar({
   activeSection,
   onSectionChange,
+  rouletteEnabled,
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { rouletteEnabled: effectiveRouletteEnabled } = useRouletteEnabled({
+    providedEnabled: rouletteEnabled,
+  });
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -86,7 +107,12 @@ export default function Sidebar({
   return (
     <aside className="space-y-3">
       {sidebarItems.map((item) => {
-        const disabled = "disabled" in item && item.disabled;
+        const staticDisabled = "disabled" in item && item.disabled;
+        const roulettePending =
+          item.id === "ruleta" && effectiveRouletteEnabled === null;
+        const rouletteDisabled =
+          item.id === "ruleta" && effectiveRouletteEnabled === false;
+        const disabled = staticDisabled || rouletteDisabled || roulettePending;
         return (
           <button
             key={item.id}
@@ -103,9 +129,9 @@ export default function Sidebar({
             <div className="flex items-center gap-3">
               <item.icon className="w-5 h-5" />
               <span className="font-medium font-sans">{item.label}</span>
-              {disabled ? (
+              {disabled && !roulettePending ? (
                 <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
-                  Próx.
+                  {rouletteDisabled ? "Deshabilitada" : "Próx."}
                 </span>
               ) : (
                 item.hasIndicator && (

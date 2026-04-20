@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -18,10 +18,17 @@ import {
   ChevronUp,
   Coins,
   ArrowRightLeft,
+  Dice6,
+  Skull,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { GoldAmountInput } from "@/components/ui/gold-amount-input";
+import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
+import { Select } from "@/components/ui/select";
+import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
+import { RuletaTab } from "./ruleta-tab";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -96,6 +103,67 @@ type AdminTransaction = {
   creado_en: string;
 };
 
+type AdminTaxStatus =
+  | "cobrado_total"
+  | "cobrado_parcial_y_muerto"
+  | "cobrado_parcial_sin_personaje_vivo"
+  | "error";
+
+type AdminTaxRow = {
+  userId: string;
+  userName: string;
+  goldBefore: number;
+  requestedAmount: number;
+  chargedAmount: number;
+  goldAfter: number;
+  shortfall: number;
+  status: AdminTaxStatus;
+  willDie: boolean;
+  deathApplied: boolean;
+  targetCharacterId: number | null;
+  targetCharacterName: string | null;
+  targetCharacterTotalLevel: number | null;
+  tieCandidates: number;
+  errorMessage: string | null;
+};
+
+type AdminTaxSummary = {
+  totalAccounts: number;
+  totalRequested: number;
+  totalCharged: number;
+  totalShortfall: number;
+  fullPaidCount: number;
+  partialWithDeathCount: number;
+  partialWithoutLivingCharacterCount: number;
+  errorCount: number;
+  deathsProjectedCount: number;
+  deathsAppliedCount: number;
+};
+
+type DeadCharacterRow = {
+  id: number;
+  name: string;
+  slot: number;
+  userId: string;
+  userName: string;
+  lifeStatus: string;
+  deadAt: string | null;
+  revivedAt: string | null;
+};
+
+type LifeHistoryRow = {
+  id: string;
+  characterId: number;
+  characterName: string;
+  userId: string;
+  userName: string;
+  event: string;
+  reason: string | null;
+  deadAt: string | null;
+  revivedAt: string | null;
+  createdAt: string | null;
+};
+
 type PartidaHistoryItem = {
   characterId: number;
   objectId: number;
@@ -136,23 +204,6 @@ type PartidaHistoryEntry = {
   items: PartidaHistoryItem[];
 };
 
-const ITEM_TYPES = [
-  "cabeza",
-  "armadura",
-  "guante",
-  "botas",
-  "collar",
-  "anillo",
-  "amuleto",
-  "cinturón",
-  "arma",
-  "consumible",
-  "ingrediente",
-  "misc",
-];
-
-const RARITY_OPTIONS = ["común", "poco común", "raro", "épico", "legendario"];
-
 type Tab =
   | "usuarios"
   | "tiendas"
@@ -160,7 +211,10 @@ type Tab =
   | "transacciones"
   | "partidas"
   | "partidas-activas"
-  | "historial-partidas";
+  | "historial-partidas"
+  | "impuestos"
+  | "ruleta"
+  | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +223,17 @@ function formatDate(iso: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -399,7 +464,7 @@ function TransactionsTab({
           />
         </FormField>
         <FormField label="Cambio">
-          <select 
+          <Select
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
             value={fDelta}
             onChange={e => setFDelta(e.target.value as any)}
@@ -407,7 +472,7 @@ function TransactionsTab({
             <option value="all">Todos</option>
             <option value="positive">Ganancias (+)</option>
             <option value="negative">Pérdidas (-)</option>
-          </select>
+          </Select>
         </FormField>
         <FormField label="Desde">
           <input 
@@ -687,14 +752,14 @@ function PartidasTab({
           </FormField>
 
           <FormField label="Tier">
-            <select
+            <Select
               className={inputCls}
               value={tier}
               onChange={(e) => setTier((Number(e.target.value) === 2 ? 2 : 1) as 1 | 2)}
             >
               <option value={1}>Tier 1</option>
               <option value={2}>Tier 2</option>
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Comentario (opcional)">
@@ -759,6 +824,16 @@ function ActivePartidasTab({
       }
     >
   >({});
+
+  const rewardObjectOptions = useMemo<ObjectSelectorItem[]>(
+    () =>
+      objects.map((obj) => ({
+        value: obj.id,
+        name: obj.name,
+        icon: obj.icon,
+      })),
+    [objects],
+  );
 
   const createId = (prefix: string) =>
     `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -1042,14 +1117,15 @@ function ActivePartidasTab({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormField label="Oro a asignar">
-                          <input
-                            type="number"
-                            min={0}
+                          <GoldAmountInput
                             className={inputCls}
                             value={reward.gold}
-                            onChange={(e) =>
+                            min={0}
+                            allowZero
+                            emptyWhenZero
+                            onChangeValue={(value) =>
                               updateReward(participant.characterId, {
-                                gold: Math.max(0, Number(e.target.value) || 0),
+                                gold: value === "" ? 0 : Math.max(0, Number(value) || 0),
                               })
                             }
                           />
@@ -1092,22 +1168,17 @@ function ActivePartidasTab({
                                 key={item.id}
                                 className="grid grid-cols-1 md:grid-cols-3 gap-2"
                               >
-                                <select
+                                <ObjectSelector
                                   className={inputCls}
-                                  value={item.objectId ?? ""}
-                                  onChange={(e) =>
+                                  items={rewardObjectOptions}
+                                  value={item.objectId ?? null}
+                                  onChange={(selectedObjectId) =>
                                     updateRewardItem(participant.characterId, item.id, {
-                                      objectId: e.target.value ? Number(e.target.value) : null,
+                                      objectId: selectedObjectId,
                                     })
                                   }
-                                >
-                                  <option value="">Selecciona objeto</option>
-                                  {objects.map((obj) => (
-                                    <option key={obj.id} value={obj.id}>
-                                      {obj.icon} {obj.name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="Selecciona objeto"
+                                />
 
                                 <input
                                   type="number"
@@ -1397,7 +1468,8 @@ function UsersTab({
     return (
       u.name.toLowerCase().includes(search) ||
       u.email.toLowerCase().includes(search) ||
-      u.role.toLowerCase().includes(search)
+      u.role.toLowerCase().includes(search) ||
+      u.rolSistema.toLowerCase().includes(search)
     );
   });
 
@@ -1485,13 +1557,17 @@ function UsersTab({
                   <td className="px-3 py-3 text-center text-gold font-medium">
                     {u.gold}
                   </td>
-                  <td className="px-3 py-3 text-center">
-                    {u.isAdmin ? (
-                      <span className="px-2 py-0.5 bg-gold/20 text-gold rounded text-xs font-semibold">
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    {u.rolSistema === "super_admin" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#5d7dcf]/60 bg-[#1a2648] text-[#c8d9ff] text-[11px] font-semibold whitespace-nowrap shadow-[0_0_10px_rgba(93,125,207,0.2)]">
+                        👑 super_admin
+                      </span>
+                    ) : u.isAdmin ? (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-gold/20 text-gold rounded text-[11px] font-semibold whitespace-nowrap">
                         Admin
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-secondary text-muted-foreground rounded text-xs">
+                      <span className="inline-flex items-center px-2 py-0.5 bg-secondary text-muted-foreground rounded text-[11px] whitespace-nowrap">
                         Usuario
                       </span>
                     )}
@@ -1863,17 +1939,12 @@ function GoldFormModal({
         </div>
 
         <FormField label="Cantidad">
-          <input
-            type="number"
-            min="1"
+          <GoldAmountInput
             className={inputCls}
             value={amount}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || /^\d+$/.test(val)) {
-                setAmount(val);
-              }
-            }}
+            onChangeValue={setAmount}
+            min={1}
+            allowZero={false}
             required
           />
         </FormField>
@@ -2779,13 +2850,20 @@ function ShopItemFormModal({
   }) => void;
 }) {
   const [invalidObjectAlertId, setInvalidObjectAlertId] = useState(0);
-  const [objetoId, setObjetoId] = useState<number>(
-    initial?.objetoId ?? objects[0]?.id ?? 0,
+  const [objetoId, setObjetoId] = useState<number | null>(
+    initial?.objetoId ?? objects[0]?.id ?? null,
   );
-  
-  // --- Estados de búsqueda de objeto ---
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [showDropdown, setShowDropdown] = useState(false);
+
+  const objectOptions = useMemo<ObjectSelectorItem[]>(
+    () =>
+      objects.map((obj) => ({
+        value: obj.id,
+        name: obj.name,
+        icon: obj.icon,
+        searchText: `${obj.id} ${obj.itemType} ${obj.price}`,
+      })),
+    [objects],
+  );
 
   const [inventarioRaw, setInventarioRaw] = useState<string>(
     initial?.inventario === null || initial?.inventario === undefined
@@ -2799,7 +2877,7 @@ function ShopItemFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === "create" && !objetoId) {
+    if (mode === "create" && objetoId == null) {
       setInvalidObjectAlertId((prev) => prev + 1);
       return;
     }
@@ -2809,21 +2887,13 @@ function ShopItemFormModal({
     const ordenNum = orden.trim() === "" ? 0 : Number(orden.trim());
 
     onSubmit({
-      ...(mode === "create" ? { objetoId } : {}),
+      ...(mode === "create" ? { objetoId: Number(objetoId) } : {}),
       inventario,
       orden: ordenNum,
     });
   };
 
   const selectedObject = objects.find((o) => o.id === objetoId);
-  const filteredObjects = objects
-    .filter(
-      (obj) =>
-        obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obj.id.toString() === searchTerm ||
-        obj.itemType.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .slice(0, 10);
 
   return (
     <>
@@ -2844,68 +2914,22 @@ function ShopItemFormModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-visible">
         {mode === "create" && (
           <FormField label="Objeto">
-            <div className="relative">
+            <div className="flex flex-col gap-2">
+              <ObjectSelector
+                className={inputCls}
+                items={objectOptions}
+                value={objetoId}
+                onChange={setObjetoId}
+                searchable
+                searchPlaceholder="Buscar por nombre, ID o tipo..."
+                placeholder="Selecciona objeto del catálogo"
+                emptyLabel="No hay objetos en catálogo"
+              />
               {selectedObject ? (
-                <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span>{selectedObject.icon}</span>
-                    <span className="font-medium text-foreground">{selectedObject.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      ({selectedObject.itemType}) · {selectedObject.price.toLocaleString()} 🪙
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setObjetoId(0);
-                      setSearchTerm("");
-                      setShowDropdown(true);
-                    }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    className={inputCls}
-                    placeholder="Buscar por nombre, ID o tipo..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  />
-                  {showDropdown && (
-                    <div className="absolute z-50 top-full mt-1 left-0 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                      {filteredObjects.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron objetos</div>
-                      ) : (
-                        filteredObjects.map((obj) => (
-                          <div
-                            key={obj.id}
-                            className="px-3 py-2 text-sm hover:bg-secondary cursor-pointer flex items-center gap-2"
-                            onClick={() => {
-                              setObjetoId(obj.id);
-                              setShowDropdown(false);
-                            }}
-                          >
-                            <span>{obj.icon}</span>
-                            <span className="font-medium">{obj.name}</span>
-                            <span className="text-muted-foreground text-xs">
-                              ID: {obj.id} • {obj.itemType} • {obj.price.toLocaleString()} 🪙
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                <p className="text-xs text-muted-foreground">
+                  Seleccionado: {selectedObject.icon} {selectedObject.name} ({selectedObject.itemType})
+                </p>
+              ) : null}
             </div>
           </FormField>
         )}
@@ -3240,31 +3264,31 @@ function ObjectFormModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Tipo de objeto">
-            <select
+            <Select
               className={inputCls}
               value={form.itemType}
               onChange={(e) => set("itemType", e.target.value)}
             >
-              {ITEM_TYPES.map((type) => (
+              {ITEM_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Rareza">
-            <select
+            <Select
               className={inputCls}
               value={form.rarity}
               onChange={(e) => set("rarity", e.target.value)}
             >
-              {RARITY_OPTIONS.map((rarity) => (
+              {ITEM_RARITY_OPTIONS.map((rarity) => (
                 <option key={rarity} value={rarity}>
                   {rarity}
                 </option>
               ))}
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Precio base">
@@ -3317,6 +3341,530 @@ function ObjectFormModal({
   );
 }
 
+function TaxesTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [rows, setRows] = useState<AdminTaxRow[]>([]);
+  const [summary, setSummary] = useState<AdminTaxSummary | null>(null);
+  const [resultMode, setResultMode] = useState<"preview" | "apply" | null>(null);
+  const [previewAmount, setPreviewAmount] = useState<number | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
+
+  const parsedAmount = useMemo(() => {
+    const numeric = Number(amount);
+    if (!Number.isFinite(numeric)) return null;
+    const integer = Math.floor(numeric);
+    return integer > 0 ? integer : null;
+  }, [amount]);
+
+  const hasFreshPreview = useMemo(
+    () => parsedAmount !== null && previewAmount === parsedAmount,
+    [parsedAmount, previewAmount],
+  );
+
+  const loadPreview = useCallback(async () => {
+    if (!parsedAmount) {
+      onToast("Ingresa un monto de impuesto válido", "error");
+      return;
+    }
+
+    setLoadingPreview(true);
+    const res = await fetch("/api/admin/impuestos/preview", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount: parsedAmount }),
+    });
+
+    setLoadingPreview(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo generar la vista previa", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setRows(data.rows ?? []);
+    setSummary(data.summary ?? null);
+    setResultMode(data.mode === "apply" ? "apply" : "preview");
+    setPreviewAmount(parsedAmount);
+    onToast("Vista previa generada", "success");
+  }, [parsedAmount, token, onToast]);
+
+  const applyTax = useCallback(async () => {
+    if (!parsedAmount) {
+      onToast("Ingresa un monto de impuesto válido", "error");
+      return;
+    }
+
+    if (!hasFreshPreview) {
+      onToast("Debes generar vista previa del monto actual antes de cobrar", "error");
+      return;
+    }
+
+    setLoadingApply(true);
+    const res = await fetch("/api/admin/impuestos/cobrar", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount: parsedAmount }),
+    });
+
+    setLoadingApply(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo aplicar el impuesto", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setRows(data.rows ?? []);
+    setSummary(data.summary ?? null);
+    setResultMode(data.mode === "preview" ? "preview" : "apply");
+    const totalCharged = Number(data?.summary?.totalCharged ?? 0);
+    const deathsApplied = Number(data?.summary?.deathsAppliedCount ?? 0);
+    onToast(
+      `Cobro ejecutado. Oro cobrado: ${totalCharged}. Muertes aplicadas: ${deathsApplied}.`,
+      "success",
+    );
+  }, [parsedAmount, hasFreshPreview, token, onToast]);
+
+  useEffect(() => {
+    if (!amount.trim()) {
+      setPreviewAmount(null);
+      setResultMode(null);
+      setRows([]);
+      setSummary(null);
+      return;
+    }
+
+    const numeric = Number(amount);
+    const current = Number.isFinite(numeric) ? Math.floor(numeric) : null;
+    if (current === null || current <= 0 || current !== previewAmount) {
+      setPreviewAmount(null);
+      setResultMode(null);
+      setRows([]);
+      setSummary(null);
+    }
+  }, [amount, previewAmount]);
+
+  const statusLabel = (status: AdminTaxStatus) => {
+    if (status === "cobrado_total") return "Cobrado total";
+    if (status === "cobrado_parcial_y_muerto") return "Cobrado parcial + muerte";
+    if (status === "cobrado_parcial_sin_personaje_vivo") {
+      return "Cobrado parcial sin personaje vivo";
+    }
+    return "Error";
+  };
+
+  const statusClass = (status: AdminTaxStatus) => {
+    if (status === "cobrado_total") return "bg-green-900/30 text-green-300";
+    if (status === "cobrado_parcial_y_muerto") return "bg-orange-900/30 text-orange-300";
+    if (status === "cobrado_parcial_sin_personaje_vivo") {
+      return "bg-amber-900/30 text-amber-300";
+    }
+    return "bg-destructive/30 text-destructive";
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="bg-secondary/20 p-4 rounded-lg border border-border flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-gold">Cobrar Impuestos Globales</h3>
+        <p className="text-sm text-muted-foreground">
+          Se cobrará el mismo monto a todas las cuentas de jugadores y admins. Si una cuenta no
+          alcanza, se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,260px)_1fr] gap-4 items-end">
+          <FormField label="Monto fijo de impuesto">
+            <GoldAmountInput
+              className={inputCls}
+              value={amount}
+              onChangeValue={setAmount}
+              min={1}
+              required
+              placeholder="Ej: 50"
+            />
+          </FormField>
+
+          <div className="flex gap-3 md:justify-end">
+            <button
+              type="button"
+              onClick={loadPreview}
+              disabled={loadingPreview || loadingApply}
+              className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-60 flex items-center gap-2"
+            >
+              {loadingPreview && <Loader2 className="w-4 h-4 animate-spin" />}
+              Vista previa
+            </button>
+            <button
+              type="button"
+              onClick={applyTax}
+              disabled={loadingPreview || loadingApply || !parsedAmount || !hasFreshPreview}
+              className="px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              {loadingApply && <Loader2 className="w-4 h-4 animate-spin" />}
+              Confirmar cobro
+            </button>
+          </div>
+        </div>
+
+        {parsedAmount && !hasFreshPreview && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-900/20 p-3 flex items-center gap-2 text-amber-200 text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Debes generar una vista previa del monto actual antes de confirmar el cobro.
+          </div>
+        )}
+      </div>
+
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Cuentas</p>
+            <p className="text-lg font-semibold text-foreground">{summary.totalAccounts}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Oro cobrado</p>
+            <p className="text-lg font-semibold text-gold">{summary.totalCharged}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Faltante total</p>
+            <p className="text-lg font-semibold text-orange-300">{summary.totalShortfall}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/15 p-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              {resultMode === "preview" ? "Muertes proyectadas" : "Muertes aplicadas"}
+            </p>
+            <p className="text-lg font-semibold text-destructive">
+              {resultMode === "preview"
+                ? summary.deathsProjectedCount
+                : summary.deathsAppliedCount}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/50 border-b border-border">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Oro antes</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Impuesto</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Cobrado</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Oro final</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje afectado</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr
+                key={`${row.userId}-${idx}`}
+                className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+              >
+                <td className="px-3 py-3 font-medium text-foreground">{row.userName}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.goldBefore}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.requestedAmount}</td>
+                <td className="px-3 py-3 text-center text-gold font-medium">{row.chargedAmount}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground">{row.goldAfter}</td>
+                <td className="px-3 py-3 text-muted-foreground">
+                  {row.targetCharacterName ? (
+                    <span>
+                      {row.targetCharacterName} (Nv. {row.targetCharacterTotalLevel ?? 0})
+                      {row.tieCandidates > 1 ? " · empate al azar" : ""}
+                    </span>
+                  ) : (
+                    <span className="italic text-muted-foreground/70">Sin personaje vivo</span>
+                  )}
+                </td>
+                <td className="px-3 py-3">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${statusClass(row.status)}`}>
+                    {statusLabel(row.status)}
+                  </span>
+                  {row.errorMessage && (
+                    <p className="text-xs text-destructive mt-1">{row.errorMessage}</p>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                  Genera una vista previa para ver el impacto del cobro.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function DeadCharactersTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [view, setView] = useState<"actuales" | "historial">("actuales");
+  const [search, setSearch] = useState("");
+  const [deadRows, setDeadRows] = useState<DeadCharacterRow[]>([]);
+  const [historyRows, setHistoryRows] = useState<LifeHistoryRow[]>([]);
+  const [loadingDead, setLoadingDead] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
+  const loadCurrentDead = useCallback(async () => {
+    setLoadingDead(true);
+    const res = await fetch("/api/admin/personajes/muertos?limit=300", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setLoadingDead(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo cargar personajes muertos", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setDeadRows(data.data ?? []);
+  }, [token, onToast]);
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    const params = new URLSearchParams({
+      page: String(historyPage),
+      limit: "30",
+    });
+
+    const res = await fetch(`/api/admin/personajes/muertes-historial?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setLoadingHistory(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onToast(data.error ?? "No se pudo cargar historial de muertes", "error");
+      return;
+    }
+
+    const data = await res.json();
+    setHistoryRows(data.data ?? []);
+    setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
+  }, [historyPage, token, onToast]);
+
+  useEffect(() => {
+    loadCurrentDead();
+  }, [loadCurrentDead]);
+
+  useEffect(() => {
+    if (view === "historial") {
+      loadHistory();
+    }
+  }, [view, loadHistory]);
+
+  const searchTerm = search.trim().toLowerCase();
+
+  const filteredDeadRows = useMemo(() => {
+    if (!searchTerm) return deadRows;
+    return deadRows.filter((row) => {
+      const haystack = `${row.name} ${row.userName}`.toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }, [deadRows, searchTerm]);
+
+  const filteredHistoryRows = useMemo(() => {
+    if (!searchTerm) return historyRows;
+    return historyRows.filter((row) => {
+      const haystack = `${row.characterName} ${row.userName} ${row.reason ?? ""}`.toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }, [historyRows, searchTerm]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setView("actuales")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "actuales"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Muertos actuales
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setHistoryPage(1);
+              setView("historial");
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "historial"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Historial completo
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar personaje o jugador"
+            className="w-64 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+          />
+          <button
+            type="button"
+            onClick={view === "actuales" ? loadCurrentDead : loadHistory}
+            className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+          >
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      {view === "actuales" && (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          {loadingDead ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-gold" />
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/50 border-b border-border">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Slot</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDeadRows.map((row, idx) => (
+                  <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                    <td className="px-3 py-3 font-medium text-foreground">{row.name}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
+                    <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                  </tr>
+                ))}
+                {filteredDeadRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                      No hay personajes muertos en este momento.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {view === "historial" && (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            {loadingHistory ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-gold" />
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/50 border-b border-border">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Fecha evento</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Evento</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Motivo</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistoryRows.map((row, idx) => (
+                    <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.createdAt)}</td>
+                      <td className="px-3 py-3 font-medium text-foreground">{row.characterName}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
+                      <td className="px-3 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${row.event === "muerto" ? "bg-destructive/25 text-destructive" : "bg-green-900/30 text-green-300"}`}>
+                          {row.event === "muerto" ? "Muerto" : "Revivido"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{row.reason ?? "-"}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                    </tr>
+                  ))}
+                  {filteredHistoryRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                        No hay eventos de historial para mostrar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Página {historyPage} de {historyTotalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                disabled={historyPage <= 1 || loadingHistory}
+                className="px-3 py-1.5 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
+                disabled={historyPage >= historyTotalPages || loadingHistory}
+                className="px-3 py-1.5 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal del panel ───────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -3352,15 +3900,27 @@ export default function AdminPage() {
     );
   }
 
+  const isSuperAdmin = user.rolSistema === "super_admin";
+
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "ruleta", label: "Ruleta", icon: Dice6 },
+    { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
     { id: "historial-partidas", label: "Historial", icon: Shield },
   ];
+
+  if (isSuperAdmin) {
+    tabs.splice(4, 0, {
+      id: "impuestos",
+      label: "Cobrar Impuestos",
+      icon: Coins,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -3397,21 +3957,23 @@ export default function AdminPage() {
         {/* Contenedor principal con tabs */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-border">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
-                  activeTab === tab.id
-                    ? "border-gold text-gold"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
+          <div className="border-b border-border overflow-x-auto overflow-y-hidden admin-tabs-scroll">
+            <div className="flex min-w-max">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
+                    activeTab === tab.id
+                      ? "border-gold text-gold"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Contenido de pestaña */}
@@ -3427,6 +3989,15 @@ export default function AdminPage() {
             )}
             {activeTab === "transacciones" && (
               <TransactionsTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "ruleta" && (
+              <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+            )}
+            {isSuperAdmin && activeTab === "impuestos" && (
+              <TaxesTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "muertes" && (
+              <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
               <PartidasTab token={token} onToast={showToast} />

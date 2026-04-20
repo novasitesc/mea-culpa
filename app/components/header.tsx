@@ -27,7 +27,7 @@ const headerButtons = [
     id: "chat",
     icon: MessageSquare,
     label: "Chat de Gremio",
-    href: null,
+    href: "/gremio",
     comingSoon: false,
   },
   {

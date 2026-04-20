@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ShoppingCart,
   Coins,
@@ -23,10 +24,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import {
+  ITEM_RARITY_BADGES,
+  ITEM_RARITY_COLORS,
+  type ItemRarity,
+} from "@/lib/item-catalog";
 
 // ─── Tipos (espejo de la API) ─────────────────────────────────────────────
 
-type ItemRarity = "común" | "poco común" | "raro" | "épico" | "legendario";
 type ItemCategory =
   | "consumible"
   | "arma"
@@ -51,6 +56,7 @@ type Character = {
   id: number;
   name: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
   bagCapacity: number;
   bagUsed: number;
 };
@@ -70,27 +76,10 @@ type ShopListItem = Omit<Shop, "items"> & { itemCount: number };
 
 type CartEntry = ShopItem & { qty: number };
 
-// ─── Colores por rareza ────────────────────────────────────────────────────
-
-const RARITY_COLORS: Record<ItemRarity, string> = {
-  común: "text-muted-foreground border-border",
-  "poco común": "text-green-400 border-green-800",
-  raro: "text-blue-400 border-blue-800",
-  épico: "text-purple-400 border-purple-800",
-  legendario: "text-gold border-gold-dim",
-};
-
-const RARITY_BADGE: Record<ItemRarity, string> = {
-  común: "bg-secondary text-muted-foreground",
-  "poco común": "bg-green-900/50 text-green-400",
-  raro: "bg-blue-900/50 text-blue-400",
-  épico: "bg-purple-900/50 text-purple-400",
-  legendario: "bg-gold/10 text-gold",
-};
-
 // ─── Componente principal ─────────────────────────────────────────────────
 
 export default function TiendasPage() {
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
@@ -126,12 +115,21 @@ export default function TiendasPage() {
             id: c.id,
             name: c.name,
             portrait: c.portrait,
+            lifeStatus: c.lifeStatus === "muerto" ? "muerto" : "vivo",
             bagCapacity: c.bag?.maxSlots ?? 0,
             bagUsed: (c.bag?.items ?? []).length,
           })),
         ),
       );
   }, [user?.id]);
+
+  useEffect(() => {
+    if (characters.length === 0) return;
+    const hasAnyAlive = characters.some((character) => character.lifeStatus !== "muerto");
+    if (!hasAnyAlive) {
+      router.replace("/profile?dead=1");
+    }
+  }, [characters, router]);
 
   // Cargar tienda seleccionada con sus items
   const openShop = (id: string) => {
@@ -199,6 +197,13 @@ export default function TiendasPage() {
 
   const confirmBuy = async () => {
     if (!selectedCharId || isBuying) return;
+
+    const selectedCharacter = characters.find((character) => character.id === selectedCharId);
+    if (!selectedCharacter || selectedCharacter.lifeStatus === "muerto") {
+      setBuyError("Este personaje está muerto y no puede comprar.");
+      return;
+    }
+
     setIsBuying(true);
     setBuyError(null);
     try {
@@ -475,14 +480,15 @@ export default function TiendasPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     {characters.map((char) => {
                       const isFull = char.bagUsed >= char.bagCapacity;
+                      const isDead = char.lifeStatus === "muerto";
                       const isSelected = selectedCharId === char.id;
                       return (
                         <button
                           key={char.id}
-                          onClick={() => !isFull && setSelectedCharId(char.id)}
-                          disabled={isFull}
+                          onClick={() => !isFull && !isDead && setSelectedCharId(char.id)}
+                          disabled={isFull || isDead}
                           className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
-                            isFull
+                            isFull || isDead
                               ? "opacity-50 cursor-not-allowed border-border"
                               : isSelected
                                 ? "border-gold bg-gold/10"
@@ -502,10 +508,10 @@ export default function TiendasPage() {
                               {char.name}
                             </p>
                             <p
-                              className={`text-xs mt-0.5 ${isFull ? "text-destructive" : "text-muted-foreground"}`}
+                              className={`text-xs mt-0.5 ${isFull || isDead ? "text-destructive" : "text-muted-foreground"}`}
                             >
                               Bolsa: {char.bagUsed}/{char.bagCapacity}
-                              {isFull ? " · Llena" : ""}
+                              {isDead ? " · Muerto" : isFull ? " · Llena" : ""}
                             </p>
                           </div>
                           {isSelected && (
@@ -763,7 +769,7 @@ export default function TiendasPage() {
                             return (
                               <Card
                                 key={item.id}
-                                className={`flex flex-col border transition-all ${RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                                className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
                               >
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between gap-2">
@@ -771,7 +777,7 @@ export default function TiendasPage() {
                                       {item.icon}
                                     </span>
                                     <span
-                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${RARITY_BADGE[item.rarity]}`}
+                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
                                     >
                                       {item.rarity}
                                     </span>

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
+import PrizeWheel from "./components/prize-wheel";
 import { useAuth } from "@/lib/useAuth";
+import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 
 type NoticiaImage = {
   filename: string;
@@ -19,6 +21,7 @@ type Player = {
   role: string;
   level: number;
   home: string;
+  maxCharacterSlots?: number;
 };
 
 type ClassEntry = {
@@ -33,6 +36,9 @@ type Character = {
   race: string;
   alignment: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
+  deadAt?: string | null;
+  revivedAt?: string | null;
   stats: Record<string, number>;
   gear: string[];
 };
@@ -48,12 +54,26 @@ type CharacterSlot = {
   character?: Character;
 };
 
-export default function HomePage() {
-  const { user } = useAuth();
+type HomePageProps = {
+  forcedSection?: "inicio" | "ruleta";
+};
+
+export default function HomePage(props: HomePageProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <HomePageContent {...props} />
+    </Suspense>
+  );
+}
+
+function HomePageContent({ forcedSection }: HomePageProps) {
+  const { user, token } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
+  const { rouletteEnabled: isRouletteEnabled } = useRouletteEnabled({ token });
   const [activeSlot, setActiveSlot] = useState(1);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
@@ -69,6 +89,13 @@ export default function HomePage() {
       .then((data: ProfileResponse) => {
         if (isMounted) {
           setProfile(data);
+
+          const hasAnyAlive = (data.characters ?? []).some(
+            (character) => character.lifeStatus !== "muerto",
+          );
+          if (user?.id && data.characters?.length > 0 && !hasAnyAlive) {
+            router.replace("/profile?dead=1");
+          }
         }
       })
       .finally(() => {
@@ -80,7 +107,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [router, user?.id]);
 
   // Cargar imágenes de noticias
   useEffect(() => {
@@ -90,22 +117,88 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (forcedSection) {
+      if (forcedSection === "ruleta" && isRouletteEnabled === null) {
+        return;
+      }
+      if (forcedSection === "ruleta" && !isRouletteEnabled) {
+        setActiveSection("inicio");
+        router.replace("/");
+        return;
+      }
+      setActiveSection(forcedSection);
+      return;
+    }
+
+    const section = searchParams.get("section");
+    if (!section) {
+      setActiveSection("inicio");
+      return;
+    }
+
+    if (section === "ruleta") {
+      if (isRouletteEnabled === null) {
+        return;
+      }
+      if (!isRouletteEnabled) {
+        setActiveSection("inicio");
+        router.replace("/");
+        return;
+      }
+      setActiveSection("ruleta");
+      return;
+    }
+
+    if (section === "inicio") {
+      setActiveSection(section);
+      return;
+    }
+
+    setActiveSection("inicio");
+  }, [forcedSection, searchParams, isRouletteEnabled, router]);
+
+  const handleSectionChange = (sectionId: string) => {
+    if (sectionId === "inicio") {
+      setActiveSection("inicio");
+      router.push("/");
+      return;
+    }
+
+    if (sectionId === "ruleta") {
+      if (isRouletteEnabled !== true) {
+        setActiveSection("inicio");
+        router.push("/");
+        return;
+      }
+      setActiveSection("ruleta");
+      router.push("/ruleta");
+      return;
+    }
+
+    setActiveSection("inicio");
+    router.push("/");
+  };
+
   const prevNoticia = () =>
     setNoticiaIdx((i) => (i - 1 + noticias.length) % noticias.length);
   const nextNoticia = () => setNoticiaIdx((i) => (i + 1) % noticias.length);
 
-  const characterSlots: CharacterSlot[] = Array.from(
-    { length: 5 },
-    (_, index) => {
-      const character = profile?.characters[index];
-
-      if (character) {
-        return { id: index + 1, locked: false, character };
-      }
-
-      return { id: index + 1, locked: true };
-    },
+  const maxCharacterSlots = Math.max(
+    2,
+    Math.min(5, profile?.player?.maxCharacterSlots ?? 2),
   );
+
+  const characterSlots: CharacterSlot[] = Array.from({ length: 5 }, (_, index) => {
+    const character = profile?.characters[index];
+    const isUnlocked = index < maxCharacterSlots;
+
+    if (character) {
+      return { id: index + 1, locked: false, character };
+    }
+
+    return { id: index + 1, locked: !isUnlocked };
+  });
 
   const activeCharacter = characterSlots[activeSlot - 1]?.character;
 
@@ -128,79 +221,86 @@ export default function HomePage() {
           {/* Left Sidebar */}
           <Sidebar
             activeSection={activeSection}
-            onSectionChange={setActiveSection}
+            onSectionChange={handleSectionChange}
+            rouletteEnabled={isRouletteEnabled}
           />
 
-          {/* Center - Newspaper image */}
-          <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
-            {noticias.length === 0 ? (
-              <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
-                <p className="font-serif text-sm text-parchment-dark/50">
-                  Sin noticias por el momento
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Imagen cubriendo todo el main */}
-                <Image
-                  key={noticias[noticiaIdx].url}
-                  src={noticias[noticiaIdx].url}
-                  alt={noticias[noticiaIdx].alt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 600px"
-                />
-
-                {/* Controles superpuestos */}
-                {noticias.length > 1 && (
-                  <>
-                    <button
-                      onClick={prevNoticia}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={nextNoticia}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
-
-                {/* Contador */}
-                <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
-                  {noticiaIdx + 1} / {noticias.length}
+          {/* Center */}
+          {activeSection === "ruleta" && isRouletteEnabled ? (
+            <main className="min-h-125">
+              <PrizeWheel token={token} />
+            </main>
+          ) : (
+            <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow min-h-125">
+              {noticias.length === 0 ? (
+                <div className="flex items-center justify-center h-full min-h-125 bg-parchment">
+                  <p className="font-serif text-sm text-parchment-dark/50">
+                    Sin noticias por el momento
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Imagen cubriendo todo el main */}
+                  <Image
+                    key={noticias[noticiaIdx].url}
+                    src={noticias[noticiaIdx].url}
+                    alt={noticias[noticiaIdx].alt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 600px"
+                  />
 
-                {/* Miniaturas */}
-                {noticias.length > 1 && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-                    {noticias.map((img, i) => (
+                  {/* Controles superpuestos */}
+                  {noticias.length > 1 && (
+                    <>
                       <button
-                        key={img.filename}
-                        onClick={() => setNoticiaIdx(i)}
-                        className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
-                          i === noticiaIdx
-                            ? "border-gold scale-110"
-                            : "border-gold-dim/30 opacity-60 hover:opacity-100"
-                        }`}
+                        onClick={prevNoticia}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
                       >
-                        <Image
-                          src={img.url}
-                          alt={img.alt}
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
+                        <ChevronLeft className="w-5 h-5" />
                       </button>
-                    ))}
+                      <button
+                        onClick={nextNoticia}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/70 hover:bg-background/90 text-foreground rounded-full p-1.5 transition-colors"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Contador */}
+                  <div className="absolute bottom-2 right-2 z-10 bg-background/70 text-xs text-foreground px-2 py-0.5 rounded font-sans">
+                    {noticiaIdx + 1} / {noticias.length}
                   </div>
-                )}
-              </>
-            )}
-          </main>
+
+                  {/* Miniaturas */}
+                  {noticias.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                      {noticias.map((img, i) => (
+                        <button
+                          key={img.filename}
+                          onClick={() => setNoticiaIdx(i)}
+                          className={`relative w-12 h-12 rounded border-2 overflow-hidden transition-all ${
+                            i === noticiaIdx
+                              ? "border-gold scale-110"
+                              : "border-gold-dim/30 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <Image
+                            src={img.url}
+                            alt={img.alt}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </main>
+          )}
 
           {/* Right Sidebar - Character Panel */}
           <aside className="space-y-4">
@@ -265,7 +365,9 @@ export default function HomePage() {
                         Slot vacio
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Desbloquea un personaje
+                        {activeSlot <= maxCharacterSlots
+                          ? "Espacio disponible"
+                          : "Desbloquea un personaje"}
                       </p>
                     </>
                   )}
@@ -329,10 +431,13 @@ export default function HomePage() {
             {/* Unlock Message */}
             <div className="bg-card rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground text-center">
-                Slot de PJ bloqueados y que se desbloquean pagando
+                Slots: {profile?.characters?.length ?? 0}/{maxCharacterSlots}. Puedes ampliar hasta 5 con pago.
               </p>
-              <button className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Contacta con un administrador
+              <button
+                className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans"
+                onClick={() => router.push("/profile")}
+              >
+                Comprar slot de personaje
               </button>
             </div>
           </aside>

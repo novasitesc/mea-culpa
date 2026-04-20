@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const { data: bagRows, error: bagError } = await db
       .from("bolsa_objetos")
-      .select("id, orden, objeto_id, objetos:objeto_id(nombre, precio)")
+      .select("id, orden, objeto_id, publicado_en_trade, objetos:objeto_id(nombre, precio)")
       .eq("personaje_id", characterId)
       .order("orden", { ascending: true });
 
@@ -41,12 +41,20 @@ export async function POST(request: Request) {
           id: number;
           orden: number;
           objeto_id: number | null;
+          publicado_en_trade?: boolean;
           objetos?: { nombre?: string; precio?: number } | null;
         }
       | undefined;
 
     if (!row) {
       return NextResponse.json({ error: "Item not found in bag" }, { status: 404 });
+    }
+
+    if (row.publicado_en_trade) {
+      return NextResponse.json(
+        { error: "No puedes vender este objeto mientras esté publicado en comercio" },
+        { status: 409 },
+      );
     }
 
     const itemName = row.objetos?.nombre ?? "Objeto desconocido";

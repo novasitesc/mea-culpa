@@ -7,6 +7,8 @@
  * por lo que las mutaciones funcionan correctamente durante el desarrollo.
  */
 
+import type { ItemRarity } from "@/lib/item-catalog";
+
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export type AdminUser = {
@@ -21,12 +23,6 @@ export type AdminUser = {
   createdAt: string;
 };
 
-export type ItemRarity =
-  | "común"
-  | "poco común"
-  | "raro"
-  | "épico"
-  | "legendario";
 export type ItemCategory =
   | "consumible"
   | "arma"

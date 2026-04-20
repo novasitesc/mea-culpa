@@ -1,6 +1,52 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
+import { getUserFromRequest } from "@/lib/apiAuth";
+
+function normalizeNivel20Url(rawValue: unknown): {
+  value: string | null;
+  error: string | null;
+} {
+  if (rawValue == null) {
+    return { value: null, error: null };
+  }
+
+  if (typeof rawValue !== "string") {
+    return { value: null, error: "nivel20Url debe ser texto o null" };
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return { value: null, error: null };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { value: null, error: "Ingresa una URL valida" };
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return {
+      value: null,
+      error: "La URL debe iniciar con http:// o https://",
+    };
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  const isNivel20Domain =
+    hostname === "nivel20.com" || hostname.endsWith(".nivel20.com");
+
+  if (!isNivel20Domain) {
+    return {
+      value: null,
+      error: "Solo se permiten enlaces de nivel20.com",
+    };
+  }
+
+  return { value: parsed.toString(), error: null };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +61,7 @@ export async function GET(request: Request) {
   // Obtener perfil del jugador
   const { data: perfil } = await db
     .from("perfiles")
-    .select("nombre, rol, nivel, hogar, oro")
+    .select("nombre, rol, nivel, hogar, oro, max_personajes, nivel20_url")
     .eq("id", userId)
     .single();
 
@@ -31,6 +77,9 @@ export async function GET(request: Request) {
       alineamiento,
       retrato,
       capacidad_bolsa,
+      estado_vida,
+      muerto_en,
+      revivido_en,
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
@@ -38,7 +87,15 @@ export async function GET(request: Request) {
         collar, anillo1, anillo2, amuleto, cinturon,
         mano_izquierda, mano_derecha
       ),
-      bolsa_objetos ( id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, tipo_item, precio ) )
+      bolsa_objetos (
+        id,
+        objeto_id,
+        cantidad,
+        orden,
+        fue_comerciado,
+        publicado_en_trade,
+        objetos:objeto_id ( nombre, tipo_item, precio, icono )
+      )
     `,
     )
     .eq("usuario_id", userId)
@@ -123,6 +180,9 @@ export async function GET(request: Request) {
       race: p.raza,
       alignment: p.alineamiento,
       portrait: p.retrato,
+      lifeStatus: p.estado_vida ?? "vivo",
+      deadAt: p.muerto_en ?? null,
+      revivedAt: p.revivido_en ?? null,
       stats: stats
         ? {
             str: stats.fuerza,
@@ -170,14 +230,21 @@ export async function GET(request: Request) {
           equipmentPriceByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
+          .filter((bi: any) => !bi.publicado_en_trade)
           .sort((a: any, b: any) => a.orden - b.orden)
           .map((bi: any) => ({
+            bagRowId: bi.id,
+            objectId: bi.objeto_id,
             name: bi.objetos?.nombre ?? "Objeto desconocido",
+            icono: bi.objetos?.icono ?? "📦",
             type:
               bi.objetos?.tipo_item === "pecho"
                 ? "armadura"
                 : (bi.objetos?.tipo_item ?? "misc"),
             price: bi.objetos?.precio ?? 0,
+            cantidad: bi.cantidad ?? 1,
+            fueComerciado: Boolean(bi.fue_comerciado),
+            publicadoEnTrade: Boolean(bi.publicado_en_trade),
           })),
         maxSlots: p.capacidad_bolsa,
       },
@@ -191,8 +258,54 @@ export async function GET(request: Request) {
       level: normalizeAccountLevel(perfil?.nivel ?? 1),
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
+      maxCharacterSlots: perfil?.max_personajes ?? 2,
+      nivel20Url: perfil?.nivel20_url ?? null,
     },
     characters,
     userId,
+  });
+}
+
+export async function PATCH(request: Request) {
+  const db = createServerClient();
+  const { user, error: authError } = await getUserFromRequest(db, request);
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  let body: { nivel20Url?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo JSON invalido" }, { status: 400 });
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(body, "nivel20Url")) {
+    return NextResponse.json(
+      { error: "nivel20Url es requerido" },
+      { status: 400 },
+    );
+  }
+
+  const normalized = normalizeNivel20Url(body.nivel20Url);
+  if (normalized.error) {
+    return NextResponse.json({ error: normalized.error }, { status: 400 });
+  }
+
+  const { data, error } = await db
+    .from("perfiles")
+    .update({ nivel20_url: normalized.value })
+    .eq("id", user.id)
+    .select("nivel20_url")
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    nivel20Url: data?.nivel20_url ?? normalized.value,
   });
 }

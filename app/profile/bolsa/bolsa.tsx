@@ -370,13 +370,13 @@ function SlotButton({
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518]",
       ].join(" ")}
     >
-      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none" : "text-lg leading-none"}>
+      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none shrink-0" : "text-lg leading-none shrink-0"}>
         {cfg.icon}
       </span>
       <span
         className={
           isWeaponSlot || isCapeSlot
-            ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none"
+            ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none shrink-0"
             : "text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none"
         }
       >
@@ -386,7 +386,7 @@ function SlotButton({
         <span
           className={
             isWeaponSlot || isCapeSlot
-              ? "text-sm text-[#D4AF37] leading-tight max-w-28 truncate px-2"
+              ? "block w-full max-w-28 shrink-0 text-center text-sm text-[#D4AF37] leading-snug px-2 overflow-hidden text-ellipsis whitespace-nowrap"
               : "text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5"
           }
         >
@@ -394,7 +394,7 @@ function SlotButton({
         </span>
       )}
       {isWeaponSlot && (
-        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
           <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
             Nv. {weaponLevel ?? 0} · {unlockedWeaponSockets}/3
           </span>
@@ -447,7 +447,7 @@ function SlotButton({
         </div>
       )}
       {isCapeSlot && (
-        <div className="mt-auto mb-4 w-28 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
+        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
           <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
             Nv. {capeLevel ?? 0} · {unlockedCapeSockets}/3
           </span>
@@ -1311,7 +1311,7 @@ export default function EquipmentModal({
       >
         {/* Modal */}
         <div
-          className="relative w-full max-w-[1650px] rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
+          className="relative w-full max-w-412.5 rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
           style={{
             background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
             border: "1px solid #8B7355",
@@ -1345,7 +1345,7 @@ export default function EquipmentModal({
           <div className="flex overflow-hidden flex-1 min-h-0">
             {/* LEFT: Character figure */}
             <div
-              className="w-[900px] shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
+              className="w-225 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
               <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
@@ -1433,7 +1433,7 @@ export default function EquipmentModal({
             </div>
 
             {/* RIGHT: Bag */}
-            <div className="w-[560px] shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
+            <div className="w-140 shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
               {/* Bag header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">

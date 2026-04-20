@@ -112,19 +112,31 @@ export async function POST(request: Request) {
 
     const db = createServerClient();
 
-    // Verificar límite de personajes
-    // Cuentas gratuitas: máximo 2. Con plan premium (a implementar): hasta 5.
-    const FREE_LIMIT = 2;
+    const { data: perfil, error: perfilError } = await db
+      .from("perfiles")
+      .select("max_personajes")
+      .eq("id", userId)
+      .single();
+
+    if (perfilError) {
+      return NextResponse.json(
+        { error: "No se pudo validar el perfil del usuario" },
+        { status: 500 },
+      );
+    }
+
+    const maxCharacterSlots = Math.max(2, Math.min(5, perfil?.max_personajes ?? 2));
+
+    // Verificar limite de personajes configurado para la cuenta.
     const { count } = await db
       .from("personajes")
       .select("id", { count: "exact", head: true })
       .eq("usuario_id", userId);
 
-    if ((count ?? 0) >= FREE_LIMIT) {
+    if ((count ?? 0) >= maxCharacterSlots) {
       return NextResponse.json(
         {
-          error:
-            "Has alcanzado el límite de 2 personajes de la cuenta gratuita. Actualiza tu plan para crear hasta 5.",
+          error: `Has alcanzado el limite de ${maxCharacterSlots} personajes para tu cuenta.`,
           code: "CHARACTER_LIMIT_REACHED",
         },
         { status: 403 },
@@ -141,7 +153,7 @@ export async function POST(request: Request) {
       (existingSlots ?? []).map((s: any) => s.numero_slot),
     );
     let nextSlot = 1;
-    while (usedSlots.has(nextSlot) && nextSlot <= 5) nextSlot++;
+    while (usedSlots.has(nextSlot) && nextSlot <= maxCharacterSlots) nextSlot++;
 
     // Generar stats basados en la clase primaria
     const primaryClass = multiclass[0].className;
