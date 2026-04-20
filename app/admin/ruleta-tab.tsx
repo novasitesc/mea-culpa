@@ -85,7 +85,7 @@ export function RuletaTab({
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
   const [form, setForm] = useState<TabState>(defaultState);
 
   const objectOptions = useMemo<ObjectSelectorItem[]>(() => {
@@ -194,7 +194,7 @@ export function RuletaTab({
   };
 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
-    setDeletingId(id);
+    setActionId(`toggle:${id}`);
     const res = await fetch(`/api/admin/ruleta/premios/${id}`, {
       method: "PATCH",
       headers: {
@@ -203,7 +203,7 @@ export function RuletaTab({
       },
       body: JSON.stringify({ active: !currentActive }),
     });
-    setDeletingId(null);
+    setActionId(null);
 
     if (!res.ok) {
       onToast(
@@ -216,6 +216,29 @@ export function RuletaTab({
     }
 
     onToast(currentActive ? "Premio desactivado" : "Premio activado", "success");
+    await load();
+  };
+
+  const handleDeletePrize = async (id: string) => {
+    const confirmed = window.confirm("¿Seguro que quieres borrar este premio de la pool?");
+    if (!confirmed) return;
+
+    setActionId(`delete:${id}`);
+    const res = await fetch(`/api/admin/ruleta/premios/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    setActionId(null);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      onToast(data?.error ?? "No se pudo borrar el premio", "error");
+      return;
+    }
+
+    onToast("Premio eliminado", "success");
     await load();
   };
 
@@ -391,14 +414,14 @@ export function RuletaTab({
                         <button
                           type="button"
                           onClick={() => void handleToggleActive(pool.id, pool.active)}
-                          disabled={deletingId === pool.id}
+                          disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
                           className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${
                             pool.active
                               ? "border-destructive/40 bg-destructive/10 text-destructive"
                               : "border-green-700 bg-green-950/30 text-green-300"
                           }`}
                         >
-                          {deletingId === pool.id ? (
+                          {actionId === `toggle:${pool.id}` ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : pool.active ? (
                             <Trash2 className="w-4 h-4" />
@@ -406,6 +429,19 @@ export function RuletaTab({
                             <CheckCircle2 className="w-4 h-4" />
                           )}
                           {pool.active ? "Desactivar" : "Activar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePrize(pool.id)}
+                          disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
+                          className="inline-flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/20 px-3 py-2 text-sm text-destructive disabled:opacity-60"
+                        >
+                          {actionId === `delete:${pool.id}` ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                          Borrar
                         </button>
                       </div>
                     ))

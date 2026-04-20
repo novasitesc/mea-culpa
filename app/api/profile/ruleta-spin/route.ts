@@ -68,10 +68,43 @@ export async function POST(request: Request) {
     const totalSpins = count ?? 0;
     const nextCost = getNextSpinCost(totalSpins);
     const spin = rollRoulette();
+    let selectedPrize:
+      | {
+          poolId: string | null;
+          category: typeof spin.category;
+          type: "nada";
+          label: string;
+          goldAmount: null;
+          objectId: null;
+          objectQuantity: number;
+          objectName: null;
+          objectIcon: null;
+        }
+      | ReturnType<typeof resolveRoulettePrizeSelection>;
 
-    const prizePools = await getActiveRoulettePool(db, spin.category);
-    const prizePool = pickRoulettePrize(prizePools);
-    const selectedPrize = resolveRoulettePrizeSelection(prizePool);
+    if (spin.category === "nada") {
+      selectedPrize = {
+        poolId: null,
+        category: spin.category,
+        type: "nada",
+        label: "Sin premio",
+        goldAmount: null,
+        objectId: null,
+        objectQuantity: 0,
+        objectName: null,
+        objectIcon: null,
+      };
+    } else {
+      const prizePools = await getActiveRoulettePool(db, spin.category);
+      if (prizePools.length === 0) {
+        return NextResponse.json(
+          { error: `No hay premios configurados para la categoria '${spin.category}'` },
+          { status: 409 },
+        );
+      }
+      const prizePool = pickRoulettePrize(prizePools);
+      selectedPrize = resolveRoulettePrizeSelection(prizePool);
+    }
 
     let prepaidPayment:
       | {
@@ -112,7 +145,7 @@ export async function POST(request: Request) {
       p_slot: spin.slot,
       p_categoria: spin.category,
       p_premio_pool_id: selectedPrize.poolId,
-      p_premio_tipo: selectedPrize.type,
+      p_premio_tipo: selectedPrize.type === "nada" ? null : selectedPrize.type,
       p_premio_label: selectedPrize.label,
       p_premio_oro_monto: selectedPrize.goldAmount,
       p_premio_objeto_id: selectedPrize.objectId,
@@ -186,7 +219,7 @@ export async function POST(request: Request) {
       slot: spin.slot,
       category: spin.category,
       rewardLabel: selectedPrize.label,
-      rewardType: selectedPrize.type,
+      rewardType: selectedPrize.type === "nada" ? undefined : selectedPrize.type,
       rewardObjectName: selectedPrize.objectName,
       rewardObjectIcon: selectedPrize.objectIcon,
       cost: {

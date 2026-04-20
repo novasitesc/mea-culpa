@@ -92,7 +92,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const { error } = await session.db
     .from("ruleta_premios_pool")
-    .update({ activo: false })
+    .delete()
     .eq("id", id);
 
   if (error) {

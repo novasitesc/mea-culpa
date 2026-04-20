@@ -80,6 +80,9 @@ export async function POST(request: Request) {
   if (!category) {
     return NextResponse.json({ error: "Categoria invalida" }, { status: 400 });
   }
+  if (category === "nada") {
+    return NextResponse.json({ error: "La categoria 'Sin premio' no usa pools configurables" }, { status: 400 });
+  }
   if (!rewardType) {
     return NextResponse.json({ error: "Tipo de premio invalido" }, { status: 400 });
   }
