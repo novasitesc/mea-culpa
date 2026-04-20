@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   try {
@@ -15,19 +16,9 @@ export async function POST(request: Request) {
 
     const db = createServerClient();
 
-    // Verificar que el personaje pertenece al usuario
-    const { data: personaje } = await db
-      .from("personajes")
-      .select("id")
-      .eq("id", characterId)
-      .eq("usuario_id", userId)
-      .single();
-
-    if (!personaje) {
-      return NextResponse.json(
-        { error: "Character not found" },
-        { status: 404 },
-      );
+    const lifeCheck = await ensureOwnedAliveCharacter(db, String(userId), Number(characterId));
+    if (!lifeCheck.ok) {
+      return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
     }
 
     // Actualizar equipamiento

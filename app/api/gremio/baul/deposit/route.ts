@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   const db = createServerClient();
@@ -40,19 +41,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No perteneces a un gremio" }, { status: 409 });
   }
 
-  const { data: character, error: characterError } = await db
-    .from("personajes")
-    .select("id")
-    .eq("id", characterId)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (characterError) {
-    return NextResponse.json({ error: characterError.message }, { status: 500 });
-  }
-
-  if (!character) {
-    return NextResponse.json({ error: "Personaje no valido" }, { status: 403 });
+  const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, characterId);
+  if (!lifeCheck.ok) {
+    return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
   }
 
   const { data: bagItem, error: bagError } = await db

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getNextSpinCost, rollRoulette } from "@/lib/roulette";
+import { userHasAnyAliveCharacter } from "@/lib/characterLife";
 
 async function getCurrentGold(userId: string): Promise<number | null> {
   const db = createServerClient();
@@ -37,6 +38,17 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const aliveCheck = await userHasAnyAliveCharacter(db, user.id);
+    if (!aliveCheck.ok) {
+      return NextResponse.json({ error: aliveCheck.error ?? "Error interno" }, { status: 500 });
+    }
+    if (!aliveCheck.hasAlive) {
+      return NextResponse.json(
+        { error: "Todos tus personajes están muertos. Solo puedes acceder a Perfil." },
+        { status: 409 },
+      );
     }
 
     const { count, error: countError } = await db

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
+import { markCharacterDead } from "@/lib/characterLife";
 
 // GET /api/admin/partidas
 // Lista partidas con participantes, cupo y metadata de disponibilidad.
@@ -514,6 +515,29 @@ export async function PATCH(request: NextRequest) {
       { error: updateError?.message ?? "No se pudo cerrar la partida" },
       { status: 500 },
     );
+  }
+
+  const deadParticipants = (participantesPartida ?? [])
+    .filter((row: any) => Boolean(row.muerto))
+    .map((row: any) => ({
+      characterId: Number(row.personaje_id),
+      userId: String(row.usuario_id ?? ""),
+    }))
+    .filter((row) => Number.isFinite(row.characterId) && row.characterId > 0 && row.userId.length > 0);
+
+  for (const row of deadParticipants) {
+    const deadResult = await markCharacterDead({
+      db: session.db,
+      userId: row.userId,
+      characterId: row.characterId,
+      reason: "muerte_partida",
+      partidaId,
+      metadata: { source: "admin-close-match", closedBy: session.userId },
+    });
+
+    if (!deadResult.ok) {
+      return NextResponse.json({ error: deadResult.error ?? "No se pudo marcar muerto" }, { status: 500 });
+    }
   }
 
   const participantUserIds = Array.from(

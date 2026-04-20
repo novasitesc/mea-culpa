@@ -35,6 +35,9 @@ type Character = {
   race: string;
   alignment: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
+  deadAt?: string | null;
+  revivedAt?: string | null;
   stats: Record<string, number>;
   gear: string[];
 };
@@ -84,6 +87,13 @@ function HomePageContent({ forcedSection }: HomePageProps) {
       .then((data: ProfileResponse) => {
         if (isMounted) {
           setProfile(data);
+
+          const hasAnyAlive = (data.characters ?? []).some(
+            (character) => character.lifeStatus !== "muerto",
+          );
+          if (user?.id && data.characters?.length > 0 && !hasAnyAlive) {
+            router.replace("/profile?dead=1");
+          }
         }
       })
       .finally(() => {
@@ -95,7 +105,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [router, user?.id]);
 
   // Cargar imágenes de noticias
   useEffect(() => {

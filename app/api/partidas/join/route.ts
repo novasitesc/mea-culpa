@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 // POST /api/partidas/join
 // Inscribe un personaje del usuario autenticado a una partida abierta con cupo.
@@ -103,19 +104,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: personaje, error: personajeError } = await db
-    .from("personajes")
-    .select("id")
-    .eq("id", characterId)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (personajeError) {
-    return NextResponse.json({ error: personajeError.message }, { status: 500 });
-  }
-
-  if (!personaje) {
-    return NextResponse.json({ error: "Personaje no válido" }, { status: 403 });
+  const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, characterId);
+  if (!lifeCheck.ok) {
+    return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
   }
 
   const { data: pendingSleep, error: pendingSleepError } = await db

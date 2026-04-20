@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { modifyGold } from "@/lib/goldService";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(
   request: Request,
@@ -35,19 +36,9 @@ export async function POST(
     );
   }
 
-  const { data: buyerCharacter, error: buyerCharError } = await db
-    .from("personajes")
-    .select("id, usuario_id")
-    .eq("id", buyerCharacterId)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (buyerCharError) {
-    return NextResponse.json({ error: buyerCharError.message }, { status: 500 });
-  }
-
-  if (!buyerCharacter) {
-    return NextResponse.json({ error: "Personaje comprador no válido" }, { status: 403 });
+  const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, buyerCharacterId);
+  if (!lifeCheck.ok) {
+    return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
   }
 
   const { data: publication, error: publicationError } = await db

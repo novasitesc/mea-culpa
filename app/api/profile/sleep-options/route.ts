@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { SLEEP_OPTIONS } from "@/lib/sleepOptions";
+import { markCharacterDead } from "@/lib/characterLife";
 
 async function getUserIdFromRequest(request: Request): Promise<string | null> {
   const authHeader = request.headers.get("Authorization");
@@ -18,26 +19,34 @@ async function getUserIdFromRequest(request: Request): Promise<string | null> {
   return user.id;
 }
 
-async function deleteCharacterFromDatabase(
+async function markCharacterAsDead(
   db: ReturnType<typeof createServerClient>,
+  userId: string,
   characterId: number,
+  reason: string,
+  partidaId: string | null,
 ) {
-  const { error: detachFromMatchesError } = await db
-    .from("partida_participantes")
-    .delete()
-    .eq("personaje_id", characterId);
+  const deadResult = await markCharacterDead({
+    db,
+    userId,
+    characterId,
+    reason,
+    partidaId,
+    metadata: { source: "sleep-options" },
+  });
 
-  if (detachFromMatchesError) {
-    throw new Error(detachFromMatchesError.message);
+  if (!deadResult.ok) {
+    throw new Error(deadResult.error ?? "No se pudo marcar al personaje como muerto");
   }
 
-  const { error: deleteCharacterError } = await db
-    .from("personajes")
+  const { error: removePendingError } = await db
+    .from("descansos_pendientes")
     .delete()
-    .eq("id", characterId);
+    .eq("personaje_id", characterId)
+    .eq("usuario_id", userId);
 
-  if (deleteCharacterError) {
-    throw new Error(deleteCharacterError.message);
+  if (removePendingError) {
+    throw new Error(removePendingError.message);
   }
 }
 
@@ -130,20 +139,28 @@ export async function POST(request: Request) {
 
   const characterId = Number((pendingRow as any).personaje_id);
   const characterName = String((pendingRow as any).personaje?.nombre ?? "El personaje");
+  const partidaId = ((pendingRow as any).partida_id as string | null) ?? null;
 
   if (action === "decline") {
     try {
-      await deleteCharacterFromDatabase(db, characterId);
+      await markCharacterAsDead(
+        db,
+        userId,
+        characterId,
+        "descanso_rechazado",
+        partidaId,
+      );
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "No se pudo eliminar el personaje" },
+        { error: error instanceof Error ? error.message : "No se pudo marcar muerto el personaje" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
-      eliminated: true,
-      message: `${characterName} fue eliminado de la base de datos.`,
+      eliminated: false,
+      dead: true,
+      message: `${characterName} ha muerto. Puedes revivirlo desde el perfil.`,
     });
   }
 
@@ -165,24 +182,28 @@ export async function POST(request: Request) {
   const currentGold = Number((profile as any)?.oro ?? 0);
   if (currentGold < selectedOption.cost) {
     try {
-      await deleteCharacterFromDatabase(db, characterId);
+      await markCharacterAsDead(
+        db,
+        userId,
+        characterId,
+        "sin_oro_descanso",
+        partidaId,
+      );
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "No se pudo eliminar el personaje" },
+        { error: error instanceof Error ? error.message : "No se pudo marcar muerto el personaje" },
         { status: 500 },
       );
     }
 
     return NextResponse.json(
       {
-        eliminated: true,
-        message: `${characterName} no tenia oro suficiente y fue eliminado de la base de datos.`,
+        eliminated: false,
+        dead: true,
+        message: `${characterName} no tenía oro suficiente y ha muerto. Puedes revivirlo desde el perfil.`,
       },
-      { status: 409 },
     );
   }
-
-  const partidaId = ((pendingRow as any).partida_id as string | null) ?? null;
 
   const { data: newGold, error: paymentError } = await db.rpc("modificar_oro", {
     p_usuario_id: userId,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import { useAuth } from "@/lib/useAuth";
@@ -16,6 +17,7 @@ type Character = {
   id: number;
   name: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
   bag: {
     items: Array<{
       bagRowId: number;
@@ -118,6 +120,7 @@ const INITIAL_ALERT: AlertState = {
 };
 
 export default function GremioPage() {
+  const router = useRouter();
   const { user, token, refreshUser } = useAuth();
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -177,7 +180,9 @@ export default function GremioPage() {
       setProfile(safeProfile);
       setGuildState(safeGuild);
 
-      const firstCharacterId = safeProfile.characters?.[0]?.id ?? null;
+      const firstCharacterId =
+        safeProfile.characters?.find((character) => character.lifeStatus !== "muerto")?.id ??
+        null;
       setSelectedCharacterId((prev) => prev ?? firstCharacterId);
       setSelectedTargetCharacterId((prev) => prev ?? firstCharacterId);
     } catch (err) {
@@ -195,6 +200,20 @@ export default function GremioPage() {
     void loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    const characters = profile?.characters ?? [];
+    if (characters.length === 0) return;
+    const hasAnyAlive = characters.some((character) => character.lifeStatus !== "muerto");
+    if (!hasAnyAlive) {
+      router.replace("/profile?dead=1");
+    }
+  }, [profile?.characters, router]);
+
+  const aliveCharacters = useMemo(
+    () => (profile?.characters ?? []).filter((character) => character.lifeStatus !== "muerto"),
+    [profile?.characters],
+  );
+
   const selectedCharacter = useMemo(
     () => profile?.characters.find((c) => c.id === selectedCharacterId) ?? null,
     [profile?.characters, selectedCharacterId],
@@ -202,6 +221,7 @@ export default function GremioPage() {
 
   const depositableItems = useMemo(() => {
     if (!selectedCharacter) return [];
+    if (selectedCharacter.lifeStatus === "muerto") return [];
     return selectedCharacter.bag.items.filter(
       (item) => !item.publicadoEnTrade && Number(item.objectId) > 0,
     );
@@ -612,7 +632,7 @@ export default function GremioPage() {
                       value={selectedCharacterId?.toString() ?? ""}
                       onChange={(e) => setSelectedCharacterId(Number(e.target.value))}
                     >
-                      {(profile?.characters ?? []).map((c) => (
+                      {aliveCharacters.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -659,7 +679,7 @@ export default function GremioPage() {
                       value={selectedTargetCharacterId?.toString() ?? ""}
                       onChange={(e) => setSelectedTargetCharacterId(Number(e.target.value))}
                     >
-                      {(profile?.characters ?? []).map((c) => (
+                      {aliveCharacters.map((c) => (
                         <option key={c.id} value={c.id}>
                           Destino: {c.name}
                         </option>

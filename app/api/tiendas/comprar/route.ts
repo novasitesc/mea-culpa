@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 // POST /api/tiendas/comprar
 // Authorization: Bearer <access_token>
@@ -71,6 +72,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+  }
+
+  const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, personajeId);
+  if (!lifeCheck.ok) {
+    return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
   }
 
   // 3. Llamar a la función RPC atómica

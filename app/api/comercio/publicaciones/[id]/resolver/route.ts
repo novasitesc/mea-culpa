@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { modifyGold } from "@/lib/goldService";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(
   request: Request,
@@ -38,7 +39,7 @@ export async function POST(
   const { data: publication, error: publicationError } = await db
     .from("publicaciones_comercio")
     .select(
-      "id, vendedor_usuario_id, estado, item_bolsa_id, comprador_usuario_id, comprador_personaje_id, precio",
+      "id, vendedor_usuario_id, vendedor_personaje_id, estado, item_bolsa_id, comprador_usuario_id, comprador_personaje_id, precio",
     )
     .eq("id", publicationId)
     .maybeSingle();
@@ -53,6 +54,14 @@ export async function POST(
 
   if (publication.vendedor_usuario_id !== user.id) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const sellerCharacterId = Number((publication as any).vendedor_personaje_id ?? 0);
+  if (Number.isFinite(sellerCharacterId) && sellerCharacterId > 0) {
+    const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, sellerCharacterId);
+    if (!lifeCheck.ok) {
+      return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
+    }
   }
 
   if (action === "rechazar") {

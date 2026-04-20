@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { verifyPayPalWebhookSignature } from "@/lib/paypal";
+import { reviveCharacter } from "@/lib/characterLife";
 
 type WebhookEvent = {
   event_type?: string;
@@ -13,6 +14,12 @@ type WebhookEvent = {
     };
   };
 };
+
+function extractCharacterId(metadata: unknown): number | null {
+  const raw = (metadata as { characterId?: unknown } | null)?.characterId;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
 
 function getHeader(headers: Headers, key: string): string {
   return headers.get(key) ?? "";
@@ -64,7 +71,7 @@ export async function POST(request: Request) {
 
     const { data: payment, error: paymentError } = await db
       .from("pagos_paypal")
-      .select("id, estado, concepto")
+      .select("id, estado, concepto, usuario_id, effect_applied, metadata")
       .or(
         [
           orderId ? `paypal_order_id.eq.${orderId}` : "",
@@ -109,6 +116,39 @@ export async function POST(request: Request) {
         const { error: applyError } = await db.rpc("paypal_aplicar_efecto", {
           p_pago_id: payment.id,
         });
+
+        if (applyError) {
+          return NextResponse.json({ error: applyError.message }, { status: 500 });
+        }
+      }
+
+      if (payment.concepto === "character_revive" && !payment.effect_applied) {
+        const characterId = extractCharacterId(payment.metadata);
+        if (!characterId) {
+          return NextResponse.json({ error: "Pago revive sin characterId válido" }, { status: 500 });
+        }
+
+        const reviveResult = await reviveCharacter({
+          db,
+          userId: String(payment.usuario_id),
+          characterId,
+          reason: "paypal_webhook_revive",
+          paymentId: payment.id,
+          metadata: { source: "paypal-webhook" },
+        });
+
+        if (!reviveResult.ok) {
+          return NextResponse.json({ error: reviveResult.error ?? "No se pudo revivir" }, { status: 500 });
+        }
+
+        const { error: applyError } = await db
+          .from("pagos_paypal")
+          .update({
+            effect_applied: true,
+            completado_en: new Date().toISOString(),
+          })
+          .eq("id", payment.id)
+          .eq("effect_applied", false);
 
         if (applyError) {
           return NextResponse.json({ error: applyError.message }, { status: 500 });

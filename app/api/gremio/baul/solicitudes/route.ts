@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   const db = createServerClient();
@@ -61,19 +62,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Objeto de baul no disponible" }, { status: 404 });
   }
 
-  const { data: targetCharacter, error: targetError } = await db
-    .from("personajes")
-    .select("id")
-    .eq("id", targetCharacterId)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (targetError) {
-    return NextResponse.json({ error: targetError.message }, { status: 500 });
-  }
-
-  if (!targetCharacter) {
-    return NextResponse.json({ error: "El personaje destino no es tuyo" }, { status: 403 });
+  const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, targetCharacterId);
+  if (!lifeCheck.ok) {
+    return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
   }
 
   const { data, error: insertError } = await db

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import { useAuth } from "@/lib/useAuth";
@@ -25,6 +26,7 @@ type Character = {
   id: number;
   name: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
   bag: {
     items: BagItem[];
     maxSlots: number;
@@ -85,6 +87,7 @@ const INITIAL_ALERT: AlertState = {
 };
 
 export default function ComercioPage() {
+  const router = useRouter();
   const { user, token, refreshUser } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [market, setMarket] = useState<Publicacion[]>([]);
@@ -165,7 +168,9 @@ export default function ComercioPage() {
       setMarket(safeMarket);
       setMine(safeMine);
 
-      const firstCharacterId = safeProfile.characters?.[0]?.id ?? null;
+      const firstCharacterId =
+        safeProfile.characters?.find((character) => character.lifeStatus !== "muerto")?.id ??
+        null;
       setSelectedSellerCharacterId((prev) => prev ?? firstCharacterId);
       setSelectedBuyerCharacterId((prev) => prev ?? firstCharacterId);
     } catch (error) {
@@ -183,6 +188,15 @@ export default function ComercioPage() {
     void loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    const characters = profile?.characters ?? [];
+    if (characters.length === 0) return;
+    const hasAnyAlive = characters.some((character) => character.lifeStatus !== "muerto");
+    if (!hasAnyAlive) {
+      router.replace("/profile?dead=1");
+    }
+  }, [profile?.characters, router]);
+
   const sellerCharacter = useMemo(
     () => profile?.characters.find((c) => c.id === selectedSellerCharacterId) ?? null,
     [profile?.characters, selectedSellerCharacterId],
@@ -190,10 +204,16 @@ export default function ComercioPage() {
 
   const publishableItems = useMemo(() => {
     if (!sellerCharacter) return [];
+    if (sellerCharacter.lifeStatus === "muerto") return [];
     return sellerCharacter.bag.items.filter(
       (item) => !item.fueComerciado && !item.publicadoEnTrade,
     );
   }, [sellerCharacter]);
+
+  const aliveCharacters = useMemo(
+    () => (profile?.characters ?? []).filter((character) => character.lifeStatus !== "muerto"),
+    [profile?.characters],
+  );
 
   useEffect(() => {
     if (publishableItems.length === 0) {
@@ -288,6 +308,18 @@ export default function ComercioPage() {
       showAlert(
         "Falta personaje",
         "Selecciona el personaje comprador antes de solicitar",
+        "warning",
+      );
+      return;
+    }
+
+    const buyerCharacter = aliveCharacters.find(
+      (character) => character.id === selectedBuyerCharacterId,
+    );
+    if (!buyerCharacter) {
+      showAlert(
+        "Personaje inválido",
+        "El personaje comprador está muerto o no disponible.",
         "warning",
       );
       return;
@@ -488,7 +520,7 @@ export default function ComercioPage() {
                     value={selectedSellerCharacterId?.toString() ?? ""}
                     onChange={(e) => setSelectedSellerCharacterId(Number(e.target.value))}
                   >
-                    {(profile?.characters ?? []).map((character) => (
+                    {aliveCharacters.map((character) => (
                       <option key={character.id} value={character.id}>
                         {character.name}
                       </option>
@@ -568,7 +600,7 @@ export default function ComercioPage() {
                       value={selectedBuyerCharacterId?.toString() ?? ""}
                       onChange={(e) => setSelectedBuyerCharacterId(Number(e.target.value))}
                     >
-                      {(profile?.characters ?? []).map((character) => (
+                        {aliveCharacters.map((character) => (
                         <option key={character.id} value={character.id}>
                           {character.name}
                         </option>

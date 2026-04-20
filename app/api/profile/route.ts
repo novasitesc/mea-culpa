@@ -77,6 +77,9 @@ export async function GET(request: Request) {
       alineamiento,
       retrato,
       capacidad_bolsa,
+      estado_vida,
+      muerto_en,
+      revivido_en,
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
@@ -177,6 +180,9 @@ export async function GET(request: Request) {
       race: p.raza,
       alignment: p.alineamiento,
       portrait: p.retrato,
+      lifeStatus: p.estado_vida ?? "vivo",
+      deadAt: p.muerto_en ?? null,
+      revivedAt: p.revivido_en ?? null,
       stats: stats
         ? {
             str: stats.fuerza,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ShoppingCart,
   Coins,
@@ -51,6 +52,7 @@ type Character = {
   id: number;
   name: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
   bagCapacity: number;
   bagUsed: number;
 };
@@ -91,6 +93,7 @@ const RARITY_BADGE: Record<ItemRarity, string> = {
 // ─── Componente principal ─────────────────────────────────────────────────
 
 export default function TiendasPage() {
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
@@ -126,12 +129,21 @@ export default function TiendasPage() {
             id: c.id,
             name: c.name,
             portrait: c.portrait,
+            lifeStatus: c.lifeStatus === "muerto" ? "muerto" : "vivo",
             bagCapacity: c.bag?.maxSlots ?? 0,
             bagUsed: (c.bag?.items ?? []).length,
           })),
         ),
       );
   }, [user?.id]);
+
+  useEffect(() => {
+    if (characters.length === 0) return;
+    const hasAnyAlive = characters.some((character) => character.lifeStatus !== "muerto");
+    if (!hasAnyAlive) {
+      router.replace("/profile?dead=1");
+    }
+  }, [characters, router]);
 
   // Cargar tienda seleccionada con sus items
   const openShop = (id: string) => {
@@ -199,6 +211,13 @@ export default function TiendasPage() {
 
   const confirmBuy = async () => {
     if (!selectedCharId || isBuying) return;
+
+    const selectedCharacter = characters.find((character) => character.id === selectedCharId);
+    if (!selectedCharacter || selectedCharacter.lifeStatus === "muerto") {
+      setBuyError("Este personaje está muerto y no puede comprar.");
+      return;
+    }
+
     setIsBuying(true);
     setBuyError(null);
     try {
@@ -475,14 +494,15 @@ export default function TiendasPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     {characters.map((char) => {
                       const isFull = char.bagUsed >= char.bagCapacity;
+                      const isDead = char.lifeStatus === "muerto";
                       const isSelected = selectedCharId === char.id;
                       return (
                         <button
                           key={char.id}
-                          onClick={() => !isFull && setSelectedCharId(char.id)}
-                          disabled={isFull}
+                          onClick={() => !isFull && !isDead && setSelectedCharId(char.id)}
+                          disabled={isFull || isDead}
                           className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
-                            isFull
+                            isFull || isDead
                               ? "opacity-50 cursor-not-allowed border-border"
                               : isSelected
                                 ? "border-gold bg-gold/10"
@@ -502,10 +522,10 @@ export default function TiendasPage() {
                               {char.name}
                             </p>
                             <p
-                              className={`text-xs mt-0.5 ${isFull ? "text-destructive" : "text-muted-foreground"}`}
+                              className={`text-xs mt-0.5 ${isFull || isDead ? "text-destructive" : "text-muted-foreground"}`}
                             >
                               Bolsa: {char.bagUsed}/{char.bagCapacity}
-                              {isFull ? " · Llena" : ""}
+                              {isDead ? " · Muerto" : isFull ? " · Llena" : ""}
                             </p>
                           </div>
                           {isSelected && (

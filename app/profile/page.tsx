@@ -80,6 +80,9 @@ type Character = {
   race: string;
   alignment: string;
   portrait: string;
+  lifeStatus: "vivo" | "muerto";
+  deadAt: string | null;
+  revivedAt: string | null;
   stats: Record<string, number>;
   armor: ArmorSlots;
   accessories: AccessorySlots;
@@ -171,6 +174,9 @@ export default function ProfilePage() {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [slotUpgradeMessage, setSlotUpgradeMessage] = useState<string | null>(null);
   const [isUpgradingSlots, setIsUpgradingSlots] = useState(false);
+  const [selectedDeadCharacterId, setSelectedDeadCharacterId] = useState<number | null>(null);
+  const [isRevivingCharacter, setIsRevivingCharacter] = useState(false);
+  const [reviveMessage, setReviveMessage] = useState<string | null>(null);
   const [nivel20UrlInput, setNivel20UrlInput] = useState("");
   const [savingNivel20Url, setSavingNivel20Url] = useState(false);
   const [newCharacter, setNewCharacter] = useState<{
@@ -370,15 +376,20 @@ export default function ProfilePage() {
 
       const data = await res.json().catch(() => ({}));
       const message = String(data.message ?? "No se pudo resolver el descanso");
+      const sleepKilledCharacter = Boolean(data.dead);
 
-      if (!res.ok && !data.eliminated) {
+      if (!res.ok && !data.eliminated && !data.dead) {
         throw new Error(String(data.error ?? message));
       }
 
       showProfileAlert(
-        data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
+        sleepKilledCharacter
+          ? "Personaje muerto"
+          : data.eliminated
+            ? "Personaje eliminado"
+            : "Descanso resuelto",
         message,
-        data.eliminated ? "error" : "success",
+        sleepKilledCharacter ? "warning" : data.eliminated ? "error" : "success",
       );
 
       setShowDeleteConfirmModal(false);
@@ -655,6 +666,58 @@ export default function ProfilePage() {
     await loadProfile();
   };
 
+  const createReviveOrder = async (characterId: number): Promise<string> => {
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const res = await fetch("/api/profile/revive-paypal/create-order", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ characterId }),
+    });
+
+    const data = (await res.json()) as {
+      orderId?: string;
+      error?: string;
+    };
+
+    if (!res.ok || !data.orderId) {
+      throw new Error(data.error ?? "No se pudo crear la orden de revive");
+    }
+
+    return data.orderId;
+  };
+
+  const captureReviveOrder = async (orderId: string) => {
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const res = await fetch("/api/profile/revive-paypal/capture-order", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ orderId }),
+    });
+
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+    };
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error ?? "No se pudo confirmar el revive");
+    }
+
+    await loadProfile();
+  };
+
   // Redirigir si no está autenticado
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -682,6 +745,23 @@ export default function ProfilePage() {
     return () => window.clearInterval(intervalId);
   }, [isAuthenticated, token, loadSleepStatus]);
 
+  useEffect(() => {
+    const deadOnly = (profile?.characters ?? []).filter(
+      (character) => character.lifeStatus === "muerto",
+    );
+    if (deadOnly.length === 0) {
+      setSelectedDeadCharacterId(null);
+      return;
+    }
+
+    setSelectedDeadCharacterId((prev) => {
+      if (prev && deadOnly.some((character) => character.id === prev)) {
+        return prev;
+      }
+      return deadOnly[0].id;
+    });
+  }, [profile?.characters]);
+
   // Mostrar loading mientras se verifica autenticación
   if (isLoading || !isAuthenticated) {
     return (
@@ -696,12 +776,21 @@ export default function ProfilePage() {
 
   const player = profile?.player;
   const characters = profile?.characters ?? [];
+  const deadCharacters = characters.filter((character) => character.lifeStatus === "muerto");
   const maxCharacterSlots = player?.maxCharacterSlots ?? 2;
   const reachedCharacterLimit = characters.length >= maxCharacterSlots;
   const canUnlockMoreSlots = maxCharacterSlots < 5;
   const nextSlotTarget = Math.min(5, maxCharacterSlots + 1);
   const pendingSleepCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
   const hasPendingSleep = !!pendingSleepCharacter;
+
+  const hasAllDead = characters.length > 0 && deadCharacters.length === characters.length;
+
+  const selectedDeadCharacter = deadCharacters.find(
+    (character) => character.id === selectedDeadCharacterId,
+  );
+
+  const reviveTargetCharacter = selectedDeadCharacter ?? deadCharacters[0] ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -832,6 +921,12 @@ export default function ProfilePage() {
                 Slots de personaje: <span className="text-foreground font-semibold">{characters.length}/{maxCharacterSlots}</span>
               </p>
 
+              {hasAllDead && (
+                <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 text-sm text-red-200">
+                  Todos tus personajes están muertos. Solo puedes usar esta sección de Perfil hasta revivir al menos uno.
+                </div>
+              )}
+
               <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-3">
                 {canUnlockMoreSlots ? (
                   <p className="text-sm text-amber-200">
@@ -922,6 +1017,111 @@ export default function ProfilePage() {
                   <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
                 )}
               </div>
+
+              <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 space-y-3">
+                <p className="text-sm text-red-100">
+                  Revivir personaje muerto: <span className="font-semibold">$10.00 USD</span>
+                </p>
+
+                {deadCharacters.length === 0 ? (
+                  <p className="text-xs text-red-200/80">No tienes personajes muertos para revivir.</p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedDeadCharacterId ?? ""}
+                      onChange={(e) =>
+                        setSelectedDeadCharacterId(e.target.value ? Number(e.target.value) : null)
+                      }
+                      className="w-full px-3 py-2 rounded border border-red-600/40 bg-[#2a1212] text-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 [&>option]:bg-[#2a1212] [&>option]:text-red-100"
+                    >
+                      <option value="">Selecciona personaje muerto</option>
+                      {deadCharacters.map((character) => (
+                        <option key={character.id} value={character.id}>
+                          {character.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {!paypalClientId ? (
+                      <p className="text-xs text-red-200/80">
+                        Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el revive.
+                      </p>
+                    ) : (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId: paypalClientId,
+                          "client-id": paypalClientId,
+                          currency: "USD",
+                          intent: "capture",
+                        }}
+                      >
+                        <PayPalButtons
+                          style={{
+                            layout: "horizontal",
+                            label: "paypal",
+                            color: "gold",
+                            tagline: false,
+                          }}
+                          disabled={isRevivingCharacter || !reviveTargetCharacter}
+                          createOrder={async () => {
+                            if (!reviveTargetCharacter) {
+                              throw new Error("Selecciona un personaje muerto");
+                            }
+
+                            setReviveMessage(null);
+                            setIsRevivingCharacter(true);
+                            try {
+                              return await createReviveOrder(reviveTargetCharacter.id);
+                            } catch (error: unknown) {
+                              setIsRevivingCharacter(false);
+                              throw error;
+                            }
+                          }}
+                          onApprove={async (data) => {
+                            if (!data.orderID) {
+                              showProfileAlert(
+                                "Error de pago",
+                                "PayPal no devolvió orderID.",
+                                "error",
+                              );
+                              setIsRevivingCharacter(false);
+                              return;
+                            }
+
+                            try {
+                              await captureReviveOrder(data.orderID);
+                              setReviveMessage("Revivir confirmado. Tu personaje volvió a la vida.");
+                              showProfileAlert("Personaje revivido", "El revive se aplicó correctamente.", "success");
+                            } catch (error: unknown) {
+                              showProfileAlert(
+                                "Error de revive",
+                                error instanceof Error ? error.message : "No se pudo confirmar el revive",
+                                "error",
+                              );
+                            } finally {
+                              setIsRevivingCharacter(false);
+                            }
+                          }}
+                          onCancel={() => {
+                            setReviveMessage("Pago cancelado por el usuario.");
+                            setIsRevivingCharacter(false);
+                          }}
+                          onError={(error) => {
+                            showProfileAlert(
+                              "Error de PayPal",
+                              error instanceof Error ? error.message : "No se pudo procesar el pago",
+                              "error",
+                            );
+                            setIsRevivingCharacter(false);
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    )}
+
+                    {reviveMessage && <p className="text-xs text-red-100/90">{reviveMessage}</p>}
+                  </>
+                )}
+              </div>
             </div>
           </section>
 
@@ -1009,9 +1209,13 @@ export default function ProfilePage() {
                             <option
                               key={character.id}
                               value={character.id}
-                              disabled={game.joinedCharacterIds.includes(character.id)}
+                              disabled={
+                                game.joinedCharacterIds.includes(character.id) ||
+                                character.lifeStatus === "muerto"
+                              }
                             >
                               {character.name}
+                              {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
                             </option>
                           ))}
                         </select>
@@ -1090,6 +1294,18 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
                       {character.name}
                     </h2>
+                    <p
+                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${
+                        character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
+                      }`}
+                    >
+                      {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
+                    </p>
+                    {character.lifeStatus === "muerto" && character.deadAt && (
+                      <p className="text-xs text-red-200/80 mt-1">
+                        Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
+                      </p>
+                    )}
                     <div className="mt-2 space-y-1">
                       {(character.multiclass ?? []).map((entry, idx) => (
                         <div
@@ -1134,14 +1350,15 @@ export default function ProfilePage() {
 
                   <div className="flex justify-end mt-2">
                     <button
-                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition"
+                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-60 disabled:cursor-not-allowed"
                       onClick={() => {
                         setOpenBagModal(character.id);
                         setCurrentCharacter(character);
                         setBagItems(character.bag.items);
                       }}
+                      disabled={character.lifeStatus === "muerto"}
                     >
-                      Abrir Bolsa
+                      {character.lifeStatus === "muerto" ? "Personaje muerto" : "Abrir Bolsa"}
                     </button>
                   </div>
                   {openBagModal === character.id && (
@@ -1200,7 +1417,7 @@ export default function ProfilePage() {
               </h2>
               <p className="text-sm text-muted-foreground mt-2">
                 La partida "{pendingSleepCharacter.partidaTitle}" finalizo. Si no pagas descanso,
-                el personaje sera eliminado de la base de datos.
+                el personaje morirá y deberás revivirlo desde tu perfil.
               </p>
             </div>
 
@@ -1247,7 +1464,7 @@ export default function ProfilePage() {
                 disabled={resolvingSleep || loadingSleepStatus}
                 className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
               >
-                No pagar (eliminar personaje de la base de datos)
+                No pagar (dejar morir al personaje)
               </button>
             </div>
           </div>
@@ -1256,10 +1473,10 @@ export default function ProfilePage() {
             <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70">
               <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
                 <h3 className="text-lg font-semibold text-red-300">
-                  Confirmar eliminación
+                  Confirmar muerte
                 </h3>
                 <p className="text-sm text-red-100/90 leading-relaxed">
-                  El personaje va a ser eliminado permanentemente, ¿estás seguro?
+                  El personaje quedará muerto hasta que pagues revive. ¿Estás seguro?
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -1278,7 +1495,7 @@ export default function ProfilePage() {
                     disabled={resolvingSleep}
                     className="flex-1 px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 transition disabled:opacity-60"
                   >
-                    Sí, eliminar
+                    Sí, dejar morir
                   </button>
                 </div>
               </div>
