@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Plus, RotateCw, Shield, Trash2 } from "lucide-react";
+import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
@@ -86,6 +87,7 @@ export function RuletaTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [form, setForm] = useState<TabState>(defaultState);
 
   const objectOptions = useMemo<ObjectSelectorItem[]>(() => {
@@ -219,10 +221,14 @@ export function RuletaTab({
     await load();
   };
 
-  const handleDeletePrize = async (id: string) => {
-    const confirmed = window.confirm("¿Seguro que quieres borrar este premio de la pool?");
-    if (!confirmed) return;
+  const handleDeletePrize = (id: string, label: string) => {
+    setDeleteTarget({ id, label });
+  };
 
+  const handleConfirmDeletePrize = async () => {
+    if (!deleteTarget) return;
+
+    const id = deleteTarget.id;
     setActionId(`delete:${id}`);
     const res = await fetch(`/api/admin/ruleta/premios/${id}`, {
       method: "DELETE",
@@ -238,6 +244,7 @@ export function RuletaTab({
       return;
     }
 
+    setDeleteTarget(null);
     onToast("Premio eliminado", "success");
     await load();
   };
@@ -432,7 +439,7 @@ export function RuletaTab({
                         </button>
                         <button
                           type="button"
-                          onClick={() => void handleDeletePrize(pool.id)}
+                          onClick={() => handleDeletePrize(pool.id, pool.label || (pool.rewardType === "oro" ? `Oro x${pool.goldAmount ?? 0}` : pool.object?.name || "Objeto"))}
                           disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
                           className="inline-flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/20 px-3 py-2 text-sm text-destructive disabled:opacity-60"
                         >
@@ -452,6 +459,22 @@ export function RuletaTab({
           )}
         </div>
       </div>
+
+      <ConfirmActionModal
+        open={Boolean(deleteTarget)}
+        title="Eliminar premio"
+        description={`¿Seguro que quieres borrar \"${deleteTarget?.label ?? "este premio"}\" de la pool? Esta acción no se puede deshacer.`}
+        confirmText="Sí, borrar"
+        cancelText="Cancelar"
+        isLoading={Boolean(deleteTarget && actionId === `delete:${deleteTarget.id}`)}
+        onCancel={() => {
+          if (deleteTarget && actionId === `delete:${deleteTarget.id}`) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          void handleConfirmDeletePrize();
+        }}
+      />
     </div>
   );
 }
