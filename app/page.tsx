@@ -214,6 +214,23 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     if (!isNoticiaOpen) {
       return;
     }
+
+    const originalOverflow = document.body.style.overflow;
+    const originalOverscrollBehavior = document.body.style.overscrollBehavior;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.overscrollBehavior = originalOverscrollBehavior;
+    };
+  }, [isNoticiaOpen]);
+
+  useEffect(() => {
+    if (!isNoticiaOpen) {
+      return;
+    }
     setNoticiaZoom(1);
     setNoticiaPan({ x: 0, y: 0 });
   }, [isNoticiaOpen, noticiaIdx]);
