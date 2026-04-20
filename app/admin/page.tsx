@@ -1465,7 +1465,8 @@ function UsersTab({
     return (
       u.name.toLowerCase().includes(search) ||
       u.email.toLowerCase().includes(search) ||
-      u.role.toLowerCase().includes(search)
+      u.role.toLowerCase().includes(search) ||
+      u.rolSistema.toLowerCase().includes(search)
     );
   });
 
@@ -1553,13 +1554,17 @@ function UsersTab({
                   <td className="px-3 py-3 text-center text-gold font-medium">
                     {u.gold}
                   </td>
-                  <td className="px-3 py-3 text-center">
-                    {u.isAdmin ? (
-                      <span className="px-2 py-0.5 bg-gold/20 text-gold rounded text-xs font-semibold">
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    {u.rolSistema === "super_admin" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#5d7dcf]/60 bg-[#1a2648] text-[#c8d9ff] text-[11px] font-semibold whitespace-nowrap shadow-[0_0_10px_rgba(93,125,207,0.2)]">
+                        👑 super_admin
+                      </span>
+                    ) : u.isAdmin ? (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-gold/20 text-gold rounded text-[11px] font-semibold whitespace-nowrap">
                         Admin
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-secondary text-muted-foreground rounded text-xs">
+                      <span className="inline-flex items-center px-2 py-0.5 bg-secondary text-muted-foreground rounded text-[11px] whitespace-nowrap">
                         Usuario
                       </span>
                     )}
