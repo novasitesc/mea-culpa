@@ -134,6 +134,7 @@ type AdminTaxSummary = {
   partialWithDeathCount: number;
   partialWithoutLivingCharacterCount: number;
   errorCount: number;
+  deathsProjectedCount: number;
   deathsAppliedCount: number;
 };
 
@@ -3339,11 +3340,11 @@ function TaxesTab({
   token: string;
   onToast: (msg: string, type: "success" | "error") => void;
 }) {
-  const requiredConfirmation = "CONFIRMAR IMPUESTOS";
   const [amount, setAmount] = useState("");
-  const [confirmationText, setConfirmationText] = useState("");
   const [rows, setRows] = useState<AdminTaxRow[]>([]);
   const [summary, setSummary] = useState<AdminTaxSummary | null>(null);
+  const [resultMode, setResultMode] = useState<"preview" | "apply" | null>(null);
+  const [previewAmount, setPreviewAmount] = useState<number | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
 
@@ -3354,9 +3355,9 @@ function TaxesTab({
     return integer > 0 ? integer : null;
   }, [amount]);
 
-  const isConfirmationValid = useMemo(
-    () => confirmationText.trim().toUpperCase() === requiredConfirmation,
-    [confirmationText, requiredConfirmation],
+  const hasFreshPreview = useMemo(
+    () => parsedAmount !== null && previewAmount === parsedAmount,
+    [parsedAmount, previewAmount],
   );
 
   const loadPreview = useCallback(async () => {
@@ -3386,6 +3387,8 @@ function TaxesTab({
     const data = await res.json();
     setRows(data.rows ?? []);
     setSummary(data.summary ?? null);
+    setResultMode(data.mode === "apply" ? "apply" : "preview");
+    setPreviewAmount(parsedAmount);
     onToast("Vista previa generada", "success");
   }, [parsedAmount, token, onToast]);
 
@@ -3395,8 +3398,8 @@ function TaxesTab({
       return;
     }
 
-    if (!isConfirmationValid) {
-      onToast(`Debes escribir \"${requiredConfirmation}\" para confirmar`, "error");
+    if (!hasFreshPreview) {
+      onToast("Debes generar vista previa del monto actual antes de cobrar", "error");
       return;
     }
 
@@ -3407,10 +3410,7 @@ function TaxesTab({
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        amount: parsedAmount,
-        confirmationText,
-      }),
+      body: JSON.stringify({ amount: parsedAmount }),
     });
 
     setLoadingApply(false);
@@ -3424,21 +3424,33 @@ function TaxesTab({
     const data = await res.json();
     setRows(data.rows ?? []);
     setSummary(data.summary ?? null);
+    setResultMode(data.mode === "preview" ? "preview" : "apply");
     const totalCharged = Number(data?.summary?.totalCharged ?? 0);
     const deathsApplied = Number(data?.summary?.deathsAppliedCount ?? 0);
     onToast(
       `Cobro ejecutado. Oro cobrado: ${totalCharged}. Muertes aplicadas: ${deathsApplied}.`,
       "success",
     );
-    setConfirmationText("");
-  }, [
-    parsedAmount,
-    isConfirmationValid,
-    requiredConfirmation,
-    token,
-    confirmationText,
-    onToast,
-  ]);
+  }, [parsedAmount, hasFreshPreview, token, onToast]);
+
+  useEffect(() => {
+    if (!amount.trim()) {
+      setPreviewAmount(null);
+      setResultMode(null);
+      setRows([]);
+      setSummary(null);
+      return;
+    }
+
+    const numeric = Number(amount);
+    const current = Number.isFinite(numeric) ? Math.floor(numeric) : null;
+    if (current === null || current <= 0 || current !== previewAmount) {
+      setPreviewAmount(null);
+      setResultMode(null);
+      setRows([]);
+      setSummary(null);
+    }
+  }, [amount, previewAmount]);
 
   const statusLabel = (status: AdminTaxStatus) => {
     if (status === "cobrado_total") return "Cobrado total";
@@ -3467,7 +3479,7 @@ function TaxesTab({
           alcanza, se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,260px)_1fr] gap-4 items-end">
           <FormField label="Monto fijo de impuesto">
             <GoldAmountInput
               className={inputCls}
@@ -3479,17 +3491,7 @@ function TaxesTab({
             />
           </FormField>
 
-          <FormField label={`Escribe \"${requiredConfirmation}\" para habilitar cobro`}>
-            <input
-              className={inputCls}
-              value={confirmationText}
-              onChange={(e) => setConfirmationText(e.target.value)}
-              placeholder={requiredConfirmation}
-              autoComplete="off"
-            />
-          </FormField>
-
-          <div className="flex gap-3 md:justify-end md:col-span-2">
+          <div className="flex gap-3 md:justify-end">
             <button
               type="button"
               onClick={loadPreview}
@@ -3502,7 +3504,7 @@ function TaxesTab({
             <button
               type="button"
               onClick={applyTax}
-              disabled={loadingPreview || loadingApply || !parsedAmount || !isConfirmationValid}
+              disabled={loadingPreview || loadingApply || !parsedAmount || !hasFreshPreview}
               className="px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
             >
               {loadingApply && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -3510,6 +3512,13 @@ function TaxesTab({
             </button>
           </div>
         </div>
+
+        {parsedAmount && !hasFreshPreview && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-900/20 p-3 flex items-center gap-2 text-amber-200 text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Debes generar una vista previa del monto actual antes de confirmar el cobro.
+          </div>
+        )}
       </div>
 
       {summary && (
@@ -3527,8 +3536,14 @@ function TaxesTab({
             <p className="text-lg font-semibold text-orange-300">{summary.totalShortfall}</p>
           </div>
           <div className="rounded-lg border border-border bg-secondary/15 p-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Muertes aplicadas</p>
-            <p className="text-lg font-semibold text-destructive">{summary.deathsAppliedCount}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              {resultMode === "preview" ? "Muertes proyectadas" : "Muertes aplicadas"}
+            </p>
+            <p className="text-lg font-semibold text-destructive">
+              {resultMode === "preview"
+                ? summary.deathsProjectedCount
+                : summary.deathsAppliedCount}
+            </p>
           </div>
         </div>
       )}

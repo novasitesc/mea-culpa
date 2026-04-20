@@ -56,6 +56,7 @@ export type AdminTaxSummary = {
   partialWithDeathCount: number;
   partialWithoutLivingCharacterCount: number;
   errorCount: number;
+  deathsProjectedCount: number;
   deathsAppliedCount: number;
 };
 
@@ -87,6 +88,7 @@ function buildSummary(amount: number, rows: AdminTaxResultRow[]): AdminTaxSummar
     partialWithDeathCount: 0,
     partialWithoutLivingCharacterCount: 0,
     errorCount: 0,
+    deathsProjectedCount: 0,
     deathsAppliedCount: 0,
   };
 
@@ -100,6 +102,9 @@ function buildSummary(amount: number, rows: AdminTaxResultRow[]): AdminTaxSummar
       summary.partialWithoutLivingCharacterCount += 1;
     }
     if (row.status === "error") summary.errorCount += 1;
+    if (row.willDie && row.targetCharacterId !== null) {
+      summary.deathsProjectedCount += 1;
+    }
     if (row.deathApplied) summary.deathsAppliedCount += 1;
   }
 
