@@ -1,8 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield } from "lucide-react";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords } from "lucide-react";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
+import { useAuth } from "@/lib/useAuth";
+
+type OpenPartida = {
+  isFull: boolean;
+  inCooldown: boolean;
+  joinedCharacterIds: number[];
+};
 
 // ─── Definición de ítems ──────────────────────────────────────────────────
 
@@ -60,6 +68,14 @@ export const sidebarItems = [
     href: "/gremio",
     subtitle: "(baul compartido y solicitudes)",
   },
+  {
+    id: "partidas",
+    label: "Partidas",
+    icon: Swords,
+    hasIndicator: true,
+    href: "/partidas",
+    subtitle: "(unete a partidas activas)",
+  },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────
@@ -82,9 +98,58 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { token, isAuthenticated } = useAuth();
   const { rouletteEnabled: effectiveRouletteEnabled } = useRouletteEnabled({
     providedEnabled: rouletteEnabled,
   });
+  const [availableGamesCount, setAvailableGamesCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      setAvailableGamesCount(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadAvailableGamesCount = async () => {
+      try {
+        const res = await fetch("/api/partidas", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudieron cargar las partidas");
+        }
+
+        const data = (await res.json()) as OpenPartida[];
+        const count = (data ?? []).filter(
+          (game) =>
+            !game.isFull &&
+            !game.inCooldown &&
+            (game.joinedCharacterIds?.length ?? 0) === 0,
+        ).length;
+
+        if (isMounted) {
+          setAvailableGamesCount(count);
+        }
+      } catch {
+        if (isMounted) {
+          setAvailableGamesCount(null);
+        }
+      }
+    };
+
+    void loadAvailableGamesCount();
+    const intervalId = window.setInterval(() => {
+      void loadAvailableGamesCount();
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthenticated, token]);
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -129,6 +194,11 @@ export default function Sidebar({
             <div className="flex items-center gap-3">
               <item.icon className="w-5 h-5" />
               <span className="font-medium font-sans">{item.label}</span>
+              {item.id === "partidas" && typeof availableGamesCount === "number" && (
+                <span className="rounded-full border border-gold/40 bg-gold/15 px-2 py-0.5 text-[10px] font-semibold leading-none text-gold">
+                  {availableGamesCount}
+                </span>
+              )}
               {disabled && !roulettePending ? (
                 <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
                   {rouletteDisabled ? "Deshabilitada" : "Próx."}

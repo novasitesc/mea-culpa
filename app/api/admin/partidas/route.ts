@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { markCharacterDead } from "@/lib/characterLife";
+import { syncPartidasInProgress } from "@/lib/partidasState";
 
 // GET /api/admin/partidas
 // Lista partidas con participantes, cupo y metadata de disponibilidad.
@@ -8,6 +9,20 @@ export async function GET(request: NextRequest) {
   const result = await requireAdmin(request);
   if ("error" in result) return result.error;
   const { session } = result;
+
+  try {
+    await syncPartidasInProgress(session.db);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudo sincronizar estado de partidas",
+      },
+      { status: 500 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const statusFilter = searchParams.get("status");
@@ -46,8 +61,10 @@ export async function GET(request: NextRequest) {
     .order("creada_en", { ascending: false })
     .limit(limit);
 
-  if (statusFilter === "abierta" || statusFilter === "finalizada") {
+  if (statusFilter === "abierta" || statusFilter === "finalizada" || statusFilter === "en_progreso") {
     partidasQuery = partidasQuery.eq("estado", statusFilter);
+  } else if (statusFilter === "activa") {
+    partidasQuery = partidasQuery.in("estado", ["abierta", "en_progreso"]);
   }
 
   const { data: partidas, error: partidasError } = await partidasQuery;
@@ -148,8 +165,9 @@ export async function POST(request: NextRequest) {
   const floor = Math.floor(Number(body?.floor ?? 1));
   const tier = Math.floor(Number(body?.tier ?? 1));
   const startTimeRaw = body?.startTime;
+  const hasStartTime = typeof startTimeRaw === "string" && startTimeRaw.trim().length > 0;
   const startTime =
-    typeof startTimeRaw === "string" && startTimeRaw.trim().length > 0
+    hasStartTime
       ? new Date(startTimeRaw)
       : null;
 
@@ -178,7 +196,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (startTimeRaw != null && (!startTime || Number.isNaN(startTime.getTime()))) {
+  if (!hasStartTime) {
+    return NextResponse.json(
+      { error: "La fecha y hora de inicio son obligatorias" },
+      { status: 400 },
+    );
+  }
+
+  if (!startTime || Number.isNaN(startTime.getTime())) {
     return NextResponse.json(
       { error: "La hora de inicio es inválida" },
       { status: 400 },
@@ -194,7 +219,7 @@ export async function POST(request: NextRequest) {
       maximo_jugadores: maxPlayers,
       limite_jugadores: maxPlayers,
       piso: floor,
-      inicio_en: startTime ? startTime.toISOString() : null,
+      inicio_en: startTime.toISOString(),
       tier,
       creada_por: session.userId,
     })

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { syncPartidasInProgress } from "@/lib/partidasState";
 
 // POST /api/partidas/join
 // Inscribe un personaje del usuario autenticado a una partida abierta con cupo.
@@ -22,6 +23,20 @@ export async function POST(request: Request) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  try {
+    await syncPartidasInProgress(db);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudo sincronizar estado de partidas",
+      },
+      { status: 500 },
+    );
   }
 
   const { data: perfil, error: perfilError } = await db
@@ -128,7 +143,7 @@ export async function POST(request: Request) {
 
   const { data: partida, error: partidaError } = await db
     .from("partidas")
-    .select("id, titulo, estado, tier, maximo_jugadores, limite_jugadores")
+    .select("id, titulo, estado, tier, maximo_jugadores, limite_jugadores, inicio_en")
     .eq("id", partidaId)
     .maybeSingle();
 
@@ -138,6 +153,27 @@ export async function POST(request: Request) {
 
   if (!partida) {
     return NextResponse.json({ error: "Partida no encontrada" }, { status: 404 });
+  }
+
+  const startTimeRaw = (partida as any).inicio_en;
+  const startTimeMs = startTimeRaw ? new Date(String(startTimeRaw)).getTime() : Number.NaN;
+  const hasStarted = Number.isFinite(startTimeMs) && Date.now() >= startTimeMs;
+
+  if ((partida as any).estado === "abierta" && hasStarted) {
+    const { error: promoteError } = await db
+      .from("partidas")
+      .update({ estado: "en_progreso" })
+      .eq("id", partidaId)
+      .eq("estado", "abierta");
+
+    if (promoteError) {
+      return NextResponse.json({ error: promoteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      { error: "La partida ya está en progreso y no acepta nuevas inscripciones" },
+      { status: 409 },
+    );
   }
 
   if (partida.estado !== "abierta") {

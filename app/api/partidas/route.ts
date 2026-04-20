@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
+import { syncPartidasInProgress } from "@/lib/partidasState";
 
 // GET /api/partidas
 // Lista partidas abiertas para que el usuario autenticado pueda inscribirse.
@@ -21,6 +22,20 @@ export async function GET(request: Request) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  try {
+    await syncPartidasInProgress(db);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudo sincronizar estado de partidas",
+      },
+      { status: 500 },
+    );
   }
 
   const { data: perfil, error: perfilError } = await db
