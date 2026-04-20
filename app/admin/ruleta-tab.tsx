@@ -71,7 +71,15 @@ function groupByCategory(pools: RuletaPool[]) {
   }));
 }
 
-export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: string, type: "success" | "error") => void; }) {
+export function RuletaTab({
+  token,
+  onToast,
+  isSuperAdmin,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
+}) {
   const [config, setConfig] = useState<RuletaConfig | null>(null);
   const [pools, setPools] = useState<RuletaPool[]>([]);
   const [objects, setObjects] = useState<AdminObject[]>([]);
@@ -120,6 +128,11 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
   }, [token]);
 
   const handleToggle = async () => {
+    if (!isSuperAdmin) {
+      onToast("Solo super_admin puede activar o desactivar la ruleta", "error");
+      return;
+    }
+
     if (!config) return;
     const nextValue = !config.habilitada;
     const res = await fetch("/api/admin/ruleta/config", {
@@ -221,11 +234,12 @@ export function RuletaTab({ token, onToast }: { token: string; onToast: (msg: st
           </div>
           <button
             onClick={handleToggle}
+            disabled={!isSuperAdmin}
             className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
               config?.habilitada
                 ? "bg-green-900/30 border-green-700 text-green-200"
                 : "bg-destructive/20 border-destructive/40 text-destructive"
-            }`}
+            } ${!isSuperAdmin ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {config?.habilitada ? "Ruleta activa" : "Ruleta apagada"}
           </button>

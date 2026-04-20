@@ -3991,7 +3991,7 @@ export default function AdminPage() {
               <TransactionsTab token={token} onToast={showToast} />
             )}
             {activeTab === "ruleta" && (
-              <RuletaTab token={token} onToast={showToast} />
+              <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />

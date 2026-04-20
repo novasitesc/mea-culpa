@@ -30,6 +30,13 @@ export async function PATCH(request: Request) {
 
   const { session } = result;
 
+  if (session.rolSistema !== "super_admin") {
+    return NextResponse.json(
+      { error: "Solo super_admin puede activar o desactivar la ruleta" },
+      { status: 403 },
+    );
+  }
+
   const body = await request.json();
   const { habilitada } = body;
 

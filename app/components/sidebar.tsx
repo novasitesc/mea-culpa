@@ -68,6 +68,8 @@ type SidebarProps = {
   activeSection?: string;
   /** Callback cuando se pulsa un ítem sin href. Si no se provee, navega a "/" */
   onSectionChange?: (id: string) => void;
+  /** Estado global de la ruleta */
+  rouletteEnabled?: boolean;
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ type SidebarProps = {
 export default function Sidebar({
   activeSection,
   onSectionChange,
+  rouletteEnabled = true,
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -100,7 +103,9 @@ export default function Sidebar({
   return (
     <aside className="space-y-3">
       {sidebarItems.map((item) => {
-        const disabled = "disabled" in item && item.disabled;
+        const staticDisabled = "disabled" in item && item.disabled;
+        const rouletteDisabled = item.id === "ruleta" && !rouletteEnabled;
+        const disabled = staticDisabled || rouletteDisabled;
         return (
           <button
             key={item.id}
@@ -119,7 +124,7 @@ export default function Sidebar({
               <span className="font-medium font-sans">{item.label}</span>
               {disabled ? (
                 <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
-                  Próx.
+                  {rouletteDisabled ? "Deshabilitada" : "Próx."}
                 </span>
               ) : (
                 item.hasIndicator && (

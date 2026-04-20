@@ -72,9 +72,36 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("inicio");
+  const [isRouletteEnabled, setIsRouletteEnabled] = useState(true);
   const [activeSlot, setActiveSlot] = useState(1);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRouletteConfig = async () => {
+      try {
+        const res = await fetch("/api/ruleta/config", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = (await res.json()) as { enabled?: boolean };
+        if (isMounted) {
+          setIsRouletteEnabled(Boolean(data.enabled ?? true));
+        }
+      } catch {
+        if (isMounted) {
+          setIsRouletteEnabled(true);
+        }
+      }
+    };
+
+    void loadRouletteConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,6 +144,11 @@ function HomePageContent({ forcedSection }: HomePageProps) {
 
   useEffect(() => {
     if (forcedSection) {
+      if (forcedSection === "ruleta" && !isRouletteEnabled) {
+        setActiveSection("inicio");
+        router.replace("/");
+        return;
+      }
       setActiveSection(forcedSection);
       return;
     }
@@ -127,13 +159,23 @@ function HomePageContent({ forcedSection }: HomePageProps) {
       return;
     }
 
-    if (section === "ruleta" || section === "inicio") {
+    if (section === "ruleta") {
+      if (!isRouletteEnabled) {
+        setActiveSection("inicio");
+        router.replace("/");
+        return;
+      }
+      setActiveSection("ruleta");
+      return;
+    }
+
+    if (section === "inicio") {
       setActiveSection(section);
       return;
     }
 
     setActiveSection("inicio");
-  }, [forcedSection, searchParams]);
+  }, [forcedSection, searchParams, isRouletteEnabled, router]);
 
   const handleSectionChange = (sectionId: string) => {
     if (sectionId === "inicio") {
@@ -143,6 +185,11 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     }
 
     if (sectionId === "ruleta") {
+      if (!isRouletteEnabled) {
+        setActiveSection("inicio");
+        router.push("/");
+        return;
+      }
       setActiveSection("ruleta");
       router.push("/ruleta");
       return;
@@ -194,10 +241,11 @@ function HomePageContent({ forcedSection }: HomePageProps) {
           <Sidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
+            rouletteEnabled={isRouletteEnabled}
           />
 
           {/* Center */}
-          {activeSection === "ruleta" ? (
+          {activeSection === "ruleta" && isRouletteEnabled ? (
             <main className="min-h-125">
               <PrizeWheel token={token} />
             </main>
