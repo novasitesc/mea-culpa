@@ -81,6 +81,23 @@ type AlertState = {
   variant: "info" | "success" | "warning" | "error";
 };
 
+const ITEM_TYPE_ICONS: Record<string, string> = {
+  cabeza: "🪖",
+  armadura: "🛡️",
+  pecho: "🛡️",
+  guante: "🧤",
+  botas: "🥾",
+  collar: "📿",
+  anillo: "💍",
+  amuleto: "🔮",
+  cinturón: "🧷",
+  cinturon: "🧷",
+  arma: "⚔️",
+  consumible: "🧪",
+  ingrediente: "🌿",
+  misc: "📦",
+};
+
 const INITIAL_ALERT: AlertState = {
   open: false,
   title: "",
@@ -219,8 +236,10 @@ export default function ComercioPage() {
 
     return sellerCharacter.bag.items.map((item) => ({
       value: item.bagRowId,
-      name: item.name,
+      name: `${item.name} • ${(item.price ?? 0).toLocaleString()} 🪙`,
+      icon: ITEM_TYPE_ICONS[item.type] ?? "📦",
       qty: item.cantidad ?? 1,
+      searchText: `${item.name} ${item.type} ${item.price ?? 0}`,
       fueComerciado: item.fueComerciado,
       publicadoEnTrade: item.publicadoEnTrade,
     }));
@@ -549,11 +568,13 @@ export default function ComercioPage() {
                     Objeto para publicar
                   </p>
                   <ObjectSelector
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all"
                     items={sellerInventoryOptions}
                     value={selectedBagRowId}
                     onChange={setSelectedBagRowId}
                     filters={{ excludeTraded: true, excludePublished: true }}
-                    showQuantity
+                    searchable
+                    searchPlaceholder="Buscar objeto por nombre..."
                     emptyLabel="Sin objetos disponibles"
                   />
                 </div>

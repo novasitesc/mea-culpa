@@ -2775,8 +2775,9 @@ function ShopItemFormModal({
     () =>
       objects.map((obj) => ({
         value: obj.id,
-        name: `${obj.name} • ${obj.itemType} • ${obj.price.toLocaleString()} 🪙`,
+        name: obj.name,
         icon: obj.icon,
+        searchText: `${obj.id} ${obj.itemType} ${obj.price}`,
       })),
     [objects],
   );
@@ -2836,6 +2837,8 @@ function ShopItemFormModal({
                 items={objectOptions}
                 value={objetoId}
                 onChange={setObjetoId}
+                searchable
+                searchPlaceholder="Buscar por nombre, ID o tipo..."
                 placeholder="Selecciona objeto del catálogo"
                 emptyLabel="No hay objetos en catálogo"
               />
