@@ -757,7 +757,7 @@ function PartidasTab({
           <FormField label="Hora de inicio">
             <input
               type="datetime-local"
-              className={inputCls}
+              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:invert(1)_brightness(2)_contrast(2)]`}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
@@ -844,6 +844,7 @@ function ActivePartidasTab({
         value: obj.id,
         name: obj.name,
         icon: obj.icon,
+        searchText: `${obj.id} ${obj.itemType} ${obj.rarity} ${obj.price}`,
       })),
     [objects],
   );
@@ -1194,7 +1195,11 @@ function ActivePartidasTab({
                                       objectId: selectedObjectId,
                                     })
                                   }
+                                  searchable
+                                  searchPlaceholder="Buscar objeto para recompensa..."
+                                  noSearchResultsLabel="No hay coincidencias"
                                   placeholder="Selecciona objeto"
+                                  emptyLabel="Sin objetos disponibles"
                                 />
 
                                 <input
