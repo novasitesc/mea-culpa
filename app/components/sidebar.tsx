@@ -23,6 +23,14 @@ export const sidebarItems = [
     href: "/",
   },
   {
+    id: "partidas",
+    label: "Partidas",
+    icon: Swords,
+    hasIndicator: true,
+    href: "/partidas",
+    subtitle: "(unete a partidas activas)",
+  },
+  {
     id: "tiendas",
     label: "Tiendas",
     icon: Store,
@@ -68,15 +76,16 @@ export const sidebarItems = [
     href: "/gremio",
     subtitle: "(baul compartido y solicitudes)",
   },
-  {
-    id: "partidas",
-    label: "Partidas",
-    icon: Swords,
-    hasIndicator: true,
-    href: "/partidas",
-    subtitle: "(unete a partidas activas)",
-  },
 ];
+
+const sidebarIndicatorColors: Record<string, string> = {
+  inicio: "#d4af37",
+  tiendas: "#c8b08a",
+  ruleta: "#8f1d2c",
+  comercio: "#4e8799",
+  gremio: "#8b6f47",
+  partidas: "#5c7f5a",
+};
 
 // ─── Props ────────────────────────────────────────────────────────────────
 
@@ -200,7 +209,13 @@ export default function Sidebar({
                 </span>
               ) : (
                 item.hasIndicator && item.id !== "partidas" && (
-                  <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
+                  <span
+                    className="ml-auto h-2 w-2 rounded-full ring-1 ring-black/30"
+                    style={{
+                      backgroundColor:
+                        sidebarIndicatorColors[item.id] ?? "var(--gold)",
+                    }}
+                  />
                 )
               )}
             </div>
