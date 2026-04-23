@@ -12,6 +12,7 @@ const VALID_TYPES = [
   "amuleto",
   "cinturón",
   "arma",
+  "gema",
   "consumible",
   "ingrediente",
   "misc",

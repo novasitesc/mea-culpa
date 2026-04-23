@@ -3026,6 +3026,7 @@ function ObjectsTab({
   const [deleteTarget, setDeleteTarget] = useState<AdminObject | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -3041,11 +3042,30 @@ function ObjectsTab({
     load();
   }, [load]);
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredObjects = useMemo(() => {
+    if (!normalizedQuery) return objects;
+
+    return objects.filter((obj) => {
+      const haystack = [
+        String(obj.id),
+        obj.name,
+        obj.itemType,
+        obj.rarity,
+        obj.description,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [objects, normalizedQuery]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {objects.length} objeto{objects.length !== 1 ? "s" : ""} en catálogo
+          {filteredObjects.length} de {objects.length} objeto{objects.length !== 1 ? "s" : ""} en catálogo
         </p>
         <button
           onClick={() => setShowCreate(true)}
@@ -3056,13 +3076,23 @@ function ObjectsTab({
         </button>
       </div>
 
+      <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Buscar por nombre, tipo, rareza, descripción o ID..."
+          className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+        />
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {objects.map((obj) => (
+          {filteredObjects.map((obj) => (
             <div
               key={obj.id}
               className="bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-gold/40 transition-colors"
@@ -3112,6 +3142,11 @@ function ObjectsTab({
               </div>
             </div>
           ))}
+          {filteredObjects.length === 0 && (
+            <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
+              No se encontraron objetos para "{searchQuery}".
+            </div>
+          )}
         </div>
       )}
 

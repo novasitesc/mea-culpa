@@ -84,8 +84,11 @@ export async function GET(request: Request) {
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
         cabeza, pecho, guante, botas,
-        collar, anillo1, anillo2, amuleto, cinturon,
-        mano_izquierda, mano_derecha
+        collar, anillo1, anillo2, anillo3, amuleto, cinturon,
+        mano_izquierda, mano_derecha,
+        mano_izquierda_socket_1, mano_izquierda_socket_2, mano_izquierda_socket_3,
+        mano_derecha_socket_1, mano_derecha_socket_2, mano_derecha_socket_3,
+        capa_socket_1, capa_socket_2, capa_socket_3
       ),
       bolsa_objetos (
         id,
@@ -116,10 +119,20 @@ export async function GET(request: Request) {
       equip.collar,
       equip.anillo1,
       equip.anillo2,
+      equip.anillo3,
       equip.amuleto,
       equip.cinturon,
       equip.mano_izquierda,
       equip.mano_derecha,
+      equip.mano_izquierda_socket_1,
+      equip.mano_izquierda_socket_2,
+      equip.mano_izquierda_socket_3,
+      equip.mano_derecha_socket_1,
+      equip.mano_derecha_socket_2,
+      equip.mano_derecha_socket_3,
+      equip.capa_socket_1,
+      equip.capa_socket_2,
+      equip.capa_socket_3,
     ]) {
       if (val != null) allEquipIds.add(val);
     }
@@ -127,14 +140,16 @@ export async function GET(request: Request) {
 
   const equipIdToName = new Map<number, string>();
   const equipIdToPrice = new Map<number, number>();
+  const equipIdToType = new Map<number, string>();
   if (allEquipIds.size > 0) {
     const { data: objEquip } = await db
       .from("objetos")
-      .select("id, nombre, precio")
+      .select("id, nombre, precio, tipo_item")
       .in("id", Array.from(allEquipIds));
     for (const o of objEquip ?? []) {
       equipIdToName.set(o.id, o.nombre);
       equipIdToPrice.set(o.id, o.precio ?? 0);
+      equipIdToType.set(o.id, o.tipo_item);
     }
   }
 
@@ -159,16 +174,39 @@ export async function GET(request: Request) {
       equip?.collar,
       equip?.anillo1,
       equip?.anillo2,
+      equip?.anillo3,
       equip?.amuleto,
       equip?.cinturon,
       equip?.mano_izquierda,
       equip?.mano_derecha,
+      equip?.mano_izquierda_socket_1,
+      equip?.mano_izquierda_socket_2,
+      equip?.mano_izquierda_socket_3,
+      equip?.mano_derecha_socket_1,
+      equip?.mano_derecha_socket_2,
+      equip?.mano_derecha_socket_3,
+      equip?.capa_socket_1,
+      equip?.capa_socket_2,
+      equip?.capa_socket_3,
     ]) {
       if (id == null) continue;
       const name = equipIdToName.get(id);
       if (!name) continue;
       equipmentPriceByName[name] = equipIdToPrice.get(id) ?? 0;
     }
+
+    const mapEquipItem = (id: number | null | undefined) => {
+      if (id == null) return null;
+      const name = equipIdToName.get(id);
+      if (!name) return null;
+      const rawType = equipIdToType.get(id);
+      const type = rawType === "pecho" ? "armadura" : rawType;
+      return {
+        name,
+        type: type ?? "misc",
+        price: equipIdToPrice.get(id) ?? 0,
+      };
+    };
 
     return {
       id: p.id,
@@ -212,6 +250,8 @@ export async function GET(request: Request) {
           equip?.anillo1 != null ? equipIdToName.get(equip.anillo1) : undefined,
         anillo2:
           equip?.anillo2 != null ? equipIdToName.get(equip.anillo2) : undefined,
+        anillo3:
+          equip?.anillo3 != null ? equipIdToName.get(equip.anillo3) : undefined,
         amuleto:
           equip?.amuleto != null ? equipIdToName.get(equip.amuleto) : undefined,
         cinturon:
@@ -227,7 +267,24 @@ export async function GET(request: Request) {
             ? equipIdToName.get(equip.mano_derecha)
             : undefined,
       },
-          equipmentPriceByName,
+      weaponSockets: {
+        manoizq: [
+          mapEquipItem(equip?.mano_izquierda_socket_1),
+          mapEquipItem(equip?.mano_izquierda_socket_2),
+          mapEquipItem(equip?.mano_izquierda_socket_3),
+        ],
+        manoderecha: [
+          mapEquipItem(equip?.mano_derecha_socket_1),
+          mapEquipItem(equip?.mano_derecha_socket_2),
+          mapEquipItem(equip?.mano_derecha_socket_3),
+        ],
+      },
+      capeSockets: [
+        mapEquipItem(equip?.capa_socket_1),
+        mapEquipItem(equip?.capa_socket_2),
+        mapEquipItem(equip?.capa_socket_3),
+      ],
+      equipmentPriceByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
           .filter((bi: any) => !bi.publicado_en_trade)

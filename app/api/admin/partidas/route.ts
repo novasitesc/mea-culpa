@@ -415,6 +415,20 @@ export async function PATCH(request: NextRequest) {
     const uniqueObjectIds = Array.from(itemMap.keys());
 
     if (uniqueObjectIds.length > 0) {
+      const { data: objectRows, error: objectRowsError } = await session.db
+        .from("objetos")
+        .select("id, tipo_item")
+        .in("id", uniqueObjectIds);
+
+      if (objectRowsError) {
+        return NextResponse.json({ error: objectRowsError.message }, { status: 500 });
+      }
+
+      const objectTypeById = new Map<number, string>();
+      for (const row of objectRows ?? []) {
+        objectTypeById.set(Number((row as any).id), String((row as any).tipo_item ?? ""));
+      }
+
       const { data: personaje, error: personajeError } = await session.db
         .from("personajes")
         .select("capacidad_bolsa")
@@ -473,46 +487,81 @@ export async function PATCH(request: NextRequest) {
       let nextOrden = maxOrdenRow?.orden ?? -1;
 
       for (const [objectId, qty] of itemMap.entries()) {
-        const existing = existingMap.get(objectId);
-        if (existing) {
-          const { error: updateError } = await session.db
-            .from("bolsa_objetos")
-            .update({ cantidad: existing.cantidad + qty })
-            .eq("id", existing.id);
+        const objectType = objectTypeById.get(objectId);
+        const isConsumable = objectType === "consumible";
 
-          if (updateError) {
-            return NextResponse.json({ error: updateError.message }, { status: 500 });
+        let grantedQty = 0;
+
+        if (isConsumable) {
+          const existing = existingMap.get(objectId);
+          if (existing) {
+            const { error: updateError } = await session.db
+              .from("bolsa_objetos")
+              .update({ cantidad: existing.cantidad + qty })
+              .eq("id", existing.id);
+
+            if (updateError) {
+              return NextResponse.json({ error: updateError.message }, { status: 500 });
+            }
+            grantedQty = qty;
+          } else {
+            if (freeSlots <= 0) {
+              // Si no hay espacio en bolsa, el objeto se descarta sin bloquear el cierre.
+              continue;
+            }
+
+            nextOrden += 1;
+            const { error: insertError } = await session.db
+              .from("bolsa_objetos")
+              .insert({
+                personaje_id: characterId,
+                objeto_id: objectId,
+                cantidad: qty,
+                orden: nextOrden,
+              });
+
+            if (insertError) {
+              return NextResponse.json({ error: insertError.message }, { status: 500 });
+            }
+
+            freeSlots -= 1;
+            grantedQty = qty;
           }
         } else {
-          if (freeSlots <= 0) {
-            // Si no hay espacio en bolsa, el objeto se descarta sin bloquear el cierre.
-            continue;
+          // Equipables/no consumibles se guardan como unidades separadas (1 por slot).
+          for (let i = 0; i < qty; i += 1) {
+            if (freeSlots <= 0) {
+              break;
+            }
+
+            nextOrden += 1;
+            const { error: insertError } = await session.db
+              .from("bolsa_objetos")
+              .insert({
+                personaje_id: characterId,
+                objeto_id: objectId,
+                cantidad: 1,
+                orden: nextOrden,
+              });
+
+            if (insertError) {
+              return NextResponse.json({ error: insertError.message }, { status: 500 });
+            }
+
+            freeSlots -= 1;
+            grantedQty += 1;
           }
-
-          nextOrden += 1;
-          const { error: insertError } = await session.db
-            .from("bolsa_objetos")
-            .insert({
-              personaje_id: characterId,
-              objeto_id: objectId,
-              cantidad: qty,
-              orden: nextOrden,
-            });
-
-          if (insertError) {
-            return NextResponse.json({ error: insertError.message }, { status: 500 });
-          }
-
-          freeSlots -= 1;
         }
 
-        itemsPayload.push({
-          partida_id: partidaId,
-          personaje_id: characterId,
-          objeto_id: objectId,
-          origen: "admin",
-          cantidad: qty,
-        });
+        if (grantedQty > 0) {
+          itemsPayload.push({
+            partida_id: partidaId,
+            personaje_id: characterId,
+            objeto_id: objectId,
+            origen: "admin",
+            cantidad: grantedQty,
+          });
+        }
       }
     }
   }

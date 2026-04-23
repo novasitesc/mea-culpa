@@ -33,6 +33,7 @@ type AccessorySlots = {
   collar?: string;
   anillo1?: string;
   anillo2?: string;
+  anillo3?: string;
   amuleto?: string;
   cinturon?: string;
 };
@@ -54,6 +55,7 @@ type ItemType =
   | "cinturón"
   | "capa"
   | "arma"
+  | "gema"
   | "accesorio-arma"
   | "accesorio-capa";
 
@@ -62,6 +64,10 @@ type Item = {
   type: ItemType;
   price?: number;
 };
+
+type WeaponSocketKey = "manoizq" | "manoderecha";
+type WeaponSockets = Record<WeaponSocketKey, [Item | null, Item | null, Item | null]>;
+type CapeSockets = [Item | null, Item | null, Item | null];
 
 type Bag = {
   items: Item[];
@@ -87,6 +93,8 @@ type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  weaponSockets?: WeaponSockets;
+  capeSockets?: CapeSockets;
   bag: Bag;
 };
 
@@ -404,6 +412,8 @@ export default function ProfilePage() {
           armor: characterToSave.armor,
           accessories: characterToSave.accessories,
           weapons: characterToSave.weapons,
+          weaponSockets: characterToSave.weaponSockets,
+          capeSockets: characterToSave.capeSockets,
         }),
       });
 
