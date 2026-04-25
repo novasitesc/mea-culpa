@@ -8,6 +8,7 @@ export const ITEM_TYPE_OPTIONS = [
   "amuleto",
   "cinturón",
   "arma",
+  "gema",
   "consumible",
   "ingrediente",
   "misc",

@@ -4,7 +4,16 @@ import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterId, bagItems, armor, accessories, weapons } =
+    const {
+      userId,
+      characterId,
+      bagItems,
+      armor,
+      accessories,
+      weapons,
+      weaponSockets,
+      capeSockets,
+    } =
       await request.json();
 
     if (!userId || !characterId) {
@@ -24,7 +33,21 @@ export async function POST(request: Request) {
     // Actualizar equipamiento
     // La DB almacena IDs (BIGINT); el frontend envía nombres de objetos.
     // Resolver nombres → IDs antes de escribir.
-    if (armor || accessories || weapons) {
+    if (armor || accessories || weapons || weaponSockets || capeSockets) {
+      const weaponSocketNames = [
+        weaponSockets?.manoizq?.[0]?.name,
+        weaponSockets?.manoizq?.[1]?.name,
+        weaponSockets?.manoizq?.[2]?.name,
+        weaponSockets?.manoderecha?.[0]?.name,
+        weaponSockets?.manoderecha?.[1]?.name,
+        weaponSockets?.manoderecha?.[2]?.name,
+      ];
+      const capeSocketNames = [
+        capeSockets?.[0]?.name,
+        capeSockets?.[1]?.name,
+        capeSockets?.[2]?.name,
+      ];
+
       const slotNames = [
         armor?.cabeza,
         armor?.armadura,
@@ -34,10 +57,13 @@ export async function POST(request: Request) {
         accessories?.collar,
         accessories?.anillo1,
         accessories?.anillo2,
+        accessories?.anillo3,
         accessories?.amuleto,
         accessories?.cinturon,
         weapons?.manoIzquierda,
         weapons?.manoDerecha,
+        ...weaponSocketNames,
+        ...capeSocketNames,
       ].filter((v): v is string => typeof v === "string" && v.trim() !== "");
 
       const nameToId = new Map<string, number>();
@@ -83,6 +109,9 @@ export async function POST(request: Request) {
         equipUpdate.anillo2 = accessories.anillo2
           ? (nameToId.get(accessories.anillo2) ?? null)
           : null;
+        equipUpdate.anillo3 = accessories.anillo3
+          ? (nameToId.get(accessories.anillo3) ?? null)
+          : null;
         equipUpdate.amuleto = accessories.amuleto
           ? (nameToId.get(accessories.amuleto) ?? null)
           : null;
@@ -96,6 +125,37 @@ export async function POST(request: Request) {
           : null;
         equipUpdate.mano_derecha = weapons.manoDerecha
           ? (nameToId.get(weapons.manoDerecha) ?? null)
+          : null;
+      }
+      if (weaponSockets) {
+        equipUpdate.mano_izquierda_socket_1 = weaponSockets.manoizq?.[0]?.name
+          ? (nameToId.get(weaponSockets.manoizq[0].name) ?? null)
+          : null;
+        equipUpdate.mano_izquierda_socket_2 = weaponSockets.manoizq?.[1]?.name
+          ? (nameToId.get(weaponSockets.manoizq[1].name) ?? null)
+          : null;
+        equipUpdate.mano_izquierda_socket_3 = weaponSockets.manoizq?.[2]?.name
+          ? (nameToId.get(weaponSockets.manoizq[2].name) ?? null)
+          : null;
+        equipUpdate.mano_derecha_socket_1 = weaponSockets.manoderecha?.[0]?.name
+          ? (nameToId.get(weaponSockets.manoderecha[0].name) ?? null)
+          : null;
+        equipUpdate.mano_derecha_socket_2 = weaponSockets.manoderecha?.[1]?.name
+          ? (nameToId.get(weaponSockets.manoderecha[1].name) ?? null)
+          : null;
+        equipUpdate.mano_derecha_socket_3 = weaponSockets.manoderecha?.[2]?.name
+          ? (nameToId.get(weaponSockets.manoderecha[2].name) ?? null)
+          : null;
+      }
+      if (capeSockets) {
+        equipUpdate.capa_socket_1 = capeSockets?.[0]?.name
+          ? (nameToId.get(capeSockets[0].name) ?? null)
+          : null;
+        equipUpdate.capa_socket_2 = capeSockets?.[1]?.name
+          ? (nameToId.get(capeSockets[1].name) ?? null)
+          : null;
+        equipUpdate.capa_socket_3 = capeSockets?.[2]?.name
+          ? (nameToId.get(capeSockets[2].name) ?? null)
           : null;
       }
 

@@ -17,6 +17,7 @@ type ItemType =
   | "cinturón"
   | "capa"
   | "arma"
+  | "gema"
   | "accesorio-arma"
   | "accesorio-capa"
   | "pies"
@@ -41,6 +42,7 @@ type AccessorySlots = {
   collar?: string;
   anillo1?: string;
   anillo2?: string;
+  anillo3?: string;
   amuleto?: string;
   cinturon?: string;
 };
@@ -79,6 +81,7 @@ type SlotKey =
   | "manos"
   | "anillo1"
   | "anillo2"
+  | "anillo3"
   | "pies";
 
 type WeaponSlotKey = "manoizq" | "manoderecha";
@@ -208,6 +211,7 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
   manos:       { accepts: ["guante", "manos"],                 label: "Manos",     icon: "🧤" },
   anillo1:     { accepts: ["anillo"],                          label: "Anillo 1",  icon: "✨" },
   anillo2:     { accepts: ["anillo"],                          label: "Anillo 2",  icon: "✨" },
+  anillo3:     { accepts: ["anillo"],                          label: "Anillo 3",  icon: "✨" },
   pies:        { accepts: ["botas"],                           label: "Pies",      icon: "🥾" },
 };
 
@@ -215,7 +219,7 @@ const ITEM_ICONS: Partial<Record<ItemType, string>> = {
   arma: "⚔️", cabeza: "👑", armadura: "🧥", pecho: "🧥", guante: "🧤", manos: "🧤",
   botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
   amuleto: "🔮", colgante: "💎", capa: "🧥",
-  cinturón: "🪢", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
+  cinturón: "🪢", gema: "💠", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
 };
 
 // ─── Helper: build a flat equipped map from Character slots ──────────────────
@@ -253,6 +257,7 @@ function buildEquippedMap(character: Character): EquippedMap {
     cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón", price: equipmentPriceByName[character.accessories.cinturon] } : null,
     anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo1] } : null,
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo2] } : null,
+    anillo3:     character.accessories.anillo3 ? { name: character.accessories.anillo3, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo3] } : null,
     manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma", price: equipmentPriceByName[character.weapons.manoIzquierda] } : null,
     manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma", price: equipmentPriceByName[character.weapons.manoDerecha] } : null,
   };
@@ -281,6 +286,7 @@ function equippedMapToCharacter(
       cinturon: equipped.cinturon?.name,
       anillo1: equipped.anillo1?.name,
       anillo2: equipped.anillo2?.name,
+      anillo3: equipped.anillo3?.name,
     },
     weapons: {
       manoIzquierda: equipped.manoizq?.name,
@@ -341,6 +347,7 @@ function SlotButton({
       manos:       { top: "207px", left: "16px" },
       anillo1:     { top: "200px", right: "16px" },
       anillo2:     { top: "254px", right: "16px" },
+      anillo3:     { top: "308px", right: "16px" },
       pies:        { top: "315px", left: "50%", transform: "translateX(-50%)" },
     };
     return { ...base, ...positions[slotKey] };
@@ -505,6 +512,7 @@ function SlotButton({
 
 const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   arma:     "bg-red-900/30 text-red-400",
+  gema:     "bg-sky-900/30 text-sky-300",
   "accesorio-arma": "bg-orange-900/30 text-orange-300",
   "accesorio-capa": "bg-cyan-900/30 text-cyan-300",
   capa:     "bg-indigo-900/30 text-indigo-300",
@@ -840,8 +848,8 @@ export default function EquipmentModal({
           setSelectedBagIndex(null);
           return;
         }
-        if (bagItem.type !== "accesorio-arma") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-arma.");
+        if (bagItem.type !== "accesorio-arma" && bagItem.type !== "gema") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo gema.");
           return;
         }
 
@@ -901,7 +909,7 @@ export default function EquipmentModal({
       setSelectedCapeSocket(null);
       setSelectedWeaponSocket({ weaponSlot, socketIndex });
       setStatusMsg(
-        `Slot de arma ${socketIndex + 1} activo — elige un item de tipo accesorio-arma`,
+        `Slot de arma ${socketIndex + 1} activo — elige una gema`,
       );
     },
     [
@@ -1118,8 +1126,8 @@ export default function EquipmentModal({
   const equipItem = useCallback(
     (item: Item) => {
       if (selectedWeaponSocket) {
-        if (item.type !== "accesorio-arma") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-arma.");
+        if (item.type !== "accesorio-arma" && item.type !== "gema") {
+          setStatusMsg('⚠ Este slot solo acepta items de tipo "accesorio-arma" o "gema".');
           return;
         }
 
@@ -1480,7 +1488,7 @@ export default function EquipmentModal({
                 {selectedSlot
                   ? `Slot activo: ${SLOT_CONFIG[selectedSlot].label} — elige un objeto compatible o haz clic en el slot para desequipar`
                   : selectedWeaponSocket
-                    ? "Sub-slot de arma activo — elige un item de tipo accesorio-arma"
+                    ? "Sub-slot de arma activo — elige una gema o un item de tipo accesorio-arma"
                   : selectedCapeSocket !== null
                   ? "Sub-slot de capa activo — elige un item de tipo accesorio-capa"
                     : "Selecciona un slot del personaje para activarlo"}
