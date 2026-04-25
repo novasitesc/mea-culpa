@@ -1127,7 +1127,7 @@ export default function EquipmentModal({
     (item: Item) => {
       if (selectedWeaponSocket) {
         if (item.type !== "accesorio-arma" && item.type !== "gema") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo gema.");
+          setStatusMsg('⚠ Este slot solo acepta items de tipo "accesorio-arma" o "gema".');
           return;
         }
 
