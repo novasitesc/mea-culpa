@@ -22,13 +22,27 @@ export type AdminSession = {
  *   if ("error" in result) return result.error;
  *   const { session } = result;
  */
+function getBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+
+  const cookieHeader = request.headers.get("cookie");
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)sb-access-token=([^;]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+
+  return null;
+}
+
 export async function requireAdmin(
   request: Request,
 ): Promise<{ error: NextResponse } | { session: AdminSession }> {
-  const authHeader = request.headers.get("Authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7).trim()
-    : null;
+  const token = getBearerToken(request);
 
   if (!token) {
     return {

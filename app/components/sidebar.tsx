@@ -116,6 +116,7 @@ export default function Sidebar({
       try {
         const res = await fetch("/api/partidas", {
           headers: { Authorization: `Bearer ${token}` },
+          credentials: "same-origin",
         });
 
         if (!res.ok) {
