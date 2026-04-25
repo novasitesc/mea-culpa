@@ -73,6 +73,7 @@ type Character = {
 type SlotKey =
   | "cabeza"
   | "colgante"
+  | "amuleto"
   | "capa"
   | "cinturon"
   | "pecho"
@@ -202,7 +203,8 @@ function buildCapeSockets(character: Character): CapeSockets {
 
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
-  colgante:    { accepts: ["collar", "amuleto", "colgante"],   label: "Colgante",  icon: "💎" },
+  colgante:    { accepts: ["collar", "colgante"],              label: "Colgante",  icon: "💎" },
+  amuleto:     { accepts: ["amuleto"],                          label: "Amuleto",   icon: "🔮" },
   capa:        { accepts: ["capa"],                            label: "Capa",      icon: "🧥" },
   cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
   pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "🧥" },
@@ -252,8 +254,8 @@ function buildEquippedMap(character: Character): EquippedMap {
                  : null,
     manos:       character.armor.guante      ? { name: character.armor.guante,      type: "guante",   price: equipmentPriceByName[character.armor.guante] } : null,
     pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas",    price: equipmentPriceByName[character.armor.botas] } : null,
-    colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar",  price: equipmentPriceByName[character.accessories.collar] } :
-                 character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto", price: equipmentPriceByName[character.accessories.amuleto] } : null,
+    colgante:    character.accessories.collar ? { name: character.accessories.collar, type: "collar",  price: equipmentPriceByName[character.accessories.collar] } : null,
+    amuleto:     character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto", price: equipmentPriceByName[character.accessories.amuleto] } : null,
     cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón", price: equipmentPriceByName[character.accessories.cinturon] } : null,
     anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo1] } : null,
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo2] } : null,
@@ -281,8 +283,8 @@ function equippedMapToCharacter(
       botas:  equipped.pies?.name,
     },
     accessories: {
-      collar:  equipped.colgante?.type === "collar"  ? equipped.colgante.name : undefined,
-      amuleto: equipped.colgante?.type === "amuleto" ? equipped.colgante.name : undefined,
+      collar: equipped.colgante?.name,
+      amuleto: equipped.amuleto?.name,
       cinturon: equipped.cinturon?.name,
       anillo1: equipped.anillo1?.name,
       anillo2: equipped.anillo2?.name,
@@ -338,7 +340,8 @@ function SlotButton({
     const base: React.CSSProperties = { position: "absolute" };
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
-      colgante:    { top: "100px", left: "50%", transform: "translateX(-50%)" },
+      colgante:    { top: "95px", left: "50%", transform: "translateX(-50%)" },
+      amuleto:     { top: "50px", right: "16px" },
       capa:        { top: "40px", right: "-190px" },
       cinturon:    { top: "220px", left: "50%", transform: "translateX(-50%)" },
       pecho:       { top: "150px", left: "50%", transform: "translateX(-50%)" },
