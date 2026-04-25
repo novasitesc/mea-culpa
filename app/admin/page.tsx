@@ -3144,7 +3144,9 @@ function ObjectsTab({
           ))}
           {filteredObjects.length === 0 && (
             <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
-              No se encontraron objetos para "{searchQuery}".
+              {normalizedQuery
+                ? `No se encontraron objetos para "${searchQuery}".`
+                : "No hay objetos cargados en el catálogo."}
             </div>
           )}
         </div>
