@@ -1488,7 +1488,7 @@ export default function EquipmentModal({
                 {selectedSlot
                   ? `Slot activo: ${SLOT_CONFIG[selectedSlot].label} — elige un objeto compatible o haz clic en el slot para desequipar`
                   : selectedWeaponSocket
-                    ? "Sub-slot de arma activo — elige una gema"
+                    ? "Sub-slot de arma activo — elige una gema o un item de tipo accesorio-arma"
                   : selectedCapeSocket !== null
                   ? "Sub-slot de capa activo — elige un item de tipo accesorio-capa"
                     : "Selecciona un slot del personaje para activarlo"}
