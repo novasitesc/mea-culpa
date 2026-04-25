@@ -28,6 +28,7 @@ type Item = {
   name: string;
   type: ItemType;
   price?: number;
+  description?: string | null;
 };
 
 type ArmorSlots = {
@@ -703,6 +704,8 @@ function BagItemCard({
   const isCompatible =
     selectedSlot !== null &&
     SLOT_CONFIG[selectedSlot].accepts.includes(item.type);
+  const gemDescription =
+    item.type === "gema" ? item.description?.trim() || "Sin descripcion." : null;
 
   const icon = ITEM_ICONS[item.type] ?? "📦";
   const tagColor = TYPE_TAG_COLORS[item.type] ?? "bg-gray-800 text-gray-400";
@@ -728,7 +731,7 @@ function BagItemCard({
           : item.name
       }
       className={[
-        "flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-20",
+        "group relative flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-20",
         "transition-all duration-200",
         isCompatible
           ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a] animate-pulse-gold"
@@ -759,6 +762,14 @@ function BagItemCard({
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
         {item.type}
       </span>
+      {gemDescription && (
+        <div
+          className="pointer-events-none absolute inset-x-1 bottom-1 z-20 rounded-md border border-[#8B7355] bg-[#11100d]/95 px-2 py-1.5 text-left text-[10px] leading-snug text-[#e8d8b0] opacity-0 translate-y-1 shadow-[0_8px_16px_rgba(0,0,0,0.45)] transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+          aria-hidden="true"
+        >
+          {gemDescription}
+        </div>
+      )}
     </div>
   );
 }
