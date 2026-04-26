@@ -97,7 +97,7 @@ export async function GET(request: Request) {
         orden,
         fue_comerciado,
         publicado_en_trade,
-        objetos:objeto_id ( nombre, tipo_item, precio, icono )
+        objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion )
       )
     `,
     )
@@ -294,6 +294,7 @@ export async function GET(request: Request) {
             objectId: bi.objeto_id,
             name: bi.objetos?.nombre ?? "Objeto desconocido",
             icono: bi.objetos?.icono ?? "📦",
+            description: bi.objetos?.descripcion ?? null,
             type:
               bi.objetos?.tipo_item === "pecho"
                 ? "armadura"

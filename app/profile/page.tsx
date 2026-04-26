@@ -63,6 +63,7 @@ type Item = {
   name: string;
   type: ItemType;
   price?: number;
+  description?: string | null;
 };
 
 type WeaponSocketKey = "manoizq" | "manoderecha";

@@ -28,6 +28,7 @@ type Item = {
   name: string;
   type: ItemType;
   price?: number;
+  description?: string | null;
 };
 
 type ArmorSlots = {
@@ -73,6 +74,7 @@ type Character = {
 type SlotKey =
   | "cabeza"
   | "colgante"
+  | "amuleto"
   | "capa"
   | "cinturon"
   | "pecho"
@@ -202,7 +204,8 @@ function buildCapeSockets(character: Character): CapeSockets {
 
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
-  colgante:    { accepts: ["collar", "amuleto", "colgante"],   label: "Colgante",  icon: "💎" },
+  colgante:    { accepts: ["collar", "colgante"],              label: "Colgante",  icon: "💎" },
+  amuleto:     { accepts: ["amuleto"],                          label: "Amuleto",   icon: "🔮" },
   capa:        { accepts: ["capa"],                            label: "Capa",      icon: "🧥" },
   cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
   pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "🧥" },
@@ -252,8 +255,8 @@ function buildEquippedMap(character: Character): EquippedMap {
                  : null,
     manos:       character.armor.guante      ? { name: character.armor.guante,      type: "guante",   price: equipmentPriceByName[character.armor.guante] } : null,
     pies:        character.armor.botas       ? { name: character.armor.botas,       type: "botas",    price: equipmentPriceByName[character.armor.botas] } : null,
-    colgante:    character.accessories.collar  ? { name: character.accessories.collar,  type: "collar",  price: equipmentPriceByName[character.accessories.collar] } :
-                 character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto", price: equipmentPriceByName[character.accessories.amuleto] } : null,
+    colgante:    character.accessories.collar ? { name: character.accessories.collar, type: "collar",  price: equipmentPriceByName[character.accessories.collar] } : null,
+    amuleto:     character.accessories.amuleto ? { name: character.accessories.amuleto, type: "amuleto", price: equipmentPriceByName[character.accessories.amuleto] } : null,
     cinturon:    character.accessories.cinturon ? { name: character.accessories.cinturon, type: "cinturón", price: equipmentPriceByName[character.accessories.cinturon] } : null,
     anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo1] } : null,
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo2] } : null,
@@ -281,8 +284,8 @@ function equippedMapToCharacter(
       botas:  equipped.pies?.name,
     },
     accessories: {
-      collar:  equipped.colgante?.type === "collar"  ? equipped.colgante.name : undefined,
-      amuleto: equipped.colgante?.type === "amuleto" ? equipped.colgante.name : undefined,
+      collar: equipped.colgante?.name,
+      amuleto: equipped.amuleto?.name,
       cinturon: equipped.cinturon?.name,
       anillo1: equipped.anillo1?.name,
       anillo2: equipped.anillo2?.name,
@@ -338,7 +341,8 @@ function SlotButton({
     const base: React.CSSProperties = { position: "absolute" };
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
-      colgante:    { top: "100px", left: "50%", transform: "translateX(-50%)" },
+      colgante:    { top: "95px", left: "50%", transform: "translateX(-50%)" },
+      amuleto:     { top: "50px", right: "16px" },
       capa:        { top: "40px", right: "-190px" },
       cinturon:    { top: "220px", left: "50%", transform: "translateX(-50%)" },
       pecho:       { top: "150px", left: "50%", transform: "translateX(-50%)" },
@@ -700,6 +704,8 @@ function BagItemCard({
   const isCompatible =
     selectedSlot !== null &&
     SLOT_CONFIG[selectedSlot].accepts.includes(item.type);
+  const gemDescription =
+    item.type === "gema" ? item.description?.trim() || "Sin descripcion." : null;
 
   const icon = ITEM_ICONS[item.type] ?? "📦";
   const tagColor = TYPE_TAG_COLORS[item.type] ?? "bg-gray-800 text-gray-400";
@@ -725,7 +731,7 @@ function BagItemCard({
           : item.name
       }
       className={[
-        "flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-20",
+        "group relative flex flex-col items-center justify-center gap-1 rounded-lg border p-2 min-h-20",
         "transition-all duration-200",
         isCompatible
           ? "cursor-pointer border-[#D4AF37] bg-[#1e1a0a] animate-pulse-gold"
@@ -756,6 +762,14 @@ function BagItemCard({
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
         {item.type}
       </span>
+      {gemDescription && (
+        <div
+          className="pointer-events-none absolute inset-x-1 bottom-1 z-20 rounded-md border border-[#8B7355] bg-[#11100d]/95 px-2 py-1.5 text-left text-[10px] leading-snug text-[#e8d8b0] opacity-0 translate-y-1 shadow-[0_8px_16px_rgba(0,0,0,0.45)] transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+          aria-hidden="true"
+        >
+          {gemDescription}
+        </div>
+      )}
     </div>
   );
 }
