@@ -50,11 +50,12 @@ async function parsePayload(request: Request) {
   };
 }
 
-async function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
+ function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
   return function getPublicUrl(path: string) {
-    const { data, error } = db.storage.from(NEWS_BUCKET).getPublicUrl(path);
-    if (error || !data?.publicUrl) {
-      throw new Error(error?.message ?? "No se pudo obtener la URL de la imagen");
+    const { data } = db.storage.from(NEWS_BUCKET).getPublicUrl(path);
+
+    if (!data?.publicUrl) {
+      throw new Error("No se pudo obtener la URL de la imagen");
     }
     return data.publicUrl;
   };
@@ -78,8 +79,8 @@ export async function GET(request: Request) {
   const db = createServerClient();
   const isAdmin = await fetchAdminState(request);
 
-  const query = db
-    .from<Noticia>("noticias")
+  let query = db
+    .from("noticias")
     .select("id,titulo,contenido,imagen_url,imagen_path,visible,created_at,updated_at")
     .order("created_at", { ascending: false });
 
@@ -119,8 +120,8 @@ export async function POST(request: Request) {
     );
   }
 
-  let imagen_path: string | undefined;
-  let imagen_url: string | undefined;
+  let imagen_path: string | null = null;
+  let imagen_url: string | null = null;
 
   if (payload.image) {
     // Check if bucket exists
@@ -175,13 +176,20 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
-
-    imagen_url = resolvePublicUrl(db)(imagen_path);
+    
+    const getPublicUrl = await resolvePublicUrl(db);
+    imagen_url = getPublicUrl(imagen_path);
   }
 
   const { data, error } = await db
-    .from<Noticia>("noticias")
-    .insert({ titulo, contenido, imagen_url, imagen_path, visible })
+    .from("noticias")
+    .insert({ 
+      titulo,
+       contenido, 
+       imagen_url, 
+       imagen_path, 
+       visible
+    })
     .select()
     .single();
 

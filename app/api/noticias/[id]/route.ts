@@ -48,19 +48,22 @@ async function parsePayload(request: Request) {
   };
 }
 
-async function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
+function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
   return function getPublicUrl(path: string) {
-    const { data, error } = db.storage.from(NEWS_BUCKET).getPublicUrl(path);
-    if (error || !data?.publicUrl) {
-      throw new Error(error?.message ?? "No se pudo obtener la URL de la imagen");
+    const { data } = db.storage.from(NEWS_BUCKET).getPublicUrl(path);
+    if (!data?.publicUrl) {
+      throw new Error("No se pudo obtener la URL de la imagen");
     }
     return data.publicUrl;
   };
 }
 
-async function getExistingNoticia(db: ReturnType<typeof createServerClient>, id: number) {
+async function getExistingNoticia(
+  db: ReturnType<typeof createServerClient>,
+  id: string
+) {
   const { data, error } = await db
-    .from<Noticia>("noticias")
+    .from("noticias")
     .select("imagen_path")
     .eq("id", id)
     .single();
@@ -74,12 +77,12 @@ async function getExistingNoticia(db: ReturnType<typeof createServerClient>, id:
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await requireAdmin(request);
   if ("error" in result) return result.error;
 
-  const id = Number(params.id);
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 });
   }
@@ -156,7 +159,7 @@ export async function PATCH(
       );
     }
 
-    const existing = await getExistingNoticia(session.db, id);
+    const existing = await getExistingNoticia(db, id);
     const imagen_path = buildStoragePath(payload.image.name);
 
     const { error: uploadError } = await db.storage
@@ -186,7 +189,7 @@ export async function PATCH(
   }
 
   const { data, error } = await db
-    .from<Noticia>("noticias")
+    .from("noticias")
     .update(updates)
     .eq("id", id)
     .select()
@@ -204,12 +207,12 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await requireAdmin(request);
   if ("error" in result) return result.error;
 
-  const id = Number(params.id);
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 });
   }

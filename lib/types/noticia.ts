@@ -1,5 +1,5 @@
 export type Noticia = {
-  id: number;
+  id: string;
   titulo: string;
   contenido: string;
   imagen_url: string | null;

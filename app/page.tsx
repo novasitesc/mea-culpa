@@ -105,7 +105,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [formVisible, setFormVisible] = useState(true);
   const [formImageFile, setFormImageFile] = useState<File | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fullscreenViewportRef = useRef<HTMLDivElement | null>(null);
@@ -450,7 +450,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     }
   };
 
-  const handleDeleteNoticia = async (id: number) => {
+  const handleDeleteNoticia = async (id: string) => {
     setConfirmDeleteId(null);
     setMessage(null);
 
@@ -482,7 +482,9 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     if (!isNoticiaOpen) {
       return;
     }
+    const originalOverflow = document.body.style.overflow;
     const originalOverscrollBehavior = document.body.style.overscrollBehavior;
+    
 
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "none";
@@ -640,15 +642,25 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                 </div>
               ) : (
                 <>
-                  {/* Imagen principal */}
-                  <Image
-                    key={noticiaActual.imagen_url}
-                    src={noticiaActual.imagen_url}
-                    alt={noticiaActual.titulo || "Noticia"}
-                    fill
-                    className="object-cover scale-[1.01]"
-                    sizes="(max-width: 1024px) 100vw, 600px"
-                  />
+                {/*Imagen principal*/}
+                <div className="relative h-[350px] w-full overflow-hidden rounded-xl">
+                  {noticiaActual?.imagen_url && (noticiaActual.imagen_url.trim() !== ""?(
+                      <Image
+                      key={noticiaActual.imagen_url}
+                      src={noticiaActual.imagen_url}
+                      alt={noticiaActual.titulo || "Noticia"}
+                      fill
+                      className="object/cover scale-[1.01]"
+                      sizes="(max-width: 1024px) 100vw, 600px"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-200 text-gray-500">
+                        Sin imagen
+                      </div> 
+                    )            
+                  )}
+              </div>
+                  
 
                   <button
                     onClick={() => setIsNoticiaOpen(true)}
@@ -787,13 +799,20 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                               : "border-gold-dim/40 opacity-70 hover:opacity-100"
                           }`}
                         >
-                          <Image
-                            src={item.imagen_url}
-                            alt={item.titulo || `Noticia ${i + 1}`}
-                            fill
-                            className="object-cover"
-                            sizes="48px"
-                          />
+                          {item.imagen_url && item.imagen_url.trim() !== "" ? (
+                            <Image
+                              src={item.imagen_url}
+                              alt={item.titulo || `Noticia ${i + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="48px"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gray-200 text-xs text-gray-500">
+                              Sin imagen
+                            </div>
+                          )}
+
                         </button>
                       ))}
                     </div>
@@ -1018,17 +1037,25 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                     touchAction: "none",
                   }}
                 >
-                  <Image
-                    key={`fullscreen-${noticiaActual.imagen_url}`}
-                    src={noticiaActual.imagen_url}
-                    alt={noticiaActual.titulo || "Noticia"}
-                    fill
-                    className="object-contain"
-                    sizes="100vw"
-                    priority
-                    draggable={false}
-                    onDragStart={(event) => event.preventDefault()}
-                  />
+                  <div className="relative h-[350px] w-full overflow-hidden rounded-xl">
+                    {noticiaActual?.imagen_url && (noticiaActual.imagen_url.trim() !== ""?(
+                      <Image
+                        key={`fullscreen-${noticiaActual.imagen_url}`}
+                        src={noticiaActual.imagen_url}
+                        alt={noticiaActual.titulo || "Noticia"}
+                        fill
+                        className="object-contain"
+                        sizes="100vw"
+                        priority
+                        draggable={false}
+                        onDragStart={(event) => event.preventDefault()}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-200 text-xs text-gray-500">
+                        Sin imagen
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
