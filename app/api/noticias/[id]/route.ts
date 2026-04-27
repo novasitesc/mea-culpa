@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabaseServer";
-import { getUserFromRequest } from "@/lib/apiAuth";
 import { requireAdmin } from "@/lib/adminAuth";
 import type { Noticia } from "@/lib/types/noticia";
+import { createServerClient } from "@/lib/supabaseServer";
 
 const NEWS_BUCKET = "news-images";
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -31,29 +30,27 @@ async function parsePayload(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
-
     const image = formData.get("image");
     return {
-      titulo: formData.get("titulo")?.toString() ?? "",
-      contenido: formData.get("contenido")?.toString() ?? "",
-      visible: formData.get("visible")?.toString() ?? undefined,
+      titulo: formData.get("titulo")?.toString(),
+      contenido: formData.get("contenido")?.toString(),
+      visible: formData.get("visible")?.toString(),
       image: image instanceof File ? image : undefined,
     };
   }
 
   const body = await request.json().catch(() => ({}));
   return {
-    titulo: body.titulo ?? "",
-    contenido: body.contenido ?? "",
+    titulo: body.titulo,
+    contenido: body.contenido,
     visible: body.visible,
     image: body.image,
   };
 }
 
- function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
+function resolvePublicUrl(db: ReturnType<typeof createServerClient>) {
   return function getPublicUrl(path: string) {
     const { data } = db.storage.from(NEWS_BUCKET).getPublicUrl(path);
-
     if (!data?.publicUrl) {
       throw new Error("No se pudo obtener la URL de la imagen");
     }
@@ -61,67 +58,66 @@ async function parsePayload(request: Request) {
   };
 }
 
-async function fetchAdminState(request: Request) {
-  const db = createServerClient();
-  const { user, error } = await getUserFromRequest(db, request);
-  if (error || !user) return false;
-
-  const { data: perfil, error: perfilError } = await db
-    .from("perfiles")
-    .select("es_admin")
-    .eq("id", user.id)
+async function getExistingNoticia(
+  db: ReturnType<typeof createServerClient>,
+  id: string
+) {
+  const { data, error } = await db
+    .from("noticias")
+    .select("imagen_path")
+    .eq("id", id)
     .single();
 
-  return !perfilError && perfil?.es_admin === true;
-}
-
-export async function GET(request: Request) {
-  const db = createServerClient();
-  const isAdmin = await fetchAdminState(request);
-
-  let query = db
-    .from("noticias")
-    .select("id,titulo,contenido,imagen_url,imagen_path,visible,created_at,updated_at")
-    .order("created_at", { ascending: false });
-
-  if (!isAdmin) {
-    query.eq("visible", true);
-  }
-
-  const { data, error } = await query;
   if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 },
-    );
+    throw new Error(error.message);
   }
 
-  return NextResponse.json(data ?? []);
+  return data;
 }
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const result = await requireAdmin(request);
   if ("error" in result) return result.error;
+
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+  }
 
   // Usar service role para bypass RLS
   const db = createServerClient();
   const payload = await parsePayload(request);
+  const updates: Partial<Omit<Noticia, "id" | "created_at" | "updated_at">> = {};
   const titulo = payload.titulo?.trim();
   const contenido = payload.contenido?.trim();
-  const visible =
-    payload.visible === undefined
-      ? true
-      : payload.visible === "true" || payload.visible === true;
 
-  if (!titulo || !contenido) {
-    return NextResponse.json(
-      { error: "El título y el contenido son requeridos." },
-      { status: 400 },
-    );
+  if (titulo !== undefined) {
+    if (!titulo) {
+      return NextResponse.json(
+        { error: "El título no puede estar vacío." },
+        { status: 400 },
+      );
+    }
+    updates.titulo = titulo;
   }
 
-  let imagen_path: string | null = null;
-  let imagen_url: string | null = null;
+  if (contenido !== undefined) {
+    if (!contenido) {
+      return NextResponse.json(
+        { error: "El contenido no puede estar vacío." },
+        { status: 400 },
+      );
+    }
+    updates.contenido = contenido;
+  }
+
+  if (payload.visible !== undefined) {
+    updates.visible =
+      payload.visible === "true" || payload.visible === true;
+  }
 
   if (payload.image) {
     // Check if bucket exists
@@ -150,25 +146,25 @@ export async function POST(request: Request) {
       }
     }
 
-    const image = payload.image;
-    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
+    if (!ALLOWED_IMAGE_TYPES.has(payload.image.type)) {
       return NextResponse.json(
         { error: "Tipo de imagen no permitido." },
         { status: 400 },
       );
     }
-
-    if (image.size > MAX_IMAGE_BYTES) {
+    if (payload.image.size > MAX_IMAGE_BYTES) {
       return NextResponse.json(
         { error: "El archivo excede el tamaño máximo de 5MB." },
         { status: 400 },
       );
     }
 
-    imagen_path = buildStoragePath(image.name);
+    const existing = await getExistingNoticia(db, id);
+    const imagen_path = buildStoragePath(payload.image.name);
+
     const { error: uploadError } = await db.storage
       .from(NEWS_BUCKET)
-      .upload(imagen_path, image, { upsert: false });
+      .upload(imagen_path, payload.image, { upsert: false });
 
     if (uploadError) {
       return NextResponse.json(
@@ -176,30 +172,82 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
-    
-    const getPublicUrl = await resolvePublicUrl(db);
-    imagen_url = getPublicUrl(imagen_path);
+
+    updates.imagen_path = imagen_path;
+    updates.imagen_url = resolvePublicUrl(db)(imagen_path);
+
+    if (existing?.imagen_path) {
+      await db.storage.from(NEWS_BUCKET).remove([existing.imagen_path]);
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json(
+      { error: "No hay cambios para aplicar." },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await db
     .from("noticias")
-    .insert({ 
-      titulo,
-       contenido, 
-       imagen_url, 
-       imagen_path, 
-       visible
-    })
+    .update(updates)
+    .eq("id", id)
     .select()
     .single();
 
   if (error) {
-    console.error("Database insert error:", error);
     return NextResponse.json(
-      { error: `Error al guardar en la base de datos: ${error.message}` },
+      { error: error.message },
       { status: 500 },
     );
   }
 
   return NextResponse.json(data);
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+  }
+
+  // Usar service role para bypass RLS
+  const db = createServerClient();
+  const existing = await getExistingNoticia(db, id);
+  if (!existing) {
+    return NextResponse.json({ error: "Noticia no encontrada." }, { status: 404 });
+  }
+
+  if (existing.imagen_path) {
+    const { error: removeError } = await db.storage
+      .from(NEWS_BUCKET)
+      .remove([existing.imagen_path]);
+
+    if (removeError) {
+      return NextResponse.json(
+        { error: removeError.message },
+        { status: 500 },
+      );
+    }
+  }
+
+  const { error } = await db
+    .from("noticias")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ success: true });
 }

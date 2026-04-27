@@ -1,24 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { syncPartidasInProgress } from "@/lib/partidasState";
 
 // GET /api/partidas
 // Lista partidas abiertas para que el usuario autenticado pueda inscribirse.
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("Authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-  if (!token) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
   const db = createServerClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await db.auth.getUser(token);
+  const { user, error: authError } = await getUserFromRequest(db, request);
 
   if (authError || !user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
