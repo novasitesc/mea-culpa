@@ -12,6 +12,7 @@ export const ITEM_TYPE_OPTIONS = [
   "consumible",
   "ingrediente",
   "misc",
+  "capa",
 ] as const;
 
 export const ITEM_RARITY_OPTIONS = [
