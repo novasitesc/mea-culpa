@@ -16,6 +16,7 @@ const VALID_TYPES = [
   "consumible",
   "ingrediente",
   "misc",
+  "capa",
 ] as const;
 
 function mapItemTypeToDb(itemType: string): string {
