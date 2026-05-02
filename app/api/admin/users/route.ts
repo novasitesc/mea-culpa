@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const { data: perfiles, error: perfilesError } = await db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en, nivel20_url")
     .order("creado_en", { ascending: false });
 
   if (perfilesError) {
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     isAdmin: p.es_admin,
     rolSistema: p.rol_sistema,
     createdAt: p.creado_en,
+    nivel20Url: p.nivel20_url ?? null,
   }));
 
   return NextResponse.json(users);
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   const { data: perfil } = await db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en, nivel20_url")
     .eq("id", created.user.id)
     .single();
 
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
       isAdmin: false,
       rolSistema: "usuario",
       createdAt: (perfil as any)?.creado_en ?? new Date().toISOString(),
+      nivel20Url: (perfil as any)?.nivel20_url ?? null,
     },
     { status: 201 },
   );
@@ -168,7 +170,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: perfil } = await session.db
     .from("perfiles")
-    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en")
+    .select("id, nombre, rol, nivel, hogar, es_admin, rol_sistema, oro, creado_en, nivel20_url")
     .eq("id", targetId)
     .single();
 
@@ -185,6 +187,7 @@ export async function PATCH(request: NextRequest) {
     isAdmin: (perfil as any)?.es_admin,
     rolSistema: (perfil as any)?.rol_sistema,
     createdAt: (perfil as any)?.creado_en,
+    nivel20Url: (perfil as any)?.nivel20_url ?? null,
   });
 }
 
