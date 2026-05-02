@@ -20,6 +20,8 @@ import {
   ArrowRightLeft,
   Dice6,
   Skull,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
@@ -49,6 +51,7 @@ type AdminUser = {
   isAdmin: boolean;
   rolSistema: string;
   createdAt: string;
+  nivel20Url: string | null;
 };
 
 type AdminShop = {
@@ -181,6 +184,7 @@ type PartidaHistoryParticipant = {
   gold: number;
   comment: string;
   dead: boolean;
+  nivel20Url: string | null;
 };
 
 type PartidaHistoryEntry = {
@@ -235,6 +239,40 @@ function formatDateTime(iso: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// ─── Nivel20Link ─────────────────────────────────────────────────────────────
+
+function Nivel20Link({ url }: { url: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!url) return <span className="text-muted-foreground text-xs">—</span>;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        title={url}
+        className="inline-flex items-center gap-0.5 text-xs text-[#D4AF37] hover:underline"
+      >
+        <ExternalLink className="w-3 h-3" />
+        Abrir
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        title="Copiar URL"
+        className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+      >
+        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
+  );
 }
 
 // ─── Componente Modal genérico ────────────────────────────────────────────────
@@ -1131,6 +1169,11 @@ function ActivePartidasTab({
                           {participant.characterName}
                         </p>
                         <p className="text-xs text-muted-foreground">{participant.userName}</p>
+                        {participant.nivel20Url && (
+                          <div className="mt-1">
+                            <Nivel20Link url={participant.nivel20Url} />
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1366,6 +1409,7 @@ function PartidasHistoryTab({
                             <th className="px-2 py-2 text-center">Oro</th>
                             <th className="px-2 py-2 text-left">Estado</th>
                             <th className="px-2 py-2 text-left">Comentario</th>
+                            <th className="px-2 py-2 text-left">Nivel20</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1385,6 +1429,9 @@ function PartidasHistoryTab({
                               </td>
                               <td className="px-2 py-2 text-muted-foreground">
                                 {p.comment || "-"}
+                              </td>
+                              <td className="px-2 py-2">
+                                <Nivel20Link url={p.nivel20Url} />
                               </td>
                             </tr>
                           ))}
@@ -1542,6 +1589,9 @@ function UsersTab({
                 <th className={thCls} onClick={() => handleSort("createdAt")}>
                   Registro <SortIcon field="createdAt" />
                 </th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Nivel20
+                </th>
                 <th className="px-3 py-2.5 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Acciones
                 </th>
@@ -1550,7 +1600,7 @@ function UsersTab({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                     No se encontraron usuarios que coincidan con "{searchTerm}"
                   </td>
                 </tr>
@@ -1596,6 +1646,9 @@ function UsersTab({
                   </td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">
                     {formatDate(u.createdAt)}
+                  </td>
+                  <td className="px-3 py-3">
+                    <Nivel20Link url={u.nivel20Url} />
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1.5 justify-end">
