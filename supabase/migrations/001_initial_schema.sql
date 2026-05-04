@@ -39,8 +39,10 @@ CREATE TABLE objetos (
   tipo_item          TEXT    NOT NULL CHECK (tipo_item IN (
                        'cabeza','pecho','guante','botas',
                        'collar','anillo','amuleto','arma',
+                       'gema-arma','gema-capa',
                        'consumible','ingrediente','misc'
                      )),
+  requiere_dos_manos BOOLEAN NOT NULL DEFAULT FALSE,
   rareza             TEXT    NOT NULL DEFAULT 'común' CHECK (rareza IN (
                        'común','poco común','raro','épico','legendario'
                      )),

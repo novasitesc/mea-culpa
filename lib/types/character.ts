@@ -12,7 +12,8 @@ export type ItemType =
   | "amuleto"
   | "cinturón"
   | "arma"
-  | "gema";
+  | "gema-arma"
+  | "gema-capa";
 
 export type Item = {
   name: string;

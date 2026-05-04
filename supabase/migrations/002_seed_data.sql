@@ -49,6 +49,10 @@ INSERT INTO objetos (nombre, descripcion, icono, tipo_item, rareza) VALUES
   ('Varilla de Fuerza',                '10 cargas. Puede lanzar Escudo de Fuerza (1 carga) o Muro de Fuerza (5 cargas).',   '🪄', 'arma',        'épico'),
   ('Cristal de Visión Lejana',         'Una vez al día: ver un lugar conocido a distancia.',                                  '🔭', 'amuleto',     'raro');
 
+UPDATE objetos
+SET requiere_dos_manos = TRUE
+WHERE nombre = 'Espada Larga';
+
 -- ============================================================
 -- TIENDAS
 -- ============================================================

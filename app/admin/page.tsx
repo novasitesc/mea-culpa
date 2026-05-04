@@ -72,6 +72,7 @@ type AdminObject = {
   description: string;
   icon: string;
   itemType: string;
+  requiresTwoHands: boolean;
   rarity: string;
   price: number;
   bonusStats: Record<string, unknown> | null;
@@ -3302,6 +3303,7 @@ function ObjectFormModal({
     description: initial?.description ?? "",
     icon: initial?.icon ?? "📦",
     itemType: initial?.itemType ?? "misc",
+    requiresTwoHands: initial?.requiresTwoHands ?? false,
     rarity: initial?.rarity ?? "común",
     price: initial?.price ? String(initial.price) : "",
     bonusStats: initial?.bonusStats
@@ -3334,6 +3336,7 @@ function ObjectFormModal({
       description: form.description,
       icon: form.icon,
       itemType: form.itemType,
+      requiresTwoHands: form.requiresTwoHands,
       rarity: form.rarity,
       price: priceNum,
       bonusStats: parsedBonus,
@@ -3379,7 +3382,13 @@ function ObjectFormModal({
             <Select
               className={inputCls}
               value={form.itemType}
-              onChange={(e) => set("itemType", e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                set("itemType", nextType);
+                if (nextType !== "arma") {
+                  set("requiresTwoHands", false);
+                }
+              }}
             >
               {ITEM_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
@@ -3419,6 +3428,22 @@ function ObjectFormModal({
             />
           </FormField>
         </div>
+
+        <label className="flex items-start gap-3 rounded-lg border border-border bg-secondary/20 px-3 py-2">
+          <input
+            type="checkbox"
+            checked={form.requiresTwoHands}
+            disabled={form.itemType !== "arma"}
+            onChange={(e) => set("requiresTwoHands", e.target.checked)}
+            className="mt-1 h-4 w-4 accent-gold disabled:opacity-50"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">Requiere dos manos</span>
+            <span className="text-xs text-muted-foreground">
+              Solo aplica a objetos de tipo arma. Al equiparlo, el otro arma se moverá a la bolsa.
+            </span>
+          </span>
+        </label>
 
         <FormField label="Bonos (JSON opcional)">
           <textarea
