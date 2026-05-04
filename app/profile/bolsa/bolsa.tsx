@@ -17,7 +17,8 @@ type ItemType =
   | "cinturón"
   | "capa"
   | "arma"
-  | "gema"
+  | "gema-arma"
+  | "gema-capa"
   | "accesorio-arma"
   | "accesorio-capa"
   | "pies"
@@ -29,6 +30,7 @@ type Item = {
   type: ItemType;
   price?: number;
   description?: string | null;
+  requiresTwoHands?: boolean;
 };
 
 type ArmorSlots = {
@@ -64,6 +66,7 @@ type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   bag: Bag;
   // add other fields your Character type has
   [key: string]: unknown;
@@ -202,6 +205,14 @@ function buildCapeSockets(character: Character): CapeSockets {
   return [raw[0] ?? null, raw[1] ?? null, raw[2] ?? null];
 }
 
+function isTwoHandedWeapon(item: Item | null | undefined): boolean {
+  return Boolean(item && item.type === "arma" && item.requiresTwoHands);
+}
+
+function getOppositeWeaponSlot(weaponSlot: WeaponSlotKey): WeaponSlotKey {
+  return weaponSlot === "manoizq" ? "manoderecha" : "manoizq";
+}
+
 const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: string }> = {
   cabeza:      { accepts: ["cabeza"],                          label: "Cabeza",    icon: "👑" },
   colgante:    { accepts: ["collar", "colgante"],              label: "Colgante",  icon: "💎" },
@@ -222,7 +233,7 @@ const ITEM_ICONS: Partial<Record<ItemType, string>> = {
   arma: "⚔️", cabeza: "👑", armadura: "🧥", pecho: "🧥", guante: "🧤", manos: "🧤",
   botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
   amuleto: "🔮", colgante: "💎", capa: "🧥",
-  cinturón: "🪢", gema: "💠", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
+  cinturón: "🪢", "gema-arma": "💠", "gema-capa": "🪶", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
 };
 
 // ─── Helper: build a flat equipped map from Character slots ──────────────────
@@ -233,6 +244,8 @@ function buildEquippedMap(character: Character): EquippedMap {
   const equipmentPriceByName =
     ((character as { equipmentPriceByName?: Record<string, number> })
       .equipmentPriceByName ?? {}) as Record<string, number>;
+  const equipmentRequiresTwoHandsByName =
+    character.equipmentRequiresTwoHandsByName ?? {};
 
   return {
     cabeza:      character.armor.cabeza      ? { name: character.armor.cabeza,      type: "cabeza",   price: equipmentPriceByName[character.armor.cabeza] } : null,
@@ -261,8 +274,8 @@ function buildEquippedMap(character: Character): EquippedMap {
     anillo1:     character.accessories.anillo1 ? { name: character.accessories.anillo1, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo1] } : null,
     anillo2:     character.accessories.anillo2 ? { name: character.accessories.anillo2, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo2] } : null,
     anillo3:     character.accessories.anillo3 ? { name: character.accessories.anillo3, type: "anillo",  price: equipmentPriceByName[character.accessories.anillo3] } : null,
-    manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma", price: equipmentPriceByName[character.weapons.manoIzquierda] } : null,
-    manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma", price: equipmentPriceByName[character.weapons.manoDerecha] } : null,
+    manoizq:     character.weapons.manoIzquierda ? { name: character.weapons.manoIzquierda, type: "arma", price: equipmentPriceByName[character.weapons.manoIzquierda], requiresTwoHands: equipmentRequiresTwoHandsByName[character.weapons.manoIzquierda] } : null,
+    manoderecha: character.weapons.manoDerecha   ? { name: character.weapons.manoDerecha,   type: "arma", price: equipmentPriceByName[character.weapons.manoDerecha], requiresTwoHands: equipmentRequiresTwoHandsByName[character.weapons.manoDerecha] } : null,
   };
 }
 
@@ -516,7 +529,8 @@ function SlotButton({
 
 const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   arma:     "bg-red-900/30 text-red-400",
-  gema:     "bg-sky-900/30 text-sky-300",
+  "gema-arma":     "bg-sky-900/30 text-sky-300",
+  "gema-capa":     "bg-teal-900/30 text-teal-300",
   "accesorio-arma": "bg-orange-900/30 text-orange-300",
   "accesorio-capa": "bg-cyan-900/30 text-cyan-300",
   capa:     "bg-indigo-900/30 text-indigo-300",
@@ -705,7 +719,9 @@ function BagItemCard({
     selectedSlot !== null &&
     SLOT_CONFIG[selectedSlot].accepts.includes(item.type);
   const gemDescription =
-    item.type === "gema" ? item.description?.trim() || "Sin descripcion." : null;
+    item.type === "gema-arma" || item.type === "gema-capa"
+      ? item.description?.trim() || "Sin descripcion."
+      : null;
 
   const icon = ITEM_ICONS[item.type] ?? "📦";
   const tagColor = TYPE_TAG_COLORS[item.type] ?? "bg-gray-800 text-gray-400";
@@ -762,6 +778,11 @@ function BagItemCard({
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
         {item.type}
       </span>
+      {item.type === "arma" && item.requiresTwoHands && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded border border-[#8B7355] bg-[#1a1610] text-[#e8d8b0] tracking-wide uppercase">
+          2 manos
+        </span>
+      )}
       {gemDescription && (
         <div
           className="pointer-events-none absolute inset-x-1 bottom-1 z-20 rounded-md border border-[#8B7355] bg-[#11100d]/95 px-2 py-1.5 text-left text-[10px] leading-snug text-[#e8d8b0] opacity-0 translate-y-1 shadow-[0_8px_16px_rgba(0,0,0,0.45)] transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
@@ -839,6 +860,74 @@ export default function EquipmentModal({
     [capeSockets],
   );
 
+  const equipWeaponFromBag = useCallback(
+    (weaponSlot: WeaponSlotKey, item: Item, bagIndex: number) => {
+      if (item.type !== "arma") {
+        setStatusMsg('⚠ Este slot solo acepta items de tipo "arma".');
+        return false;
+      }
+
+      const oppositeSlot = getOppositeWeaponSlot(weaponSlot);
+      const targetNeedsBothHands = isTwoHandedWeapon(item);
+      const oppositeNeedsBothHands = isTwoHandedWeapon(equipped[oppositeSlot]);
+      const shouldClearOpposite = targetNeedsBothHands || oppositeNeedsBothHands;
+      const slotsToClear = shouldClearOpposite
+        ? [weaponSlot, oppositeSlot]
+        : [weaponSlot];
+
+      const returnedItems: Item[] = [];
+      for (const slot of slotsToClear) {
+        const equippedItem = equipped[slot];
+        if (equippedItem) returnedItems.push(equippedItem);
+        for (const socketItem of weaponSockets[slot]) {
+          if (socketItem) returnedItems.push(socketItem);
+        }
+      }
+
+      const projectedBagSize = bagItems.length - 1 + returnedItems.length;
+      if (projectedBagSize > character.bag.maxSlots) {
+        setStatusMsg("⚠ La bolsa está llena. No puedes equipar este arma.");
+        return false;
+      }
+
+      const newBag = bagItems.filter((_, idx) => idx !== bagIndex);
+      newBag.push(...returnedItems);
+
+      setEquipped((prev) => {
+        const next = { ...prev, [weaponSlot]: item };
+        if (shouldClearOpposite) {
+          next[oppositeSlot] = null;
+        }
+        return next;
+      });
+
+      setWeaponSockets((prev) => {
+        const copy: WeaponSockets = {
+          manoizq: [...prev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+          manoderecha: [...prev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
+        };
+        copy[weaponSlot] = [null, null, null];
+        if (shouldClearOpposite) {
+          copy[oppositeSlot] = [null, null, null];
+        }
+        return copy;
+      });
+
+      setBagItems(newBag);
+      setSelectedBagIndex(null);
+      setSelectedSlot(null);
+      setSelectedWeaponSocket(null);
+      setSelectedCapeSocket(null);
+      setStatusMsg(
+        `✓ ${item.name} equipado en ${SLOT_CONFIG[weaponSlot].label}${
+          targetNeedsBothHands ? " (dos manos)" : ""
+        }`,
+      );
+      return true;
+    },
+    [bagItems, character.bag.maxSlots, equipped, weaponSockets],
+  );
+
   const selectWeaponSocket = useCallback(
     (weaponSlot: WeaponSlotKey, socketIndex: number) => {
       const weaponName = getWeaponNameFromEquipped(equipped, weaponSlot);
@@ -862,8 +951,8 @@ export default function EquipmentModal({
           setSelectedBagIndex(null);
           return;
         }
-        if (bagItem.type !== "accesorio-arma" && bagItem.type !== "gema") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo gema.");
+        if (bagItem.type !== "accesorio-arma" && bagItem.type !== "gema-arma") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo gema-arma.");
           return;
         }
 
@@ -923,7 +1012,7 @@ export default function EquipmentModal({
       setSelectedCapeSocket(null);
       setSelectedWeaponSocket({ weaponSlot, socketIndex });
       setStatusMsg(
-        `Slot de arma ${socketIndex + 1} activo — elige una gema`,
+        `Slot de arma ${socketIndex + 1} activo — elige una gema-arma`,
       );
     },
     [
@@ -959,8 +1048,8 @@ export default function EquipmentModal({
           setSelectedBagIndex(null);
           return;
         }
-        if (bagItem.type !== "accesorio-capa") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-capa.");
+        if (bagItem.type !== "accesorio-capa" && bagItem.type !== "gema-capa") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo gema-capa.");
           return;
         }
 
@@ -1011,7 +1100,7 @@ export default function EquipmentModal({
       setSelectedWeaponSocket(null);
       setSelectedCapeSocket(socketIndex);
       setStatusMsg(
-        `Slot de capa ${socketIndex + 1} activo — elige un item de tipo accesorio-capa`,
+        `Slot de capa ${socketIndex + 1} activo — elige un item de tipo gema-capa`,
       );
     },
     [
@@ -1043,11 +1132,11 @@ export default function EquipmentModal({
         if (oldItem) newBag.push(oldItem);
 
         if (slotKey === "manoizq" || slotKey === "manoderecha") {
-          moveSocketItemsToBag(slotKey, newBag);
-          setWeaponSockets((prev) => ({
-            ...prev,
-            [slotKey]: [null, null, null],
-          }));
+          const handled = equipWeaponFromBag(slotKey, item, selectedBagIndex);
+          if (handled) {
+            return;
+          }
+          return;
         }
         if (slotKey === "capa") {
           moveCapeSocketItemsToBag(newBag);
@@ -1112,6 +1201,7 @@ export default function EquipmentModal({
       character.bag.maxSlots,
       moveSocketItemsToBag,
       moveCapeSocketItemsToBag,
+      equipWeaponFromBag,
     ]
   );
 
@@ -1140,8 +1230,8 @@ export default function EquipmentModal({
   const equipItem = useCallback(
     (item: Item) => {
       if (selectedWeaponSocket) {
-        if (item.type !== "accesorio-arma" && item.type !== "gema") {
-          setStatusMsg('⚠ Este slot solo acepta items de tipo "accesorio-arma" o "gema".');
+        if (item.type !== "accesorio-arma" && item.type !== "gema-arma") {
+          setStatusMsg('⚠ Este slot solo acepta items de tipo "accesorio-arma" o "gema-arma".');
           return;
         }
 
@@ -1173,8 +1263,8 @@ export default function EquipmentModal({
       }
 
       if (selectedCapeSocket !== null) {
-        if (item.type !== "accesorio-capa") {
-          setStatusMsg("⚠ Este slot solo acepta items de tipo accesorio-capa.");
+        if (item.type !== "accesorio-capa" && item.type !== "gema-capa") {
+          setStatusMsg("⚠ Este slot solo acepta items de tipo gema-capa.");
           return;
         }
 
@@ -1200,6 +1290,17 @@ export default function EquipmentModal({
         return;
       }
 
+      if (selectedSlot === "manoizq" || selectedSlot === "manoderecha") {
+        const bagIndex = bagItems.findIndex((b) => b.name === item.name);
+        if (bagIndex === -1) {
+          setStatusMsg("⚠ No se encontró el item en la bolsa.");
+          return;
+        }
+
+        equipWeaponFromBag(selectedSlot, item, bagIndex);
+        return;
+      }
+
       if (!selectedSlot) return;
       const cfg = SLOT_CONFIG[selectedSlot];
       if (!cfg.accepts.includes(item.type)) {
@@ -1212,21 +1313,6 @@ export default function EquipmentModal({
         // Return old item to bag if slot was occupied
         if (newMap[selectedSlot]) {
           setBagItems((b) => [...b, newMap[selectedSlot]!]);
-        }
-
-        if (selectedSlot === "manoizq" || selectedSlot === "manoderecha") {
-          setWeaponSockets((socketPrev) => {
-            const copied: WeaponSockets = {
-              manoizq: [...socketPrev.manoizq] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
-              manoderecha: [...socketPrev.manoderecha] as [WeaponSocketItem, WeaponSocketItem, WeaponSocketItem],
-            };
-            const socketItems = copied[selectedSlot].filter(Boolean) as Item[];
-            if (socketItems.length > 0) {
-              setBagItems((bagPrev) => [...bagPrev, ...socketItems]);
-            }
-            copied[selectedSlot] = [null, null, null];
-            return copied;
-          });
         }
 
         if (selectedSlot === "capa") {
@@ -1247,7 +1333,7 @@ export default function EquipmentModal({
       setSelectedWeaponSocket(null);
       setSelectedCapeSocket(null);
     },
-    [selectedSlot, selectedWeaponSocket, selectedCapeSocket, bagItems, weaponSockets, capeSockets]
+    [selectedSlot, selectedWeaponSocket, selectedCapeSocket, bagItems, weaponSockets, capeSockets, equipWeaponFromBag]
   );
 
   const handleSave = async () => {
@@ -1502,9 +1588,9 @@ export default function EquipmentModal({
                 {selectedSlot
                   ? `Slot activo: ${SLOT_CONFIG[selectedSlot].label} — elige un objeto compatible o haz clic en el slot para desequipar`
                   : selectedWeaponSocket
-                    ? "Sub-slot de arma activo — elige una gema o un item de tipo accesorio-arma"
+                    ? "Sub-slot de arma activo — elige una gema-arma o un item de tipo accesorio-arma"
                   : selectedCapeSocket !== null
-                  ? "Sub-slot de capa activo — elige un item de tipo accesorio-capa"
+                  ? "Sub-slot de capa activo — elige una gema-capa o un item de tipo accesorio-capa"
                     : "Selecciona un slot del personaje para activarlo"}
               </div>
 

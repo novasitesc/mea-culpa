@@ -12,7 +12,8 @@ const VALID_TYPES = [
   "amuleto",
   "cinturón",
   "arma",
-  "gema",
+  "gema-arma",
+  "gema-capa",
   "consumible",
   "ingrediente",
   "misc",
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
     .order("creado_en", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -87,6 +88,7 @@ export async function GET(request: NextRequest) {
       description: o.descripcion,
       icon: o.icono,
       itemType: mapItemTypeFromDb(o.tipo_item),
+      requiresTwoHands: Boolean(o.requiere_dos_manos),
       rarity: mapRarityFromDb(o.rareza),
       price: o.precio,
       bonusStats: o.bono_estadisticas,
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
   const { db } = result.session;
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, price, bonusStats } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Nombre obligatorio" }, { status: 400 });
@@ -113,6 +115,11 @@ export async function POST(request: NextRequest) {
   if (typeof price !== "number" || Number.isNaN(price) || price < 0) {
     return NextResponse.json({ error: "Precio invalido" }, { status: 400 });
   }
+  if (requiresTwoHands !== undefined && typeof requiresTwoHands !== "boolean") {
+    return NextResponse.json({ error: "Flag de dos manos invalido" }, { status: 400 });
+  }
+
+  const weaponRequiresTwoHands = itemType === "arma" ? Boolean(requiresTwoHands) : false;
 
   const rarityNormalized = normalizeRarity(rarity ?? "común");
 
@@ -123,11 +130,12 @@ export async function POST(request: NextRequest) {
       descripcion: description ?? "",
       icono: icon?.trim() || "📦",
       tipo_item: mapItemTypeToDb(itemType),
+      requiere_dos_manos: weaponRequiresTwoHands,
       rareza: rarityNormalized,
       precio: Number(price),
       bono_estadisticas: bonusStats ?? null,
     })
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -139,6 +147,7 @@ export async function POST(request: NextRequest) {
       description: (data as any).descripcion,
       icon: (data as any).icono,
       itemType: mapItemTypeFromDb((data as any).tipo_item),
+      requiresTwoHands: Boolean((data as any).requiere_dos_manos),
       rarity: mapRarityFromDb((data as any).rareza),
       price: (data as any).precio,
       bonusStats: (data as any).bono_estadisticas,
@@ -161,7 +170,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, price, bonusStats } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands } = body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.nombre = name;
@@ -186,6 +195,12 @@ export async function PATCH(request: NextRequest) {
     }
     updates.precio = Number(price);
   }
+  if (requiresTwoHands !== undefined) {
+    if (typeof requiresTwoHands !== "boolean") {
+      return NextResponse.json({ error: "Flag de dos manos invalido" }, { status: 400 });
+    }
+    updates.requiere_dos_manos = itemType === "arma" ? requiresTwoHands : false;
+  }
   if (bonusStats !== undefined) updates.bono_estadisticas = bonusStats;
 
   const { error } = await db.from("objetos").update(updates).eq("id", Number(id));
@@ -193,7 +208,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, rareza, precio, bono_estadisticas, creado_en")
+    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
     .eq("id", Number(id))
     .single();
 
@@ -203,6 +218,7 @@ export async function PATCH(request: NextRequest) {
     description: (data as any).descripcion,
     icon: (data as any).icono,
     itemType: mapItemTypeFromDb((data as any).tipo_item),
+    requiresTwoHands: Boolean((data as any).requiere_dos_manos),
     rarity: mapRarityFromDb((data as any).rareza),
     price: (data as any).precio,
     bonusStats: (data as any).bono_estadisticas,

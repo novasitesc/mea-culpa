@@ -1,4 +1,4 @@
--- Add support for gemstone items equipable in weapon slots.
+-- Split gems into weapon and cape variants.
 
 BEGIN;
 
@@ -16,16 +16,20 @@ ALTER TABLE objetos
     )
   );
 
+UPDATE objetos
+SET tipo_item = 'gema-arma'
+WHERE tipo_item = 'gema';
+
 INSERT INTO objetos (nombre, descripcion, icono, tipo_item, rareza, precio)
 SELECT
-  'Gema Ígnea Menor',
-  'Gema para engastar en slots de arma.',
-  '💠',
-  'gema-arma',
+  'Gema de Capa Menor',
+  'Gema para engastar en slots de capa.',
+  '🪶',
+  'gema-capa',
   'poco común',
   450
 WHERE NOT EXISTS (
-  SELECT 1 FROM objetos WHERE nombre = 'Gema Ígnea Menor'
+  SELECT 1 FROM objetos WHERE nombre = 'Gema de Capa Menor'
 );
 
 COMMIT;

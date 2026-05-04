@@ -97,7 +97,7 @@ export async function GET(request: Request) {
         orden,
         fue_comerciado,
         publicado_en_trade,
-        objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion )
+        objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion, requiere_dos_manos )
       )
     `,
     )
@@ -141,15 +141,17 @@ export async function GET(request: Request) {
   const equipIdToName = new Map<number, string>();
   const equipIdToPrice = new Map<number, number>();
   const equipIdToType = new Map<number, string>();
+  const equipIdToTwoHands = new Map<number, boolean>();
   if (allEquipIds.size > 0) {
     const { data: objEquip } = await db
       .from("objetos")
-      .select("id, nombre, precio, tipo_item")
+      .select("id, nombre, precio, tipo_item, requiere_dos_manos")
       .in("id", Array.from(allEquipIds));
     for (const o of objEquip ?? []) {
       equipIdToName.set(o.id, o.nombre);
       equipIdToPrice.set(o.id, o.precio ?? 0);
       equipIdToType.set(o.id, o.tipo_item);
+      equipIdToTwoHands.set(o.id, Boolean(o.requiere_dos_manos));
     }
   }
 
@@ -166,6 +168,7 @@ export async function GET(request: Request) {
     );
 
     const equipmentPriceByName: Record<string, number> = {};
+    const equipmentRequiresTwoHandsByName: Record<string, boolean> = {};
     for (const id of [
       equip?.cabeza,
       equip?.pecho,
@@ -193,6 +196,7 @@ export async function GET(request: Request) {
       const name = equipIdToName.get(id);
       if (!name) continue;
       equipmentPriceByName[name] = equipIdToPrice.get(id) ?? 0;
+      equipmentRequiresTwoHandsByName[name] = equipIdToTwoHands.get(id) ?? false;
     }
 
     const mapEquipItem = (id: number | null | undefined) => {
@@ -205,6 +209,7 @@ export async function GET(request: Request) {
         name,
         type: type ?? "misc",
         price: equipIdToPrice.get(id) ?? 0,
+        requiresTwoHands: equipIdToTwoHands.get(id) ?? false,
       };
     };
 
@@ -285,6 +290,7 @@ export async function GET(request: Request) {
         mapEquipItem(equip?.capa_socket_3),
       ],
       equipmentPriceByName,
+      equipmentRequiresTwoHandsByName,
       bag: {
         items: (p.bolsa_objetos ?? [])
           .filter((bi: any) => !bi.publicado_en_trade)
@@ -300,6 +306,7 @@ export async function GET(request: Request) {
                 ? "armadura"
                 : (bi.objetos?.tipo_item ?? "misc"),
             price: bi.objetos?.precio ?? 0,
+            requiresTwoHands: Boolean(bi.objetos?.requiere_dos_manos),
             cantidad: bi.cantidad ?? 1,
             fueComerciado: Boolean(bi.fue_comerciado),
             publicadoEnTrade: Boolean(bi.publicado_en_trade),

@@ -55,7 +55,8 @@ type ItemType =
   | "cinturón"
   | "capa"
   | "arma"
-  | "gema"
+  | "gema-arma"
+  | "gema-capa"
   | "accesorio-arma"
   | "accesorio-capa";
 
@@ -64,6 +65,7 @@ type Item = {
   type: ItemType;
   price?: number;
   description?: string | null;
+  requiresTwoHands?: boolean;
 };
 
 type WeaponSocketKey = "manoizq" | "manoderecha";
@@ -97,6 +99,7 @@ type Character = {
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   bag: Bag;
+  equipmentRequiresTwoHandsByName?: Record<string, boolean>;
 };
 
 type ProfileResponse = {
