@@ -92,7 +92,7 @@ export type UpdateCharacterEquipmentInput = {
 
 // Constantes útiles
 export const MAX_CHARACTERS_PER_USER = 5;
-export const BASE_BAG_SLOTS = 10;
+export const BASE_BAG_SLOTS = 20;
 
 // Cada 2 puntos de fuerza otorgan +1 espacio sobre una base de 10.
 export function calculateBagSlots(strength: number): number {
