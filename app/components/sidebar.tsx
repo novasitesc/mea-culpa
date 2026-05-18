@@ -194,15 +194,6 @@ export default function Sidebar({
                   {availableGamesCount}
                 </span>
               )}
-              {disabled && !roulettePending ? (
-                <span className="ml-auto text-[10px] font-sans bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
-                  {rouletteDisabled ? "Deshabilitada" : "Próx."}
-                </span>
-              ) : (
-                item.hasIndicator && item.id !== "partidas" && (
-                  <span className="w-2 h-2 rounded-full bg-gold ml-auto" />
-                )
-              )}
             </div>
             {"subtitle" in item && item.subtitle && (
               <p className="text-xs text-muted-foreground mt-1 ml-8">
