@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
+import DiceModule from "../components/dice-module";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
@@ -719,6 +720,10 @@ export default function ProfilePage() {
 
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         <Header />
+
+        <div className="mt-4">
+          <DiceModule token={token} activeCharacterId={currentCharacter?.id} />
+        </div>
 
         <div className="space-y-10 mt-6">
           <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">

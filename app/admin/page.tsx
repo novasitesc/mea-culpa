@@ -31,6 +31,7 @@ import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-
 import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
+import { DadosTab } from "./dados-tab";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -219,6 +220,7 @@ type Tab =
   | "historial-partidas"
   | "impuestos"
   | "ruleta"
+  | "dados"
   | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -4045,6 +4047,7 @@ export default function AdminPage() {
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
+    { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
@@ -4129,6 +4132,9 @@ export default function AdminPage() {
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+            )}
+            {activeTab === "dados" && (
+              <DadosTab token={token} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />
