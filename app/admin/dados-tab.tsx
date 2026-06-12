@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Pencil, Loader2, Check, X, Dices } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Plus, Trash2, Pencil, Loader2, Check, X, Dices, GripVertical } from "lucide-react";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { Select } from "@/components/ui/select";
@@ -21,8 +21,6 @@ type AdminObject = {
 
 type SublistaFormItem = {
   objetoId: number | null;
-  valorMin: string;
-  valorMax: string;
 };
 
 type LutCaraForm = {
@@ -96,6 +94,14 @@ const DICE_LABEL: Record<DiceType, string> = {
   d12: "D12 (1-12)",
   d20: "D20 (1-20)",
 };
+
+const DICE_FACES: Record<DiceType, number> = {
+  d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20,
+};
+
+function makeEmptySublistaItems(tipoDado: DiceType): SublistaFormItem[] {
+  return Array.from({ length: DICE_FACES[tipoDado] }, () => ({ objetoId: null }));
+}
 
 function makeEmptyLutCaras(): LutCaraForm[] {
   return Array.from({ length: 20 }, (_, i) => ({
@@ -231,11 +237,11 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
       objetoId: r.objetoId,
       cantidadDados: String(r.cantidadDados),
       multiplicadorOro: String(r.multiplicadorOro),
-      sublistaItems: r.sublistaItems.map((si) => ({
-        objetoId: si.objetoId,
-        valorMin: String(si.valorMin),
-        valorMax: String(si.valorMax),
-      })),
+      sublistaItems: (() => {
+        const n = DICE_FACES[r.tipoDado as DiceType] ?? 6;
+        const sorted = [...r.sublistaItems].sort((a, b) => a.orden - b.orden);
+        return Array.from({ length: n }, (_, i) => ({ objetoId: sorted[i]?.objetoId ?? null }));
+      })(),
       lutCaras,
       subtablaCaras,
     });
@@ -248,25 +254,29 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
     setErrorMsg(null);
   }
 
-  function addSublistaRow() {
+  function updateSublistaRow(idx: number, objetoId: number | null) {
     setForm((f) => ({
       ...f,
-      sublistaItems: [...f.sublistaItems, { objetoId: null, valorMin: "1", valorMax: "1" }],
+      sublistaItems: f.sublistaItems.map((si, i) => (i === idx ? { objetoId } : si)),
     }));
   }
 
-  function removeSublistaRow(idx: number) {
-    setForm((f) => ({
-      ...f,
-      sublistaItems: f.sublistaItems.filter((_, i) => i !== idx),
-    }));
+  const dragSublistaIdx = useRef<number | null>(null);
+
+  function handleSublistaDragStart(idx: number) {
+    dragSublistaIdx.current = idx;
   }
 
-  function updateSublistaRow(idx: number, field: keyof SublistaFormItem, value: string | number | null) {
-    setForm((f) => ({
-      ...f,
-      sublistaItems: f.sublistaItems.map((si, i) => (i === idx ? { ...si, [field]: value } : si)),
-    }));
+  function handleSublistaDrop(targetIdx: number) {
+    const from = dragSublistaIdx.current;
+    if (from === null || from === targetIdx) return;
+    setForm((f) => {
+      const items = [...f.sublistaItems];
+      const [moved] = items.splice(from, 1);
+      items.splice(targetIdx, 0, moved);
+      return { ...f, sublistaItems: items };
+    });
+    dragSublistaIdx.current = null;
   }
 
   function updateLutCara(idx: number, field: keyof LutCaraForm, value: unknown) {
@@ -294,16 +304,18 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
         tipoDado: form.tipo === "lut" || form.tipo === "subtabla" ? "d20" : form.tipoDado,
         costoOro: parseInt(form.costoOro) || 0,
         activo: form.activo,
-        orden: parseInt(form.orden) || 0,
+        orden: editingId === "new"
+          ? (recompensas.length > 0 ? Math.max(...recompensas.map((r) => r.orden)) + 1 : 0)
+          : parseInt(form.orden) || 0,
         objetoId: form.tipo === "item_fijo" ? form.objetoId : null,
         cantidadDados: parseInt(form.cantidadDados) || 1,
         multiplicadorOro: parseInt(form.multiplicadorOro) || 1,
         sublistaItems:
           form.tipo === "sublista"
-            ? form.sublistaItems.map((si) => ({
+            ? form.sublistaItems.map((si, i) => ({
                 objetoId: si.objetoId,
-                valorMin: parseInt(si.valorMin) || 1,
-                valorMax: parseInt(si.valorMax) || 1,
+                valorMin: i + 1,
+                valorMax: i + 1,
               }))
             : [],
         lutCaras:
@@ -488,9 +500,16 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                 <label className="block text-xs text-foreground/60 mb-1 font-sans">Tipo de recompensa *</label>
                 <Select
                   value={form.tipo}
-                  onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as RewardType }))}
+                  onChange={(e) => {
+                    const newTipo = e.target.value as RewardType;
+                    setForm((f) => ({
+                      ...f,
+                      tipo: newTipo,
+                      sublistaItems: newTipo === "sublista" ? makeEmptySublistaItems(f.tipoDado) : f.sublistaItems,
+                    }));
+                  }}
                 >
-                  {REWARD_TYPES.map((t) => (
+                  {REWARD_TYPES.filter((t) => t !== "item_fijo" && t !== "sublista" && t !== "oro_dados").map((t) => (
                     <option key={t} value={t}>{TIPO_LABEL[t]}</option>
                   ))}
                 </Select>
@@ -504,7 +523,13 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                     {DICE_TYPES.map((d) => (
                       <button
                         key={d}
-                        onClick={() => setForm((f) => ({ ...f, tipoDado: d }))}
+                        onClick={() => setForm((f) => {
+                          const n = DICE_FACES[d];
+                          const sublistaItems = f.tipo === "sublista"
+                            ? Array.from({ length: n }, (_, i) => f.sublistaItems[i] ?? { objetoId: null })
+                            : f.sublistaItems;
+                          return { ...f, tipoDado: d, sublistaItems };
+                        })}
                         className={`px-2.5 py-1.5 rounded border text-xs font-sans transition-all ${
                           form.tipoDado === d
                             ? "border-gold bg-gold/10 text-gold"
@@ -571,54 +596,32 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
               {/* sublista */}
               {form.tipo === "sublista" && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-foreground/60 font-sans">Ítems de la tabla</label>
-                    <button
-                      onClick={addSublistaRow}
-                      className="flex items-center gap-1 text-xs text-gold/70 hover:text-gold transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Agregar fila
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-foreground/40">
-                    Rango del dado {form.tipoDado.toUpperCase()} → 1 a {form.tipoDado.slice(1)}. Los rangos deben cubrir todos los resultados posibles.
-                  </p>
-                  {form.sublistaItems.length === 0 && (
-                    <p className="text-xs text-foreground/30 italic text-center py-2">Sin filas. Agrega ítems.</p>
-                  )}
+                  <label className="text-xs text-foreground/60 font-sans">
+                    Ítems del {form.tipoDado.toUpperCase()} — arrastra para reordenar
+                  </label>
                   {form.sublistaItems.map((si, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-xs text-foreground/40 shrink-0 w-5 text-right">{idx + 1}.</span>
-                      <input
-                        type="number"
-                        value={si.valorMin}
-                        onChange={(e) => updateSublistaRow(idx, "valorMin", e.target.value)}
-                        className="w-14 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
-                        placeholder="Min"
-                      />
-                      <span className="text-foreground/30 text-xs">–</span>
-                      <input
-                        type="number"
-                        value={si.valorMax}
-                        onChange={(e) => updateSublistaRow(idx, "valorMax", e.target.value)}
-                        className="w-14 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
-                        placeholder="Max"
-                      />
+                    <div
+                      key={idx}
+                      draggable
+                      onDragStart={() => handleSublistaDragStart(idx)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleSublistaDrop(idx)}
+                      className="flex items-center gap-2 p-2 rounded border border-border/30 bg-background/40 cursor-grab active:cursor-grabbing"
+                    >
+                      <GripVertical className="w-3.5 h-3.5 text-foreground/20 shrink-0" />
+                      <span className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
+                        {idx + 1}
+                      </span>
                       <div className="flex-1">
                         <ObjectSelector
                           items={objectSelectorItems}
                           value={si.objetoId}
-                          onChange={(v) => updateSublistaRow(idx, "objetoId", v)}
-                          placeholder="Ítem…"
+                          onChange={(v) => updateSublistaRow(idx, v)}
+                          placeholder="Sin ítem (nada)"
+                          searchable
+                          searchPlaceholder="Buscar ítem…"
                         />
                       </div>
-                      <button
-                        onClick={() => removeSublistaRow(idx)}
-                        className="p-1 text-foreground/30 hover:text-red-400 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -749,27 +752,16 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                 </div>
               )}
 
-              {/* Activo / Orden */}
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-sans">
-                  <input
-                    type="checkbox"
-                    checked={form.activo}
-                    onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))}
-                    className="accent-yellow-400"
-                  />
-                  Activo
-                </label>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-foreground/60 font-sans">Orden</label>
-                  <input
-                    type="number"
-                    value={form.orden}
-                    onChange={(e) => setForm((f) => ({ ...f, orden: e.target.value }))}
-                    className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:border-gold/60"
-                  />
-                </div>
-              </div>
+              {/* Activo */}
+              <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-sans">
+                <input
+                  type="checkbox"
+                  checked={form.activo}
+                  onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))}
+                  className="accent-yellow-400"
+                />
+                Activo
+              </label>
 
               {errorMsg && (
                 <p className="text-sm text-red-400 bg-red-900/20 border border-red-500/30 rounded px-3 py-2">
