@@ -798,7 +798,7 @@ function PartidasTab({
           <FormField label="Hora de inicio">
             <input
               type="datetime-local"
-              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:invert(1)_brightness(2)_contrast(2)]`}
+              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter-[invert(1)_brightness(2)_contrast(2)]`}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
@@ -4134,7 +4134,7 @@ export default function AdminPage() {
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "dados" && (
-              <DadosTab token={token} />
+              <DadosTab token={token} userId={user?.id} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />

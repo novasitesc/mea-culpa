@@ -7,7 +7,6 @@ import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2 } from "lucide-reac
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import PrizeWheel from "./components/prize-wheel";
-import DiceModule from "./components/dice-module";
 import { useAuth } from "@/lib/useAuth";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 
@@ -351,8 +350,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
             </main>
           ) : (
             <div className="flex flex-col gap-3 min-h-125">
-              <DiceModule token={token} activeCharacterId={activeCharacter?.id} />
-              <main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow flex-1 bg-card" style={{ minHeight: "320px" }}>
+<main className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gold-dim candle-glow flex-1 bg-card" style={{ minHeight: "320px" }}>
               {noticias.length === 0 ? (
                 <div className="flex items-center justify-center h-full min-h-80 bg-parchment">
                   <p className="font-serif text-sm text-parchment-dark/50">

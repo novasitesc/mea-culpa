@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Pencil, Loader2, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, Check, X, Dices } from "lucide-react";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { Select } from "@/components/ui/select";
 import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";
-import type { DiceType, RewardType } from "@/lib/types/dados";
+import type { DiceType, RewardType, LutCaraTipo } from "@/lib/types/dados";
 import DiceVisual from "@/app/components/dice-visual";
+import DiceModule from "@/app/components/dice-module";
 
 type AdminObject = {
   id: number;
@@ -22,6 +23,21 @@ type SublistaFormItem = {
   objetoId: number | null;
   valorMin: string;
   valorMax: string;
+};
+
+type LutCaraForm = {
+  numeroCara: number;
+  tipo: LutCaraTipo;
+  cantidadDados: string;
+  tipoDadoOro: DiceType;
+  multiplicadorOro: string;
+  objetoId: number | null;
+  subtablaId: number | null;
+};
+
+type SubtablaCaraForm = {
+  numeroCara: number;
+  objetoId: number | null;
 };
 
 type RecompensaFull = {
@@ -47,12 +63,29 @@ type RecompensaFull = {
     valorMax: number;
     orden: number;
   }>;
+  lutCaras?: Array<{
+    id: number;
+    numeroCara: number;
+    tipo: LutCaraTipo;
+    cantidadDados: number | null;
+    tipoDadoOro: DiceType | null;
+    multiplicadorOro: number;
+    objetoId: number | null;
+    subtablaId: number | null;
+  }>;
+  subtablaCaras?: Array<{
+    id: number;
+    numeroCara: number;
+    objetoId: number | null;
+  }>;
 };
 
 const TIPO_LABEL: Record<RewardType, string> = {
   item_fijo: "Ítem garantizado",
   sublista: "Tabla de ítems (sublista)",
   oro_dados: "Oro por dados",
+  lut: "LUT — D20 por caras",
+  subtabla: "Sub-tabla D20",
 };
 
 const DICE_LABEL: Record<DiceType, string> = {
@@ -63,6 +96,22 @@ const DICE_LABEL: Record<DiceType, string> = {
   d12: "D12 (1-12)",
   d20: "D20 (1-20)",
 };
+
+function makeEmptyLutCaras(): LutCaraForm[] {
+  return Array.from({ length: 20 }, (_, i) => ({
+    numeroCara: i + 1,
+    tipo: "nada" as LutCaraTipo,
+    cantidadDados: "1",
+    tipoDadoOro: "d6" as DiceType,
+    multiplicadorOro: "1",
+    objetoId: null,
+    subtablaId: null,
+  }));
+}
+
+function makeEmptySubtablaCaras(): SubtablaCaraForm[] {
+  return Array.from({ length: 20 }, (_, i) => ({ numeroCara: i + 1, objetoId: null }));
+}
 
 const emptyForm = {
   nombre: "",
@@ -76,9 +125,13 @@ const emptyForm = {
   cantidadDados: "1",
   multiplicadorOro: "10",
   sublistaItems: [] as SublistaFormItem[],
+  lutCaras: makeEmptyLutCaras(),
+  subtablaCaras: makeEmptySubtablaCaras(),
 };
 
-export function DadosTab({ token }: { token: string | null }) {
+type AdminCharacter = { id: number; name: string };
+
+export function DadosTab({ token, userId }: { token: string | null; userId?: string }) {
   const [recompensas, setRecompensas] = useState<RecompensaFull[]>([]);
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +141,8 @@ export function DadosTab({ token }: { token: string | null }) {
   const [deleteTarget, setDeleteTarget] = useState<RecompensaFull | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [testCharacters, setTestCharacters] = useState<AdminCharacter[]>([]);
+  const [testCharacterId, setTestCharacterId] = useState<number | null>(null);
 
   const headers = useCallback(
     () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }),
@@ -98,22 +153,33 @@ export function DadosTab({ token }: { token: string | null }) {
     if (!token) return;
     setLoading(true);
     try {
-      const [rRes, oRes] = await Promise.all([
+      const fetches: Promise<Response>[] = [
         fetch("/api/dados/admin", { headers: headers() }),
         fetch("/api/admin/objetos", { headers: headers() }),
-      ]);
+      ];
+      if (userId) fetches.push(fetch(`/api/profile?userId=${userId}`, { headers: headers() }));
+
+      const [rRes, oRes, pRes] = await Promise.all(fetches);
       if (rRes.ok) {
         const d = await rRes.json();
         setRecompensas(d.recompensas ?? []);
       }
       if (oRes.ok) {
         const d = await oRes.json();
-        setObjects(d.objects ?? d.objetos ?? []);
+        setObjects(Array.isArray(d) ? d : (d.objects ?? d.objetos ?? []));
+      }
+      if (pRes?.ok) {
+        const d = await pRes.json();
+        const chars: AdminCharacter[] = (d.characters ?? [])
+          .filter((c: any) => c.lifeStatus !== "muerto")
+          .map((c: any) => ({ id: c.id, name: c.name }));
+        setTestCharacters(chars);
+        if (chars.length > 0) setTestCharacterId(chars[0].id);
       }
     } finally {
       setLoading(false);
     }
-  }, [token, headers]);
+  }, [token, userId, headers]);
 
   useEffect(() => {
     fetchData();
@@ -126,6 +192,8 @@ export function DadosTab({ token }: { token: string | null }) {
     searchText: `${o.name} ${o.itemType} ${o.rarity}`,
   }));
 
+  const subtablaOptions = recompensas.filter((r) => r.tipo === "subtabla");
+
   function openNew() {
     setForm(emptyForm);
     setEditingId("new");
@@ -133,6 +201,25 @@ export function DadosTab({ token }: { token: string | null }) {
   }
 
   function openEdit(r: RecompensaFull) {
+    const lutCaras = makeEmptyLutCaras().map((empty) => {
+      const saved = r.lutCaras?.find((c) => c.numeroCara === empty.numeroCara);
+      if (!saved) return empty;
+      return {
+        numeroCara: saved.numeroCara,
+        tipo: saved.tipo,
+        cantidadDados: String(saved.cantidadDados ?? 1),
+        tipoDadoOro: (saved.tipoDadoOro ?? "d6") as DiceType,
+        multiplicadorOro: String(saved.multiplicadorOro ?? 1),
+        objetoId: saved.objetoId,
+        subtablaId: saved.subtablaId,
+      };
+    });
+
+    const subtablaCaras = makeEmptySubtablaCaras().map((empty) => {
+      const saved = r.subtablaCaras?.find((c) => c.numeroCara === empty.numeroCara);
+      return saved ? { numeroCara: saved.numeroCara, objetoId: saved.objetoId } : empty;
+    });
+
     setForm({
       nombre: r.nombre,
       descripcion: r.descripcion ?? "",
@@ -149,6 +236,8 @@ export function DadosTab({ token }: { token: string | null }) {
         valorMin: String(si.valorMin),
         valorMax: String(si.valorMax),
       })),
+      lutCaras,
+      subtablaCaras,
     });
     setEditingId(r.id);
     setErrorMsg(null);
@@ -180,6 +269,20 @@ export function DadosTab({ token }: { token: string | null }) {
     }));
   }
 
+  function updateLutCara(idx: number, field: keyof LutCaraForm, value: unknown) {
+    setForm((f) => ({
+      ...f,
+      lutCaras: f.lutCaras.map((c, i) => (i === idx ? { ...c, [field]: value } : c)),
+    }));
+  }
+
+  function updateSubtablaCara(idx: number, objetoId: number | null) {
+    setForm((f) => ({
+      ...f,
+      subtablaCaras: f.subtablaCaras.map((c, i) => (i === idx ? { ...c, objetoId } : c)),
+    }));
+  }
+
   async function handleSave() {
     setSaving(true);
     setErrorMsg(null);
@@ -188,7 +291,7 @@ export function DadosTab({ token }: { token: string | null }) {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim() || null,
         tipo: form.tipo,
-        tipoDado: form.tipoDado,
+        tipoDado: form.tipo === "lut" || form.tipo === "subtabla" ? "d20" : form.tipoDado,
         costoOro: parseInt(form.costoOro) || 0,
         activo: form.activo,
         orden: parseInt(form.orden) || 0,
@@ -201,6 +304,25 @@ export function DadosTab({ token }: { token: string | null }) {
                 objetoId: si.objetoId,
                 valorMin: parseInt(si.valorMin) || 1,
                 valorMax: parseInt(si.valorMax) || 1,
+              }))
+            : [],
+        lutCaras:
+          form.tipo === "lut"
+            ? form.lutCaras.map((c) => ({
+                numeroCara: c.numeroCara,
+                tipo: c.tipo,
+                cantidadDados: parseInt(c.cantidadDados) || 1,
+                tipoDadoOro: c.tipoDadoOro,
+                multiplicadorOro: parseInt(c.multiplicadorOro) || 1,
+                objetoId: c.tipo === "item" ? c.objetoId : null,
+                subtablaId: c.tipo === "subtabla" ? c.subtablaId : null,
+              }))
+            : [],
+        subtablaCaras:
+          form.tipo === "subtabla"
+            ? form.subtablaCaras.map((c) => ({
+                numeroCara: c.numeroCara,
+                objetoId: c.objetoId,
               }))
             : [],
         ...(editingId !== "new" ? { id: editingId } : {}),
@@ -300,6 +422,8 @@ export function DadosTab({ token }: { token: string | null }) {
                   {TIPO_LABEL[r.tipo]} · {r.tipoDado.toUpperCase()} · {r.costoOro} oro
                   {r.tipo === "sublista" && ` · ${r.sublistaItems.length} ítems`}
                   {r.tipo === "oro_dados" && ` · ${r.cantidadDados} dados × ${r.multiplicadorOro}`}
+                  {r.tipo === "lut" && ` · ${r.lutCaras?.filter((c) => c.tipo !== "nada").length ?? 0} caras activas`}
+                  {r.tipo === "subtabla" && ` · ${r.subtablaCaras?.filter((c) => c.objetoId !== null).length ?? 0} ítems`}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -372,25 +496,33 @@ export function DadosTab({ token }: { token: string | null }) {
                 </Select>
               </div>
 
-              {/* Tipo de dado */}
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1 font-sans">Tipo de dado *</label>
-                <div className="flex gap-2 flex-wrap">
-                  {DICE_TYPES.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setForm((f) => ({ ...f, tipoDado: d }))}
-                      className={`px-2.5 py-1.5 rounded border text-xs font-sans transition-all ${
-                        form.tipoDado === d
-                          ? "border-gold bg-gold/10 text-gold"
-                          : "border-border/50 text-foreground/50 hover:border-gold/50"
-                      }`}
-                    >
-                      {d.toUpperCase()}
-                    </button>
-                  ))}
+              {/* Tipo de dado — ocultar para lut y subtabla (siempre D20) */}
+              {form.tipo !== "lut" && form.tipo !== "subtabla" && (
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-sans">Tipo de dado *</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {DICE_TYPES.map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setForm((f) => ({ ...f, tipoDado: d }))}
+                        className={`px-2.5 py-1.5 rounded border text-xs font-sans transition-all ${
+                          form.tipoDado === d
+                            ? "border-gold bg-gold/10 text-gold"
+                            : "border-border/50 text-foreground/50 hover:border-gold/50"
+                        }`}
+                      >
+                        {d.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {(form.tipo === "lut" || form.tipo === "subtabla") && (
+                <p className="text-xs text-foreground/40 font-sans italic">
+                  Este tipo siempre usa un D20.
+                </p>
+              )}
 
               {/* Costo en oro */}
               <div>
@@ -402,7 +534,7 @@ export function DadosTab({ token }: { token: string | null }) {
                 />
               </div>
 
-              {/* Campos específicos por tipo */}
+              {/* item_fijo */}
               {form.tipo === "item_fijo" && (
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1 font-sans">Ítem a entregar *</label>
@@ -415,6 +547,7 @@ export function DadosTab({ token }: { token: string | null }) {
                 </div>
               )}
 
+              {/* oro_dados */}
               {form.tipo === "oro_dados" && (
                 <div className="flex gap-3">
                   <div className="flex-1">
@@ -444,6 +577,7 @@ export function DadosTab({ token }: { token: string | null }) {
                 </div>
               )}
 
+              {/* sublista */}
               {form.tipo === "sublista" && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -499,6 +633,145 @@ export function DadosTab({ token }: { token: string | null }) {
                 </div>
               )}
 
+              {/* LUT — 20 caras configurables */}
+              {form.tipo === "lut" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-foreground/60 font-sans">Caras del D20 (1–20)</label>
+                    {subtablaOptions.length === 0 && (
+                      <p className="text-[10px] text-amber-400/70 mt-1">
+                        Para usar "Sub-tabla", primero crea una recompensa de tipo "Sub-tabla D20".
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                    {form.lutCaras.map((cara, idx) => (
+                      <div
+                        key={cara.numeroCara}
+                        className="flex items-center gap-2 p-2 rounded border border-border/30 bg-background/40"
+                      >
+                        {/* Badge de número */}
+                        <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
+                          {cara.numeroCara}
+                        </span>
+
+                        {/* Tipo de cara */}
+                        <Select
+                          value={cara.tipo}
+                          onChange={(e) => updateLutCara(idx, "tipo", e.target.value as LutCaraTipo)}
+                          className="w-28 text-xs py-1 h-auto shrink-0"
+                        >
+                          <option value="nada">Nada</option>
+                          <option value="item">Ítem</option>
+                          <option value="oro">Oro</option>
+                          <option value="subtabla">Sub-tabla</option>
+                        </Select>
+
+                        {/* Campos condicionales */}
+                        {cara.tipo === "item" && (
+                          <div className="flex-1 min-w-0">
+                            <ObjectSelector
+                              items={objectSelectorItems}
+                              value={cara.objetoId}
+                              onChange={(v) => updateLutCara(idx, "objetoId", v)}
+                              placeholder="Elegir ítem…"
+                              searchable
+                              searchPlaceholder="Buscar ítem…"
+                            />
+                          </div>
+                        )}
+
+                        {cara.tipo === "oro" && (
+                          <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={cara.cantidadDados}
+                              onChange={(e) => updateLutCara(idx, "cantidadDados", e.target.value)}
+                              className="w-12 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
+                              title="Cantidad de dados"
+                            />
+                            <Select
+                              value={cara.tipoDadoOro}
+                              onChange={(e) => updateLutCara(idx, "tipoDadoOro", e.target.value as DiceType)}
+                              className="w-20 text-xs py-1 h-auto"
+                            >
+                              {DICE_TYPES.map((d) => (
+                                <option key={d} value={d}>{d.toUpperCase()}</option>
+                              ))}
+                            </Select>
+                            <span className="text-foreground/40 text-xs">×</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={cara.multiplicadorOro}
+                              onChange={(e) => updateLutCara(idx, "multiplicadorOro", e.target.value)}
+                              className="w-14 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
+                              title="Multiplicador de oro"
+                            />
+                            <span className="text-foreground/40 text-[10px]">oro</span>
+                          </div>
+                        )}
+
+                        {cara.tipo === "subtabla" && (
+                          <div className="flex-1 min-w-0">
+                            <Select
+                              value={cara.subtablaId ?? ""}
+                              onChange={(e) =>
+                                updateLutCara(idx, "subtablaId", e.target.value ? Number(e.target.value) : null)
+                              }
+                              className="w-full text-xs py-1 h-auto"
+                            >
+                              <option value="">— elegir sub-tabla —</option>
+                              {subtablaOptions.map((s) => (
+                                <option key={s.id} value={s.id}>{s.nombre}</option>
+                              ))}
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Subtabla — 20 caras: ítem o nada */}
+              {form.tipo === "subtabla" && (
+                <div className="space-y-3">
+                  <label className="text-xs text-foreground/60 font-sans">
+                    Caras del D20 — ítem o vacío (= Nada)
+                  </label>
+                  <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                    {form.subtablaCaras.map((cara, idx) => (
+                      <div key={cara.numeroCara} className="flex items-center gap-2">
+                        <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
+                          {cara.numeroCara}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <ObjectSelector
+                            items={objectSelectorItems}
+                            value={cara.objetoId}
+                            onChange={(v) => updateSubtablaCara(idx, v)}
+                            placeholder="Nada (vacío)"
+                            searchable
+                            searchPlaceholder="Buscar ítem…"
+                          />
+                        </div>
+                        {cara.objetoId !== null && (
+                          <button
+                            onClick={() => updateSubtablaCara(idx, null)}
+                            className="p-1 text-foreground/30 hover:text-red-400 transition-colors shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Activo / Orden */}
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-sans">
@@ -545,6 +818,33 @@ export function DadosTab({ token }: { token: string | null }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sección de prueba — visible si hay recompensas activas */}
+      {!loading && recompensas.filter((r) => r.tipo !== "subtabla" && r.activo).length > 0 && (
+        <div className="border border-gold-dim/40 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-gold-dim/10 border-b border-gold-dim/30">
+            <Dices className="w-4 h-4 text-gold/70" />
+            <span className="text-sm font-serif text-gold">Probar tirador</span>
+          </div>
+          <div className="p-3 space-y-3">
+            {testCharacters.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-foreground/60 font-sans shrink-0">Personaje:</label>
+                <Select
+                  value={testCharacterId?.toString() ?? ""}
+                  onChange={(e) => setTestCharacterId(e.target.value ? Number(e.target.value) : null)}
+                  className="text-xs py-1 h-auto"
+                >
+                  {testCharacters.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </Select>
+              </div>
+            )}
+            <DiceModule token={token} activeCharacterId={testCharacterId ?? undefined} />
           </div>
         </div>
       )}
