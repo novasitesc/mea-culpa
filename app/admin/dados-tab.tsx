@@ -448,7 +448,7 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
       {/* Modal de edición */}
       {editingId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <div className="bg-card border border-gold-dim/60 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className={`bg-card border border-gold-dim/60 rounded-lg w-full ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto shadow-2xl`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
               <h3 className="font-serif text-gold text-base">
                 {editingId === "new" ? "Nueva recompensa" : "Editar recompensa"}
@@ -524,15 +524,6 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                 </p>
               )}
 
-              {/* Costo en oro */}
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1 font-sans">Costo en oro</label>
-                <GoldAmountInput
-                  value={form.costoOro}
-                  onChangeValue={(v) => setForm((f) => ({ ...f, costoOro: v }))}
-                  allowZero
-                />
-              </div>
 
               {/* item_fijo */}
               {form.tipo === "item_fijo" && (
@@ -635,100 +626,86 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
 
               {/* LUT — 20 caras configurables */}
               {form.tipo === "lut" && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-foreground/60 font-sans">Caras del D20 (1–20)</label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-foreground/60 font-sans">Caras del D20</label>
                     {subtablaOptions.length === 0 && (
-                      <p className="text-[10px] text-amber-400/70 mt-1">
-                        Para usar "Sub-tabla", primero crea una recompensa de tipo "Sub-tabla D20".
-                      </p>
+                      <span className="text-[10px] text-amber-400/70">Sin sub-tablas disponibles</span>
                     )}
                   </div>
-                  <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 gap-2">
                     {form.lutCaras.map((cara, idx) => (
                       <div
                         key={cara.numeroCara}
-                        className="flex items-center gap-2 p-2 rounded border border-border/30 bg-background/40"
+                        className="p-2.5 rounded border border-border/30 bg-background/40 space-y-2"
                       >
-                        {/* Badge de número */}
-                        <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
-                          {cara.numeroCara}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
+                            {cara.numeroCara}
+                          </span>
+                          <Select
+                            value={cara.tipo}
+                            onChange={(e) => updateLutCara(idx, "tipo", e.target.value as LutCaraTipo)}
+                            className="flex-1 text-xs py-1 h-auto"
+                          >
+                            <option value="nada">Nada</option>
+                            <option value="item">Ítem</option>
+                            <option value="oro">Oro</option>
+                            <option value="subtabla">Sub-tabla</option>
+                          </Select>
+                        </div>
 
-                        {/* Tipo de cara */}
-                        <Select
-                          value={cara.tipo}
-                          onChange={(e) => updateLutCara(idx, "tipo", e.target.value as LutCaraTipo)}
-                          className="w-28 text-xs py-1 h-auto shrink-0"
-                        >
-                          <option value="nada">Nada</option>
-                          <option value="item">Ítem</option>
-                          <option value="oro">Oro</option>
-                          <option value="subtabla">Sub-tabla</option>
-                        </Select>
-
-                        {/* Campos condicionales */}
                         {cara.tipo === "item" && (
-                          <div className="flex-1 min-w-0">
-                            <ObjectSelector
-                              items={objectSelectorItems}
-                              value={cara.objetoId}
-                              onChange={(v) => updateLutCara(idx, "objetoId", v)}
-                              placeholder="Elegir ítem…"
-                              searchable
-                              searchPlaceholder="Buscar ítem…"
-                            />
-                          </div>
+                          <ObjectSelector
+                            items={objectSelectorItems}
+                            value={cara.objetoId}
+                            onChange={(v) => updateLutCara(idx, "objetoId", v)}
+                            placeholder="Elegir ítem…"
+                            searchable
+                            searchPlaceholder="Buscar…"
+                          />
                         )}
 
                         {cara.tipo === "oro" && (
-                          <div className="flex items-center gap-1.5 flex-1 flex-wrap">
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <GoldAmountInput
                               value={cara.cantidadDados}
-                              onChange={(e) => updateLutCara(idx, "cantidadDados", e.target.value)}
-                              className="w-12 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
-                              title="Cantidad de dados"
+                              onChangeValue={(v) => updateLutCara(idx, "cantidadDados", v)}
+                              min={1}
+                              className="w-10 text-xs px-1.5 py-1 h-auto"
                             />
                             <Select
                               value={cara.tipoDadoOro}
                               onChange={(e) => updateLutCara(idx, "tipoDadoOro", e.target.value as DiceType)}
-                              className="w-20 text-xs py-1 h-auto"
+                              className="text-xs py-1 h-auto"
                             >
                               {DICE_TYPES.map((d) => (
                                 <option key={d} value={d}>{d.toUpperCase()}</option>
                               ))}
                             </Select>
                             <span className="text-foreground/40 text-xs">×</span>
-                            <input
-                              type="number"
-                              min="1"
+                            <GoldAmountInput
                               value={cara.multiplicadorOro}
-                              onChange={(e) => updateLutCara(idx, "multiplicadorOro", e.target.value)}
-                              className="w-14 px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60"
-                              title="Multiplicador de oro"
+                              onChangeValue={(v) => updateLutCara(idx, "multiplicadorOro", v)}
+                              min={1}
+                              className="w-12 text-xs px-1.5 py-1 h-auto"
                             />
-                            <span className="text-foreground/40 text-[10px]">oro</span>
                           </div>
                         )}
 
                         {cara.tipo === "subtabla" && (
-                          <div className="flex-1 min-w-0">
-                            <Select
-                              value={cara.subtablaId ?? ""}
-                              onChange={(e) =>
-                                updateLutCara(idx, "subtablaId", e.target.value ? Number(e.target.value) : null)
-                              }
-                              className="w-full text-xs py-1 h-auto"
-                            >
-                              <option value="">— elegir sub-tabla —</option>
-                              {subtablaOptions.map((s) => (
-                                <option key={s.id} value={s.id}>{s.nombre}</option>
-                              ))}
-                            </Select>
-                          </div>
+                          <Select
+                            value={cara.subtablaId ?? ""}
+                            onChange={(e) =>
+                              updateLutCara(idx, "subtablaId", e.target.value ? Number(e.target.value) : null)
+                            }
+                            className="w-full text-xs py-1 h-auto"
+                          >
+                            <option value="">— sub-tabla —</option>
+                            {subtablaOptions.map((s) => (
+                              <option key={s.id} value={s.id}>{s.nombre}</option>
+                            ))}
+                          </Select>
                         )}
                       </div>
                     ))}
@@ -738,34 +715,34 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
 
               {/* Subtabla — 20 caras: ítem o nada */}
               {form.tipo === "subtabla" && (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-xs text-foreground/60 font-sans">
                     Caras del D20 — ítem o vacío (= Nada)
                   </label>
-                  <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 gap-2">
                     {form.subtablaCaras.map((cara, idx) => (
-                      <div key={cara.numeroCara} className="flex items-center gap-2">
-                        <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
-                          {cara.numeroCara}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <ObjectSelector
-                            items={objectSelectorItems}
-                            value={cara.objetoId}
-                            onChange={(v) => updateSubtablaCara(idx, v)}
-                            placeholder="Nada (vacío)"
-                            searchable
-                            searchPlaceholder="Buscar ítem…"
-                          />
+                      <div key={cara.numeroCara} className="p-2.5 rounded border border-border/30 bg-background/40 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
+                            {cara.numeroCara}
+                          </span>
+                          {cara.objetoId !== null && (
+                            <button
+                              onClick={() => updateSubtablaCara(idx, null)}
+                              className="ml-auto p-1 text-foreground/30 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
-                        {cara.objetoId !== null && (
-                          <button
-                            onClick={() => updateSubtablaCara(idx, null)}
-                            className="p-1 text-foreground/30 hover:text-red-400 transition-colors shrink-0"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <ObjectSelector
+                          items={objectSelectorItems}
+                          value={cara.objetoId}
+                          onChange={(v) => updateSubtablaCara(idx, v)}
+                          placeholder="Nada"
+                          searchable
+                          searchPlaceholder="Buscar ítem…"
+                        />
                       </div>
                     ))}
                   </div>
