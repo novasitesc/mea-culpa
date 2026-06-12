@@ -26,9 +26,8 @@ type SublistaFormItem = {
 type LutCaraForm = {
   numeroCara: number;
   tipo: LutCaraTipo;
-  cantidadDados: string;
-  tipoDadoOro: DiceType;
-  multiplicadorOro: string;
+  oroMin: string;
+  oroMax: string;
   objetoId: number | null;
   subtablaId: number | null;
 };
@@ -107,9 +106,8 @@ function makeEmptyLutCaras(): LutCaraForm[] {
   return Array.from({ length: 20 }, (_, i) => ({
     numeroCara: i + 1,
     tipo: "nada" as LutCaraTipo,
-    cantidadDados: "1",
-    tipoDadoOro: "d6" as DiceType,
-    multiplicadorOro: "1",
+    oroMin: "10",
+    oroMax: "50",
     objetoId: null,
     subtablaId: null,
   }));
@@ -213,9 +211,8 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
       return {
         numeroCara: saved.numeroCara,
         tipo: saved.tipo,
-        cantidadDados: String(saved.cantidadDados ?? 1),
-        tipoDadoOro: (saved.tipoDadoOro ?? "d6") as DiceType,
-        multiplicadorOro: String(saved.multiplicadorOro ?? 1),
+        oroMin: String(saved.cantidadDados ?? 10),
+        oroMax: String(saved.multiplicadorOro ?? 50),
         objetoId: saved.objetoId,
         subtablaId: saved.subtablaId,
       };
@@ -323,9 +320,8 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
             ? form.lutCaras.map((c) => ({
                 numeroCara: c.numeroCara,
                 tipo: c.tipo,
-                cantidadDados: parseInt(c.cantidadDados) || 1,
-                tipoDadoOro: c.tipoDadoOro,
-                multiplicadorOro: parseInt(c.multiplicadorOro) || 1,
+                oroMin: parseInt(c.oroMin) || 0,
+                oroMax: parseInt(c.oroMax) || 0,
                 objetoId: c.tipo === "item" ? c.objetoId : null,
                 subtablaId: c.tipo === "subtabla" ? c.subtablaId : null,
               }))
@@ -670,29 +666,23 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                         )}
 
                         {cara.tipo === "oro" && (
-                          <div className="flex items-center gap-1 flex-wrap">
+                          <div className="flex items-center gap-1.5">
                             <GoldAmountInput
-                              value={cara.cantidadDados}
-                              onChangeValue={(v) => updateLutCara(idx, "cantidadDados", v)}
-                              min={1}
-                              className="w-10 text-xs px-1.5 py-1 h-auto"
+                              value={cara.oroMin}
+                              onChangeValue={(v) => updateLutCara(idx, "oroMin", v)}
+                              min={0}
+                              allowZero
+                              className="w-14 text-xs px-1.5 py-1 h-auto"
                             />
-                            <Select
-                              value={cara.tipoDadoOro}
-                              onChange={(e) => updateLutCara(idx, "tipoDadoOro", e.target.value as DiceType)}
-                              className="text-xs py-1 h-auto"
-                            >
-                              {DICE_TYPES.map((d) => (
-                                <option key={d} value={d}>{d.toUpperCase()}</option>
-                              ))}
-                            </Select>
-                            <span className="text-foreground/40 text-xs">×</span>
+                            <span className="text-foreground/40 text-xs">–</span>
                             <GoldAmountInput
-                              value={cara.multiplicadorOro}
-                              onChangeValue={(v) => updateLutCara(idx, "multiplicadorOro", v)}
-                              min={1}
-                              className="w-12 text-xs px-1.5 py-1 h-auto"
+                              value={cara.oroMax}
+                              onChangeValue={(v) => updateLutCara(idx, "oroMax", v)}
+                              min={0}
+                              allowZero
+                              className="w-14 text-xs px-1.5 py-1 h-auto"
                             />
+                            <span className="text-foreground/30 text-[10px]">oro</span>
                           </div>
                         )}
 

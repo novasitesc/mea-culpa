@@ -174,12 +174,10 @@ export async function POST(request: Request) {
       }
 
       if (caraConfig.tipo === "oro") {
-        const tipoDadoOro = (caraConfig.tipo_dado_oro ?? "d6") as DiceType;
-        const numDados = caraConfig.cantidad_dados ?? 1;
-        const mult = caraConfig.multiplicador_oro ?? 1;
-        const dados = Array.from({ length: numDados }, () => rollDie(tipoDadoOro));
-        const total = dados.reduce((acc, v) => acc + v, 0);
-        const cantidadOro = total * mult;
+        const oroMin = caraConfig.cantidad_dados ?? 0;
+        const oroMax = caraConfig.multiplicador_oro ?? 0;
+        const range = Math.max(0, oroMax - oroMin);
+        const cantidadOro = oroMin + Math.floor(Math.random() * (range + 1));
 
         if (cantidadOro > 0) {
           await modifyGold(user.id, cantidadOro, "dado_recompensa_oro", String(recompensaId));
@@ -189,10 +187,10 @@ export async function POST(request: Request) {
           cara: primaryCara,
           tipo: "oro",
           oroDetalle: {
-            formula: `${numDados}${tipoDadoOro}`,
-            dados,
-            total,
-            multiplicador: mult,
+            formula: `${oroMin}–${oroMax}`,
+            dados: [cantidadOro],
+            total: cantidadOro,
+            multiplicador: 1,
             cantidadOro,
           },
         });
@@ -200,7 +198,7 @@ export async function POST(request: Request) {
         await db.from("dados_historial").insert({
           usuario_id: user.id,
           recompensa_id: recompensaId,
-          resultados_dados: [primaryCara, ...dados],
+          resultados_dados: [primaryCara],
           tipo_resultado: "oro",
           objeto_id: null,
           cantidad_objeto: null,
