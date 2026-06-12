@@ -122,7 +122,7 @@ function makeEmptySubtablaCaras(): SubtablaCaraForm[] {
 const emptyForm = {
   nombre: "",
   descripcion: "",
-  tipo: "item_fijo" as RewardType,
+  tipo: "lut" as RewardType,
   tipoDado: "d6" as DiceType,
   costoOro: "0",
   activo: true,
