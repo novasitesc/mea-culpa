@@ -10,6 +10,7 @@ import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import PortraitPicker from "./components/portrait-picker";
+import SpellsRegistry from "./components/spells-registry";
 
 type Player = {
   name: string;
@@ -98,6 +99,7 @@ type Character = {
   weapons: WeaponSlots;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
+  knownSpells?: string[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
 };
@@ -1130,6 +1132,8 @@ export default function ProfilePage() {
                   </div>
 
                   <EquipmentPreview character={character} />
+
+                  <SpellsRegistry character={character} />
 
                   <div className="flex justify-end mt-2">
                     <button

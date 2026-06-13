@@ -74,6 +74,7 @@ export type Character = {
   accessories: AccessorySlots;
   weapons: WeaponSlots;
   bag: Bag;
+  knownSpells?: string[];
 };
 
 export type CreateCharacterInput = {

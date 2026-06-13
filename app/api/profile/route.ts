@@ -80,6 +80,7 @@ export async function GET(request: Request) {
       estado_vida,
       muerto_en,
       revivido_en,
+      conjuros_conocidos,
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
@@ -226,6 +227,7 @@ export async function GET(request: Request) {
       lifeStatus: p.estado_vida ?? "vivo",
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
+      knownSpells: p.conjuros_conocidos ?? [],
       stats: stats
         ? {
             str: stats.fuerza,
