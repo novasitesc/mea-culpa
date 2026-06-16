@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
-import DiceModule from "@/app/components/dice-module";
 import { useAuth } from "@/lib/useAuth";
 import { emitAuthRefresh } from "@/lib/authRefresh";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -524,7 +523,6 @@ export default function GremioPage() {
         </div>
 
         <main className="lg:col-span-9 space-y-4">
-          <DiceModule token={token} />
           <Card className="bg-card/70 border-border">
             <CardHeader>
               <CardTitle className="text-gold flex items-center gap-2">
