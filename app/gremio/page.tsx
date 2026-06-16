@@ -524,7 +524,7 @@ export default function GremioPage() {
         </div>
 
         <main className="lg:col-span-9 space-y-4">
-          <DiceModule token={token} activeCharacterId={aliveCharacters[0]?.id} />
+          <DiceModule token={token} />
           <Card className="bg-card/70 border-border">
             <CardHeader>
               <CardTitle className="text-gold flex items-center gap-2">

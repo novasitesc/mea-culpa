@@ -722,7 +722,7 @@ export default function ProfilePage() {
         <Header />
 
         <div className="mt-4">
-          <DiceModule token={token} activeCharacterId={currentCharacter?.id} />
+          <DiceModule token={token} />
         </div>
 
         <div className="space-y-10 mt-6">

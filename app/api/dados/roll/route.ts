@@ -5,40 +5,6 @@ import { modifyGold } from "@/lib/goldService";
 import { rollDie } from "@/lib/types/dados";
 import type { DiceType, LutCaraResult } from "@/lib/types/dados";
 
-async function addItemToCharacter(
-  db: ReturnType<typeof createServerClient>,
-  personajeId: number,
-  objetoId: number
-) {
-  const { data: existing } = await db
-    .from("bolsa_objetos")
-    .select("id, cantidad")
-    .eq("personaje_id", personajeId)
-    .eq("objeto_id", objetoId)
-    .maybeSingle();
-
-  if (existing) {
-    await db
-      .from("bolsa_objetos")
-      .update({ cantidad: existing.cantidad + 1 })
-      .eq("id", existing.id);
-  } else {
-    const { data: maxOrden } = await db
-      .from("bolsa_objetos")
-      .select("orden")
-      .eq("personaje_id", personajeId)
-      .order("orden", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    await db.from("bolsa_objetos").insert({
-      personaje_id: personajeId,
-      objeto_id: objetoId,
-      cantidad: 1,
-      orden: ((maxOrden as any)?.orden ?? 0) + 1,
-    });
-  }
-}
 
 export async function POST(request: Request) {
   const db = createServerClient();
@@ -49,7 +15,6 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const recompensaId = typeof body?.recompensa_id === "number" ? body.recompensa_id : null;
-  const personajeId = typeof body?.personaje_id === "number" ? body.personaje_id : null;
   const cantidad =
     typeof body?.cantidad === "number" &&
     Number.isInteger(body.cantidad) &&
@@ -58,62 +23,50 @@ export async function POST(request: Request) {
       ? body.cantidad
       : 1;
 
-  if (!recompensaId || !personajeId) {
+  if (!recompensaId) {
     return NextResponse.json({ error: "Parámetros inválidos" }, { status: 400 });
   }
 
-  // Verificar que el personaje pertenece al usuario
-  const { data: personaje, error: personajeError } = await db
-    .from("personajes")
-    .select("id")
-    .eq("id", personajeId)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (personajeError || !personaje) {
-    return NextResponse.json({ error: "Personaje no válido" }, { status: 403 });
-  }
-
-  // Obtener la recompensa activa con todas sus caras
+  // Obtener la recompensa activa con sublista (sin joinear lut_caras para evitar error si la tabla no existe)
   const { data: recompensa, error: recompensaError } = await db
     .from("dados_recompensas")
     .select(`
       id, nombre, tipo, tipo_dado, costo_oro, activo, objeto_id, cantidad_dados, multiplicador_oro,
-      dados_sublista_items(id, objeto_id, valor_min, valor_max),
-      dados_lut_caras(id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, subtabla_id)
+      dados_sublista_items(id, objeto_id, valor_min, valor_max)
     `)
     .eq("id", recompensaId)
     .eq("activo", true)
     .maybeSingle();
 
   if (recompensaError || !recompensa) {
+    console.error("[dados/roll] recompensa query error:", recompensaError);
     return NextResponse.json({ error: "Recompensa no encontrada" }, { status: 404 });
   }
 
-  // Verificar oro suficiente para todas las tiradas
+  // Obtener caras LUT por separado (falla silenciosamente si la tabla no existe aún)
+  const { data: lutCarasRaw } = await db
+    .from("dados_lut_caras")
+    .select("id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, subtabla_id")
+    .eq("recompensa_id", recompensaId);
+
   const costoTotal = recompensa.costo_oro * cantidad;
-  const { data: perfil, error: perfilError } = await db
-    .from("perfiles")
-    .select("oro")
-    .eq("id", user.id)
-    .single();
-
-  if (perfilError || !perfil) {
-    return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
-  }
-
-  if ((perfil.oro ?? 0) < costoTotal) {
-    return NextResponse.json({ error: "Oro insuficiente" }, { status: 400 });
-  }
 
   // --- Tipo LUT ---
   if (recompensa.tipo === "lut") {
-    // Deducir costo total de una sola vez
+    // Deducir costo total de una sola vez; modifyGold lanza si hay oro insuficiente
     if (costoTotal > 0) {
-      await modifyGold(user.id, -costoTotal, "dado_costo", String(recompensaId));
+      try {
+        await modifyGold(user.id, -costoTotal, "dado_costo", undefined);
+      } catch (err: any) {
+        const msg = err?.message ?? "";
+        return NextResponse.json(
+          { error: msg.includes("Oro insuficiente") ? "Oro insuficiente" : "Error al procesar el pago" },
+          { status: 400 }
+        );
+      }
     }
 
-    const lutCaras = (recompensa.dados_lut_caras ?? []) as Array<{
+    const lutCaras = (lutCarasRaw ?? []) as Array<{
       id: number;
       numero_cara: number;
       tipo: string;
@@ -146,8 +99,6 @@ export async function POST(request: Request) {
       }
 
       if (caraConfig.tipo === "item" && caraConfig.objeto_id) {
-        await addItemToCharacter(db, personajeId, caraConfig.objeto_id);
-
         const { data: obj } = await db
           .from("objetos")
           .select("id, nombre, icono")
@@ -180,7 +131,7 @@ export async function POST(request: Request) {
         const cantidadOro = oroMin + Math.floor(Math.random() * (range + 1));
 
         if (cantidadOro > 0) {
-          await modifyGold(user.id, cantidadOro, "dado_recompensa_oro", String(recompensaId));
+          await modifyGold(user.id, cantidadOro, "dado_recompensa_oro", undefined);
         }
 
         lutResultados.push({
@@ -226,7 +177,6 @@ export async function POST(request: Request) {
 
         let subObjeto: { id: number; nombre: string; icono: string } | null = null;
         if (subObjetoId) {
-          await addItemToCharacter(db, personajeId, subObjetoId);
           const { data: obj } = await db
             .from("objetos")
             .select("id, nombre, icono")
@@ -286,6 +236,20 @@ export async function POST(request: Request) {
   }
 
   // --- Tipos legacy (item_fijo, sublista, oro_dados) ---
+
+  // Descontar costo antes de tirar; modifyGold lanza si hay oro insuficiente
+  if (recompensa.costo_oro > 0) {
+    try {
+      await modifyGold(user.id, -recompensa.costo_oro, "dado_costo", undefined);
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      return NextResponse.json(
+        { error: msg.includes("Oro insuficiente") ? "Oro insuficiente" : "Error al procesar el pago" },
+        { status: 400 }
+      );
+    }
+  }
+
   const tipoDado = recompensa.tipo_dado as DiceType;
   const cantidadDados = recompensa.tipo === "oro_dados" ? (recompensa.cantidad_dados ?? 1) : 1;
   const resultados: number[] = Array.from({ length: cantidadDados }, () => rollDie(tipoDado));
@@ -321,16 +285,9 @@ export async function POST(request: Request) {
     tipoResultado = "oro";
   }
 
-  // Descontar costo
-  if (recompensa.costo_oro > 0) {
-    await modifyGold(user.id, -recompensa.costo_oro, "dado_costo", String(recompensaId));
-  }
-
   // Acreditar premio
-  if (tipoResultado === "item" && objetoId) {
-    await addItemToCharacter(db, personajeId, objetoId);
-  } else if (tipoResultado === "oro" && cantidadOro && cantidadOro > 0) {
-    await modifyGold(user.id, cantidadOro, "dado_recompensa_oro", String(recompensaId));
+  if (tipoResultado === "oro" && cantidadOro && cantidadOro > 0) {
+    await modifyGold(user.id, cantidadOro, "dado_recompensa_oro", undefined);
   }
 
   // Guardar historial

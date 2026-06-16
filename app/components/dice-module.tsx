@@ -8,7 +8,6 @@ import type { DadoRecompensa, RollResult, LutCaraResult } from "@/lib/types/dado
 
 type Props = {
   token: string | null;
-  activeCharacterId?: number;
 };
 
 type AlertState = {
@@ -41,7 +40,7 @@ function rewardDescription(r: DadoRecompensa): string {
   return "";
 }
 
-export default function DiceModule({ token, activeCharacterId }: Props) {
+export default function DiceModule({ token }: Props) {
   const [recompensas, setRecompensas] = useState<DadoRecompensa[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -86,7 +85,7 @@ export default function DiceModule({ token, activeCharacterId }: Props) {
   }
 
   async function handleRoll() {
-    if (!selectedReward || !activeCharacterId || rollingState === "rolling") return;
+    if (!selectedReward || rollingState === "rolling") return;
 
     setRollingState("rolling");
     setRollResult(null);
@@ -101,7 +100,6 @@ export default function DiceModule({ token, activeCharacterId }: Props) {
         },
         body: JSON.stringify({
           recompensa_id: selectedReward.id,
-          personaje_id: activeCharacterId,
           cantidad: selectedReward.tipo === "lut" ? cantidad : 1,
         }),
       });
@@ -291,11 +289,7 @@ export default function DiceModule({ token, activeCharacterId }: Props) {
                     )}
 
                     {/* Botón */}
-                    {!activeCharacterId ? (
-                      <p className="text-[11px] text-foreground/40 italic font-sans">
-                        Selecciona un personaje para tirar
-                      </p>
-                    ) : rollingState === "done" ? (
+                    {rollingState === "done" ? (
                       <button
                         onClick={handleRollAgain}
                         className="px-3 py-1 rounded border border-gold-dim/60 text-xs text-gold/80 hover:border-gold hover:text-gold transition-colors font-sans"

@@ -803,7 +803,7 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
                 </Select>
               </div>
             )}
-            <DiceModule token={token} activeCharacterId={testCharacterId ?? undefined} />
+            <DiceModule token={token} />
           </div>
         </div>
       )}
