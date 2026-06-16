@@ -256,7 +256,6 @@ export async function POST(request: Request) {
 
   let tipoResultado: "item" | "oro" = "item";
   let objetoId: number | null = null;
-  let cantidadObjeto = 1;
   let cantidadOro: number | null = null;
 
   if (recompensa.tipo === "item_fijo") {
@@ -297,7 +296,7 @@ export async function POST(request: Request) {
     resultados_dados: resultados,
     tipo_resultado: tipoResultado,
     objeto_id: objetoId,
-    cantidad_objeto: tipoResultado === "item" ? cantidadObjeto : null,
+    cantidad_objeto: tipoResultado === "item" ? 1 : null,
     cantidad_oro: tipoResultado === "oro" ? cantidadOro : null,
     costo_pagado: recompensa.costo_oro,
   });
