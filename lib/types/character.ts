@@ -63,7 +63,7 @@ export type ClassEntry = {
 
 export type Character = {
   id: number;
-  userId: string;
+  userId?: string;
   name: string;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;

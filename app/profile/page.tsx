@@ -10,7 +10,6 @@ import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import PortraitPicker from "./components/portrait-picker";
-import { Shield, Settings, Activity } from "lucide-react";
 import SpellsRegistry from "./components/spells-registry";
 import { getCasterType, getMaxKnownSpells } from "@/lib/spells";
 
@@ -87,6 +86,7 @@ type ClassEntry = {
 
 type Character = {
   id: number;
+  userId?: string;
   name: string;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
@@ -172,6 +172,7 @@ export default function ProfilePage() {
     race: string;
     multiclass: ClassEntry[];
     alignment: string;
+    knownSpellsInput: string;
   }>({
     name: "",
     race: "",
@@ -286,12 +287,12 @@ export default function ProfilePage() {
       setProfile((prev) =>
         prev
           ? {
-              ...prev,
-              player: {
-                ...prev.player,
-                nivel20Url: persistedValue,
-              },
-            }
+            ...prev,
+            player: {
+              ...prev.player,
+              nivel20Url: persistedValue,
+            },
+          }
           : prev,
       );
       setNivel20UrlInput(persistedValue ?? "");
@@ -440,13 +441,13 @@ export default function ProfilePage() {
         characters: profile.characters.map((char) =>
           char.id === characterId
             ? {
-                ...char,
-                ...(updatedCharacter ?? {}),
-                bag: { ...char.bag, items: itemsToSave },
-                armor: characterToSave.armor,
-                accessories: characterToSave.accessories,
-                weapons: characterToSave.weapons,
-              }
+              ...char,
+              ...(updatedCharacter ?? {}),
+              bag: { ...char.bag, items: itemsToSave },
+              armor: characterToSave.armor,
+              accessories: characterToSave.accessories,
+              weapons: characterToSave.weapons,
+            }
             : char,
         ),
       });
@@ -471,9 +472,9 @@ export default function ProfilePage() {
       // Parsear conjuros ingresados
       const parsedSpells = (newCharacter as any).knownSpellsInput
         ? (newCharacter as any).knownSpellsInput
-            .split(",")
-            .map((s: string) => s.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
         : [];
 
       const payload = {
@@ -825,11 +826,10 @@ export default function ProfilePage() {
                 <button
                   disabled={reachedCharacterLimit}
                   onClick={() => setShowCreateModal(true)}
-                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${
-                    reachedCharacterLimit
+                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${reachedCharacterLimit
                       ? "bg-secondary text-muted-foreground cursor-not-allowed"
                       : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
-                  }`}
+                    }`}
                   title={
                     reachedCharacterLimit
                       ? `Limite alcanzado (${characters.length}/${maxCharacterSlots}).`
@@ -1101,9 +1101,8 @@ export default function ProfilePage() {
                       {character.name}
                     </h2>
                     <p
-                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${
-                        character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
-                      }`}
+                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
+                        }`}
                     >
                       {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
                     </p>
