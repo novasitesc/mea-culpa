@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
@@ -10,7 +10,9 @@ import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import PortraitPicker from "./components/portrait-picker";
+import { Shield, Settings, Activity } from "lucide-react";
 import SpellsRegistry from "./components/spells-registry";
+import { getCasterType, getMaxKnownSpells } from "@/lib/spells";
 
 type Player = {
   name: string;
@@ -175,6 +177,7 @@ export default function ProfilePage() {
     race: "",
     multiclass: [{ className: "", level: 1 }],
     alignment: "",
+    knownSpellsInput: "",
   });
 
   const showProfileAlert = (
@@ -313,9 +316,12 @@ export default function ProfilePage() {
     }
   };
 
-  const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token) return;
+  const isFetchingSleep = useRef(false);
 
+  const loadSleepStatus = useCallback(async () => {
+    if (!isAuthenticated || !token || isFetchingSleep.current) return;
+
+    isFetchingSleep.current = true;
     setLoadingSleepStatus(true);
     try {
       const res = await fetch("/api/profile/sleep-options", {
@@ -332,6 +338,7 @@ export default function ProfilePage() {
       console.error("Error loading sleep status:", error);
     } finally {
       setLoadingSleepStatus(false);
+      setTimeout(() => { isFetchingSleep.current = false; }, 1000); // Cooldown de 1s para evitar ráfagas
     }
   }, [isAuthenticated, token]);
 
@@ -461,12 +468,25 @@ export default function ProfilePage() {
 
     setIsCreating(true);
     try {
+      // Parsear conjuros ingresados
+      const parsedSpells = (newCharacter as any).knownSpellsInput
+        ? (newCharacter as any).knownSpellsInput
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+        : [];
+
+      const payload = {
+        ...newCharacter,
+        knownSpells: parsedSpells,
+      };
+
       const response = await fetch("/api/profile/create-character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
-          characterData: newCharacter,
+          characterData: payload,
         }),
       });
 
@@ -486,6 +506,7 @@ export default function ProfilePage() {
         race: "",
         multiclass: [{ className: "", level: 1 }],
         alignment: "",
+        knownSpellsInput: "",
       });
       setShowCreateModal(false);
       showProfileAlert(
@@ -646,7 +667,7 @@ export default function ProfilePage() {
 
     const intervalId = window.setInterval(() => {
       loadSleepStatus();
-    }, 30000);
+    }, 60000); // Cambiado a 60s para reducir tráfico
 
     return () => window.clearInterval(intervalId);
   }, [isAuthenticated, token, loadSleepStatus]);
@@ -1133,7 +1154,7 @@ export default function ProfilePage() {
 
                   <EquipmentPreview character={character} />
 
-                  <SpellsRegistry character={character} />
+                  <SpellsRegistry character={character} token={token} />
 
                   <div className="flex justify-end mt-2">
                     <button
@@ -1459,6 +1480,39 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              {/* Sección de Conjuros Conocidos (Solo si aplica a la clase elegida) */}
+              {(() => {
+                let totalMaxKnown = 0;
+                newCharacter.multiclass.forEach(c => {
+                  if (c.className && getCasterType(c.className) === "known") {
+                    totalMaxKnown += getMaxKnownSpells(c.className, c.level);
+                  }
+                });
+
+                if (totalMaxKnown > 0) {
+                  return (
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Conjuros Conocidos Iniciales
+                      </label>
+                      <input
+                        type="text"
+                        value={(newCharacter as any).knownSpellsInput ?? ""}
+                        onChange={(e) => {
+                          setNewCharacter(prev => ({ ...prev, knownSpellsInput: e.target.value }));
+                        }}
+                        className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        placeholder="Ej: Curar heridas, Escudo, Proyectil Mágico (separados por coma)"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-4">
                   📝 Nota: Los atributos y equipo inicial se generarán
@@ -1473,6 +1527,7 @@ export default function ProfilePage() {
                         race: "",
                         multiclass: [{ className: "", level: 1 }],
                         alignment: "",
+                        knownSpellsInput: "",
                       });
                     }}
                     disabled={isCreating}

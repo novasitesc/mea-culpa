@@ -3,10 +3,8 @@
 import { useState } from "react";
 import { getCasterType, getPreparedSpellsCount, getMaxKnownSpells } from "@/lib/spells";
 import { Character, ClassEntry } from "@/lib/types/character";
-import { useAuth } from "@/lib/useAuth";
 
-export default function SpellsRegistry({ character }: { character: Character }) {
-  const { token } = useAuth();
+export default function SpellsRegistry({ character, token }: { character: Character, token: string }) {
   const [knownSpells, setKnownSpells] = useState<string[]>(character.knownSpells || []);
   const [newSpellInput, setNewSpellInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);

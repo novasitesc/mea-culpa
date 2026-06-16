@@ -173,6 +173,7 @@ export async function POST(request: Request) {
         alineamiento: alignment,
         retrato: "/characters/profileplaceholder.webp",
         capacidad_bolsa: capacidadBolsa,
+        conjuros_conocidos: characterData.knownSpells || [],
       })
       .select("id")
       .single();
@@ -227,6 +228,7 @@ export async function POST(request: Request) {
         race: race.trim(),
         alignment,
         portrait: "/characters/profileplaceholder.webp",
+        knownSpells: characterData.knownSpells || [],
         stats: {
           str: stats.fuerza,
           dex: stats.destreza,

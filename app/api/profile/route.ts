@@ -80,7 +80,6 @@ export async function GET(request: Request) {
       estado_vida,
       muerto_en,
       revivido_en,
-      conjuros_conocidos,
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
@@ -104,6 +103,22 @@ export async function GET(request: Request) {
     )
     .eq("usuario_id", userId)
     .order("numero_slot", { ascending: true });
+
+  // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
+  let spellsByCharId: Record<string, string[]> = {};
+  try {
+    const { data: spellRows } = await db
+      .from("personajes")
+      .select("id, conjuros_conocidos")
+      .eq("usuario_id", userId);
+    if (spellRows) {
+      for (const row of spellRows as any[]) {
+        spellsByCharId[row.id] = row.conjuros_conocidos ?? [];
+      }
+    }
+  } catch {
+    // Column doesn't exist yet — safe to ignore
+  }
 
   // Resolver IDs de equipamiento a nombres de objetos (la DB guarda BIGINTs)
   const allEquipIds = new Set<number>();
@@ -227,7 +242,7 @@ export async function GET(request: Request) {
       lifeStatus: p.estado_vida ?? "vivo",
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
-      knownSpells: p.conjuros_conocidos ?? [],
+      knownSpells: spellsByCharId[p.id] ?? [],
       stats: stats
         ? {
             str: stats.fuerza,
