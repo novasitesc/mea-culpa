@@ -42,9 +42,12 @@ export type SubtablaCara = {
   id: number
   recompensaId: number
   numeroCara: number
+  tipo: 'nada' | 'item' | 'oro'
   objetoId: number | null
   objetoNombre: string | null
   objetoIcono: string | null
+  oroMin: number
+  oroMax: number
 }
 
 export type DadoRecompensa = {
@@ -80,6 +83,7 @@ export type LutCaraResult = {
     subtablaId: number
     cara: number
     objeto: { id: number; nombre: string; icono: string } | null
+    cantidadOro?: number
   }
 }
 

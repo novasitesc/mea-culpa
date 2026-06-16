@@ -106,8 +106,8 @@ export default function DiceModule({ token }: Props) {
 
       const data = await res.json();
 
-      // Esperar que la animación termine (~1.4s) antes de mostrar resultado
-      await new Promise((resolve) => setTimeout(resolve, 1400));
+      // Esperar que la animación termine antes de mostrar resultado
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (!res.ok) {
         setRollingState("idle");
@@ -139,7 +139,7 @@ export default function DiceModule({ token }: Props) {
         setAlert({ variant: "success", message: `¡Obtuviste ${data.objeto.nombre}!` });
       }
     } catch {
-      await new Promise((resolve) => setTimeout(resolve, 1400));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setRollingState("idle");
       setAlert({ variant: "error", message: "Error de conexión" });
     }
@@ -365,6 +365,10 @@ export default function DiceModule({ token }: Props) {
                           {r.subRoll.objeto ? (
                             <span className="text-green-400 font-semibold">
                               {r.subRoll.objeto.icono} {r.subRoll.objeto.nombre}
+                            </span>
+                          ) : r.subRoll.cantidadOro !== undefined ? (
+                            <span className="text-gold font-semibold">
+                              +{r.subRoll.cantidadOro} oro
                             </span>
                           ) : (
                             <span className="text-foreground/40 italic">Nada</span>

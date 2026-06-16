@@ -42,9 +42,12 @@ function mapSubtablaCaras(rows: any[]) {
         id: c.id,
         recompensaId: c.recompensa_id,
         numeroCara: c.numero_cara,
+        tipo: c.tipo ?? "nada",
         objetoId: c.objeto_id ?? null,
         objetoNombre: obj?.nombre ?? null,
         objetoIcono: obj?.icono ?? null,
+        oroMin: c.oro_min ?? 0,
+        oroMax: c.oro_max ?? 0,
       };
     })
     .sort((a: any, b: any) => a.numeroCara - b.numeroCara);
@@ -77,7 +80,7 @@ export async function GET(request: Request) {
 
   const { data: subtablaCarasData } = await session.db
     .from("dados_subtabla_caras")
-    .select(`id, recompensa_id, numero_cara, objeto_id, objeto:objeto_id(id, nombre, icono)`);
+    .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, objeto:objeto_id(id, nombre, icono)`);
 
   const lutMap = new Map<number, any[]>();
   for (const row of lutCarasData ?? []) {
@@ -258,7 +261,10 @@ export async function POST(request: Request) {
       .map((c: any) => ({
         recompensa_id: data.id,
         numero_cara: Number(c.numeroCara),
-        objeto_id: c.objetoId ? Number(c.objetoId) : null,
+        tipo: ["nada", "item", "oro"].includes(c.tipo) ? c.tipo : "nada",
+        objeto_id: c.tipo === "item" && c.objetoId ? Number(c.objetoId) : null,
+        oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : 0,
+        oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 0,
       }));
 
     if (subRows.length > 0) {
@@ -377,7 +383,10 @@ export async function PUT(request: Request) {
       .map((c: any) => ({
         recompensa_id: Math.floor(id),
         numero_cara: Number(c.numeroCara),
-        objeto_id: c.objetoId ? Number(c.objetoId) : null,
+        tipo: ["nada", "item", "oro"].includes(c.tipo) ? c.tipo : "nada",
+        objeto_id: c.tipo === "item" && c.objetoId ? Number(c.objetoId) : null,
+        oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : 0,
+        oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 0,
       }));
 
     if (subRows.length > 0) {

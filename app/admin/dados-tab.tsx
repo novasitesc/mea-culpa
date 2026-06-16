@@ -32,9 +32,14 @@ type LutCaraForm = {
   subtablaId: number | null;
 };
 
+type SubtablaCaraTipo = "nada" | "item" | "oro";
+
 type SubtablaCaraForm = {
   numeroCara: number;
+  tipo: SubtablaCaraTipo;
   objetoId: number | null;
+  oroMin: string;
+  oroMax: string;
 };
 
 type RecompensaFull = {
@@ -73,7 +78,10 @@ type RecompensaFull = {
   subtablaCaras?: Array<{
     id: number;
     numeroCara: number;
+    tipo: SubtablaCaraTipo;
     objetoId: number | null;
+    oroMin: number;
+    oroMax: number;
   }>;
 };
 
@@ -114,7 +122,13 @@ function makeEmptyLutCaras(): LutCaraForm[] {
 }
 
 function makeEmptySubtablaCaras(): SubtablaCaraForm[] {
-  return Array.from({ length: 20 }, (_, i) => ({ numeroCara: i + 1, objetoId: null }));
+  return Array.from({ length: 20 }, (_, i) => ({
+    numeroCara: i + 1,
+    tipo: "nada" as SubtablaCaraTipo,
+    objetoId: null,
+    oroMin: "10",
+    oroMax: "50",
+  }));
 }
 
 const emptyForm = {
@@ -206,7 +220,14 @@ export function DadosTab({ token }: { token: string | null }) {
 
     const subtablaCaras = makeEmptySubtablaCaras().map((empty) => {
       const saved = r.subtablaCaras?.find((c) => c.numeroCara === empty.numeroCara);
-      return saved ? { numeroCara: saved.numeroCara, objetoId: saved.objetoId } : empty;
+      if (!saved) return empty;
+      return {
+        numeroCara: saved.numeroCara,
+        tipo: (saved.tipo ?? "nada") as SubtablaCaraTipo,
+        objetoId: saved.objetoId,
+        oroMin: String(saved.oroMin ?? 10),
+        oroMax: String(saved.oroMax ?? 50),
+      };
     });
 
     setForm({
@@ -269,10 +290,10 @@ export function DadosTab({ token }: { token: string | null }) {
     }));
   }
 
-  function updateSubtablaCara(idx: number, objetoId: number | null) {
+  function updateSubtablaCara(idx: number, field: keyof SubtablaCaraForm, value: unknown) {
     setForm((f) => ({
       ...f,
-      subtablaCaras: f.subtablaCaras.map((c, i) => (i === idx ? { ...c, objetoId } : c)),
+      subtablaCaras: f.subtablaCaras.map((c, i) => (i === idx ? { ...c, [field]: value } : c)),
     }));
   }
 
@@ -316,7 +337,10 @@ export function DadosTab({ token }: { token: string | null }) {
           form.tipo === "subtabla"
             ? form.subtablaCaras.map((c) => ({
                 numeroCara: c.numeroCara,
-                objetoId: c.objetoId,
+                tipo: c.tipo,
+                objetoId: c.tipo === "item" ? c.objetoId : null,
+                oroMin: c.tipo === "oro" ? parseInt(c.oroMin) || 0 : 0,
+                oroMax: c.tipo === "oro" ? parseInt(c.oroMax) || 0 : 0,
               }))
             : [],
         ...(editingId !== "new" ? { id: editingId } : {}),
@@ -692,11 +716,11 @@ export function DadosTab({ token }: { token: string | null }) {
                 </div>
               )}
 
-              {/* Subtabla — 20 caras: ítem o nada */}
+              {/* Subtabla — 20 caras: ítem, oro o nada */}
               {form.tipo === "subtabla" && (
                 <div className="space-y-2">
                   <label className="text-xs text-foreground/60 font-sans">
-                    Caras del D20 — ítem o vacío (= Nada)
+                    Caras del D20 — ítem, oro o nada
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {form.subtablaCaras.map((cara, idx) => (
@@ -705,23 +729,52 @@ export function DadosTab({ token }: { token: string | null }) {
                           <span className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/30 text-gold text-xs font-bold font-sans">
                             {cara.numeroCara}
                           </span>
-                          {cara.objetoId !== null && (
-                            <button
-                              onClick={() => updateSubtablaCara(idx, null)}
-                              className="ml-auto p-1 text-foreground/30 hover:text-red-400 transition-colors"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <Select
+                            value={cara.tipo}
+                            onChange={(e) => {
+                              updateSubtablaCara(idx, "tipo", e.target.value as SubtablaCaraTipo);
+                              if (e.target.value !== "item") updateSubtablaCara(idx, "objetoId", null);
+                            }}
+                            className="flex-1 text-xs py-1 h-auto"
+                          >
+                            <option value="nada">Nada</option>
+                            <option value="item">Ítem</option>
+                            <option value="oro">Oro</option>
+                          </Select>
                         </div>
-                        <ObjectSelector
-                          items={objectSelectorItems}
-                          value={cara.objetoId}
-                          onChange={(v) => updateSubtablaCara(idx, v)}
-                          placeholder="Nada"
-                          searchable
-                          searchPlaceholder="Buscar ítem…"
-                        />
+
+                        {cara.tipo === "item" && (
+                          <ObjectSelector
+                            items={objectSelectorItems}
+                            value={cara.objetoId}
+                            onChange={(v) => updateSubtablaCara(idx, "objetoId", v)}
+                            placeholder="Seleccionar ítem…"
+                            searchable
+                            searchPlaceholder="Buscar ítem…"
+                          />
+                        )}
+
+                        {cara.tipo === "oro" && (
+                          <div className="flex gap-1.5 items-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={cara.oroMin}
+                              onChange={(e) => updateSubtablaCara(idx, "oroMin", e.target.value)}
+                              placeholder="Mín"
+                              className="w-full rounded border border-border/40 bg-background px-2 py-1 text-xs text-foreground placeholder:text-foreground/30 outline-none"
+                            />
+                            <span className="text-foreground/40 text-xs shrink-0">–</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={cara.oroMax}
+                              onChange={(e) => updateSubtablaCara(idx, "oroMax", e.target.value)}
+                              placeholder="Máx"
+                              className="w-full rounded border border-border/40 bg-background px-2 py-1 text-xs text-foreground placeholder:text-foreground/30 outline-none"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

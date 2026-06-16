@@ -163,17 +163,21 @@ export async function POST(request: Request) {
         // Obtener sub-tabla
         const { data: subtabla } = await db
           .from("dados_recompensas")
-          .select("id, nombre, dados_subtabla_caras(numero_cara, objeto_id)")
+          .select("id, nombre, dados_subtabla_caras(numero_cara, tipo, objeto_id, oro_min, oro_max)")
           .eq("id", caraConfig.subtabla_id)
           .maybeSingle();
 
         const subCara = rollDie("d20");
         const subtablaCaras = (subtabla?.dados_subtabla_caras ?? []) as Array<{
           numero_cara: number;
+          tipo: string;
           objeto_id: number | null;
+          oro_min: number;
+          oro_max: number;
         }>;
         const subCaraConfig = subtablaCaras.find((c) => c.numero_cara === subCara);
-        const subObjetoId = subCaraConfig?.objeto_id ?? null;
+        const subTipo = subCaraConfig?.tipo ?? "nada";
+        const subObjetoId = subTipo === "item" ? (subCaraConfig?.objeto_id ?? null) : null;
 
         let subObjeto: { id: number; nombre: string; icono: string } | null = null;
         if (subObjetoId) {
@@ -185,6 +189,17 @@ export async function POST(request: Request) {
           if (obj) subObjeto = { id: obj.id, nombre: obj.nombre, icono: obj.icono };
         }
 
+        let subCantidadOro: number | undefined;
+        if (subTipo === "oro") {
+          const oroMin = subCaraConfig?.oro_min ?? 0;
+          const oroMax = subCaraConfig?.oro_max ?? 0;
+          const range = Math.max(0, oroMax - oroMin);
+          subCantidadOro = oroMin + Math.floor(Math.random() * (range + 1));
+          if (subCantidadOro > 0) {
+            await modifyGold(user.id, subCantidadOro, "dado_recompensa_oro", undefined);
+          }
+        }
+
         lutResultados.push({
           cara: primaryCara,
           tipo: "subtabla",
@@ -193,6 +208,7 @@ export async function POST(request: Request) {
             subtablaId: caraConfig.subtabla_id,
             cara: subCara,
             objeto: subObjeto,
+            cantidadOro: subCantidadOro,
           },
         });
 
@@ -200,10 +216,10 @@ export async function POST(request: Request) {
           usuario_id: user.id,
           recompensa_id: recompensaId,
           resultados_dados: [primaryCara, subCara],
-          tipo_resultado: "subtabla",
+          tipo_resultado: subTipo === "oro" ? "oro" : "subtabla",
           objeto_id: subObjetoId,
           cantidad_objeto: subObjetoId ? 1 : null,
-          cantidad_oro: null,
+          cantidad_oro: subCantidadOro ?? null,
           costo_pagado: recompensa.costo_oro,
         });
         continue;
