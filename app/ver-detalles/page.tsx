@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
@@ -36,7 +36,7 @@ type Character = {
   multiclass?: { className: string; level: number }[];
 };
 
-export default function VerDetallesPage() {
+function VerDetallesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token, isLoading, isAuthenticated } = useAuth();
@@ -420,5 +420,17 @@ export default function VerDetallesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerDetallesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37]" />
+      </div>
+    }>
+      <VerDetallesContent />
+    </Suspense>
   );
 }
