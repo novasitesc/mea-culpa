@@ -133,9 +133,7 @@ const emptyForm = {
   subtablaCaras: makeEmptySubtablaCaras(),
 };
 
-type AdminCharacter = { id: number; name: string };
-
-export function DadosTab({ token, userId }: { token: string | null; userId?: string }) {
+export function DadosTab({ token }: { token: string | null }) {
   const [recompensas, setRecompensas] = useState<RecompensaFull[]>([]);
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,8 +143,6 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
   const [deleteTarget, setDeleteTarget] = useState<RecompensaFull | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [testCharacters, setTestCharacters] = useState<AdminCharacter[]>([]);
-  const [testCharacterId, setTestCharacterId] = useState<number | null>(null);
 
   const headers = useCallback(
     () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }),
@@ -161,9 +157,7 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
         fetch("/api/dados/admin", { headers: headers() }),
         fetch("/api/admin/objetos", { headers: headers() }),
       ];
-      if (userId) fetches.push(fetch(`/api/profile?userId=${userId}`, { headers: headers() }));
-
-      const [rRes, oRes, pRes] = await Promise.all(fetches);
+      const [rRes, oRes] = await Promise.all(fetches);
       if (rRes.ok) {
         const d = await rRes.json();
         setRecompensas(d.recompensas ?? []);
@@ -172,18 +166,10 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
         const d = await oRes.json();
         setObjects(Array.isArray(d) ? d : (d.objects ?? d.objetos ?? []));
       }
-      if (pRes?.ok) {
-        const d = await pRes.json();
-        const chars: AdminCharacter[] = (d.characters ?? [])
-          .filter((c: any) => c.lifeStatus !== "muerto")
-          .map((c: any) => ({ id: c.id, name: c.name }));
-        setTestCharacters(chars);
-        if (chars.length > 0) setTestCharacterId(chars[0].id);
-      }
     } finally {
       setLoading(false);
     }
-  }, [token, userId, headers]);
+  }, [token, headers]);
 
   useEffect(() => {
     fetchData();
@@ -788,21 +774,7 @@ export function DadosTab({ token, userId }: { token: string | null; userId?: str
             <Dices className="w-4 h-4 text-gold/70" />
             <span className="text-sm font-serif text-gold">Probar tirador</span>
           </div>
-          <div className="p-3 space-y-3">
-            {testCharacters.length > 0 && (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-foreground/60 font-sans shrink-0">Personaje:</label>
-                <Select
-                  value={testCharacterId?.toString() ?? ""}
-                  onChange={(e) => setTestCharacterId(e.target.value ? Number(e.target.value) : null)}
-                  className="text-xs py-1 h-auto"
-                >
-                  {testCharacters.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </Select>
-              </div>
-            )}
+          <div className="p-3">
             <DiceModule token={token} />
           </div>
         </div>

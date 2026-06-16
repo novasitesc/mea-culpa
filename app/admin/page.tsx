@@ -4134,7 +4134,7 @@ export default function AdminPage() {
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "dados" && (
-              <DadosTab token={token} userId={user?.id} />
+              <DadosTab token={token} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />
