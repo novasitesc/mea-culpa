@@ -7,6 +7,7 @@ import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { useAuth } from "@/lib/useAuth";
+import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
 type OpenPartida = {
   id: string;
@@ -34,6 +35,8 @@ type Character = {
   id: number;
   name: string;
   lifeStatus: "vivo" | "muerto";
+  portrait?: string | null;
+  multiclass?: { className: string; level: number }[];
 };
 
 type ProfileResponse = {
@@ -303,6 +306,22 @@ export default function PartidasPage() {
     [characters],
   );
 
+  const selectedCharacterData = useMemo(
+    () => characters.find((character) => String(character.id) === selectedCharacter),
+    [characters, selectedCharacter],
+  );
+
+  const selectedCharacterPortrait = useMemo(() => {
+    if (
+      selectedCharacterData?.portrait &&
+      selectedCharacterData.portrait !== "/characters/profileplaceholder.webp"
+    ) {
+      return selectedCharacterData.portrait;
+    }
+    const primaryClass = selectedCharacterData?.multiclass?.[0]?.className ?? null;
+    return getCharacterPortraitByClass(primaryClass);
+  }, [selectedCharacterData]);
+
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -363,15 +382,14 @@ export default function PartidasPage() {
                       </div>
                       <div className="flex gap-2 flex-wrap justify-end">
                         <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] bg-[#1d1914] text-[#D4AF37] border border-[#6b531f]/80">
-                          Tier {selectedGameDetail.tier}
+                          Tier {["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][selectedGameDetail.tier]}
                         </span>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${
-                          selectedGameDetail.isFull
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${selectedGameDetail.isFull
                             ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
                             : selectedGameDetail.inCooldown
-                            ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
-                            : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
-                        }`}>
+                              ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
+                              : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
+                          }`}>
                           {selectedGameDetail.isFull ? "Llena" : selectedGameDetail.inCooldown ? "En progreso" : "Abierta"}
                         </span>
                       </div>
@@ -417,11 +435,10 @@ export default function PartidasPage() {
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-[#12100b] border border-white/10">
                           <div
-                            className={`h-full rounded-full ${
-                              selectedGameDetail.participantCount === selectedGameDetail.maxPlayers
+                            className={`h-full rounded-full ${selectedGameDetail.participantCount === selectedGameDetail.maxPlayers
                                 ? "bg-red-500"
                                 : "bg-gradient-to-r from-[#D4AF37] via-[#B8860B] to-[#8B7355]"
-                            }`}
+                              }`}
                             style={{ width: `${Math.min(100, Math.round((selectedGameDetail.participantCount / selectedGameDetail.maxPlayers) * 100))}%` }}
                           />
                         </div>
@@ -440,21 +457,44 @@ export default function PartidasPage() {
                           {characters.length ? (
                             <>
                               <option value="">Selecciona personaje</option>
-                              {characters.map((character) => (
-                                <option
-                                  key={character.id}
-                                  value={character.id}
-                                  disabled={character.lifeStatus === "muerto"}
-                                >
-                                  {character.name}
-                                  {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
-                                </option>
-                              ))}
+                              {characters.map((character) => {
+                                const primaryClassName = character.multiclass?.[0]?.className;
+                                return (
+                                  <option
+                                    key={character.id}
+                                    value={character.id}
+                                    disabled={character.lifeStatus === "muerto"}
+                                  >
+                                    {character.name}
+                                    {primaryClassName ? ` — ${primaryClassName}` : ""}
+                                    {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
+                                  </option>
+                                );
+                              })}
                             </>
                           ) : (
                             <option value="">No tienes personajes</option>
                           )}
                         </select>
+
+                        {/* Previsualización del personaje seleccionado */}
+                        {selectedCharacterData && (
+                          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#453b28] bg-[#11100c] p-3">
+                            <img
+                              src={selectedCharacterPortrait}
+                              alt={selectedCharacterData.name}
+                              className="h-16 w-16 rounded-xl object-cover border border-[#6b531f]/70"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-[#D4AF37]">
+                                {selectedCharacterData.name}
+                              </p>
+                              <p className="text-xs text-[#c8b78e]">
+                                {selectedCharacterData.multiclass?.[0]?.className || "Clase no definida"}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <button
@@ -471,10 +511,10 @@ export default function PartidasPage() {
                         {joiningDetail || leavingDetail
                           ? "Procesando..."
                           : selectedGameDetail.joinedCharacterIds?.length
-                          ? "Salir"
-                          : selectedGameDetail.isFull
-                          ? "Llena"
-                          : "Unirse"}
+                            ? "Salir"
+                            : selectedGameDetail.isFull
+                              ? "Llena"
+                              : "Unirse"}
                       </button>
                     </div>
 
@@ -519,10 +559,10 @@ export default function PartidasPage() {
                       const alreadyJoined = game.joinedCharacterIds.length > 0;
                       const canJoin = !game.isFull && !alreadyJoined && !game.inCooldown;
                       const progress = Math.min(100, Math.round((game.participantCount / game.maxPlayers) * 100));
-                      const tierLabel = `Tier ${game.tier}`;
+                      const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][game.tier];
+                      const tierLabel = `Tier ${tierRoman}`;
                       const tierStyles =
-                        game.tier === 1
-                          ? "bg-[#1a2a17]/90 text-emerald-300 border border-emerald-600"
+                        game.tier === 1 ? "bg-[#1a2a17]/90 text-emerald-300 border border-emerald-600"
                           : game.tier === 2
                             ? "bg-[#15233c]/90 text-sky-300 border border-sky-600"
                             : "bg-[#3f1724]/90 text-rose-300 border border-rose-600";
@@ -533,6 +573,7 @@ export default function PartidasPage() {
                           className="relative overflow-hidden rounded-[1.5rem] border border-[#5f4b2f] bg-[#0d0b07]/95 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.8)]"
                         >
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(212,175,55,0.08),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(255,255,255,0.04),_transparent_35%)] pointer-events-none" />
+
                           <div className="relative flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5">
                             <div className="flex items-start justify-between gap-3">
                               <div>
@@ -543,112 +584,61 @@ export default function PartidasPage() {
                                   {game.title}
                                 </h2>
                               </div>
-                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${tierStyles}`}>
-                                {tierLabel}
-                              </span>
                             </div>
 
-                            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                              <p className="line-clamp-3 text-sm leading-6 text-[#d4c391]">
-                                {game.comment || "Partida sin descripción adicional."}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-[#1a1b16] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-[#d4af37] border border-[#59481f]/60">
-                                  Piso {game.floor}
-                                </span>
-                                <span className="rounded-full bg-[#1a1b16] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-[#d4af37] border border-[#59481f]/60">
-                                  {game.participantCount}/{game.maxPlayers}
-                                </span>
-                                <span className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${
-                                  game.isFull
+                            <div className="flex items-center justify-between gap-3">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${tierStyles}`}
+                              >
+                                {tierLabel}
+                              </span>
+
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${game.isFull
                                     ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
                                     : game.inCooldown
                                       ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
                                       : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
-                                }`}>
-                                  {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
-                                </span>
-                              </div>
+                                  }`}
+                              >
+                                {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
+                              </span>
                             </div>
 
-                            <div className="grid gap-2 sm:grid-cols-2 text-[12px] text-[#c8b78e]">
+                            <div className="grid gap-2 text-sm text-muted-foreground">
+                              <p className="line-clamp-3 text-sm leading-6 text-[#d4c391]">
+                                {game.comment || "Partida sin descripción adicional."}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 text-[12px] text-[#c8b78e]">
                               <div className="flex items-center gap-2 rounded-3xl border border-white/10 bg-white/5 px-3 py-2">
                                 <Clock className="w-4 h-4 text-[#D4AF37]" />
                                 <span>
                                   {game.startTime
                                     ? `${new Date(game.startTime).toLocaleDateString("es-ES", {
-                                        day: "2-digit",
-                                        month: "short",
-                                      })} · ${new Date(game.startTime).toLocaleTimeString("es-ES", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}`
+                                      day: "2-digit",
+                                      month: "short",
+                                    })} · ${new Date(game.startTime).toLocaleTimeString("es-ES", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}`
                                     : "Hora por definir"}
                                 </span>
                               </div>
-                              <div className="space-y-2 rounded-3xl border border-white/10 bg-white/5 px-3 py-2">
-                                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.28em] text-[#c8b78e]">
-                                  <span>Progreso</span>
-                                  <span>{progress}%</span>
-                                </div>
-                                <div className="h-2 overflow-hidden rounded-full bg-[#12100b] border border-white/10">
-                                  <div
-                                    className={`h-full rounded-full ${
-                                      progress === 100
-                                        ? "bg-red-500"
-                                        : "bg-gradient-to-r from-[#D4AF37] via-[#B8860B] to-[#8B7355]"
-                                    }`}
-                                    style={{ width: `${progress}%` }}
-                                  />
-                                </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-[#1a1b16] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-[#d4af37] border border-[#59481f]/60">
+                                  Piso {game.floor}
+                                </span>
+
+                                <span className="rounded-full bg-[#1a1b16] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-[#d4af37] border border-[#59481f]/60">
+                                  {game.participantCount}/{game.maxPlayers}
+                                </span>
                               </div>
                             </div>
 
                             <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
-                              {/* <select
-                                value={selectedCharacterByGame[game.id] ?? ""}
-                                onChange={(e) =>
-                                  setSelectedCharacterByGame((prev) => ({
-                                    ...prev,
-                                    [game.id]: e.target.value ? Number(e.target.value) : 0,
-                                  }))
-                                }
-                                disabled={!canJoin || !hasAliveCharacters}
-                                className="w-full rounded-2xl border border-[#453b28] bg-[#11100c] px-3 py-2 text-sm text-foreground outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                <option value="">Selecciona personaje</option>
-                                {characters.map((character) => (
-                                  <option
-                                    key={character.id}
-                                    value={character.id}
-                                    disabled={
-                                      game.joinedCharacterIds.includes(character.id) ||
-                                      character.lifeStatus === "muerto"
-                                    }
-                                  >
-                                    {character.name}
-                                    {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
-                                  </option>
-                                ))}
-                              </select> */}
-
-                              {/* <button
-                                type="button"
-                                onClick={() => void joinGame(game.id)}
-                                disabled={!canJoin || joiningGameId === game.id || !hasAliveCharacters}
-                                className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
-                              >
-                                {joiningGameId === game.id
-                                  ? "Uniéndote..."
-                                  : alreadyJoined
-                                    ? "Ya estás inscrito"
-                                    : game.inCooldown
-                                      ? "Cooldown 24h"
-                                      : game.isFull
-                                        ? "Llena"
-                                        : "Unirse"}
-                              </button> */}
-
                               <button
                                 type="button"
                                 onClick={() => void loadGameDetail(game.id)}

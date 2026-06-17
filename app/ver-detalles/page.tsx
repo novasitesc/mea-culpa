@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
+import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
 type OpenPartida = {
   id: string;
@@ -31,6 +32,8 @@ type Character = {
   id: number;
   name: string;
   lifeStatus: "vivo" | "muerto";
+  portrait?: string | null;
+  multiclass?: { className: string; level: number }[];
 };
 
 function VerDetallesContent() {
@@ -51,6 +54,23 @@ function VerDetallesContent() {
     () => !!game?.joinedCharacterIds?.length,
     [game?.joinedCharacterIds],
   );
+
+  const selectedCharacterData = useMemo(
+    () => characters.find((character) => String(character.id) === selectedCharacter),
+    [characters, selectedCharacter],
+  );
+
+  const selectedCharacterPortrait = useMemo(() => {
+    if (
+      selectedCharacterData?.portrait &&
+      selectedCharacterData.portrait !== "/characters/profileplaceholder.webp"
+    ) {
+      return selectedCharacterData.portrait;
+    }
+
+    const primaryClass = selectedCharacterData?.multiclass?.[0]?.className ?? null;
+    return getCharacterPortraitByClass(primaryClass);
+  }, [selectedCharacterData]);
 
   const loadDetails = useCallback(async () => {
     if (!token || !user?.id) return;
@@ -100,6 +120,8 @@ function VerDetallesContent() {
 
       setGame(matched);
       const loadedCharacters = (charactersData as { characters?: Character[] }).characters ?? [];
+      console.log("charactersData:", charactersData);
+      console.log("loadedCharacters:", loadedCharacters);
       setCharacters(loadedCharacters);
       if (!selectedCharacter) {
         const firstAlive = loadedCharacters.find((character) => character.lifeStatus !== "muerto");
@@ -229,8 +251,11 @@ function VerDetallesContent() {
             <p className="text-[#d4c391]">{error || "No se encontró la partida."}</p>
           </div>
         ) : (
-          <article className="relative overflow-hidden rounded-[1.5rem] border border-[#5f4b2f] bg-[#0d0b07]/95 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.8)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(212,175,55,0.08),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(255,255,255,0.04),_transparent_35%)] pointer-events-none" />
+          <>
+            
+            <article className="relative overflow-hidden rounded-[1.5rem] border border-[#5f4b2f] bg-[#0d0b07]/95 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.8)]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(212,175,55,0.08),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(255,255,255,0.04),_transparent_35%)] pointer-events-none" />
+            
             <div className="relative space-y-4 px-4 py-4 sm:px-5 sm:py-5">
               {/* Header */}
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#4c3d1f]/50">
@@ -256,7 +281,9 @@ function VerDetallesContent() {
 
               {/* Descripción */}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">Descripción</p>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">
+                  Descripción
+                </p>
                 <p className="text-sm leading-6 text-[#d4c391]">
                   {game.comment?.trim()
                     ? game.comment
@@ -321,21 +348,44 @@ function VerDetallesContent() {
                     {characters.length ? (
                       <>
                         <option value="">Selecciona personaje</option>
-                        {characters.map((character) => (
+                        {characters.map((character) => {
+                          const primaryClassName = character.multiclass?.[0]?.className;
+                          return (
                           <option
                             key={character.id}
                             value={character.id}
                             disabled={character.lifeStatus === "muerto"}
                           >
                             {character.name}
+                            {primaryClassName ? ` — ${primaryClassName}` : ""}
                             {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
                           </option>
-                        ))}
+                          );
+                        })}
                       </>
                     ) : (
                       <option value="">No tienes personajes</option>
                     )}
                   </select>
+
+                  {/* Previsualización del personaje seleccionado */}
+                  {selectedCharacterData && (
+                    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#453b28] bg-[#11100c] p-3">
+                      <img
+                        src={selectedCharacterPortrait}
+                        alt={selectedCharacterData.name}
+                        className="h-16 w-16 rounded-xl object-cover border border-[#6b531f]/70"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-[#D4AF37]">
+                          {selectedCharacterData.name}
+                        </p>
+                        <p className="text-xs text-[#c8b78e]">
+                          {selectedCharacterData.multiclass?.[0]?.className || "Clase no definida"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -366,6 +416,7 @@ function VerDetallesContent() {
               )}
             </div>
           </article>
+          </>
         )}
       </div>
     </div>
@@ -374,13 +425,11 @@ function VerDetallesContent() {
 
 export default function VerDetallesPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37]" />
-        </div>
-      }
-    >
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37]" />
+      </div>
+    }>
       <VerDetallesContent />
     </Suspense>
   );
