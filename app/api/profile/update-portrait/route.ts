@@ -5,16 +5,16 @@ import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 const ALLOWED_PORTRAITS = new Set([
   "/characters/barbaro.webp",
   "/characters/bardo.webp",
-  "/characters/brujo.webp",
   "/characters/clerigo.webp",
   "/characters/druida.webp",
-  "/characters/explorador.webp",
   "/characters/guerrero.webp",
-  "/characters/hechicero.webp",
-  "/characters/mago.webp",
   "/characters/monje.webp",
   "/characters/paladin.webp",
+  "/characters/explorador.webp",
   "/characters/picaro.webp",
+  "/characters/hechicero.webp",
+  "/characters/brujo.webp",
+  "/characters/mago.webp",
   "/characters/profileplaceholder.webp",
 ]);
 

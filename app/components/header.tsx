@@ -61,6 +61,7 @@ export default function Header() {
             src="/imgs/mea-culpa-logo.jpeg"
             alt="Mea Culpa Logo"
             fill
+            sizes="64px"
             className="object-contain"
             priority
           />
