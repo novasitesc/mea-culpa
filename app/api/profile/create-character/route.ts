@@ -239,6 +239,8 @@ export async function POST(request: Request) {
         accessories: {},
         weapons: {},
         bag: { items: [], maxSlots: capacidadBolsa },
+        hasDismemberedLimb: false,
+        dismemberedLimbs: [],
       },
     });
   } catch (error) {
