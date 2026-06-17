@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords } from "lucide-react";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords, Dices } from "lucide-react";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 import { useAuth } from "@/lib/useAuth";
 
@@ -75,6 +75,14 @@ export const sidebarItems = [
     hasIndicator: true,
     href: "/partidas",
     subtitle: "(unete a partidas activas)",
+  },
+  {
+    id: "dado",
+    label: "Dado",
+    icon: Dices,
+    hasIndicator: true,
+    href: "/dado",
+    subtitle: "(tirada de dados y notas)",
   },
 ];
 
