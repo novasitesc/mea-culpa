@@ -93,6 +93,8 @@ type Character = {
   lifeStatus: "vivo" | "muerto";
   deadAt: string | null;
   revivedAt: string | null;
+  hasDismemberedLimb: boolean;
+  dismemberedLimbs: string[];
   stats: Record<string, number>;
   armor: ArmorSlots;
   accessories: AccessorySlots;
@@ -1089,6 +1091,16 @@ export default function ProfilePage() {
                     >
                       {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
                     </p>
+                    {character.hasDismemberedLimb && (
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-300">
+                        <p>Miembros desmembrados:</p>
+                        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-orange-200/90">
+                          {character.dismemberedLimbs.length > 0
+                            ? character.dismemberedLimbs.join(", ")
+                            : "No especificado"}
+                        </p>
+                      </div>
+                    )}
                     {character.lifeStatus === "muerto" && character.deadAt && (
                       <p className="text-xs text-red-200/80 mt-1">
                         Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
