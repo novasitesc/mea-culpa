@@ -502,25 +502,34 @@ export default function PartidasPage() {
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
-                        disabled={
-                          (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
-                          joiningDetail ||
-                          leavingDetail ||
-                          selectedGameDetail.isFull
-                        }
-                        className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
-                      >
-                        {joiningDetail || leavingDetail
-                          ? "Procesando..."
-                          : selectedGameDetail.joinedCharacterIds?.length
-                            ? "Salir"
-                            : selectedGameDetail.isFull
-                              ? "Llena"
-                              : "Unirse"}
-                      </button>
+                      {selectedGameDetail.status === "en_progreso" && selectedGameDetail.joinedCharacterIds?.length ? (
+                        <a
+                          href={`/partidas/${selectedGameDetail.id}`}
+                          className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
+                        >
+                          🎲 Entrar a sala
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
+                          disabled={
+                            (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
+                            joiningDetail ||
+                            leavingDetail ||
+                            selectedGameDetail.isFull
+                          }
+                          className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                        >
+                          {joiningDetail || leavingDetail
+                            ? "Procesando..."
+                            : selectedGameDetail.joinedCharacterIds?.length
+                              ? "Salir"
+                              : selectedGameDetail.isFull
+                                ? "Llena"
+                                : "Unirse"}
+                        </button>
+                      )}
                     </div>
 
                     {detailError && (
@@ -644,13 +653,22 @@ export default function PartidasPage() {
                             </div>
 
                             <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
-                              <button
-                                type="button"
-                                onClick={() => void loadGameDetail(game.id)}
-                                className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
-                              >
-                                Detalles
-                              </button>
+                              {game.status === "en_progreso" && game.joinedCharacterIds.length > 0 ? (
+                                <a
+                                  href={`/partidas/${game.id}`}
+                                  className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
+                                >
+                                  🎲 Entrar a sala
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => void loadGameDetail(game.id)}
+                                  className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
+                                >
+                                  Detalles
+                                </button>
+                              )}
                             </div>
                           </div>
                         </article>

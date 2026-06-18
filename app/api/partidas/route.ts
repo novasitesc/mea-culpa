@@ -127,6 +127,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Buscar partida en progreso donde el usuario es participante
+  const { data: activaRows } = await db
+    .from("partidas")
+    .select(`
+      id, titulo, comentario, estado, minimo_jugadores, maximo_jugadores,
+      limite_jugadores, piso, inicio_en, tier, creada_en,
+      creador:creada_por ( nombre ),
+      partida_participantes!inner (
+        id, personaje_id, usuario_id, personaje:personaje_id ( nombre )
+      )
+    `)
+    .eq("estado", "en_progreso")
+    .eq("partida_participantes.usuario_id", user.id);
+
   const payload = (partidas ?? []).map((p: any) => {
     const participants = p.partida_participantes ?? [];
     const participantCount = participants.length;
@@ -170,6 +184,44 @@ export async function GET(request: Request) {
       })),
     };
   });
+
+  // Añadir la partida activa del usuario (si existe y no está ya en el listado)
+  const existingIds = new Set(payload.map((p: any) => p.id));
+  for (const p of activaRows ?? []) {
+    if (existingIds.has((p as any).id)) continue;
+    const participants = (p as any).partida_participantes ?? [];
+    const participantCount = participants.length;
+    const maxPlayers = Math.max(5, Number((p as any).maximo_jugadores ?? (p as any).limite_jugadores ?? 6));
+    payload.push({
+      id: (p as any).id,
+      title: (p as any).titulo,
+      comment: (p as any).comentario,
+      status: (p as any).estado,
+      minPlayers: Math.max(5, Number((p as any).minimo_jugadores ?? 5)),
+      maxPlayers,
+      playerLimit: maxPlayers,
+      participantCount,
+      slotsRemaining: 0,
+      floor: Number((p as any).piso ?? 1),
+      startTime: (p as any).inicio_en,
+      tier: Number((p as any).tier ?? 1),
+      isFull: true,
+      inCooldown,
+      cooldownEndsAt: null,
+      cooldownSecondsRemaining: 0,
+      createdAt: (p as any).creada_en,
+      createdBy: (p as any).creador?.nombre ?? null,
+      joinedCharacterIds: participants
+        .filter((pp: any) => pp.usuario_id === user.id)
+        .map((pp: any) => Number(pp.personaje_id)),
+      participants: participants.map((pp: any) => ({
+        id: pp.id,
+        characterId: Number(pp.personaje_id),
+        characterName: pp.personaje?.nombre ?? "",
+        userId: pp.usuario_id,
+      })),
+    });
+  }
 
   return NextResponse.json(payload);
 }

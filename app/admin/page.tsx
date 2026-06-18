@@ -1118,15 +1118,27 @@ function ActivePartidasTab({
                     : ""}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => openCloseModal(entry)}
-                disabled={closingId === entry.id}
-                className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
-              >
-                {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Cerrar y asignar
-              </button>
+              <div className="flex items-center gap-2">
+                {entry.status === "en_progreso" && (
+                  <a
+                    href={`/partidas/${entry.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 transition-colors"
+                  >
+                    🎲 Ir a sala
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openCloseModal(entry)}
+                  disabled={closingId === entry.id}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
+                >
+                  {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Cerrar y asignar
+                </button>
+              </div>
             </div>
 
             {entry.participants.length > 0 && (
