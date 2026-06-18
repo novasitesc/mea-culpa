@@ -865,6 +865,7 @@ function ActivePartidasTab({
   const [games, setGames] = useState<PartidaHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loadingObjects, setLoadingObjects] = useState(false);
   const [rewardTarget, setRewardTarget] = useState<PartidaHistoryEntry | null>(null);
@@ -1010,6 +1011,28 @@ function ActivePartidasTab({
     });
   };
 
+  const startGame = async (partidaId: string) => {
+    setStartingId(partidaId);
+    const res = await fetch("/api/admin/partidas", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ partidaId, action: "start" }),
+    });
+    setStartingId(null);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      onToast(err.error ?? "No se pudo iniciar la partida", "error");
+      return;
+    }
+
+    onToast("Partida iniciada", "success");
+    await loadGames();
+  };
+
   const closeGame = async (partidaId: string, participantRewards?: unknown[]) => {
     setClosingId(partidaId);
     const res = await fetch("/api/admin/partidas", {
@@ -1119,6 +1142,17 @@ function ActivePartidasTab({
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {entry.status === "abierta" && (
+                  <button
+                    type="button"
+                    onClick={() => startGame(entry.id)}
+                    disabled={startingId === entry.id}
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700/80 hover:bg-emerald-700 text-white disabled:opacity-60 flex items-center gap-2"
+                  >
+                    {startingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    ▶ Iniciar
+                  </button>
+                )}
                 {entry.status === "en_progreso" && (
                   <a
                     href={`/partidas/${entry.id}`}

@@ -269,6 +269,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Falta partidaId" }, { status: 400 });
   }
 
+  if (action === "start") {
+    const { data: partidaToStart, error: startFetchError } = await session.db
+      .from("partidas")
+      .select("id, estado")
+      .eq("id", partidaId)
+      .maybeSingle();
+
+    if (startFetchError) {
+      return NextResponse.json({ error: startFetchError.message }, { status: 500 });
+    }
+    if (!partidaToStart) {
+      return NextResponse.json({ error: "Partida no encontrada" }, { status: 404 });
+    }
+    if ((partidaToStart as any).estado !== "abierta") {
+      return NextResponse.json({ error: "Solo se pueden iniciar partidas abiertas" }, { status: 409 });
+    }
+
+    const { error: startError } = await session.db
+      .from("partidas")
+      .update({ estado: "en_progreso" })
+      .eq("id", partidaId)
+      .eq("estado", "abierta");
+
+    if (startError) {
+      return NextResponse.json({ error: startError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ id: partidaId, status: "en_progreso" });
+  }
+
   if (action !== "close") {
     return NextResponse.json({ error: "Acción inválida" }, { status: 400 });
   }
