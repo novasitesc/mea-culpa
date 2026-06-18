@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { normalizeSpells, type SpellEntry } from "@/lib/spells";
 
 function normalizeNivel20Url(rawValue: unknown): {
   value: string | null;
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
-  let spellsByCharId: Record<string, string[]> = {};
+  let spellsByCharId: Record<string, SpellEntry[]> = {};
   try {
     const { data: spellRows } = await db
       .from("personajes")
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
       .eq("usuario_id", userId);
     if (spellRows) {
       for (const row of spellRows as any[]) {
-        spellsByCharId[row.id] = row.conjuros_conocidos ?? [];
+        spellsByCharId[row.id] = normalizeSpells(row.conjuros_conocidos);
       }
     }
   } catch {

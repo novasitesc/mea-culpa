@@ -1,6 +1,8 @@
 // Tipos compartidos para personajes
 // Estos tipos serán usados tanto en frontend como en backend
 
+import type { SpellEntry } from "@/lib/spells";
+
 export type ItemType =
   | "cabeza"
   | "armadura"
@@ -74,7 +76,7 @@ export type Character = {
   accessories: AccessorySlots;
   weapons: WeaponSlots;
   bag: Bag;
-  knownSpells?: string[];
+  knownSpells?: SpellEntry[];
 };
 
 export type CreateCharacterInput = {

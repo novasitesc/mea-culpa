@@ -11,7 +11,7 @@ import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import PortraitPicker from "./components/portrait-picker";
 import SpellsRegistry from "./components/spells-registry";
-import { getCasterType, getMaxKnownSpells } from "@/lib/spells";
+import { getCasterType, getMaxKnownSpells, type SpellEntry } from "@/lib/spells";
 
 type Player = {
   name: string;
@@ -101,7 +101,7 @@ type Character = {
   weapons: WeaponSlots;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
-  knownSpells?: string[];
+  knownSpells?: SpellEntry[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
 };
@@ -473,8 +473,14 @@ export default function ProfilePage() {
       const parsedSpells = (newCharacter as any).knownSpellsInput
         ? (newCharacter as any).knownSpellsInput
           .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean)
+          .map((s: string) => {
+            const match = s.trim().match(/^(.*?)\s*\((\d+)\)$/);
+            if (match) {
+              return { name: match[1].trim(), spellLevel: parseInt(match[2], 10) };
+            }
+            return { name: s.trim(), spellLevel: 1 };
+          })
+          .filter((s: { name: string; spellLevel: number }) => s.name.length > 0)
         : [];
 
       const payload = {
@@ -1501,10 +1507,10 @@ export default function ProfilePage() {
                           setNewCharacter(prev => ({ ...prev, knownSpellsInput: e.target.value }));
                         }}
                         className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        placeholder="Ej: Curar heridas, Escudo, Proyectil Mágico (separados por coma)"
+                        placeholder="Ej: Curar heridas (1), Escudo (1), Oscuridad (2)"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual.
+                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual. Formato: Nombre (Nivel), separados por coma. Si omites el nivel, será 1.
                       </p>
                     </div>
                   );

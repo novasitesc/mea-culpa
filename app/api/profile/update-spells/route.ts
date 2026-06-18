@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
-import { getCasterType, getMaxKnownSpells } from "@/lib/spells";
+import {
+  getCasterType,
+  getMaxKnownSpells,
+  normalizeSpells,
+  validateSpells,
+  type SpellEntry,
+} from "@/lib/spells";
 
 export async function POST(request: Request) {
   const db = createServerClient();
@@ -17,6 +23,9 @@ export async function POST(request: Request) {
     if (!characterId || !Array.isArray(newSpells)) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
+
+    // Normalizar al nuevo formato SpellEntry[]
+    const spellEntries: SpellEntry[] = normalizeSpells(newSpells);
 
     // Obtener personaje y sus clases actuales para validar el límite
     const { data: personaje, error: charError } = await db
@@ -34,29 +43,63 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Personaje no encontrado" }, { status: 404 });
     }
 
-    const currentSpells: string[] = personaje.conjuros_conocidos || [];
-    
-    // Validar si el usuario está intentando eliminar conjuros
-    for (const spell of currentSpells) {
-      if (!newSpells.includes(spell)) {
-        return NextResponse.json({ error: "Bloqueo anti-trampa: No puedes eliminar conjuros ya conocidos." }, { status: 403 });
+    // Normalizar conjuros actuales (backward compat con string[])
+    const currentSpells: SpellEntry[] = normalizeSpells(personaje.conjuros_conocidos);
+
+    // Anti-trampa: no se pueden eliminar conjuros previamente registrados
+    for (const existing of currentSpells) {
+      const key = existing.name.toLowerCase().trim();
+      const stillPresent = spellEntries.some(
+        s => s.name.toLowerCase().trim() === key,
+      );
+      if (!stillPresent) {
+        return NextResponse.json(
+          { error: `Bloqueo anti-trampa: No puedes eliminar el conjuro "${existing.name}".` },
+          { status: 403 },
+        );
       }
     }
 
-    // Calcular tope máximo según nivel de clase
-    let maxAllowed = 0;
-    for (const c of (personaje.clases_personaje || [])) {
+    // Validar conjuros según reglas de cada clase
+    const clases = (personaje.clases_personaje || []) as {
+      nombre_clase: string;
+      nivel: number;
+    }[];
+
+    // Acumular errores de validación de todas las clases
+    const allErrors: string[] = [];
+    let totalMaxKnown = 0;
+
+    for (const c of clases) {
       const type = getCasterType(c.nombre_clase);
       if (type === "known") {
-        maxAllowed += getMaxKnownSpells(c.nombre_clase, c.nivel);
+        totalMaxKnown += getMaxKnownSpells(c.nombre_clase, c.nivel);
+      }
+
+      // Validar distribución y niveles por clase
+      if (type !== "none") {
+        const result = validateSpells(c.nombre_clase, c.nivel, spellEntries);
+        allErrors.push(...result.errors);
       }
     }
 
     // Quitar duplicados antes de guardar
-    const uniqueSpells = Array.from(new Set(newSpells)).filter(s => s.trim().length > 0);
+    const seenKeys = new Set<string>();
+    const uniqueSpells: SpellEntry[] = [];
+    for (const s of spellEntries) {
+      const key = s.name.toLowerCase().trim();
+      if (key.length === 0) continue;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      uniqueSpells.push({ name: s.name.trim(), spellLevel: s.spellLevel });
+    }
 
-    if (uniqueSpells.length > maxAllowed) {
-      return NextResponse.json({ error: `Bloqueo anti-trampa: Excedes el máximo permitido de conjuros conocidos (${maxAllowed}).` }, { status: 403 });
+    // Si hay errores de validación, rechazar
+    if (allErrors.length > 0) {
+      return NextResponse.json(
+        { error: `Bloqueo anti-trampa: ${allErrors[0]}`, errors: allErrors },
+        { status: 403 },
+      );
     }
 
     const { error: updateError } = await db

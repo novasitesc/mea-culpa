@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { calculateBagSlots } from "@/lib/types/character";
+import {
+  getCasterType,
+  normalizeSpells,
+  validateSpells,
+  type SpellEntry,
+} from "@/lib/spells";
 
 // Generar stats basados en la clase primaria
 function generateStatsForClass(className: string) {
@@ -162,6 +168,33 @@ export async function POST(request: Request) {
     // Calcular capacidad de bolsa en base a fuerza
     const capacidadBolsa = calculateBagSlots(stats.fuerza);
 
+    // Validar y normalizar conjuros conocidos
+    const rawSpells: SpellEntry[] = normalizeSpells(characterData.knownSpells || []);
+
+    // Deduplicar
+    const seenKeys = new Set<string>();
+    const validatedSpells: SpellEntry[] = [];
+    for (const s of rawSpells) {
+      const key = s.name.toLowerCase().trim();
+      if (key.length === 0 || seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      validatedSpells.push({ name: s.name.trim(), spellLevel: s.spellLevel });
+    }
+
+    // Validar contra reglas de cada clase
+    for (const c of multiclass as { className: string; level: number }[]) {
+      const type = getCasterType(c.className);
+      if (type !== "none" && validatedSpells.length > 0) {
+        const result = validateSpells(c.className, c.level, validatedSpells);
+        if (!result.valid) {
+          return NextResponse.json(
+            { error: result.errors[0], errors: result.errors },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
     // 1. Insertar personaje
     const { data: personaje, error: charErr } = await db
       .from("personajes")
@@ -173,7 +206,7 @@ export async function POST(request: Request) {
         alineamiento: alignment,
         retrato: "/characters/profileplaceholder.webp",
         capacidad_bolsa: capacidadBolsa,
-        conjuros_conocidos: characterData.knownSpells || [],
+        conjuros_conocidos: validatedSpells,
       })
       .select("id")
       .single();
@@ -228,7 +261,7 @@ export async function POST(request: Request) {
         race: race.trim(),
         alignment,
         portrait: "/characters/profileplaceholder.webp",
-        knownSpells: characterData.knownSpells || [],
+        knownSpells: validatedSpells,
         stats: {
           str: stats.fuerza,
           dex: stats.destreza,
