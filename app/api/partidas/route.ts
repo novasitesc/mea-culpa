@@ -111,6 +111,7 @@ export async function GET(request: Request) {
         inicio_en,
         tier,
         creada_en,
+        creada_por,
         creador:creada_por ( nombre ),
         partida_participantes (
           id,

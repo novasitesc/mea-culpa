@@ -22,7 +22,13 @@ export default function SalaPage() {
   const [partida, setPartida] = useState<SalaPartida | null>(null);
   const [participantes, setParticipantes] = useState<SalaParticipante[]>([]);
   const [esAdmin, setEsAdmin] = useState(false);
-  const [eventos, setEventos] = useState<SalaEvento[]>([]);
+  const [eventos, setEventos] = useState<SalaEvento[]>(() => {
+    if (typeof window === "undefined" || !partidaId) return [];
+    try {
+      const saved = localStorage.getItem(`sala-eventos-${partidaId}`);
+      return saved ? (JSON.parse(saved) as SalaEvento[]) : [];
+    } catch { return []; }
+  });
   const [loadingData, setLoadingData] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
 
@@ -59,6 +65,14 @@ export default function SalaPage() {
     void loadSala();
   }, [isAuthenticated, token, loadSala]);
 
+  // Persist feed to localStorage whenever eventos changes
+  useEffect(() => {
+    if (!partidaId) return;
+    try {
+      localStorage.setItem(`sala-eventos-${partidaId}`, JSON.stringify(eventos));
+    } catch {}
+  }, [eventos, partidaId]);
+
   // Supabase Realtime channel
   useEffect(() => {
     if (!partidaId || !isAuthenticated) return;
@@ -74,6 +88,10 @@ export default function SalaPage() {
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
         setEventos((prev) => [...prev, payload]);
       })
+      .on("broadcast", { event: "partida_cerrada" }, () => {
+        try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
+        router.push("/partidas");
+      })
       .subscribe();
 
     channelRef.current = channel;
@@ -85,14 +103,20 @@ export default function SalaPage() {
   }, [partidaId, isAuthenticated]);
 
   function handleEvent(ev: SalaEvento) {
-    // Add to local feed immediately
-    setEventos((prev) => [...prev, ev]);
     // Broadcast to all participants via Supabase Realtime
     channelRef.current?.send({
       type: "broadcast",
       event: ev.tipo,
       payload: ev,
     });
+
+    if (ev.tipo === "partida_cerrada") {
+      try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
+      router.push("/partidas");
+      return;
+    }
+
+    setEventos((prev) => [...prev, ev]);
   }
 
   if (isLoading) {

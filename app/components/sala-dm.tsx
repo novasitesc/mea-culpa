@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Loader2, Coins, Package } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Coins, Package, X, Skull } from "lucide-react";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
+import NotasWidget from "@/app/components/notas-widget";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
+import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
@@ -19,7 +22,14 @@ type Props = {
 
 type AlertState = { variant: "success" | "error"; message: string } | null;
 
+type CloseRewardItem = { id: string; objectId: number | null; qty: number };
+type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
+
+function mkId() { return Math.random().toString(36).slice(2, 9); }
+
 export default function SalaDM({ partida, participantes, token, eventos, onEvent }: Props) {
+  const router = useRouter();
+
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
     participantes[0]?.personajeId ?? null,
   );
@@ -31,6 +41,11 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   const [oroDelta, setOroDelta] = useState<string>("");
   const [assigning, setAssigning] = useState(false);
   const [alert, setAlert] = useState<AlertState>(null);
+
+  // Close modal state
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [closingGame, setClosingGame] = useState(false);
+  const [closeRewards, setCloseRewards] = useState<Record<number, CloseReward>>({});
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
 
@@ -136,10 +151,99 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     }
   }
 
+  // ── Close modal helpers ────────────────────────────────────────────────────
+
+  function openCloseModal() {
+    const initial: Record<number, CloseReward> = {};
+    for (const p of participantes) {
+      initial[p.personajeId] = { gold: 0, levelUps: 0, items: [] };
+    }
+    setCloseRewards(initial);
+    setCloseModalOpen(true);
+  }
+
+  function updateCloseReward(personajeId: number, updates: Partial<{ gold: number; levelUps: number }>) {
+    setCloseRewards((prev) => ({
+      ...prev,
+      [personajeId]: { ...(prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] }), ...updates },
+    }));
+  }
+
+  function addCloseItem(personajeId: number) {
+    setCloseRewards((prev) => {
+      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
+      return { ...prev, [personajeId]: { ...cur, items: [...cur.items, { id: mkId(), objectId: null, qty: 1 }] } };
+    });
+  }
+
+  function updateCloseItem(personajeId: number, itemId: string, updates: Partial<{ objectId: number | null; qty: number }>) {
+    setCloseRewards((prev) => {
+      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
+      return { ...prev, [personajeId]: { ...cur, items: cur.items.map((it) => it.id === itemId ? { ...it, ...updates } : it) } };
+    });
+  }
+
+  function removeCloseItem(personajeId: number, itemId: string) {
+    setCloseRewards((prev) => {
+      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
+      return { ...prev, [personajeId]: { ...cur, items: cur.items.filter((it) => it.id !== itemId) } };
+    });
+  }
+
+  async function submitClose() {
+    setClosingGame(true);
+    try {
+      const participantRewards = participantes.map((p) => {
+        const r = closeRewards[p.personajeId] ?? { gold: 0, levelUps: 0, items: [] };
+        return {
+          characterId: p.personajeId,
+          gold: Math.max(0, Number(r.gold) || 0),
+          levelUps: Math.max(0, Math.floor(Number(r.levelUps) || 0)),
+          items: r.items
+            .filter((it) => it.objectId != null)
+            .map((it) => ({ objectId: Number(it.objectId), qty: Math.max(1, Number(it.qty) || 1) })),
+        };
+      });
+
+      const res = await fetch("/api/admin/partidas", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ partidaId: partida.id, action: "close", participantRewards }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo cerrar la partida" });
+        return;
+      }
+
+      setCloseModalOpen(false);
+      onEvent({ tipo: "partida_cerrada" });
+    } finally {
+      setClosingGame(false);
+    }
+  }
+
+  const inputCls =
+    "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all";
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
-      {/* Panel izquierdo: Dados y asignación manual */}
+      {/* Panel izquierdo: Dados, notas y asignación manual */}
       <div className="flex flex-col gap-4 lg:w-[400px] shrink-0">
+        {/* Cabecera con botón cerrar */}
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-widest text-foreground/50 font-sans">Vista DM</p>
+          <button
+            type="button"
+            onClick={openCloseModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-rose-500/40 bg-rose-900/20 text-xs text-rose-300 hover:bg-rose-900/40 transition-all font-sans"
+          >
+            <Skull className="w-3 h-3" />
+            Cerrar partida
+          </button>
+        </div>
+
         {/* Selector de personaje objetivo */}
         <div className="rounded-lg border border-gold-dim/40 bg-card p-3 space-y-2">
           <p className="text-[10px] uppercase tracking-widest text-foreground/50 font-sans">
@@ -181,6 +285,9 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
             Selecciona un personaje para activar los dados.
           </div>
         )}
+
+        {/* Notas del DM */}
+        <NotasWidget token={token} />
 
         {/* Asignación manual */}
         <div className="rounded-lg border border-gold-dim/40 bg-card p-3 space-y-3">
@@ -261,6 +368,143 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-3 min-h-[300px] lg:min-h-0 overflow-hidden">
         <SalaFeed eventos={eventos} />
       </div>
+
+      {/* Modal de cierre */}
+      {closeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <h2 className="text-lg font-bold text-gold">Cerrar partida: {partida.titulo}</h2>
+              <button
+                onClick={() => setCloseModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto min-h-0 flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Asigna recompensas finales por personaje antes de cerrar la partida.
+              </p>
+
+              {loadingObjects ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-gold" />
+                </div>
+              ) : (
+                participantes.map((p) => {
+                  const r = closeRewards[p.personajeId] ?? { gold: 0, levelUps: 0, items: [] };
+                  return (
+                    <div key={p.personajeId} className="border border-border rounded-lg p-4 bg-secondary/10 flex flex-col gap-3">
+                      <p className="text-sm font-semibold text-foreground">{p.nombre}</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-medium text-foreground">Oro a asignar</label>
+                          <GoldAmountInput
+                            className={inputCls}
+                            value={r.gold}
+                            min={0}
+                            allowZero
+                            emptyWhenZero
+                            onChangeValue={(v) =>
+                              updateCloseReward(p.personajeId, { gold: v === "" ? 0 : Math.max(0, Number(v) || 0) })
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-medium text-foreground">Subidas de nivel</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            className={inputCls}
+                            value={r.levelUps}
+                            onChange={(e) =>
+                              updateCloseReward(p.personajeId, { levelUps: Math.max(0, Math.floor(Number(e.target.value) || 0)) })
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-border pt-3 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-foreground">Objetos</p>
+                          <button
+                            type="button"
+                            onClick={() => addCloseItem(p.personajeId)}
+                            className="px-2 py-1 text-xs rounded border border-border hover:bg-muted"
+                          >
+                            Agregar objeto
+                          </button>
+                        </div>
+
+                        {r.items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Sin objetos</p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {r.items.map((item) => (
+                              <div key={item.id} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <ObjectSelector
+                                  className={inputCls}
+                                  items={objects}
+                                  value={item.objectId}
+                                  onChange={(v) => updateCloseItem(p.personajeId, item.id, { objectId: v })}
+                                  searchable
+                                  searchPlaceholder="Buscar objeto..."
+                                  noSearchResultsLabel="Sin coincidencias"
+                                  placeholder="Selecciona objeto"
+                                  emptyLabel="Sin objetos"
+                                />
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className={inputCls}
+                                  value={item.qty}
+                                  onChange={(e) =>
+                                    updateCloseItem(p.personajeId, item.id, { qty: Math.max(1, Number(e.target.value) || 1) })
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeCloseItem(p.personajeId, item.id)}
+                                  className="px-3 py-2 text-xs rounded border border-border hover:bg-muted"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border p-5">
+              <button
+                type="button"
+                onClick={() => setCloseModalOpen(false)}
+                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={submitClose}
+                disabled={closingGame}
+                className="px-4 py-2 rounded bg-destructive/80 hover:bg-destructive text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2"
+              >
+                {closingGame && <Loader2 className="w-4 h-4 animate-spin" />}
+                {closingGame ? "Cerrando..." : "Cerrar y guardar recompensas"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FantasyAlert
         open={alert !== null}

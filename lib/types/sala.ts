@@ -39,4 +39,8 @@ export type EventoAsignacionManual = {
   personajeId: number;
 };
 
-export type SalaEvento = EventoDadoTirado | EventoAsignacionManual;
+export type EventoPartidaCerrada = {
+  tipo: "partida_cerrada";
+};
+
+export type SalaEvento = EventoDadoTirado | EventoAsignacionManual | EventoPartidaCerrada;
