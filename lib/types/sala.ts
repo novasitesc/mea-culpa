@@ -43,4 +43,8 @@ export type EventoPartidaCerrada = {
   tipo: "partida_cerrada";
 };
 
-export type SalaEvento = EventoDadoTirado | EventoAsignacionManual | EventoPartidaCerrada;
+export type EventoPartidaIniciada = {
+  tipo: "partida_iniciada";
+};
+
+export type SalaEvento = EventoDadoTirado | EventoAsignacionManual | EventoPartidaCerrada | EventoPartidaIniciada;

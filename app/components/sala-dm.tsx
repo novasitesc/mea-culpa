@@ -18,6 +18,7 @@ type Props = {
   token: string;
   eventos: SalaEvento[];
   onEvent: (ev: SalaEvento) => void;
+  onStart: () => void;
 };
 
 type AlertState = { variant: "success" | "error"; message: string } | null;
@@ -27,7 +28,7 @@ type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
 
 function mkId() { return Math.random().toString(36).slice(2, 9); }
 
-export default function SalaDM({ partida, participantes, token, eventos, onEvent }: Props) {
+export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
   const router = useRouter();
 
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
@@ -41,6 +42,9 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   const [oroDelta, setOroDelta] = useState<string>("");
   const [assigning, setAssigning] = useState(false);
   const [alert, setAlert] = useState<AlertState>(null);
+
+  // Start game state
+  const [startingGame, setStartingGame] = useState(false);
 
   // Close modal state
   const [closeModalOpen, setCloseModalOpen] = useState(false);
@@ -151,6 +155,28 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     }
   }
 
+  // ── Start game ────────────────────────────────────────────────────────────
+
+  async function handleStartGame() {
+    setStartingGame(true);
+    try {
+      const res = await fetch("/api/admin/partidas", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ partidaId: partida.id, action: "start" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo iniciar la partida" });
+        return;
+      }
+      onEvent({ tipo: "partida_iniciada" });
+      onStart();
+    } finally {
+      setStartingGame(false);
+    }
+  }
+
   // ── Close modal helpers ────────────────────────────────────────────────────
 
   function openCloseModal() {
@@ -231,17 +257,29 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     <div className="flex flex-col lg:flex-row gap-4 h-full">
       {/* Panel izquierdo: Dados, notas y asignación manual */}
       <div className="flex flex-col gap-4 lg:w-[400px] shrink-0">
-        {/* Cabecera con botón cerrar */}
+        {/* Cabecera */}
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-widest text-foreground/50 font-sans">Vista DM</p>
-          <button
-            type="button"
-            onClick={openCloseModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-rose-500/40 bg-rose-900/20 text-xs text-rose-300 hover:bg-rose-900/40 transition-all font-sans"
-          >
-            <Skull className="w-3 h-3" />
-            Cerrar partida
-          </button>
+          {partida.estado === "abierta" ? (
+            <button
+              type="button"
+              onClick={handleStartGame}
+              disabled={startingGame}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-emerald-500/50 bg-emerald-900/20 text-xs text-emerald-300 hover:bg-emerald-900/40 transition-all font-sans disabled:opacity-60"
+            >
+              {startingGame ? <Loader2 className="w-3 h-3 animate-spin" /> : "▶"}
+              {startingGame ? "Iniciando..." : "Iniciar partida"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={openCloseModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-rose-500/40 bg-rose-900/20 text-xs text-rose-300 hover:bg-rose-900/40 transition-all font-sans"
+            >
+              <Skull className="w-3 h-3" />
+              Cerrar partida
+            </button>
+          )}
         </div>
 
         {/* Selector de personaje objetivo */}
@@ -272,7 +310,11 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
         </div>
 
         {/* Módulo de dados */}
-        {selectedPersonajeId ? (
+        {partida.estado === "abierta" ? (
+          <div className="rounded-lg border border-gold-dim/20 bg-card/50 p-4 text-xs text-foreground/30 italic font-sans">
+            Inicia la partida para activar los dados y la asignación.
+          </div>
+        ) : selectedPersonajeId ? (
           <DiceModule
             token={token}
             rollApiUrl={rollApiUrl}
@@ -289,8 +331,8 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
         {/* Notas del DM */}
         <NotasWidget token={token} />
 
-        {/* Asignación manual */}
-        <div className="rounded-lg border border-gold-dim/40 bg-card p-3 space-y-3">
+        {/* Asignación manual — solo cuando en_progreso */}
+        <div className={`rounded-lg border border-gold-dim/40 bg-card p-3 space-y-3 ${partida.estado === "abierta" ? "hidden" : ""}`}>
           <p className="text-[10px] uppercase tracking-widest text-foreground/50 font-sans">
             Asignación manual
           </p>

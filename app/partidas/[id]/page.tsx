@@ -92,6 +92,9 @@ export default function SalaPage() {
         try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
         router.push("/partidas");
       })
+      .on("broadcast", { event: "partida_iniciada" }, () => {
+        void loadSala();
+      })
       .subscribe();
 
     channelRef.current = channel;
@@ -113,6 +116,11 @@ export default function SalaPage() {
     if (ev.tipo === "partida_cerrada") {
       try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
       router.push("/partidas");
+      return;
+    }
+
+    if (ev.tipo === "partida_iniciada") {
+      void loadSala();
       return;
     }
 
@@ -190,6 +198,7 @@ export default function SalaPage() {
                     token={token}
                     eventos={eventos}
                     onEvent={handleEvent}
+                    onStart={loadSala}
                   />
                 ) : (
                   <SalaPlayer

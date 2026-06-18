@@ -23,8 +23,9 @@ export async function GET(
     return NextResponse.json({ error: "Partida no encontrada" }, { status: 404 });
   }
 
-  if ((partida as any).estado !== "en_progreso") {
-    return NextResponse.json({ error: "La partida no está en progreso" }, { status: 403 });
+  const estadoValido = ["abierta", "en_progreso"].includes((partida as any).estado);
+  if (!estadoValido) {
+    return NextResponse.json({ error: "La partida no está disponible" }, { status: 403 });
   }
 
   const { data: perfil } = await db

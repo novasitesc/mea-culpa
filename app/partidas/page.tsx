@@ -452,20 +452,14 @@ export default function PartidasPage() {
                     )}
 
                     {selectedGameDetail.esDmDe ? (
-                      /* Vista DM: sin selector de personaje */
+                      /* Vista DM: acceso directo a sala sin selector de personaje */
                       <div className="pt-2">
-                        {selectedGameDetail.status === "en_progreso" ? (
-                          <a
-                            href={`/partidas/${selectedGameDetail.id}`}
-                            className="inline-flex w-full justify-center rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
-                          >
-                            🎲 Ir a sala (DM)
-                          </a>
-                        ) : (
-                          <p className="text-xs text-foreground/50 font-sans">
-                            La partida está abierta. Iníciala desde el panel de administrador para acceder a la sala.
-                          </p>
-                        )}
+                        <a
+                          href={`/partidas/${selectedGameDetail.id}`}
+                          className="inline-flex w-full justify-center rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
+                        >
+                          🎲 Ir a sala (DM)
+                        </a>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
@@ -519,10 +513,10 @@ export default function PartidasPage() {
                           )}
                         </div>
 
-                        {selectedGameDetail.status === "en_progreso" && selectedGameDetail.joinedCharacterIds?.length ? (
+                        {(selectedGameDetail.status === "en_progreso" || selectedGameDetail.status === "abierta") && selectedGameDetail.joinedCharacterIds?.length ? (
                           <a
                             href={`/partidas/${selectedGameDetail.id}`}
-                            className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
+                            className="w-full rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
                           >
                             🎲 Entrar a sala
                           </a>
