@@ -1,6 +1,8 @@
 // Tipos compartidos para personajes
 // Estos tipos serán usados tanto en frontend como en backend
 
+import type { SpellEntry } from "@/lib/spells";
+
 export type ItemType =
   | "cabeza"
   | "armadura"
@@ -63,7 +65,7 @@ export type ClassEntry = {
 
 export type Character = {
   id: number;
-  userId: string;
+  userId?: string;
   name: string;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
@@ -74,6 +76,7 @@ export type Character = {
   accessories: AccessorySlots;
   weapons: WeaponSlots;
   bag: Bag;
+  knownSpells?: SpellEntry[];
 };
 
 export type CreateCharacterInput = {
