@@ -31,8 +31,10 @@ export default function SalaPage() {
   });
   const [loadingData, setLoadingData] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
+  const [showFinalModal, setShowFinalModal] = useState(false);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const esAdminRef = useRef(esAdmin);
 
   const loadSala = useCallback(async () => {
     if (!token || !partidaId) return;
@@ -65,6 +67,8 @@ export default function SalaPage() {
     void loadSala();
   }, [isAuthenticated, token, loadSala]);
 
+  useEffect(() => { esAdminRef.current = esAdmin; }, [esAdmin]);
+
   // Persist feed to localStorage whenever eventos changes
   useEffect(() => {
     if (!partidaId) return;
@@ -90,10 +94,34 @@ export default function SalaPage() {
       })
       .on("broadcast", { event: "partida_cerrada" }, () => {
         try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
-        router.push("/partidas");
+        if (esAdminRef.current) {
+          router.push("/partidas");
+        } else {
+          setShowFinalModal(true);
+        }
       })
       .on("broadcast", { event: "partida_iniciada" }, () => {
         void loadSala();
+      })
+      .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
+        setEventos((prev) => [...prev, payload]);
+        if (payload.tipo === "desmembramiento") {
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? {
+                    ...p,
+                    extremidades: {
+                      ...(p.extremidades ?? {}),
+                      ...(payload.desmembrado
+                        ? { [payload.miembro]: false }
+                        : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
+                    },
+                  }
+                : p,
+            ),
+          );
+        }
       })
       .subscribe();
 
@@ -106,7 +134,6 @@ export default function SalaPage() {
   }, [partidaId, isAuthenticated]);
 
   function handleEvent(ev: SalaEvento) {
-    // Broadcast to all participants via Supabase Realtime
     channelRef.current?.send({
       type: "broadcast",
       event: ev.tipo,
@@ -115,7 +142,11 @@ export default function SalaPage() {
 
     if (ev.tipo === "partida_cerrada") {
       try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
-      router.push("/partidas");
+      if (esAdmin) {
+        router.push("/partidas");
+      } else {
+        setShowFinalModal(true);
+      }
       return;
     }
 
@@ -124,8 +155,38 @@ export default function SalaPage() {
       return;
     }
 
+    if (ev.tipo === "desmembramiento") {
+      setEventos((prev) => [...prev, ev]);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId
+            ? {
+                ...p,
+                extremidades: ev.desmembrado
+                  ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
+                  : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
+              }
+            : p,
+        ),
+      );
+      return;
+    }
+
     setEventos((prev) => [...prev, ev]);
   }
+
+  // Compute player's own personajeId for the final modal
+  const myPersonajeId = !esAdmin && user
+    ? (participantes.find((p) => p.usuarioId === user.id)?.personajeId ?? null)
+    : null;
+
+  const mySessionItems = myPersonajeId != null
+    ? eventos.filter(
+        (ev) =>
+          (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
+          (ev as any).personajeId === myPersonajeId,
+      )
+    : [];
 
   if (isLoading) {
     return (
@@ -212,6 +273,103 @@ export default function SalaPage() {
           </section>
         </div>
       </div>
+
+      {/* Modal: Partida finalizada (jugadores) */}
+      {showFinalModal && partida && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-border">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-1">Fin de la aventura</p>
+              <h2 className="text-lg font-bold text-gold">⚔️ {partida.titulo}</h2>
+              <p className="text-sm text-foreground/50 font-sans mt-1">La partida ha finalizado.</p>
+            </div>
+
+            <div className="p-5 flex flex-col gap-3 overflow-y-auto max-h-[50vh]">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+                Lo que recibiste en la sesión
+              </p>
+              {mySessionItems.length === 0 ? (
+                <p className="text-sm text-foreground/30 italic font-sans">Sin asignaciones registradas.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {mySessionItems.map((ev, i) => {
+                    if (ev.tipo === "dado_tirado") {
+                      if (ev.lutResultados && ev.lutResultados.length > 0) {
+                        const items = ev.lutResultados.filter(
+                          (r: any) => r.tipo === "item" || (r.tipo === "subtabla" && r.subRoll?.objeto),
+                        );
+                        const oro = ev.lutResultados
+                          .filter((r: any) => r.tipo === "oro")
+                          .reduce((acc: number, r: any) => acc + (r.oroDetalle?.cantidadOro ?? 0), 0) +
+                          ev.lutResultados
+                            .filter((r: any) => r.tipo === "subtabla" && r.subRoll?.cantidadOro)
+                            .reduce((acc: number, r: any) => acc + (r.subRoll?.cantidadOro ?? 0), 0);
+                        return (
+                          <div key={i} className="flex flex-wrap gap-2 py-1 border-b border-border/30 last:border-0">
+                            {items.map((r: any, j: number) => {
+                              const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
+                              return obj ? (
+                                <span key={j} className="text-sm text-green-400 font-semibold">
+                                  {obj.icono} {obj.nombre}
+                                </span>
+                              ) : null;
+                            })}
+                            {oro > 0 && (
+                              <span className="text-sm text-gold font-semibold">+{oro.toLocaleString("es-ES")} oro</span>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
+                          {ev.tipoResultado === "item" && ev.objeto ? (
+                            <span className="text-sm text-green-400 font-semibold">{ev.objeto.icono} {ev.objeto.nombre}</span>
+                          ) : ev.tipoResultado === "oro" && ev.cantidadOro ? (
+                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
+                          ) : (
+                            <span className="text-sm text-foreground/30 italic">Sin recompensa</span>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (ev.tipo === "asignacion_manual") {
+                      return (
+                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
+                          {ev.objeto ? (
+                            <span className="text-sm text-green-400 font-semibold">
+                              {ev.objeto.icono} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
+                            </span>
+                          ) : ev.cantidadOro ? (
+                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
+                          ) : null}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 p-5 border-t border-border">
+              <button
+                type="button"
+                onClick={() => router.push("/partidas")}
+                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm font-sans"
+              >
+                Ir a partidas
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/perfil")}
+                className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
+              >
+                🏠 Pagar posada
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

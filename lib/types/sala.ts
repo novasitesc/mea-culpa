@@ -6,6 +6,7 @@ export type SalaParticipante = {
   usuarioId: string;
   muerto: boolean;
   nombre: string;
+  extremidades: Record<string, boolean> | null;
 };
 
 export type SalaPartida = {
@@ -47,4 +48,18 @@ export type EventoPartidaIniciada = {
   tipo: "partida_iniciada";
 };
 
-export type SalaEvento = EventoDadoTirado | EventoAsignacionManual | EventoPartidaCerrada | EventoPartidaIniciada;
+export type EventoDesmembramiento = {
+  tipo: "desmembramiento";
+  personajeId: number;
+  personajeNombre: string;
+  miembro: string;
+  miembroLabel: string;
+  desmembrado: boolean;
+};
+
+export type SalaEvento =
+  | EventoDadoTirado
+  | EventoAsignacionManual
+  | EventoPartidaCerrada
+  | EventoPartidaIniciada
+  | EventoDesmembramiento;

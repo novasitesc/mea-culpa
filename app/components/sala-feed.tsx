@@ -94,6 +94,24 @@ function renderEvento(ev: SalaEvento, i: number) {
     );
   }
 
+  if (ev.tipo === "desmembramiento") {
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-rose-900/30 last:border-0 animate-in fade-in duration-300"
+      >
+        <span className="text-base shrink-0">🩸</span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> {ev.desmembrado ? "perdió" : "recuperó"} </span>
+          <span className={ev.desmembrado ? "text-rose-400 font-semibold" : "text-emerald-400 font-semibold"}>
+            {ev.miembroLabel}
+          </span>
+        </p>
+      </div>
+    );
+  }
+
   return null;
 }
 

@@ -51,7 +51,7 @@ export async function GET(
 
   const { data: participantes } = await db
     .from("partida_participantes")
-    .select("id, personaje_id, usuario_id, muerto, personaje:personaje_id(nombre)")
+    .select("id, personaje_id, usuario_id, muerto, personaje:personaje_id(nombre, extremidades)")
     .eq("partida_id", partidaId);
 
   return NextResponse.json({
@@ -70,6 +70,7 @@ export async function GET(
       usuarioId: p.usuario_id,
       muerto: p.muerto ?? false,
       nombre: p.personaje?.nombre ?? "Personaje",
+      extremidades: (p.personaje as any)?.extremidades ?? null,
     })),
   });
 }

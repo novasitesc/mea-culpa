@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp } from "lucide-react";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
 import NotasWidget from "@/app/components/notas-widget";
@@ -11,6 +11,7 @@ import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
+import { LIMBS } from "@/lib/limbs";
 
 type Props = {
   partida: SalaPartida;
@@ -50,6 +51,20 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closingGame, setClosingGame] = useState(false);
   const [closeRewards, setCloseRewards] = useState<Record<number, CloseReward>>({});
+
+  // Dismember panel state
+  const [dismemberOpen, setDismemberOpen] = useState(false);
+  const [dismemberPersonajeId, setDismemberPersonajeId] = useState<number | null>(
+    participantes[0]?.personajeId ?? null,
+  );
+  const [extremidades, setExtremidades] = useState<Record<number, Record<string, boolean>>>(() => {
+    const init: Record<number, Record<string, boolean>> = {};
+    for (const p of participantes) {
+      init[p.personajeId] = (p.extremidades as Record<string, boolean> | null) ?? {};
+    }
+    return init;
+  });
+  const [dismembering, setDismembering] = useState<string | null>(null);
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
 
@@ -174,6 +189,77 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       onStart();
     } finally {
       setStartingGame(false);
+    }
+  }
+
+  // ── Session summary helper ─────────────────────────────────────────────────
+
+  function buildSessionSummary(personajeId: number) {
+    const relevant = eventos.filter(
+      (ev) =>
+        (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
+        (ev as any).personajeId === personajeId,
+    ) as Array<{ cantidadOro?: number; objeto?: { id: number; nombre: string; icono: string }; cantidad?: number; lutResultados?: any[] }>;
+
+    let oroTotal = 0;
+    const itemsMap = new Map<number, { nombre: string; icono: string; qty: number }>();
+
+    for (const ev of relevant) {
+      if ((ev as any).tipo === "dado_tirado" && (ev as any).lutResultados?.length) {
+        for (const r of (ev as any).lutResultados) {
+          const obj = r.tipo === "item" ? r.objeto : r.tipo === "subtabla" ? r.subRoll?.objeto : null;
+          if (obj) {
+            const cur = itemsMap.get(obj.id);
+            itemsMap.set(obj.id, cur ? { ...cur, qty: cur.qty + 1 } : { nombre: obj.nombre, icono: obj.icono, qty: 1 });
+          }
+          if (r.tipo === "oro") oroTotal += r.oroDetalle?.cantidadOro ?? 0;
+          if (r.tipo === "subtabla" && r.subRoll?.cantidadOro) oroTotal += r.subRoll.cantidadOro;
+        }
+      } else {
+        if (ev.cantidadOro) oroTotal += ev.cantidadOro;
+        if (ev.objeto) {
+          const qty = (ev as any).cantidad ?? 1;
+          const cur = itemsMap.get(ev.objeto.id);
+          itemsMap.set(ev.objeto.id, cur
+            ? { ...cur, qty: cur.qty + qty }
+            : { nombre: ev.objeto.nombre, icono: ev.objeto.icono, qty });
+        }
+      }
+    }
+
+    return { oroTotal, items: Array.from(itemsMap.entries()).map(([id, v]) => ({ id, ...v })) };
+  }
+
+  // ── Dismember handler ──────────────────────────────────────────────────────
+
+  async function handleDismember(personajeId: number, miembro: string, label: string, currentlyDismembered: boolean) {
+    const desmembrado = !currentlyDismembered;
+    const key = `${personajeId}-${miembro}`;
+    setDismembering(key);
+    try {
+      const res = await fetch("/api/admin/personajes/extremidades", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ personajeId, miembro, desmembrado }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo actualizar" });
+        return;
+      }
+      const { extremidades: updated } = await res.json();
+      setExtremidades((prev) => ({ ...prev, [personajeId]: updated ?? {} }));
+      const participante = participantes.find((p) => p.personajeId === personajeId);
+      onEvent({
+        tipo: "desmembramiento",
+        personajeId,
+        personajeNombre: participante?.nombre ?? "Personaje",
+        miembro,
+        miembroLabel: label,
+        desmembrado,
+      });
+    } finally {
+      setDismembering(null);
     }
   }
 
@@ -331,6 +417,70 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
         {/* Notas del DM */}
         <NotasWidget token={token} />
 
+        {/* Panel de desmembramiento — solo cuando en_progreso */}
+        {partida.estado === "en_progreso" && (
+          <div className="rounded-lg border border-rose-900/40 bg-card p-3 space-y-3">
+            <button
+              type="button"
+              onClick={() => setDismemberOpen((v) => !v)}
+              className="w-full flex items-center justify-between text-[10px] uppercase tracking-widest text-rose-400/70 font-sans"
+            >
+              Desmembramiento
+              {dismemberOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {dismemberOpen && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {participantes.map((p) => (
+                    <button
+                      key={p.personajeId}
+                      onClick={() => setDismemberPersonajeId(p.personajeId)}
+                      disabled={p.muerto}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-sans transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                        dismemberPersonajeId === p.personajeId
+                          ? "border-rose-500 bg-rose-900/20 text-rose-300"
+                          : "border-gold-dim/40 text-foreground/60 hover:border-rose-500/50"
+                      }`}
+                    >
+                      {p.nombre}{p.muerto && " †"}
+                    </button>
+                  ))}
+                </div>
+
+                {dismemberPersonajeId != null && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {LIMBS.map(({ key, label }) => {
+                      const isDismembered = extremidades[dismemberPersonajeId]?.[key] === false;
+                      const loadKey = `${dismemberPersonajeId}-${key}`;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handleDismember(dismemberPersonajeId, key, label, isDismembered)}
+                          disabled={dismembering === loadKey}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded border text-[11px] font-sans transition-all disabled:opacity-60 ${
+                            isDismembered
+                              ? "border-rose-500/60 bg-rose-900/30 text-rose-300"
+                              : "border-border text-foreground/50 hover:border-rose-500/40 hover:text-rose-300/70"
+                          }`}
+                        >
+                          {dismembering === loadKey ? (
+                            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          ) : (
+                            <span className="text-[10px] shrink-0">{isDismembered ? "✂" : "○"}</span>
+                          )}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Asignación manual — solo cuando en_progreso */}
         <div className={`rounded-lg border border-gold-dim/40 bg-card p-3 space-y-3 ${partida.estado === "abierta" ? "hidden" : ""}`}>
           <p className="text-[10px] uppercase tracking-widest text-foreground/50 font-sans">
@@ -440,6 +590,35 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                   return (
                     <div key={p.personajeId} className="border border-border rounded-lg p-4 bg-secondary/10 flex flex-col gap-3">
                       <p className="text-sm font-semibold text-foreground">{p.nombre}</p>
+
+                      {/* Resumen de sesión (read-only) */}
+                      {(() => {
+                        const { oroTotal, items } = buildSessionSummary(p.personajeId);
+                        const hasAnything = oroTotal > 0 || items.length > 0;
+                        return (
+                          <div className="rounded border border-gold-dim/20 bg-black/20 p-2.5 flex flex-col gap-1.5">
+                            <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+                              Recibido en la sesión
+                            </p>
+                            {!hasAnything ? (
+                              <p className="text-xs text-foreground/30 italic font-sans">Sin asignaciones en esta sesión</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {oroTotal > 0 && (
+                                  <span className="text-xs text-gold font-semibold font-sans">
+                                    +{oroTotal.toLocaleString("es-ES")} oro
+                                  </span>
+                                )}
+                                {items.map((item) => (
+                                  <span key={item.id} className="text-xs text-green-400 font-semibold font-sans">
+                                    {item.icono} {item.nombre}{item.qty > 1 ? ` ×${item.qty}` : ""}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
