@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     // Consultar bolsa del personaje origen
     const { data: sourceBagRows, error: sourceBagError } = await db
       .from("bolsa_objetos")
-      .select("id, orden, objeto_id, publicado_en_trade, objetos:objeto_id(nombre)")
+      .select("id, orden, objeto_id, publicado_en_trade, fue_comerciado, objetos:objeto_id(nombre)")
       .eq("personaje_id", fromCharacterId)
       .order("orden", { ascending: true });
 
@@ -71,6 +71,7 @@ export async function POST(request: Request) {
         orden: number;
         objeto_id: number | null;
         publicado_en_trade?: boolean;
+        fue_comerciado?: boolean;
         objetos?: { nombre?: string } | null;
       }
       | undefined;
@@ -79,9 +80,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Objeto no encontrado en la bolsa de origen" }, { status: 404 });
     }
 
-    if (itemRow.publicado_en_trade) {
+    if (itemRow.fue_comerciado) {
       return NextResponse.json(
-        { error: "No puedes mover este objeto mientras esté publicado en comercio" },
+        {
+          error:
+            "No puedes mover este objeto. Ya fue transferido anteriormente y cada objeto solo puede comerciarse una vez.",
+        },
         { status: 409 },
       );
     }
@@ -107,17 +111,27 @@ export async function POST(request: Request) {
     }
 
     // Mover el objeto: actualizar personaje_id y orden (al final de la bolsa destino)
-    const { error: updateError } = await db
+    const { data: movedItem, error: updateError } = await db
       .from("bolsa_objetos")
       .update({
         personaje_id: toCharacterId,
         orden: currentTargetCount + 1,
+        fue_comerciado: true,
       })
       .eq("id", itemRow.id)
-      .eq("personaje_id", fromCharacterId);
+      .eq("personaje_id", fromCharacterId)
+      .eq("fue_comerciado", false)
+      .select("id")
+      .single();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateError || !movedItem) {
+      return NextResponse.json(
+        {
+          error:
+            "No puedes mover este objeto. Ya fue transferido anteriormente y cada objeto solo puede comerciarse una vez.",
+        },
+        { status: 409 },
+      );
     }
 
     // Reordenar bolsa origen restante

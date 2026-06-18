@@ -31,6 +31,7 @@ type Item = {
   price?: number;
   description?: string | null;
   requiresTwoHands?: boolean;
+  fueComerciado?: boolean;
 };
 
 type ArmorSlots = {
@@ -843,6 +844,7 @@ export default function EquipmentModal({
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [selectedTargetCharacterId, setSelectedTargetCharacterId] = useState<number | null>(null);
   const [isMoving, setIsMoving] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const selectedBagItem =
     selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
@@ -1416,7 +1418,13 @@ export default function EquipmentModal({
       return;
     }
 
+    if (selectedBagItem?.fueComerciado) {
+      setMoveError("No puedes mover este objeto. Ya fue transferido anteriormente y cada objeto solo puede comerciarse una vez.");
+      return;
+    }
+
     setIsMoving(true);
+    setMoveError(null);
     // 1. Guardar cambios pendientes (auto-guardado)
     const updatedCharacter = {
       ...equippedMapToCharacter(character, equipped),
@@ -1440,7 +1448,9 @@ export default function EquipmentModal({
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.error || "No se pudo mover el objeto");
+        setMoveError(data?.error || "No se pudo mover el objeto");
+        setIsMoving(false);
+        return;
       }
 
       setStatusMsg(`✓ ${data.itemName} movido a ${data.targetCharacterName} con éxito.`);
@@ -1838,11 +1848,24 @@ export default function EquipmentModal({
               )}
             </div>
 
+            {selectedBagItem?.fueComerciado && (
+              <div className="mt-4 rounded-md border border-red-700/50 bg-red-950/20 px-3 py-2 text-xs text-red-400 text-center">
+                No puedes mover este objeto. Ya fue transferido anteriormente y cada objeto solo puede comerciarse una vez.
+              </div>
+            )}
+
+            {moveError && (
+              <div className="mt-4 rounded-md border border-red-700/50 bg-red-950/20 px-3 py-2 text-xs text-red-400 text-center">
+                {moveError}
+              </div>
+            )}
+
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 onClick={() => {
                   setShowMoveModal(false);
                   setSelectedTargetCharacterId(null);
+                  setMoveError(null);
                 }}
                 disabled={isMoving}
                 className="px-3 py-2 rounded-md border border-[#5a5040] text-xs text-[#cbb58a] disabled:opacity-60"
@@ -1851,11 +1874,11 @@ export default function EquipmentModal({
               </button>
               <button
                 onClick={() => selectedTargetCharacterId && handleMoveItem(selectedTargetCharacterId)}
-                disabled={isMoving || !selectedTargetCharacterId}
+                disabled={isMoving || !selectedTargetCharacterId || selectedBagItem?.fueComerciado}
                 className="px-3 py-2 rounded-md text-xs font-semibold disabled:opacity-60 transition-all"
                 style={{
-                  background: selectedTargetCharacterId && !isMoving ? "#D4AF37" : "#5a5040",
-                  color: selectedTargetCharacterId && !isMoving ? "#0a0a08" : "#8a7a5a",
+                  background: selectedTargetCharacterId && !isMoving && !selectedBagItem?.fueComerciado ? "#D4AF37" : "#5a5040",
+                  color: selectedTargetCharacterId && !isMoving && !selectedBagItem?.fueComerciado ? "#0a0a08" : "#8a7a5a",
                 }}
               >
                 {isMoving ? "Moviendo..." : "Confirmar movimiento"}
