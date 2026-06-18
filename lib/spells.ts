@@ -57,7 +57,12 @@ export function getMaxKnownSpells(className: string, level: number): number {
   }
   if (className === "Brujo") {
     const table = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
-    return table[l];
+    let known = table[l];
+    if (l >= 11) known += 1; // Mystic Arcanum 6
+    if (l >= 13) known += 1; // Mystic Arcanum 7
+    if (l >= 15) known += 1; // Mystic Arcanum 8
+    if (l >= 17) known += 1; // Mystic Arcanum 9
+    return known;
   }
   if (className === "Explorador") {
     const table = [0, 0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11];
@@ -100,8 +105,12 @@ export function getMaxSpellLevel(className: string, level: number): number {
     if (l >= 2) return 1;
     return 0;
   }
-  // Warlock (Pact Magic, slots hasta nivel 5)
+  // Warlock (Pact Magic, slots hasta nivel 5 + Mystic Arcanum hasta nivel 9)
   if (className === "Brujo") {
+    if (l >= 17) return 9;
+    if (l >= 15) return 8;
+    if (l >= 13) return 7;
+    if (l >= 11) return 6;
     if (l >= 9) return 5;
     if (l >= 7) return 4;
     if (l >= 5) return 3;

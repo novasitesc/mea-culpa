@@ -4,6 +4,7 @@ import { getUserFromRequest } from "@/lib/apiAuth";
 import {
   getCasterType,
   getMaxKnownSpells,
+  getMaxSpellLevel,
   normalizeSpells,
   validateSpells,
   type SpellEntry,
@@ -60,27 +61,124 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validar conjuros según reglas de cada clase
+    // ──────────────────────────────────────────────────────────
+    // VALIDACIÓN CONTRA EL CATÁLOGO DE SUPABASE
+    // ──────────────────────────────────────────────────────────
+
+    // Obtener las clases del personaje
     const clases = (personaje.clases_personaje || []) as {
       nombre_clase: string;
       nivel: number;
     }[];
 
-    // Acumular errores de validación de todas las clases
-    const allErrors: string[] = [];
-    let totalMaxKnown = 0;
+    const classNames = clases.map(c => c.nombre_clase);
 
+    // Obtener todos los nombres de conjuros que el jugador quiere guardar
+    const spellNames = spellEntries.map(s => s.name.trim());
+
+    if (spellNames.length > 0) {
+      // 1. Verificar que TODOS los conjuros existen en el catálogo
+      const { data: catalogSpells, error: catalogError } = await db
+        .from("conjuros")
+        .select("nombre, nivel")
+        .in("nombre", spellNames);
+
+      if (catalogError) {
+        return NextResponse.json(
+          { error: "Error verificando el catálogo de conjuros" },
+          { status: 500 },
+        );
+      }
+
+      const catalogMap = new Map<string, number>();
+      for (const cs of catalogSpells ?? []) {
+        catalogMap.set(cs.nombre.toLowerCase().trim(), cs.nivel);
+      }
+
+      // Verificar existencia y corregir nivel desde el catálogo
+      for (const s of spellEntries) {
+        const key = s.name.toLowerCase().trim();
+        const realLevel = catalogMap.get(key);
+        if (realLevel === undefined) {
+          return NextResponse.json(
+            { error: `Bloqueo anti-trampa: El conjuro "${s.name}" no existe en el catálogo oficial.` },
+            { status: 403 },
+          );
+        }
+        // Forzar el nivel real del catálogo (impide manipulación de nivel)
+        s.spellLevel = realLevel;
+      }
+
+      // 2. Verificar que las clases del personaje tienen acceso a esos conjuros y nivel
+      const { data: allowedMappings, error: mappingError } = await db
+        .from("conjuro_clases")
+        .select("conjuro_nombre, nombre_clase")
+        .in("conjuro_nombre", spellNames)
+        .in("nombre_clase", classNames);
+
+      if (mappingError) {
+        return NextResponse.json(
+          { error: "Error verificando acceso a conjuros por clase" },
+          { status: 500 },
+        );
+      }
+
+      // Precalcular el nivel máximo de conjuro por cada clase del personaje
+      const classMaxSpellLevel = new Map<string, number>();
+      for (const c of clases) {
+        classMaxSpellLevel.set(c.nombre_clase, getMaxSpellLevel(c.nombre_clase, c.nivel));
+      }
+
+      for (const s of spellEntries) {
+        const key = s.name.toLowerCase().trim();
+        const validClassesForSpell = (allowedMappings ?? [])
+          .filter(m => m.conjuro_nombre.toLowerCase().trim() === key)
+          .map(m => m.nombre_clase);
+
+        if (validClassesForSpell.length === 0) {
+          return NextResponse.json(
+            {
+              error: `Bloqueo anti-trampa: "${s.name}" no está disponible para las clases de este personaje (${classNames.join(", ")}).`,
+            },
+            { status: 403 },
+          );
+        }
+
+        // Verificar si ALGUNA de las clases válidas para este conjuro tiene el nivel suficiente
+        const canCast = validClassesForSpell.some(cName => {
+          const maxLv = classMaxSpellLevel.get(cName) || 0;
+          return maxLv >= s.spellLevel;
+        });
+
+        if (!canCast) {
+          return NextResponse.json(
+            {
+              error: `Bloqueo anti-trampa: Tu nivel en las clases que acceden a "${s.name}" es demasiado bajo para aprender conjuros de nivel ${s.spellLevel}.`,
+            },
+            { status: 403 },
+          );
+        }
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // VALIDACIÓN DE LÍMITE TOTAL DE CONJUROS CONOCIDOS
+    // ──────────────────────────────────────────────────────────
+
+    let totalMaxKnown = 0;
     for (const c of clases) {
       const type = getCasterType(c.nombre_clase);
       if (type === "known") {
         totalMaxKnown += getMaxKnownSpells(c.nombre_clase, c.nivel);
       }
+    }
 
-      // Validar distribución y niveles por clase
-      if (type !== "none") {
-        const result = validateSpells(c.nombre_clase, c.nivel, spellEntries);
-        allErrors.push(...result.errors);
-      }
+    // Si tiene un límite y lo excede (nota: regularSpells y warlock arcanums se simplifican aquí a total max known para evitar complejidad excesiva en multiclases, si quisieramos arcanums se manejaría separado).
+    if (totalMaxKnown > 0 && spellEntries.length > totalMaxKnown) {
+      return NextResponse.json(
+        { error: `Excede el máximo de conjuros conocidos: ${spellEntries.length}/${totalMaxKnown}.` },
+        { status: 403 },
+      );
     }
 
     // Quitar duplicados antes de guardar
@@ -93,15 +191,6 @@ export async function POST(request: Request) {
       seenKeys.add(key);
       uniqueSpells.push({ name: s.name.trim(), spellLevel: s.spellLevel });
     }
-
-    // Si hay errores de validación, rechazar
-    if (allErrors.length > 0) {
-      return NextResponse.json(
-        { error: `Bloqueo anti-trampa: ${allErrors[0]}`, errors: allErrors },
-        { status: 403 },
-      );
-    }
-
     const { error: updateError } = await db
       .from("personajes")
       .update({ conjuros_conocidos: uniqueSpells })

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { calculateBagSlots } from "@/lib/types/character";
 import {
   getCasterType,
+  getMaxKnownSpells,
   normalizeSpells,
   validateSpells,
   type SpellEntry,
@@ -181,18 +182,85 @@ export async function POST(request: Request) {
       validatedSpells.push({ name: s.name.trim(), spellLevel: s.spellLevel });
     }
 
-    // Validar contra reglas de cada clase
-    for (const c of multiclass as { className: string; level: number }[]) {
-      const type = getCasterType(c.className);
-      if (type !== "none" && validatedSpells.length > 0) {
-        const result = validateSpells(c.className, c.level, validatedSpells);
-        if (!result.valid) {
+    // --- VALIDACIÓN CONTRA EL CATÁLOGO DE SUPABASE ---
+    if (validatedSpells.length > 0) {
+      const spellNames = validatedSpells.map(s => s.name);
+      const classNames = multiclass.map((c: { className: string }) => c.className);
+
+      // 1. Verificar que TODOS los conjuros existen en el catálogo
+      const { data: catalogSpells, error: catalogError } = await db
+        .from("conjuros")
+        .select("nombre, nivel")
+        .in("nombre", spellNames);
+
+      if (catalogError) {
+        return NextResponse.json(
+          { error: "Error verificando el catálogo de conjuros" },
+          { status: 500 },
+        );
+      }
+
+      const catalogMap = new Map<string, number>();
+      for (const cs of catalogSpells ?? []) {
+        catalogMap.set(cs.nombre.toLowerCase().trim(), cs.nivel);
+      }
+
+      for (const s of validatedSpells) {
+        const key = s.name.toLowerCase().trim();
+        const realLevel = catalogMap.get(key);
+        if (realLevel === undefined) {
           return NextResponse.json(
-            { error: result.errors[0], errors: result.errors },
+            { error: `El conjuro "${s.name}" no existe en el catálogo oficial.` },
+            { status: 400 },
+          );
+        }
+        s.spellLevel = realLevel;
+      }
+
+      // 2. Verificar que las clases del personaje tienen acceso a esos conjuros
+      const { data: allowedMappings, error: mappingError } = await db
+        .from("conjuro_clases")
+        .select("conjuro_nombre, nombre_clase")
+        .in("conjuro_nombre", spellNames)
+        .in("nombre_clase", classNames);
+
+      if (mappingError) {
+        return NextResponse.json(
+          { error: "Error verificando acceso a conjuros por clase" },
+          { status: 500 },
+        );
+      }
+
+      const allowedSet = new Set<string>();
+      for (const m of allowedMappings ?? []) {
+        allowedSet.add(m.conjuro_nombre.toLowerCase().trim());
+      }
+
+      for (const s of validatedSpells) {
+        const key = s.name.toLowerCase().trim();
+        if (!allowedSet.has(key)) {
+          return NextResponse.json(
+            { error: `"${s.name}" no está disponible para las clases seleccionadas (${classNames.join(", ")}).` },
             { status: 400 },
           );
         }
       }
+    }
+
+    // Validar suma global de topes (para evitar error en multiclase)
+    let totalMaxKnown = 0;
+    for (const c of multiclass as { className: string; level: number }[]) {
+      const type = getCasterType(c.className);
+      if (type === "known") {
+        totalMaxKnown += getMaxKnownSpells(c.className, c.level);
+      }
+    }
+
+    if (totalMaxKnown > 0 && validatedSpells.length > totalMaxKnown) {
+       return NextResponse.json(
+         { error: `Excede el máximo de conjuros conocidos: ${validatedSpells.length}/${totalMaxKnown}.` },
+         { status: 400 },
+       );
     }
 
     // 1. Insertar personaje
