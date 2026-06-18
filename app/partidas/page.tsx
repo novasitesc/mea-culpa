@@ -28,6 +28,7 @@ type OpenPartida = {
   cooldownSecondsRemaining: number;
   createdAt: string;
   createdBy: string | null;
+  esDmDe?: boolean;
   joinedCharacterIds: number[];
 };
 
@@ -450,87 +451,98 @@ export default function PartidasPage() {
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="flex-1">
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">Selecciona personaje</p>
-                        <select
-                          value={selectedCharacter}
-                          onChange={(event) => setSelectedCharacter(event.target.value)}
-                          disabled={!characters.length}
-                          className="w-full rounded-2xl border border-[#453b28] bg-[#11100c] px-3 py-2 text-sm text-foreground outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {characters.length ? (
-                            <>
-                              <option value="">Selecciona personaje</option>
-                              {characters.map((character) => {
-                                const primaryClassName = character.multiclass?.[0]?.className;
-                                return (
-                                  <option
-                                    key={character.id}
-                                    value={character.id}
-                                    disabled={character.lifeStatus === "muerto"}
-                                  >
-                                    {character.name}
-                                    {primaryClassName ? ` — ${primaryClassName}` : ""}
-                                    {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
-                                  </option>
-                                );
-                              })}
-                            </>
-                          ) : (
-                            <option value="">No tienes personajes</option>
-                          )}
-                        </select>
-
-                        {/* Previsualización del personaje seleccionado */}
-                        {selectedCharacterData && (
-                          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#453b28] bg-[#11100c] p-3">
-                            <img
-                              src={selectedCharacterPortrait}
-                              alt={selectedCharacterData.name}
-                              className="h-16 w-16 rounded-xl object-cover border border-[#6b531f]/70"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold text-[#D4AF37]">
-                                {selectedCharacterData.name}
-                              </p>
-                              <p className="text-xs text-[#c8b78e]">
-                                {selectedCharacterData.multiclass?.[0]?.className || "Clase no definida"}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {selectedGameDetail.status === "en_progreso" && selectedGameDetail.joinedCharacterIds?.length ? (
+                    {selectedGameDetail.esDmDe ? (
+                      /* Vista DM: acceso directo a sala sin selector de personaje */
+                      <div className="pt-2">
                         <a
                           href={`/partidas/${selectedGameDetail.id}`}
-                          className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
+                          className="inline-flex w-full justify-center rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
                         >
-                          🎲 Entrar a sala
+                          🎲 Ir a sala (DM)
                         </a>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
-                          disabled={
-                            (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
-                            joiningDetail ||
-                            leavingDetail ||
-                            selectedGameDetail.isFull
-                          }
-                          className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
-                        >
-                          {joiningDetail || leavingDetail
-                            ? "Procesando..."
-                            : selectedGameDetail.joinedCharacterIds?.length
-                              ? "Salir"
-                              : selectedGameDetail.isFull
-                                ? "Llena"
-                                : "Unirse"}
-                        </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex-1">
+                          <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">Selecciona personaje</p>
+                          <select
+                            value={selectedCharacter}
+                            onChange={(event) => setSelectedCharacter(event.target.value)}
+                            disabled={!characters.length}
+                            className="w-full rounded-2xl border border-[#453b28] bg-[#11100c] px-3 py-2 text-sm text-foreground outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {characters.length ? (
+                              <>
+                                <option value="">Selecciona personaje</option>
+                                {characters.map((character) => {
+                                  const primaryClassName = character.multiclass?.[0]?.className;
+                                  return (
+                                    <option
+                                      key={character.id}
+                                      value={character.id}
+                                      disabled={character.lifeStatus === "muerto"}
+                                    >
+                                      {character.name}
+                                      {primaryClassName ? ` — ${primaryClassName}` : ""}
+                                      {character.lifeStatus === "muerto" ? " (Muerto)" : ""}
+                                    </option>
+                                  );
+                                })}
+                              </>
+                            ) : (
+                              <option value="">No tienes personajes</option>
+                            )}
+                          </select>
+
+                          {selectedCharacterData && (
+                            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#453b28] bg-[#11100c] p-3">
+                              <img
+                                src={selectedCharacterPortrait}
+                                alt={selectedCharacterData.name}
+                                className="h-16 w-16 rounded-xl object-cover border border-[#6b531f]/70"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold text-[#D4AF37]">
+                                  {selectedCharacterData.name}
+                                </p>
+                                <p className="text-xs text-[#c8b78e]">
+                                  {selectedCharacterData.multiclass?.[0]?.className || "Clase no definida"}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedGameDetail.status === "en_progreso" && selectedGameDetail.joinedCharacterIds?.length ? (
+                          <a
+                            href={`/partidas/${selectedGameDetail.id}`}
+                            className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
+                          >
+                            🎲 Entrar a sala
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
+                            disabled={
+                              (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
+                              joiningDetail ||
+                              leavingDetail ||
+                              selectedGameDetail.isFull
+                            }
+                            className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                          >
+                            {joiningDetail || leavingDetail
+                              ? "Procesando..."
+                              : selectedGameDetail.joinedCharacterIds?.length
+                                ? "Salir"
+                                : selectedGameDetail.isFull
+                                  ? "Llena"
+                                  : "Unirse"}
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {detailError && (
                       <p className="rounded-2xl border border-rose-500/30 bg-[#2b1814] px-3 py-2 text-xs text-rose-200">
