@@ -1165,7 +1165,9 @@ export default function ProfilePage() {
                     <EquipmentModal
                       userId={user?.id ?? ""}
                       character={character}
+                      characters={characters}
                       onClose={() => setOpenBagModal(null)}
+                      onRefreshProfile={loadProfile}
                       onSave={async (updatedCharacter, updatedBagItems) => {
                         const nextCharacter = updatedCharacter as Character;
                         const nextBagItems = updatedBagItems as Item[];
