@@ -31,6 +31,7 @@ import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-
 import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
+import { DadosTab } from "./dados-tab";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -219,6 +220,7 @@ type Tab =
   | "historial-partidas"
   | "impuestos"
   | "ruleta"
+  | "dados"
   | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -796,7 +798,7 @@ function PartidasTab({
           <FormField label="Hora de inicio">
             <input
               type="datetime-local"
-              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:invert(1)_brightness(2)_contrast(2)]`}
+              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter-[invert(1)_brightness(2)_contrast(2)]`}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
@@ -4045,6 +4047,7 @@ export default function AdminPage() {
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
+    { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
@@ -4129,6 +4132,9 @@ export default function AdminPage() {
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+            )}
+            {activeTab === "dados" && (
+              <DadosTab token={token} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />

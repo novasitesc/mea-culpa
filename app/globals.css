@@ -514,18 +514,43 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 @keyframes decoration-pulse {
   0%, 100% {
     opacity: 0.8;
-    box-shadow: 
+    box-shadow:
       0 0 12px rgba(212, 175, 55, 0.8),
       0 0 24px rgba(184, 134, 11, 0.6),
       0 0 36px rgba(212, 175, 55, 0.4);
   }
   50% {
     opacity: 1;
-    box-shadow: 
+    box-shadow:
       0 0 20px rgba(212, 175, 55, 1),
       0 0 40px rgba(184, 134, 11, 0.8),
       0 0 60px rgba(212, 175, 55, 0.6);
   }
+}
+
+/* ─── Dados / Dice ─────────────────────────────────────────────────────────── */
+
+@keyframes dice-roll {
+  0%   { transform: rotate(0deg)    scale(1);    }
+  15%  { transform: rotate(270deg)  scale(1.15); }
+  35%  { transform: rotate(630deg)  scale(0.9);  }
+  55%  { transform: rotate(900deg)  scale(1.1);  }
+  75%  { transform: rotate(1080deg) scale(0.95); }
+  90%  { transform: rotate(1260deg) scale(1.05); }
+  100% { transform: rotate(1440deg) scale(1);    }
+}
+
+@keyframes dice-idle {
+  0%, 100% { transform: rotate(-4deg) scale(1);    }
+  50%       { transform: rotate(4deg)  scale(1.04); }
+}
+
+.dice-rolling {
+  animation: dice-roll 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.dice-idle {
+  animation: dice-idle 2.8s ease-in-out infinite;
 }
 
 .logo-frame-decoration.top {

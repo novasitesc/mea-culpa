@@ -4,6 +4,71 @@ import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { normalizeSpells, type SpellEntry } from "@/lib/spells";
 
+function hasDismemberedLimb(extremities: unknown): boolean {
+  if (!extremities || typeof extremities !== "object") {
+    return false;
+  }
+
+  return Object.values(extremities as Record<string, unknown>).some(
+    (value) => value === false,
+  );
+}
+
+function humanizeLimbKey(key: string): string {
+  const normalized = key
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return key;
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function getDismemberedLimbs(extremities: unknown): string[] {
+  if (!extremities || typeof extremities !== "object") {
+    return [];
+  }
+
+  const limbLabels: Record<string, string> = {
+    cabeza: "Cabeza",
+    head: "Cabeza",
+    brazo_izquierdo: "Brazo izquierdo",
+    brazo_derecho: "Brazo derecho",
+    brazoizquierdo: "Brazo izquierdo",
+    brazoderecho: "Brazo derecho",
+    left_arm: "Brazo izquierdo",
+    right_arm: "Brazo derecho",
+    mano_izquierda: "Mano izquierda",
+    mano_derecha: "Mano derecha",
+    manoizquierda: "Mano izquierda",
+    manoderecha: "Mano derecha",
+    left_hand: "Mano izquierda",
+    right_hand: "Mano derecha",
+    pierna_izquierda: "Pierna izquierda",
+    pierna_derecha: "Pierna derecha",
+    piernaizquierda: "Pierna izquierda",
+    piernaderecha: "Pierna derecha",
+    left_leg: "Pierna izquierda",
+    right_leg: "Pierna derecha",
+    pie_izquierdo: "Pie izquierdo",
+    pie_derecho: "Pie derecho",
+    pieizquierdo: "Pie izquierdo",
+    piederecho: "Pie derecho",
+    left_foot: "Pie izquierdo",
+    right_foot: "Pie derecho",
+    torso: "Torso",
+    tronco: "Torso",
+  };
+
+  return Object.entries(extremities as Record<string, unknown>)
+    .filter(([, value]) => value === false)
+    .map(([key]) => limbLabels[key.toLowerCase()] ?? humanizeLimbKey(key))
+    .filter((label, index, labels) => labels.indexOf(label) === index);
+}
+
 function normalizeNivel20Url(rawValue: unknown): {
   value: string | null;
   error: string | null;
@@ -71,16 +136,7 @@ export async function GET(request: Request) {
     .from("personajes")
     .select(
       `
-      id,
-      numero_slot,
-      nombre,
-      raza,
-      alineamiento,
-      retrato,
-      capacidad_bolsa,
-      estado_vida,
-      muerto_en,
-      revivido_en,
+      *,
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
@@ -183,6 +239,7 @@ export async function GET(request: Request) {
     const clases = (p.clases_personaje ?? []).sort(
       (a: any, b: any) => a.orden - b.orden,
     );
+    const extremities = p.Extremidades ?? p.extremidades ?? null;
 
     const equipmentPriceByName: Record<string, number> = {};
     const equipmentRequiresTwoHandsByName: Record<string, boolean> = {};
@@ -243,7 +300,12 @@ export async function GET(request: Request) {
       lifeStatus: p.estado_vida ?? "vivo",
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
+<<<<<<< HEAD
       knownSpells: spellsByCharId[p.id] ?? [],
+=======
+      hasDismemberedLimb: hasDismemberedLimb(extremities),
+      dismemberedLimbs: getDismemberedLimbs(extremities),
+>>>>>>> origin/stage
       stats: stats
         ? {
             str: stats.fuerza,

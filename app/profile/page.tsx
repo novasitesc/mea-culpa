@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
+import DiceModule from "../components/dice-module";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
@@ -95,6 +96,8 @@ type Character = {
   lifeStatus: "vivo" | "muerto";
   deadAt: string | null;
   revivedAt: string | null;
+  hasDismemberedLimb: boolean;
+  dismemberedLimbs: string[];
   stats: Record<string, number>;
   armor: ArmorSlots;
   accessories: AccessorySlots;
@@ -750,6 +753,10 @@ export default function ProfilePage() {
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         <Header />
 
+        <div className="mt-4">
+          <DiceModule token={token} />
+        </div>
+
         <div className="space-y-10 mt-6">
           <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -1112,6 +1119,16 @@ export default function ProfilePage() {
                     >
                       {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
                     </p>
+                    {character.hasDismemberedLimb && (
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-300">
+                        <p>Miembros desmembrados:</p>
+                        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-orange-200/90">
+                          {character.dismemberedLimbs.length > 0
+                            ? character.dismemberedLimbs.join(", ")
+                            : "No especificado"}
+                        </p>
+                      </div>
+                    )}
                     {character.lifeStatus === "muerto" && character.deadAt && (
                       <p className="text-xs text-red-200/80 mt-1">
                         Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
@@ -1178,7 +1195,9 @@ export default function ProfilePage() {
                     <EquipmentModal
                       userId={user?.id ?? ""}
                       character={character}
+                      characters={characters}
                       onClose={() => setOpenBagModal(null)}
+                      onRefreshProfile={loadProfile}
                       onSave={async (updatedCharacter, updatedBagItems) => {
                         const nextCharacter = updatedCharacter as Character;
                         const nextBagItems = updatedBagItems as Item[];
