@@ -115,8 +115,8 @@ export default function PartidasPage() {
     }
   }, [token, user?.id, showAlert]);
 
-  const loadOpenGames = useCallback(async () => {
-    if (!token) return;
+  const loadOpenGames = useCallback(async (): Promise<OpenPartida[]> => {
+    if (!token) return [];
 
     setLoadingOpenGames(true);
     try {
@@ -130,13 +130,16 @@ export default function PartidasPage() {
         throw new Error(err.error ?? "No se pudieron cargar las partidas activas");
       }
 
-      setOpenGames(data as OpenPartida[]);
+      const games = data as OpenPartida[];
+      setOpenGames(games);
+      return games;
     } catch (error) {
       showAlert(
         "Error",
         error instanceof Error ? error.message : "No se pudieron cargar las partidas activas",
         "error",
       );
+      return [];
     } finally {
       setLoadingOpenGames(false);
     }
@@ -249,14 +252,15 @@ export default function PartidasPage() {
       }
 
       showAlert("Inscripción completada", "Te uniste correctamente a la partida.", "success");
-      await loadOpenGames();
-      await loadGameDetail(selectedGameDetail.id);
+      const freshGames = await loadOpenGames();
+      const freshDetail = freshGames.find((g) => g.id === selectedGameDetail.id);
+      if (freshDetail) setSelectedGameDetail(freshDetail);
     } catch (postError) {
       setDetailError(postError instanceof Error ? postError.message : "No se pudo unir a la partida.");
     } finally {
       setJoiningDetail(false);
     }
-  }, [selectedGameDetail, selectedCharacter, token, loadOpenGames, loadGameDetail, showAlert]);
+  }, [selectedGameDetail, selectedCharacter, token, loadOpenGames, showAlert]);
 
   const leaveGameDetail = useCallback(async () => {
     if (!token || !selectedGameDetail) return;
@@ -281,14 +285,15 @@ export default function PartidasPage() {
       }
 
       showAlert("Salida completada", "Saliste correctamente de la partida.", "success");
-      await loadOpenGames();
-      await loadGameDetail(selectedGameDetail.id);
+      const freshGames = await loadOpenGames();
+      const freshDetail = freshGames.find((g) => g.id === selectedGameDetail.id);
+      if (freshDetail) setSelectedGameDetail(freshDetail);
     } catch (postError) {
       setDetailError(postError instanceof Error ? postError.message : "No se pudo salir de la partida.");
     } finally {
       setLeavingDetail(false);
     }
-  }, [selectedGameDetail, token, loadOpenGames, loadGameDetail, showAlert]);
+  }, [selectedGameDetail, token, loadOpenGames, showAlert]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
