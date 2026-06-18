@@ -63,6 +63,9 @@ type Bag = {
 type Character = {
   id: number;
   name: string;
+  race?: string;
+  portrait?: string;
+  lifeStatus?: "vivo" | "muerto";
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
@@ -800,17 +803,21 @@ function BagItemCard({
 interface EquipmentModalProps {
   userId: string;
   character: Character;
+  characters?: Character[];
   onClose: () => void;
   onSave: (updatedCharacter: Character, updatedBagItems: Item[]) => Promise<void>;
   onGoldUpdate?: (newGold: number) => void;
+  onRefreshProfile?: () => Promise<void>;
 }
 
 export default function EquipmentModal({
   userId,
   character,
+  characters = [],
   onClose,
   onSave,
   onGoldUpdate,
+  onRefreshProfile,
 }: EquipmentModalProps) {
   const [equipped, setEquipped] = useState<EquippedMap>(() =>
     buildEquippedMap(character)
@@ -833,6 +840,9 @@ export default function EquipmentModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [showSellConfirm, setShowSellConfirm] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedTargetCharacterId, setSelectedTargetCharacterId] = useState<number | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
 
   const selectedBagItem =
     selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
@@ -1400,6 +1410,61 @@ export default function EquipmentModal({
     }
   };
 
+  const handleMoveItem = async (targetCharacterId: number) => {
+    if (selectedBagIndex === null || !selectedBagItem) {
+      setStatusMsg("⚠ Selecciona un objeto de la bolsa para mover");
+      return;
+    }
+
+    setIsMoving(true);
+    // 1. Guardar cambios pendientes (auto-guardado)
+    const updatedCharacter = {
+      ...equippedMapToCharacter(character, equipped),
+      weaponSockets,
+      capeSockets,
+    };
+    try {
+      await onSave(updatedCharacter, bagItems);
+
+      // 2. Realizar el movimiento en la base de datos
+      const response = await fetch("/api/profile/move-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          fromCharacterId: character.id,
+          toCharacterId: targetCharacterId,
+          bagIndex: selectedBagIndex,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "No se pudo mover el objeto");
+      }
+
+      setStatusMsg(`✓ ${data.itemName} movido a ${data.targetCharacterName} con éxito.`);
+      
+      // 3. Resetear selección y recargar perfil
+      setShowMoveModal(false);
+      setSelectedTargetCharacterId(null);
+      setSelectedBagIndex(null);
+      setSelectedSlot(null);
+      setSelectedCapeSocket(null);
+      setSelectedWeaponSocket(null);
+
+      if (onRefreshProfile) {
+        await onRefreshProfile();
+      }
+      onClose(); // Cerrar modal porque el estado de origen cambió sustancialmente
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo mover el objeto";
+      setStatusMsg(`✗ ${message}`);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
   const emptySlots = character.bag.maxSlots - bagItems.length;
 
   return (
@@ -1566,6 +1631,24 @@ export default function EquipmentModal({
                   >
                     {isSelling ? "Vendiendo..." : "Vender seleccionado"}
                   </button>
+                  <button
+                    onClick={() => {
+                      if (selectedBagIndex === null || !selectedBagItem) {
+                        setStatusMsg("⚠ Selecciona un objeto de la bolsa para mover");
+                        return;
+                      }
+                      setShowMoveModal(true);
+                    }}
+                    disabled={selectedBagIndex === null || isSelling || isSaving || isMoving}
+                    className="text-[10px] tracking-[0.12em] uppercase font-bold py-1.5 px-3 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: selectedBagIndex === null || isSelling || isSaving || isMoving ? "#5a5040" : "#8B5E34",
+                      color: "#f5e6c8",
+                    }}
+                    title="Mover objeto seleccionado a otro de tus personajes"
+                  >
+                    {isMoving ? "Moviendo..." : "Mover item"}
+                  </button>
                   <span className="text-xs text-[#8a7a5a]">
                     {bagItems.length} / {character.bag.maxSlots} espacios
                   </span>
@@ -1679,6 +1762,103 @@ export default function EquipmentModal({
                 style={{ background: "#8B5E34", color: "#f5e6c8" }}
               >
                 {isSelling ? "Vendiendo..." : "Confirmar venta"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMoveModal && selectedBagItem && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5"
+            style={{ background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)" }}
+          >
+            <h3 className="text-sm tracking-[0.18em] uppercase text-[#D4AF37] mb-3 font-serif">
+              Mover Objeto
+            </h3>
+            <p className="text-sm text-[#e8d8b0] leading-relaxed">
+              Selecciona el personaje al que deseas mover <strong>{selectedBagItem.name}</strong>:
+            </p>
+
+            <div className="mt-3 max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {(characters ?? [])
+                .filter((char) => char.id !== character.id && char.lifeStatus !== "muerto")
+                .map((char) => {
+                  const isFull = (char.bag?.items?.length ?? 0) >= (char.bag?.maxSlots ?? 10);
+                  const isSelected = selectedTargetCharacterId === char.id;
+
+                  return (
+                    <button
+                      key={char.id}
+                      disabled={isFull || isMoving}
+                      onClick={() => setSelectedTargetCharacterId(char.id)}
+                      className={[
+                        "w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all duration-200",
+                        isFull
+                          ? "opacity-50 cursor-not-allowed border-[#2a2018] bg-black/10"
+                          : isSelected
+                          ? "border-[#D4AF37] bg-[#1e1a0a] shadow-[0_0_8px_rgba(212,175,55,0.3)] cursor-pointer"
+                          : "border-[#3a3020] bg-black/20 hover:border-[#8B7355] hover:bg-[#2a2518] cursor-pointer",
+                      ].join(" ")}
+                    >
+                      <div className="relative w-10 h-10 rounded border border-[#8B7355] overflow-hidden bg-secondary/40 shrink-0">
+                        <img
+                          src={char.portrait || "/characters/profileplaceholder.webp"}
+                          alt={char.name}
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-[#8a7a5a] uppercase tracking-wider leading-none">
+                          {char.race}
+                        </p>
+                        <p className="text-sm font-serif text-[#e8d8b0] truncate mt-0.5">
+                          {char.name}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-[#8a7a5a]">
+                          {(char.bag?.items?.length ?? 0)} / {(char.bag?.maxSlots ?? 10)} slots
+                        </span>
+                        {isFull && (
+                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-red-700/50 bg-red-950/30 text-red-400 font-semibold uppercase leading-none">
+                            Lleno
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              {(!characters ||
+                characters.filter((char) => char.id !== character.id && char.lifeStatus !== "muerto").length === 0) && (
+                <p className="text-xs text-[#8a7a5a] italic text-center py-4">
+                  No tienes otros personajes vivos disponibles para recibir este objeto.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowMoveModal(false);
+                  setSelectedTargetCharacterId(null);
+                }}
+                disabled={isMoving}
+                className="px-3 py-2 rounded-md border border-[#5a5040] text-xs text-[#cbb58a] disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => selectedTargetCharacterId && handleMoveItem(selectedTargetCharacterId)}
+                disabled={isMoving || !selectedTargetCharacterId}
+                className="px-3 py-2 rounded-md text-xs font-semibold disabled:opacity-60 transition-all"
+                style={{
+                  background: selectedTargetCharacterId && !isMoving ? "#D4AF37" : "#5a5040",
+                  color: selectedTargetCharacterId && !isMoving ? "#0a0a08" : "#8a7a5a",
+                }}
+              >
+                {isMoving ? "Moviendo..." : "Confirmar movimiento"}
               </button>
             </div>
           </div>
