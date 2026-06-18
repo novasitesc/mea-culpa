@@ -12,6 +12,8 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
+import { inputCls } from "@/lib/ui";
+import { useRewardsState } from "@/lib/useRewardsState";
 
 type Props = {
   partida: SalaPartida;
@@ -24,10 +26,6 @@ type Props = {
 
 type AlertState = { variant: "success" | "error"; message: string } | null;
 
-type CloseRewardItem = { id: string; objectId: number | null; qty: number };
-type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
-
-function mkId() { return Math.random().toString(36).slice(2, 9); }
 
 export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
   const router = useRouter();
@@ -50,7 +48,14 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   // Close modal state
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closingGame, setClosingGame] = useState(false);
-  const [closeRewards, setCloseRewards] = useState<Record<number, CloseReward>>({});
+  const {
+    rewards: closeRewards,
+    setRewards: setCloseRewards,
+    updateReward: updateCloseReward,
+    addItem: addCloseItem,
+    updateItem: updateCloseItem,
+    removeItem: removeCloseItem,
+  } = useRewardsState();
 
   // Dismember panel state
   const [dismemberOpen, setDismemberOpen] = useState(false);
@@ -266,40 +271,12 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   // ── Close modal helpers ────────────────────────────────────────────────────
 
   function openCloseModal() {
-    const initial: Record<number, CloseReward> = {};
+    const initial: Record<number, { gold: number; levelUps: number; items: { id: string; objectId: number | null; qty: number }[] }> = {};
     for (const p of participantes) {
       initial[p.personajeId] = { gold: 0, levelUps: 0, items: [] };
     }
     setCloseRewards(initial);
     setCloseModalOpen(true);
-  }
-
-  function updateCloseReward(personajeId: number, updates: Partial<{ gold: number; levelUps: number }>) {
-    setCloseRewards((prev) => ({
-      ...prev,
-      [personajeId]: { ...(prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] }), ...updates },
-    }));
-  }
-
-  function addCloseItem(personajeId: number) {
-    setCloseRewards((prev) => {
-      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
-      return { ...prev, [personajeId]: { ...cur, items: [...cur.items, { id: mkId(), objectId: null, qty: 1 }] } };
-    });
-  }
-
-  function updateCloseItem(personajeId: number, itemId: string, updates: Partial<{ objectId: number | null; qty: number }>) {
-    setCloseRewards((prev) => {
-      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
-      return { ...prev, [personajeId]: { ...cur, items: cur.items.map((it) => it.id === itemId ? { ...it, ...updates } : it) } };
-    });
-  }
-
-  function removeCloseItem(personajeId: number, itemId: string) {
-    setCloseRewards((prev) => {
-      const cur = prev[personajeId] ?? { gold: 0, levelUps: 0, items: [] };
-      return { ...prev, [personajeId]: { ...cur, items: cur.items.filter((it) => it.id !== itemId) } };
-    });
   }
 
   async function submitClose() {
@@ -335,9 +312,6 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       setClosingGame(false);
     }
   }
-
-  const inputCls =
-    "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all";
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">

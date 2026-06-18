@@ -12,6 +12,7 @@ import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { Coins, ShoppingBag, UserRound, Check, X } from "lucide-react";
+import { inputCls } from "@/lib/ui";
 
 type BagItem = {
   bagRowId: number;
@@ -568,7 +569,7 @@ export default function ComercioPage() {
                     Objeto para publicar
                   </p>
                   <ObjectSelector
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all"
+                    className={inputCls}
                     items={sellerInventoryOptions}
                     value={selectedBagRowId}
                     onChange={setSelectedBagRowId}

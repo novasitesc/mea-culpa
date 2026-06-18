@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { applyLimbUpdate } from "@/lib/limbs";
 
 export default function SalaPage() {
   const params = useParams();
@@ -109,15 +110,7 @@ export default function SalaPage() {
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
-                ? {
-                    ...p,
-                    extremidades: {
-                      ...(p.extremidades ?? {}),
-                      ...(payload.desmembrado
-                        ? { [payload.miembro]: false }
-                        : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
-                    },
-                  }
+                ? { ...p, extremidades: applyLimbUpdate(p.extremidades, payload.miembro, payload.desmembrado) }
                 : p,
             ),
           );
@@ -160,12 +153,7 @@ export default function SalaPage() {
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
-            ? {
-                ...p,
-                extremidades: ev.desmembrado
-                  ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
-                  : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
-              }
+            ? { ...p, extremidades: applyLimbUpdate(p.extremidades, ev.miembro, ev.desmembrado) }
             : p,
         ),
       );

@@ -38,6 +38,8 @@ import {
   getAccountLevelTitle,
   normalizeAccountLevel,
 } from "@/lib/accountLevel";
+import { inputCls } from "@/lib/ui";
+import { useRewardsState } from "@/lib/useRewardsState";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -325,9 +327,6 @@ function FormField({
     </div>
   );
 }
-
-const inputCls =
-  "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all";
 
 // ─── Confirmación de eliminación ──────────────────────────────────────────────
 
@@ -869,16 +868,7 @@ function ActivePartidasTab({
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loadingObjects, setLoadingObjects] = useState(false);
   const [rewardTarget, setRewardTarget] = useState<PartidaHistoryEntry | null>(null);
-  const [rewards, setRewards] = useState<
-    Record<
-      number,
-      {
-        gold: number;
-        levelUps: number;
-        items: { id: string; objectId: number | null; qty: number }[];
-      }
-    >
-  >({});
+  const { rewards, setRewards, updateReward, addItem: addItemToReward, updateItem: updateRewardItem, removeItem: removeRewardItem } = useRewardsState();
 
   const rewardObjectOptions = useMemo<ObjectSelectorItem[]>(
     () =>
@@ -890,9 +880,6 @@ function ActivePartidasTab({
       })),
     [objects],
   );
-
-  const createId = (prefix: string) =>
-    `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
   const loadGames = useCallback(async () => {
     setLoading(true);
@@ -944,71 +931,6 @@ function ActivePartidasTab({
 
     setRewards(initialRewards);
     setRewardTarget(entry);
-  };
-
-  const updateReward = (
-    characterId: number,
-    updates: Partial<{ gold: number; levelUps: number }>,
-  ) => {
-    setRewards((prev) => ({
-      ...prev,
-      [characterId]: {
-        ...(prev[characterId] ?? { gold: 0, levelUps: 0, items: [] }),
-        ...updates,
-      },
-    }));
-  };
-
-  const addItemToReward = (characterId: number) => {
-    setRewards((prev) => {
-      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
-      return {
-        ...prev,
-        [characterId]: {
-          ...current,
-          items: [
-            ...current.items,
-            {
-              id: createId("ri"),
-              objectId: null,
-              qty: 1,
-            },
-          ],
-        },
-      };
-    });
-  };
-
-  const updateRewardItem = (
-    characterId: number,
-    itemId: string,
-    updates: Partial<{ objectId: number | null; qty: number }>,
-  ) => {
-    setRewards((prev) => {
-      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
-      return {
-        ...prev,
-        [characterId]: {
-          ...current,
-          items: current.items.map((item) =>
-            item.id === itemId ? { ...item, ...updates } : item,
-          ),
-        },
-      };
-    });
-  };
-
-  const removeRewardItem = (characterId: number, itemId: string) => {
-    setRewards((prev) => {
-      const current = prev[characterId] ?? { gold: 0, levelUps: 0, items: [] };
-      return {
-        ...prev,
-        [characterId]: {
-          ...current,
-          items: current.items.filter((item) => item.id !== itemId),
-        },
-      };
-    });
   };
 
   const startGame = async (partidaId: string) => {

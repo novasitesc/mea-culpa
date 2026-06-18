@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
-import { LIMBS } from "@/lib/limbs";
-
-const VALID_KEYS = new Set(LIMBS.map((l) => l.key));
+import { VALID_LIMB_KEYS, applyLimbUpdate } from "@/lib/limbs";
 
 export async function PATCH(request: Request) {
   const result = await requireAdmin(request);
@@ -23,7 +21,7 @@ export async function PATCH(request: Request) {
   if (!Number.isFinite(personajeId) || personajeId <= 0) {
     return NextResponse.json({ error: "personajeId inválido" }, { status: 400 });
   }
-  if (!VALID_KEYS.has(miembro as any)) {
+  if (!VALID_LIMB_KEYS.has(miembro as any)) {
     return NextResponse.json({ error: "miembro inválido" }, { status: 400 });
   }
 
@@ -40,26 +38,17 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Personaje no encontrado" }, { status: 404 });
   }
 
-  const current: Record<string, boolean> =
-    typeof (personaje as any).extremidades === "object" && (personaje as any).extremidades !== null
-      ? { ...(personaje as any).extremidades }
-      : {};
-
-  // false = desmembrado, true = intacto; remove key when restoring to keep object clean
-  if (desmembrado) {
-    current[miembro] = false;
-  } else {
-    delete current[miembro];
-  }
+  const updated = applyLimbUpdate((personaje as any).extremidades, miembro, desmembrado);
+  const value = Object.keys(updated).length > 0 ? updated : null;
 
   const { error: updateError } = await session.db
     .from("personajes")
-    .update({ extremidades: Object.keys(current).length > 0 ? current : null })
+    .update({ extremidades: value })
     .eq("id", personajeId);
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ extremidades: Object.keys(current).length > 0 ? current : null });
+  return NextResponse.json({ extremidades: value });
 }
