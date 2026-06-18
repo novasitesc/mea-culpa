@@ -31,6 +31,7 @@ import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-
 import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
+import { DadosTab } from "./dados-tab";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -219,6 +220,7 @@ type Tab =
   | "historial-partidas"
   | "impuestos"
   | "ruleta"
+  | "dados"
   | "muertes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -796,7 +798,7 @@ function PartidasTab({
           <FormField label="Hora de inicio">
             <input
               type="datetime-local"
-              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:[filter:invert(1)_brightness(2)_contrast(2)]`}
+              className={`${inputCls} [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter-[invert(1)_brightness(2)_contrast(2)]`}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
@@ -863,6 +865,7 @@ function ActivePartidasTab({
   const [games, setGames] = useState<PartidaHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [loadingObjects, setLoadingObjects] = useState(false);
   const [rewardTarget, setRewardTarget] = useState<PartidaHistoryEntry | null>(null);
@@ -1008,6 +1011,28 @@ function ActivePartidasTab({
     });
   };
 
+  const startGame = async (partidaId: string) => {
+    setStartingId(partidaId);
+    const res = await fetch("/api/admin/partidas", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ partidaId, action: "start" }),
+    });
+    setStartingId(null);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      onToast(err.error ?? "No se pudo iniciar la partida", "error");
+      return;
+    }
+
+    onToast("Partida iniciada", "success");
+    await loadGames();
+  };
+
   const closeGame = async (partidaId: string, participantRewards?: unknown[]) => {
     setClosingId(partidaId);
     const res = await fetch("/api/admin/partidas", {
@@ -1116,15 +1141,38 @@ function ActivePartidasTab({
                     : ""}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => openCloseModal(entry)}
-                disabled={closingId === entry.id}
-                className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
-              >
-                {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Cerrar y asignar
-              </button>
+              <div className="flex items-center gap-2">
+                {entry.status === "abierta" && (
+                  <button
+                    type="button"
+                    onClick={() => startGame(entry.id)}
+                    disabled={startingId === entry.id}
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700/80 hover:bg-emerald-700 text-white disabled:opacity-60 flex items-center gap-2"
+                  >
+                    {startingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    ▶ Iniciar
+                  </button>
+                )}
+                {entry.status === "en_progreso" && (
+                  <a
+                    href={`/partidas/${entry.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 transition-colors"
+                  >
+                    🎲 Ir a sala
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openCloseModal(entry)}
+                  disabled={closingId === entry.id}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
+                >
+                  {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Cerrar y asignar
+                </button>
+              </div>
             </div>
 
             {entry.participants.length > 0 && (
@@ -4045,6 +4093,7 @@ export default function AdminPage() {
     { id: "objetos", label: "Objetos", icon: Box },
     { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
+    { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
     { id: "partidas", label: "Publicar Partida", icon: Shield },
     { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
@@ -4129,6 +4178,9 @@ export default function AdminPage() {
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+            )}
+            {activeTab === "dados" && (
+              <DadosTab token={token} />
             )}
             {isSuperAdmin && activeTab === "impuestos" && (
               <TaxesTab token={token} onToast={showToast} />

@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/header";
+import DiceModule from "../components/dice-module";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import PortraitPicker from "./components/portrait-picker";
+import SpellsRegistry from "./components/spells-registry";
+import { getCasterType, getMaxKnownSpells, type SpellEntry } from "@/lib/spells";
 
 type Player = {
   name: string;
@@ -84,6 +87,7 @@ type ClassEntry = {
 
 type Character = {
   id: number;
+  userId?: string;
   name: string;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
@@ -92,12 +96,15 @@ type Character = {
   lifeStatus: "vivo" | "muerto";
   deadAt: string | null;
   revivedAt: string | null;
+  hasDismemberedLimb: boolean;
+  dismemberedLimbs: string[];
   stats: Record<string, number>;
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
+  knownSpells?: SpellEntry[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
 };
@@ -168,11 +175,13 @@ export default function ProfilePage() {
     race: string;
     multiclass: ClassEntry[];
     alignment: string;
+    knownSpellsInput: string;
   }>({
     name: "",
     race: "",
     multiclass: [{ className: "", level: 1 }],
     alignment: "",
+    knownSpellsInput: "",
   });
 
   const showProfileAlert = (
@@ -281,12 +290,12 @@ export default function ProfilePage() {
       setProfile((prev) =>
         prev
           ? {
-              ...prev,
-              player: {
-                ...prev.player,
-                nivel20Url: persistedValue,
-              },
-            }
+            ...prev,
+            player: {
+              ...prev.player,
+              nivel20Url: persistedValue,
+            },
+          }
           : prev,
       );
       setNivel20UrlInput(persistedValue ?? "");
@@ -311,9 +320,12 @@ export default function ProfilePage() {
     }
   };
 
-  const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token) return;
+  const isFetchingSleep = useRef(false);
 
+  const loadSleepStatus = useCallback(async () => {
+    if (!isAuthenticated || !token || isFetchingSleep.current) return;
+
+    isFetchingSleep.current = true;
     setLoadingSleepStatus(true);
     try {
       const res = await fetch("/api/profile/sleep-options", {
@@ -330,6 +342,7 @@ export default function ProfilePage() {
       console.error("Error loading sleep status:", error);
     } finally {
       setLoadingSleepStatus(false);
+      setTimeout(() => { isFetchingSleep.current = false; }, 1000); // Cooldown de 1s para evitar ráfagas
     }
   }, [isAuthenticated, token]);
 
@@ -431,13 +444,13 @@ export default function ProfilePage() {
         characters: profile.characters.map((char) =>
           char.id === characterId
             ? {
-                ...char,
-                ...(updatedCharacter ?? {}),
-                bag: { ...char.bag, items: itemsToSave },
-                armor: characterToSave.armor,
-                accessories: characterToSave.accessories,
-                weapons: characterToSave.weapons,
-              }
+              ...char,
+              ...(updatedCharacter ?? {}),
+              bag: { ...char.bag, items: itemsToSave },
+              armor: characterToSave.armor,
+              accessories: characterToSave.accessories,
+              weapons: characterToSave.weapons,
+            }
             : char,
         ),
       });
@@ -459,12 +472,31 @@ export default function ProfilePage() {
 
     setIsCreating(true);
     try {
+      // Parsear conjuros ingresados
+      const parsedSpells = (newCharacter as any).knownSpellsInput
+        ? (newCharacter as any).knownSpellsInput
+          .split(",")
+          .map((s: string) => {
+            const match = s.trim().match(/^(.*?)\s*\((\d+)\)$/);
+            if (match) {
+              return { name: match[1].trim(), spellLevel: parseInt(match[2], 10) };
+            }
+            return { name: s.trim(), spellLevel: 1 };
+          })
+          .filter((s: { name: string; spellLevel: number }) => s.name.length > 0)
+        : [];
+
+      const payload = {
+        ...newCharacter,
+        knownSpells: parsedSpells,
+      };
+
       const response = await fetch("/api/profile/create-character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
-          characterData: newCharacter,
+          characterData: payload,
         }),
       });
 
@@ -484,6 +516,7 @@ export default function ProfilePage() {
         race: "",
         multiclass: [{ className: "", level: 1 }],
         alignment: "",
+        knownSpellsInput: "",
       });
       setShowCreateModal(false);
       showProfileAlert(
@@ -644,7 +677,7 @@ export default function ProfilePage() {
 
     const intervalId = window.setInterval(() => {
       loadSleepStatus();
-    }, 30000);
+    }, 60000); // Cambiado a 60s para reducir tráfico
 
     return () => window.clearInterval(intervalId);
   }, [isAuthenticated, token, loadSleepStatus]);
@@ -719,6 +752,10 @@ export default function ProfilePage() {
 
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         <Header />
+
+        <div className="mt-4">
+          <DiceModule token={token} />
+        </div>
 
         <div className="space-y-10 mt-6">
           <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
@@ -802,11 +839,10 @@ export default function ProfilePage() {
                 <button
                   disabled={reachedCharacterLimit}
                   onClick={() => setShowCreateModal(true)}
-                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${
-                    reachedCharacterLimit
+                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${reachedCharacterLimit
                       ? "bg-secondary text-muted-foreground cursor-not-allowed"
                       : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
-                  }`}
+                    }`}
                   title={
                     reachedCharacterLimit
                       ? `Limite alcanzado (${characters.length}/${maxCharacterSlots}).`
@@ -1078,12 +1114,21 @@ export default function ProfilePage() {
                       {character.name}
                     </h2>
                     <p
-                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${
-                        character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
-                      }`}
+                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
+                        }`}
                     >
                       {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
                     </p>
+                    {character.hasDismemberedLimb && (
+                      <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-300">
+                        <p>Miembros desmembrados:</p>
+                        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-orange-200/90">
+                          {character.dismemberedLimbs.length > 0
+                            ? character.dismemberedLimbs.join(", ")
+                            : "No especificado"}
+                        </p>
+                      </div>
+                    )}
                     {character.lifeStatus === "muerto" && character.deadAt && (
                       <p className="text-xs text-red-200/80 mt-1">
                         Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
@@ -1131,6 +1176,8 @@ export default function ProfilePage() {
 
                   <EquipmentPreview character={character} />
 
+                  <SpellsRegistry character={character} token={token} />
+
                   <div className="flex justify-end mt-2">
                     <button
                       className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1148,7 +1195,9 @@ export default function ProfilePage() {
                     <EquipmentModal
                       userId={user?.id ?? ""}
                       character={character}
+                      characters={characters}
                       onClose={() => setOpenBagModal(null)}
+                      onRefreshProfile={loadProfile}
                       onSave={async (updatedCharacter, updatedBagItems) => {
                         const nextCharacter = updatedCharacter as Character;
                         const nextBagItems = updatedBagItems as Item[];
@@ -1455,6 +1504,39 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              {/* Sección de Conjuros Conocidos (Solo si aplica a la clase elegida) */}
+              {(() => {
+                let totalMaxKnown = 0;
+                newCharacter.multiclass.forEach(c => {
+                  if (c.className && getCasterType(c.className) === "known") {
+                    totalMaxKnown += getMaxKnownSpells(c.className, c.level);
+                  }
+                });
+
+                if (totalMaxKnown > 0) {
+                  return (
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">
+                        Conjuros Conocidos Iniciales
+                      </label>
+                      <input
+                        type="text"
+                        value={(newCharacter as any).knownSpellsInput ?? ""}
+                        onChange={(e) => {
+                          setNewCharacter(prev => ({ ...prev, knownSpellsInput: e.target.value }));
+                        }}
+                        className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        placeholder="Ej: Curar heridas (1), Escudo (1), Oscuridad (2)"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual. Formato: Nombre (Nivel), separados por coma. Si omites el nivel, será 1.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-4">
                   📝 Nota: Los atributos y equipo inicial se generarán
@@ -1469,6 +1551,7 @@ export default function ProfilePage() {
                         race: "",
                         multiclass: [{ className: "", level: 1 }],
                         alignment: "",
+                        knownSpellsInput: "",
                       });
                     }}
                     disabled={isCreating}

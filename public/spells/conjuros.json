@@ -1,0 +1,4512 @@
+[
+  {
+    "Nombre del Conjuro": "Agarrón electrizante",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Amigos",
+    "Nivel": 0,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Social",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Azote de los muertos",
+    "Nivel": 0,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Burla viciosa",
+    "Nivel": 0,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Campanadas de los muertos",
+    "Nivel": 0,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Chorro de ácido",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Chorro de veneno",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Congelación",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Contacto escalofriante",
+    "Nivel": 0,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Controlar las llamas",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea o 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Crear hoguera",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Cuchilla atronadora",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Aventurero de la Costa de la Espada, Caldero de Tasha para todo",
+    "Alcance": "Personal (radio de 5 pies)",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Dar forma al agua",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea o 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Descarga impactante",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Druídismo",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Espada ráfaga",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Aventurero de la Costa de la Espada, Caldero de Tasha para todo",
+    "Alcance": "Personal (radio de 5 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Explosión sobrenatural",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Golpe certero",
+    "Nivel": 0,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Golpe de rayo",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Caldero de Tasha para todo",
+    "Alcance": "Personal",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Guía",
+    "Nivel": 0,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Hoja mental",
+    "Nivel": 0,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Caldero de Tasha para todo",
+    "Alcance": "60 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Hoja verde llameante",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Aventurero de la Costa de la Espada, Caldero de Tasha para todo",
+    "Alcance": "Personal (radio de 5 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Ilusión menor",
+    "Nivel": 0,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Infestación",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Látigo de espinas",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Látigo de relámpagos",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Aventurero de la Costa de la Espada, Caldero de Tasha para todo",
+    "Alcance": "Personal (radio de 15 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Llama sagrada",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Luces danzantes",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Luz",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo, Hechicero, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Mano de mago",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Mensaje",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Moldear la tierra",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Entorno",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea o 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de resplandor",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "5 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Piedra mágica",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Prestidigitación",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Producir llama",
+    "Nivel": 0,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Protección de hoja",
+    "Nivel": 0,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Proyectil de fuego",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Ráfaga de aire",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de escarcha",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Reparar",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Druida, Hechicero, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Resistencia",
+    "Nivel": 0,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Salvación del moribundo",
+    "Nivel": 0,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Salvajismo primigenio",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Taumaturgia",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Trueno",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "5 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Vara protectora",
+    "Nivel": 0,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Zarpazo",
+    "Nivel": 0,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "5 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Absorber ataque",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Absorber elementos",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Explorador, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Alarma",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Explorador, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Alma enredadora",
+    "Nivel": 1,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Amistad con los animales",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Encantamiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Apuñalar la mente",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Caldero de Tasha para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Arma mágica de la sombra",
+    "Nivel": 1,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Combate",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Armadura de Agathys",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Brujo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Armadura de mago",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Armadura de sombras",
+    "Nivel": 1,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Hechicero, Brujo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Aura de alerta",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Bendición",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Bote de tierra",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Buen fruto",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Caída de pluma",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Castigo abrasador",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Castigo atronador",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Castigo marcador",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Catapulta",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Causar miedo",
+    "Nivel": 1,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Ceremonia",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Ritual",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Cólera del trueno",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (línea de 15 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Comando",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Comprender idiomas",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Comprensión de idiomas",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Crear o destruir agua",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Curación de heridas",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Explorador",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Detectar el bien y el mal",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Detectar magia",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Druida, Hechicero, Mago, Paladín, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Detectar veneno y enfermedad",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida, Paladín, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Disco flotante de Tenser",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Disfrazarse",
+    "Nivel": 1,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Duelo forzado",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Paladín",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Encontrar familiar",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Enmarañar",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Escudo",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Escudo de la fe",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Esfera cromática",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Expedición de caza",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Falsear la muerte",
+    "Nivel": 1,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo, Druida, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Favor divino",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Flechas rígneas",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Fuego feérico",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Grasa",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Hablar con los animales",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Hechizar persona",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Encantamiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Heroísmo",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Identificar",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Imagen silenciosa",
+    "Nivel": 1,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Infligir heridas",
+    "Nivel": 1,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Maldición",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Manos ardientes",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (cono de 15 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Marca del cazador",
+    "Nivel": 1,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Explorador",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Matar de risa",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Misil mágico",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Muro de niebla",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Explorador, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Nube de dagas",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Ola atronadora",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (cubo de 15 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Orden protectora",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de curación",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Perdición",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Protección contra el bien y el mal",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Druida, Mago, Paladín, Brujo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Proyectil de brujo",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Purificar alimentos y bebida",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Druida, Paladín",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo cromático",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de enfermedad",
+    "Nivel": 1,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de hechicería",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo guía",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Represión infernal",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Retirada acelerada",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Risa horrible de Tasha",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Salto",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador, Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Santuario",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Santuario de la naturaleza",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Serviente invisible",
+    "Nivel": 1,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Siesta de Catnap",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Sueño",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Susurros disonantes",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Susurros inquietantes",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Textos ilusorios",
+    "Nivel": 1,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "10 días"
+  },
+  {
+    "Nombre del Conjuro": "Toque de bondad",
+    "Nivel": 1,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Trampa de alarma",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Vínculo protector",
+    "Nivel": 1,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Zancada prodigiosa",
+    "Nivel": 1,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida, Explorador, Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Zona de verdad",
+    "Nivel": 1,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo, Paladín",
+    "Categoría": "Social",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Agrandar/Reducir",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Alineamiento inalterable",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Alterar el propio aspecto",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Amansar emociones",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Amnesia",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Encantamiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Animal mensajero",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Apertura",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Arma espiritual",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Combate",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Arma mágica",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Paladín, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Ataduras de la tierra",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "300 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Augurio",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida, Mago",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador, Caldero de Tasha para todo",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Aumentar característica",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Druida, Hechicero",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Aura mágica de Nystul",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Boca mágica",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Hasta ser disipado"
+  },
+  {
+    "Nombre del Conjuro": "Borrar",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Calentar metal",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Castigo buscador",
+    "Nivel": 2,
+    "Escuela de Magia": "Divination",
+    "Clases": "Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Ceguera/Sordera",
+    "Nivel": 2,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo, Hechicero, Mago",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Corona de locura",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Crecimiento de espinas",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Cuchilla de llamas",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Desarmar",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Descanso tranquilo",
+    "Nivel": 2,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "10 días"
+  },
+  {
+    "Nombre del Conjuro": "Detectar pensamientos",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Detectar trampas",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Diablo de polvo",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Dificultar",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Doble de sí mismo",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Encontrar montura",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Paladín",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Encontrar trampas",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Encontrar vehículo",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Paladín",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Engaño",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Enredadera",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Esfera de llamas",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Esquivar",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Druida, Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Estallar",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Fuerza fantasmal",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Girar la fortuna",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Golpe del viento",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies (línea de 10 pies de ancho)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Hacer añicos",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Inmovilizar persona",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo, Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Invisibilidad",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Levitar",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Llama continua",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Hasta ser disipado"
+  },
+  {
+    "Nombre del Conjuro": "Localizar animales o plantas",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Localizar objeto",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Luz diurna",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida, Paladín",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Mano de Bigby",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Montura fantasmal",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Niebla ofuscadora",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Oscuridad",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Paso brumoso",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Paso sin rastro",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Piel de corteza",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Presagiar",
+    "Nivel": 2,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Protección contra el veneno",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Druida, Paladín, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Rayo abrasador",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de debilitamiento",
+    "Nivel": 2,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de enfeeblement",
+    "Nivel": 2,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Rayo lunar",
+    "Nivel": 2,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Restablecimiento menor",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida, Paladín",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Silencio",
+    "Nivel": 2,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Soportar elementos",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Druida, Explorador, Hechicero, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Sugestión",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Telaraña",
+    "Nivel": 2,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Trance animal",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Trepar por las paredes",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Viento de salvación",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Vínculo de custodia",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Visión en la oscuridad",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Voluntad de hierro",
+    "Nivel": 2,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Vuelo",
+    "Nivel": 2,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Zona de la verdad",
+    "Nivel": 2,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo, Paladín",
+    "Categoría": "Social",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Abrazo del vampiro",
+    "Nivel": 3,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Acelerar",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Aliento de dragón",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Andar por el agua",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Druida, Explorador",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Anular magia",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Hechicero, Brujo, Mago",
+    "Categoría": "Negación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Aura de vitalidad",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida, Paladín",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Bola de fuego",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Caballo fantasmal",
+    "Nivel": 3,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Caminar por el viento",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Clarividencia",
+    "Nivel": 3,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Hechicero, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "1 milla",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar andanada",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Explorador",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar animales",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar animales menores",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Contrarrestar conjuro",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Negación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Crear comida y agua",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Crecimiento vegetal",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Cuchillo de hielo",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Curar heridas",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Explorador",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Custodia mágica",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Destello diurno",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida, Paladín",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Disipar magia",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Hechicero, Brujo, Mago",
+    "Categoría": "Negación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Don de lenguas",
+    "Nivel": 3,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Hechicero, Brujo, Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Dormir",
+    "Nivel": 3,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Enemigo abundantes",
+    "Nivel": 3,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Escudo de la naturaleza",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Espíritu guardianes",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 15 pies)",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Faro de esperanza",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Faro de luz",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Fingir muerte",
+    "Nivel": 3,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo, Druida, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Forma gaseosa",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Glifo custodio",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Hasta ser disipado o activado"
+  },
+  {
+    "Nombre del Conjuro": "Hablar con las plantas",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida, Explorador",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Hablar con los muertos",
+    "Nivel": 3,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Hambre de Hadar",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Imagen mayor",
+    "Nivel": 3,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Lentitud",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Llamar al relámpago",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Maldición del licántropo",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Manto del cruzado",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Miedo",
+    "Nivel": 3,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (cono de 30 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Muro de agua",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Muro de arena",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Nube apestosa",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Parpadeo",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Paso del trueno",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "90 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Paso fulgurante",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Pico de tierra",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Protección contra la energía",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Druida, Hechicero, Mago, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Rayos relampagueantes",
+    "Nivel": 3,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (línea de 100 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Respiración acuática",
+    "Nivel": 3,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Explorador, Hechicero, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Revivificar",
+    "Nivel": 3,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Terreno alucinatorio",
+    "Nivel": 3,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Druida, Brujo, Mago",
+    "Categoría": "Entorno",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Toque vampírico",
+    "Nivel": 3,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Tormenta de nieve",
+    "Nivel": 3,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Trampa",
+    "Nivel": 3,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Explorador",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "30 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Ver lo invisible",
+    "Nivel": 3,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Adivinación",
+    "Nivel": 4,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo, Druida, Mago",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Asesino fantasmal",
+    "Nivel": 4,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Aura de pureza",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Aura de vida",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Banquete de héroes",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Blight",
+    "Nivel": 4,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Druida, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Castigo asombroso",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Cofre secreto de Leomund",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Compulsión",
+    "Nivel": 4,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Confusión",
+    "Nivel": 4,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar elementales menores",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar seres del bosque",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Controlar el agua",
+    "Nivel": 4,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Druida, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Crecimiento gigante",
+    "Nivel": 4,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Custodia contra la muerte",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Destierro",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín, Hechicero, Brujo, Mago",
+    "Categoría": "Destierro",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Dominar bestia",
+    "Nivel": 4,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Enemigo de las sombras",
+    "Nivel": 4,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago, Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Escudo de fuego",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Esfera elástica de Otiluke",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Esfera vitriólica",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Fabricar",
+    "Nivel": 4,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago",
+    "Categoría": "Creación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Golpe del justiciero",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Invisibilidad mayor",
+    "Nivel": 4,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Lanza psíquica de Raulothim",
+    "Nivel": 4,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "La Tesorería de Dragones de Fizban",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Libertad de movimiento",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida, Explorador",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Localizar criatura",
+    "Nivel": 4,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Mago, Explorador",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Manto de llamas",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Manto de sombras",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Marchitar",
+    "Nivel": 4,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Muro de fuego",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Ojo arcano",
+    "Nivel": 4,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Mago",
+    "Categoría": "Exploración",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Ojo de la tormenta",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 10 pies)",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Perro fiel de Mordenkainen",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Piel de piedra",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida, Hechicero, Mago, Explorador",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Polimorfar",
+    "Nivel": 4,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida, Hechicero, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Puerta dimensional",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "500 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Santuario privado de Mordenkainen",
+    "Nivel": 4,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Sombra de Moil",
+    "Nivel": 4,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Tentáculos negros de Evard",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Tormenta de arena",
+    "Nivel": 4,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Tormenta de hielo",
+    "Nivel": 4,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Alzar a los muertos",
+    "Nivel": 5,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo, Paladín",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Animar objetos",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Apariencia falsa",
+    "Nivel": 5,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Arma sagrada",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Armadura de piedra",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Ataduras planares",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Caminar por los árboles",
+    "Nivel": 5,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Círculo de poder",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Círculo de teletransporte",
+    "Nivel": 5,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Comunión",
+    "Nivel": 5,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Clérigo",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Comunión con la naturaleza",
+    "Nivel": 5,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Druida, Explorador",
+    "Categoría": "Exploración",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar elemental",
+    "Nivel": 5,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Conjurar elemental mayor",
+    "Nivel": 5,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Cono de frío",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (cono de 60 pies)",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Contactar con otro plano",
+    "Nivel": 5,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Contagio",
+    "Nivel": 5,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "7 días"
+  },
+  {
+    "Nombre del Conjuro": "Controlar los vientos",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "300 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Coraza de espinas",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Druida",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Creación",
+    "Nivel": 5,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Creación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Especial"
+  },
+  {
+    "Nombre del Conjuro": "Curar heridas en masa",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Descarga flamígera",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Despertar",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Druida",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Disipar el bien y el mal",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Paladín",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Dominar persona",
+    "Nivel": 5,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Enlace telepático de Rary",
+    "Nivel": 5,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Esfera de poder",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Geas",
+    "Nivel": 5,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Clérigo, Druida, Paladín, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "30 días"
+  },
+  {
+    "Nombre del Conjuro": "Golpe de viento",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Golpe sagrado",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Inmovilizar monstruo",
+    "Nivel": 5,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Leyenda",
+    "Nivel": 5,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Llamada a la tormenta",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "100 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Lluvia de estrellas",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Marca de justicia",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Paladín",
+    "Categoría": "Desventaja",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Hasta ser disipado"
+  },
+  {
+    "Nombre del Conjuro": "Muro de fuerza",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Muro de piedra",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Pasamiento",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Plaga de insectos",
+    "Nivel": 5,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Druida, Hechicero",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Poder sagrado",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Paladín",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Reencarnar",
+    "Nivel": 5,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Restablecimiento mayor",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Restauración de vida",
+    "Nivel": 5,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Viento conjurado",
+    "Nivel": 5,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Aliado planar",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Barrera de cuchillas",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "90 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Círculo de muerte",
+    "Nivel": 6,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Contingencia",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "10 días"
+  },
+  {
+    "Nombre del Conjuro": "Crear muertos vivientes",
+    "Nivel": 6,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Brujo, Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Curar",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Danza irresistible de Otto",
+    "Nivel": 6,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "De la carne a la piedra",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Desintegrar",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Disfraz de otro mundo",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Caldero de Tasha para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Encontrar el camino",
+    "Nivel": 6,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Druida",
+    "Categoría": "Exploración",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 día"
+  },
+  {
+    "Nombre del Conjuro": "Esfera congelante de Otiluke",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Esfera de fuerza",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Defensa",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 10 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Espejismo arcano",
+    "Nivel": 6,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Druida, Mago",
+    "Categoría": "Entorno",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Visión",
+    "Duración": "10 días"
+  },
+  {
+    "Nombre del Conjuro": "Festín celestial",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Festín de héroes",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Forma etérea",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Ocultación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Globo de invulnerabilidad",
+    "Nivel": 6,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 10 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Guarda contra la muerte",
+    "Nivel": 6,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Homúnculo",
+    "Nivel": 6,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Ilusión programada",
+    "Nivel": 6,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Engaño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Hasta ser disipado"
+  },
+  {
+    "Nombre del Conjuro": "Jaula de alma",
+    "Nivel": 6,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Lanza de hielo",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago, Hechicero",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Mirada mordaz",
+    "Nivel": 6,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Mover la tierra",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 2 horas"
+  },
+  {
+    "Nombre del Conjuro": "Muro de espinas",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Muro de hielo",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de regreso",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "5 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Prohibición",
+    "Nivel": 6,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 día"
+  },
+  {
+    "Nombre del Conjuro": "Puerta arcana",
+    "Nivel": 6,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "500 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Rayo de sol",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (línea de 60 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Rayo polar",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Sexto sentido",
+    "Nivel": 6,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Adivinación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Transformación de Tenser",
+    "Nivel": 6,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Transmutación mental",
+    "Nivel": 6,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "90 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Visión verdadera",
+    "Nivel": 6,
+    "Escuela de Magia": "Adivinación",
+    "Clases": "Bardo, Clérigo, Hechicero, Brujo, Mago",
+    "Categoría": "Detección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Corona de estrellas",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Dedo de la muerte",
+    "Nivel": 7,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Desplazamiento planar",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Druida, Hechicero, Brujo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Destrucción mayor",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago, Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Dracotransformación",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "La Tesorería de Dragones de Fizban",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Espada de Mordenkainen",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Combate",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Espejismo estelar",
+    "Nivel": 7,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Caldero de Tasha para todo",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Eteridad",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Jaula de fuerza",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "100 pies",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Llamada de los cielos",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "120 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Mansión magnífica de Mordenkainen",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de poder: aturdir",
+    "Nivel": 7,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Palabra divina",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Proyectil de gravedad",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Regenerar",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Resurrección",
+    "Nivel": 7,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Revertir gravedad",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "100 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Símbolo",
+    "Nivel": 7,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Clérigo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Hasta ser disipado o activado"
+  },
+  {
+    "Nombre del Conjuro": "Sueño del secuestrador",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Brujo, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Teletransportar",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Bardo, Hechicero, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Templo de los dioses",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Tormenta de fuego",
+    "Nivel": 7,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida, Hechicero",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Tormenta de venganza",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Visión",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Vara a serpiente",
+    "Nivel": 7,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo",
+    "Categoría": "Invocación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Viaje mediante plantas",
+    "Nivel": 7,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "5 pies",
+    "Duración": "1 asalto"
+  },
+  {
+    "Nombre del Conjuro": "Antipatía/Simpatía",
+    "Nivel": 8,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Druida, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "10 días"
+  },
+  {
+    "Nombre del Conjuro": "Ataque del viento final",
+    "Nivel": 8,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago, Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "90 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Aura sagrada",
+    "Nivel": 8,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 30 pies)",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Campo antimagia",
+    "Nivel": 8,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Mago",
+    "Categoría": "Negación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 10 pies)",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Clon",
+    "Nivel": 8,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Mago",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Controlar el clima",
+    "Nivel": 8,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Clérigo, Druida, Mago",
+    "Categoría": "Entorno",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal (radio de 5 millas)",
+    "Duración": "Concentración, hasta 8 horas"
+  },
+  {
+    "Nombre del Conjuro": "Demencia",
+    "Nivel": 8,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Dominar monstruo",
+    "Nivel": 8,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Coacción",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Dragon de ilusión",
+    "Nivel": 8,
+    "Escuela de Magia": "Ilusión",
+    "Clases": "Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Estallido solar",
+    "Nivel": 8,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Druida, Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Formas animales",
+    "Nivel": 8,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Laberinto",
+    "Nivel": 8,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Destierro",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Mente en blanco",
+    "Nivel": 8,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Bardo, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Nube incendiaria",
+    "Nivel": 8,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Oscuridad enloquecedora",
+    "Nivel": 8,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "150 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Protección suprema",
+    "Nivel": 8,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Clérigo, Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Semicírculo de la muerte",
+    "Nivel": 8,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Mago",
+    "Categoría": "Utilidad",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Semilla estelar",
+    "Nivel": 8,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "300 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Sismo",
+    "Nivel": 8,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida, Hechicero",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "500 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Telepatía",
+    "Nivel": 8,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago",
+    "Categoría": "Comunicación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Ilimitado",
+    "Duración": "24 horas"
+  },
+  {
+    "Nombre del Conjuro": "Vórtice de almas",
+    "Nivel": 8,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Alarido pavoroso",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Cambio de forma",
+    "Nivel": 9,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Druida, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Deseo",
+    "Nivel": 9,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Creación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Desvío planar",
+    "Nivel": 9,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Clérigo, Mago",
+    "Categoría": "Teletransporte",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Detener el tiempo",
+    "Nivel": 9,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Dominio de la realidad",
+    "Nivel": 9,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Encarnación de la Muerte",
+    "Nivel": 9,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Toque",
+    "Duración": "1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Enjambre de meteoritos",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "1 milla",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Héroe invencible",
+    "Nivel": 9,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Mago",
+    "Categoría": "Protección",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "Personal",
+    "Duración": "10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Lluvia de meteoros",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "1 milla",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Milagro",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo",
+    "Categoría": "Mejora",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Personal",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de poder: curar",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Bardo, Clérigo",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de poder: destrucción",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Mago, Brujo",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Palabra de poder: matar",
+    "Nivel": 9,
+    "Escuela de Magia": "Encantamiento",
+    "Clases": "Bardo, Hechicero, Brujo, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Pared primigenia",
+    "Nivel": 9,
+    "Escuela de Magia": "Conjuración",
+    "Clases": "Druida, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Guía del Xanathar para todo",
+    "Alcance": "120 pies",
+    "Duración": "Concentración, hasta 10 minutos"
+  },
+  {
+    "Nombre del Conjuro": "Polimorfar verdadero",
+    "Nivel": 9,
+    "Escuela de Magia": "Transmutación",
+    "Clases": "Bardo, Brujo, Mago",
+    "Categoría": "Cambiaformas",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Concentración, hasta 1 hora"
+  },
+  {
+    "Nombre del Conjuro": "Prisión",
+    "Nivel": 9,
+    "Escuela de Magia": "Abjuración",
+    "Clases": "Brujo, Mago",
+    "Categoría": "Control",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "30 pies",
+    "Duración": "Hasta ser disipado"
+  },
+  {
+    "Nombre del Conjuro": "Proyección astral",
+    "Nivel": 9,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Brujo, Mago",
+    "Categoría": "Movimiento",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "10 pies",
+    "Duración": "Especial"
+  },
+  {
+    "Nombre del Conjuro": "Ráfaga de estrellas",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Concentración, hasta 1 minuto"
+  },
+  {
+    "Nombre del Conjuro": "Resurrección verdadera",
+    "Nivel": 9,
+    "Escuela de Magia": "Nigromancia",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "Toque",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Sanar",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Clérigo, Druida",
+    "Categoría": "Curación",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "60 pies",
+    "Duración": "Instantánea"
+  },
+  {
+    "Nombre del Conjuro": "Tromba de meteoritos",
+    "Nivel": 9,
+    "Escuela de Magia": "Evocación",
+    "Clases": "Hechicero, Mago",
+    "Categoría": "Daño",
+    "Libro(s) de origen": "Manual del Jugador",
+    "Alcance": "1 milla",
+    "Duración": "Instantánea"
+  }
+]
