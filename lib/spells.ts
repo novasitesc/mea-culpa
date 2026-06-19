@@ -169,6 +169,94 @@ export function getWizardDistribution(): Record<number, number> {
   return { 1: 6, 2: 4, 3: 4, 4: 4, 5: 4, 6: 4, 7: 4, 8: 4, 9: 6 };
 }
 
+// ---------- Multiclase: Caster Level Combinado (PHB p.165) ----------
+
+type ClassLevelEntry = { className: string; level: number };
+
+/**
+ * Calcula el nivel de caster combinado para multiclase según D&D 5e 2014 (PHB p.165).
+ * - Full casters (Bardo, Hechicero, Clérigo, Druida, Mago): suman su nivel completo (×1)
+ * - Half casters (Paladín, Explorador): suman la mitad de su nivel redondeado hacia abajo (×½)
+ * - Third casters (Pícaro/Arcane Trickster, Guerrero/Eldritch Knight): suman un tercio (×⅓)
+ * - Brujo (Warlock) usa Pact Magic y NO se suma a la tabla de multiclase.
+ */
+export function getMulticlassCasterLevel(classes: ClassLevelEntry[]): number {
+  const fullCasters = ["Bardo", "Hechicero", "Clérigo", "Druida", "Mago"];
+  const halfCasters = ["Paladín", "Explorador"];
+  const thirdCasters = ["Pícaro", "Guerrero"];
+
+  let total = 0;
+  for (const c of classes) {
+    if (fullCasters.includes(c.className)) {
+      total += c.level;
+    } else if (halfCasters.includes(c.className)) {
+      total += Math.floor(c.level / 2);
+    } else if (thirdCasters.includes(c.className)) {
+      total += Math.floor(c.level / 3);
+    }
+    // Brujo (Pact Magic) se maneja por separado — NO se suma
+  }
+  return total;
+}
+
+/**
+ * Dado un caster level combinado (de multiclase), devuelve el nivel máximo de
+ * conjuro al que se tiene acceso según la tabla de multiclase (PHB p.165).
+ * Sigue la misma progresión que un full caster single-class.
+ */
+export function getMulticlassMaxSpellLevel(casterLevel: number): number {
+  if (casterLevel >= 17) return 9;
+  if (casterLevel >= 15) return 8;
+  if (casterLevel >= 13) return 7;
+  if (casterLevel >= 11) return 6;
+  if (casterLevel >= 9) return 5;
+  if (casterLevel >= 7) return 4;
+  if (casterLevel >= 5) return 3;
+  if (casterLevel >= 3) return 2;
+  if (casterLevel >= 1) return 1;
+  return 0;
+}
+
+/**
+ * Calcula el nivel máximo de conjuro accesible considerando multiclase.
+ * Toma el mayor entre:
+ * - El nivel que otorga la tabla de multiclase (caster level combinado)
+ * - El nivel individual del Brujo (Pact Magic es independiente)
+ * - Cada clase individual (para aprender conjuros de esa clase)
+ */
+export function getEffectiveMaxSpellLevel(classes: ClassLevelEntry[]): number {
+  // Nivel por tabla multiclase (excluye Brujo)
+  const multiCasterLv = getMulticlassCasterLevel(classes);
+  let maxLv = getMulticlassMaxSpellLevel(multiCasterLv);
+
+  // El Brujo se evalúa por separado (Pact Magic + Mystic Arcanum)
+  for (const c of classes) {
+    if (c.className === "Brujo") {
+      const warlockMax = getMaxSpellLevel("Brujo", c.level);
+      if (warlockMax > maxLv) maxLv = warlockMax;
+    }
+  }
+
+  return maxLv;
+}
+
+/**
+ * Devuelve el tope de conjuros que se pueden REGISTRAR por clase.
+ * - Casters "known" (Bardo, Hechicero, Brujo, etc.): usan la tabla de conjuros conocidos.
+ * - Mago: usa el libro de conjuros (6 iniciales + 2 por nivel).
+ * - Clérigo, Druida, Paladín: conocen TODA su lista de clase → sin límite de registro (-1).
+ * Retorna -1 para "sin límite" y 0 para no-casters.
+ */
+export function getMaxRegistrableSpells(className: string, level: number): number {
+  const casterType = getCasterType(className);
+  if (casterType === "none") return 0;
+  if (casterType === "known") return getMaxKnownSpells(className, level);
+  // Prepared casters:
+  if (className === "Mago") return getWizardMinSpells(level);
+  // Clérigo, Druida, Paladín conocen toda su lista de clase — sin tope de registro
+  return -1;
+}
+
 // ---------- Validación integral de conjuros ----------
 
 export type SpellValidationResult = { valid: boolean; errors: string[] };

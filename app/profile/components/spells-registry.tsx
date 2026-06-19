@@ -4,10 +4,13 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   getCasterType,
   getPreparedSpellsCount,
-  getMaxKnownSpells,
   getMaxSpellLevel,
+  getEffectiveMaxSpellLevel,
+  getMulticlassCasterLevel,
+  getMaxRegistrableSpells,
   type SpellEntry,
 } from "@/lib/spells";
+import SpellSearchModal from "./spell-search-modal";
 
 type ClassEntry = { className: string; level: number };
 type SpellCharacter = {
@@ -36,16 +39,12 @@ export default function SpellsRegistry({
   const [knownSpells, setKnownSpells] = useState<SpellEntry[]>(
     character.knownSpells || [],
   );
-  const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [catalog, setCatalog] = useState<CatalogSpell[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [pendingSpell, setPendingSpell] = useState<CatalogSpell | null>(null);
+  const [pendingSpells, setPendingSpells] = useState<CatalogSpell[]>([]);
   const [isClosing, setIsClosing] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const multiclass: ClassEntry[] = character.multiclass || [];
 
@@ -53,22 +52,31 @@ export default function SpellsRegistry({
     (c) => getCasterType(c.className) !== "none",
   );
 
-  // Calcular topes
-  let totalMaxKnown = 0;
-  let maxSpellLevelOverall = 0;
+  // ── Bug #4 fix: niveles explícitos ──
+  // Nivel total del personaje = suma de niveles de todas las clases
+  const characterLevel = multiclass.reduce((sum, c) => sum + c.level, 0);
+  // Nivel de caster combinado para multiclase (PHB p.165)
+  const multiclassCasterLevel = getMulticlassCasterLevel(casterClasses);
+
+  // ── Bug #1 fix: nivel máximo de conjuro con tabla multiclase ──
+  // Usa el caster level combinado en vez de max() de niveles individuales
+  const maxSpellLevelOverall = getEffectiveMaxSpellLevel(casterClasses);
+
+  // ── Bug #2 fix: tope de registrables para TODAS las clases caster ──
+  // Incluye tanto "known" casters como "prepared" casters (Mago, Clérigo, etc.)
+  let totalMaxRegistrable = 0;
+  let isUnlimited = false; // Clérigo/Druida/Paladín conocen toda su lista
 
   casterClasses.forEach((c) => {
-    if (getCasterType(c.className) === "known") {
-      totalMaxKnown += getMaxKnownSpells(c.className, c.level);
-    }
-    const maxLv = getMaxSpellLevel(c.className, c.level);
-    if (maxLv > maxSpellLevelOverall) {
-      maxSpellLevelOverall = maxLv;
+    const max = getMaxRegistrableSpells(c.className, c.level);
+    if (max === -1) {
+      isUnlimited = true; // Al menos una clase tiene acceso ilimitado
+    } else {
+      totalMaxRegistrable += max;
     }
   });
 
-  const hasKnownCaster = totalMaxKnown > 0;
-  const isCapped = knownSpells.length >= totalMaxKnown;
+  const isCapped = !isUnlimited && totalMaxRegistrable > 0 && knownSpells.length >= totalMaxRegistrable;
 
   // Cargar catálogo de conjuros desde Supabase
   useEffect(() => {
@@ -100,80 +108,45 @@ export default function SpellsRegistry({
     fetchCatalog();
   }, [casterClasses.map((c) => `${c.className}:${c.level}`).join(","), maxSpellLevelOverall]);
 
-  // Cerrar dropdown al clicar fuera
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Filtrar conjuros del catálogo
-  const filteredSpells = useMemo(() => {
-    const alreadyKnownKeys = new Set(
-      knownSpells.map((s) => s.name.toLowerCase().trim()),
-    );
-
-    return catalog.filter((spell) => {
-      // Excluir los ya conocidos
-      if (alreadyKnownKeys.has(spell.nombre.toLowerCase().trim())) return false;
-      // Filtrar por búsqueda
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        return (
-          spell.nombre.toLowerCase().includes(q) ||
-          spell.escuela.toLowerCase().includes(q) ||
-          spell.categoria.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [catalog, knownSpells, searchQuery]);
-
   // Cerrar modal con animación de salida
   const handleCloseModal = () => {
     setIsClosing(true);
     setTimeout(() => {
-      setPendingSpell(null);
+      setPendingSpells([]);
       setIsClosing(false);
     }, 200);
   };
 
-  // Agregar conjuro desde el catálogo (abre modal)
-  const handleSelectSpell = (spell: CatalogSpell) => {
-    if (isCapped) {
+  // Agregar conjuros desde el catálogo (abre modal)
+  const handleSelectSpells = (spells: CatalogSpell[]) => {
+    if (isCapped && spells.length > 0) {
       setErrorMsg(
-        `Has alcanzado el límite de ${totalMaxKnown} conjuros conocidos.`,
+        `Has alcanzado el límite de ${totalMaxRegistrable} conjuros registrables.`,
       );
       return;
     }
 
     setErrorMsg("");
-    setShowDropdown(false);
     setIsClosing(false);
-    setPendingSpell(spell);
+    setPendingSpells(spells);
   };
 
   // Confirmar y guardar el conjuro en Supabase
   const confirmAddSpell = async () => {
-    if (!pendingSpell) return;
-    const spell = pendingSpell;
+    if (pendingSpells.length === 0) return;
+    const spells = pendingSpells;
     
     // Iniciar animación de salida y guardar
     setIsClosing(true);
     setTimeout(async () => {
-      setPendingSpell(null);
+      setPendingSpells([]);
       setIsClosing(false);
-      setSearchQuery("");
 
-      const newSpell: SpellEntry = {
+      const newSpells: SpellEntry[] = spells.map(spell => ({
         name: spell.nombre,
         spellLevel: spell.nivel,
-      };
-      const newSpellList = [...knownSpells, newSpell];
+      }));
+      const newSpellList = [...knownSpells, ...newSpells];
 
       setKnownSpells(newSpellList);
 
@@ -238,7 +211,28 @@ export default function SpellsRegistry({
         Registro de Conjuros
       </h3>
 
-      {/* Lanzadores Preparados */}
+      {/* ── Info de clases caster y niveles (Bug #4: distinción explícita) ── */}
+      {casterClasses.length > 1 && (
+        <div className="text-xs text-muted-foreground/80 p-2 bg-[#1a1510] border border-[#8B7355]/20 rounded space-y-1">
+          <p className="font-semibold text-[#D4AF37]/70">Multiclase — Niveles de caster:</p>
+          {casterClasses.map((c, i) => (
+            <p key={i}>
+              {c.className} Nv.{c.level}
+              <span className="text-muted-foreground/50 ml-1">
+                ({getCasterType(c.className) === "prepared" ? "preparador" : "conocidos"}
+                {c.className === "Brujo" ? ", Pact Magic" : ""})
+              </span>
+            </p>
+          ))}
+          <p className="text-[#D4AF37]/50 pt-1 border-t border-[#8B7355]/10">
+            Nivel de personaje: {characterLevel} · Caster level combinado: {multiclassCasterLevel}
+            {casterClasses.some(c => c.className === "Brujo") ? " (+ Brujo aparte)" : ""}
+            {" · "}Conjuros hasta nivel {maxSpellLevelOverall}
+          </p>
+        </div>
+      )}
+
+      {/* Lanzadores Preparados — info de preparación */}
       {casterClasses
         .filter((c) => getCasterType(c.className) === "prepared")
         .map((c, i) => {
@@ -252,168 +246,97 @@ export default function SpellsRegistry({
               key={`prepared-${i}`}
               className="text-sm text-emerald-200/90 p-2 bg-emerald-900/10 border border-emerald-800/30 rounded"
             >
-              <strong>{c.className} (Preparador):</strong> Puede preparar un
+              <strong>{c.className} (Preparador, Nv.{c.level}):</strong> Puede preparar un
               máximo de{" "}
               <span className="font-bold text-emerald-400">
                 {preparedCount}
               </span>{" "}
-              conjuros por descanso largo según su nivel ({c.level}) y
+              conjuros por descanso largo según su nivel y
               modificador.
             </div>
           );
         })}
 
-      {/* Lanzadores Conocidos */}
-      {hasKnownCaster && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Conjuros Conocidos:
-            </span>
+      {/* ── Registro de Conjuros (ahora disponible para TODOS los casters) ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Conjuros Registrados:
+          </span>
+          {!isUnlimited && totalMaxRegistrable > 0 ? (
             <span
               className={`text-sm font-semibold ${
                 isCapped ? "text-amber-400" : "text-emerald-400"
               }`}
             >
-              {knownSpells.length} / {totalMaxKnown}
+              {knownSpells.length} / {totalMaxRegistrable}
             </span>
-          </div>
-
-          {knownSpells.length > 0 ? (
-            <ul className="space-y-1">
-              {knownSpells
-                .sort((a, b) => a.spellLevel - b.spellLevel || a.name.localeCompare(b.name))
-                .map((spell, idx) => {
-                  const catalogInfo = catalogByName.get(spell.name.toLowerCase().trim());
-                  const colorClass = catalogInfo
-                    ? (schoolColors[catalogInfo.escuela] ?? "text-blue-300")
-                    : "text-blue-300";
-
-                  return (
-                    <li
-                      key={idx}
-                      className="px-3 py-1.5 text-sm bg-secondary/50 rounded flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={colorClass}>✧</span> {spell.name}
-                        {catalogInfo && (
-                          <span className="text-[10px] text-muted-foreground/70">
-                            {catalogInfo.escuela}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
-                        Nivel {spell.spellLevel}
-                      </span>
-                    </li>
-                  );
-                })}
-            </ul>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
-              No hay conjuros registrados aún.
-            </p>
-          )}
-
-          {errorMsg && <p className="text-red-400 text-xs">{errorMsg}</p>}
-
-          {!isCapped ? (
-            <div className="relative" ref={dropdownRef}>
-              <div className="relative flex items-center mt-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  disabled={isSaving || isLoadingCatalog}
-                  placeholder={
-                    isLoadingCatalog
-                      ? "Cargando catálogo..."
-                      : "Buscar conjuro por nombre, escuela o categoría..."
-                  }
-                  className="flex-1 px-3 py-1.5 pr-10 rounded border border-[#8B7355]/50 bg-background text-sm focus:ring-1 focus:ring-[#D4AF37] focus:outline-none disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  disabled={isSaving || isLoadingCatalog}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition focus:outline-none"
-                  title="Mostrar todos los conjuros"
-                >
-                  <svg
-                    className={`w-4 h-4 transform transition-transform duration-200 ${
-                      showDropdown ? "rotate-180 text-[#D4AF37]" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Dropdown de resultados */}
-              {showDropdown && !isLoadingCatalog && (
-                <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#8B7355]/60 bg-[#1a1510] shadow-xl">
-                  {filteredSpells.length === 0 ? (
-                    <p className="p-3 text-xs text-muted-foreground italic text-center">
-                      {searchQuery.trim()
-                        ? "No se encontraron conjuros con esa búsqueda."
-                        : "No hay más conjuros disponibles."}
-                    </p>
-                  ) : (
-                    filteredSpells.map((spell) => {
-                      const colorClass =
-                        schoolColors[spell.escuela] ?? "text-blue-300";
-                      return (
-                        <button
-                          key={spell.nombre}
-                          type="button"
-                          onClick={() => handleSelectSpell(spell)}
-                          disabled={isSaving}
-                          className="w-full text-left px-3 py-2 hover:bg-[#D4AF37]/10 transition border-b border-[#8B7355]/20 last:border-b-0 disabled:opacity-50"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`${colorClass} shrink-0`}>✧</span>
-                              <span className="text-sm text-foreground truncate">
-                                {spell.nombre}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                                {spell.escuela}
-                              </span>
-                            </div>
-                            <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded shrink-0">
-                              Nv. {spell.nivel}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+            <span className="text-sm font-semibold text-emerald-400">
+              {knownSpells.length}
+              {isUnlimited && (
+                <span className="text-muted-foreground/60 text-xs ml-1">(sin límite)</span>
               )}
-            </div>
-          ) : (
-            <p className="text-xs text-amber-200 mt-2">
-              🔒 Has alcanzado el límite de conjuros para tu nivel. Podrás
-              aprender más al subir de nivel.
-            </p>
+            </span>
           )}
         </div>
-      )}
+
+        {knownSpells.length > 0 ? (
+          <ul className="space-y-1">
+            {knownSpells
+              .sort((a, b) => a.spellLevel - b.spellLevel || a.name.localeCompare(b.name))
+              .map((spell, idx) => {
+                const catalogInfo = catalogByName.get(spell.name.toLowerCase().trim());
+                const colorClass = catalogInfo
+                  ? (schoolColors[catalogInfo.escuela] ?? "text-blue-300")
+                  : "text-blue-300";
+
+                return (
+                  <li
+                    key={idx}
+                    className="px-3 py-1.5 text-sm bg-secondary/50 rounded flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={colorClass}>✧</span> {spell.name}
+                      {catalogInfo && (
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {catalogInfo.escuela}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
+                      Nivel {spell.spellLevel}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            No hay conjuros registrados aún.
+          </p>
+        )}
+
+        {errorMsg && <p className="text-red-400 text-xs">{errorMsg}</p>}
+
+        {!isCapped ? (
+          <SpellSearchModal
+            catalog={catalog}
+            isLoading={isLoadingCatalog}
+            onSelectSpells={handleSelectSpells}
+            disabled={isSaving}
+            alreadyKnownKeys={new Set(knownSpells.map(s => s.name.toLowerCase().trim()))}
+            maxSelectable={isUnlimited ? Infinity : Math.max(0, totalMaxRegistrable - knownSpells.length)}
+          />
+        ) : (
+          <p className="text-xs text-amber-200 mt-2">
+            🔒 Has alcanzado el límite de conjuros para tu nivel. Podrás
+            aprender más al subir de nivel.
+          </p>
+        )}
+      </div>
         {/* Modal de Confirmación Premium */}
-      {pendingSpell && (
+      {pendingSpells.length > 0 && (
         <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 ${
           isClosing ? "custom-animate-fade-out" : "custom-animate-fade-in"
         }`}>
@@ -428,23 +351,21 @@ export default function SpellsRegistry({
             </div>
             
             <h4 className="text-lg font-serif text-[#D4AF37] mb-2 tracking-wide">
-              ¿Aprender conjuro?
+              ¿Aprender conjuro{pendingSpells.length !== 1 ? 's' : ''}?
             </h4>
             
             <p className="text-sm text-foreground mb-4">
-              ¿Estás seguro de que deseas aprender <span className="font-bold text-amber-100 font-serif">"{pendingSpell.nombre}"</span>?
+              ¿Estás seguro de que deseas aprender <span className="font-bold text-amber-100 font-serif">{pendingSpells.length} conjuro{pendingSpells.length !== 1 ? 's' : ''}</span>?
             </p>
             
-            <div className="flex gap-2 justify-center text-[11px] text-muted-foreground mb-5 bg-[#0f0b08]/80 py-2.5 px-3 rounded-lg border border-[#8B7355]/30">
-              <span className="border-r border-[#8B7355]/20 pr-3">
-                <strong>Nivel:</strong> {pendingSpell.nivel}
-              </span>
-              <span className="border-r border-[#8B7355]/20 pr-3 pl-1">
-                <strong>Escuela:</strong> {pendingSpell.escuela}
-              </span>
-              <span className="pl-1">
-                <strong>Alcance:</strong> {pendingSpell.alcance}
-              </span>
+            <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto mb-5 text-[11px] text-muted-foreground bg-[#0f0b08]/80 py-2.5 px-3 rounded-lg border border-[#8B7355]/30 custom-scrollbar">
+              {pendingSpells.map((s, i) => (
+                <div key={i} className="flex items-center gap-2 justify-center pb-1.5 border-b border-[#8B7355]/10 last:border-0 last:pb-0">
+                  <span className="border-r border-[#8B7355]/20 pr-2 truncate max-w-[120px] text-[#D4AF37] font-semibold">{s.nombre}</span>
+                  <span className="border-r border-[#8B7355]/20 pr-2">Nv. {s.nivel}</span>
+                  <span className="truncate">{s.escuela}</span>
+                </div>
+              ))}
             </div>
 
             <div className="flex justify-center gap-3">
