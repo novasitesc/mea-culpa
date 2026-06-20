@@ -11,6 +11,8 @@ import {
   type SpellEntry,
 } from "@/lib/spells";
 import SpellSearchModal from "./spell-search-modal";
+import * as Popover from "@radix-ui/react-popover";
+import { Info } from "lucide-react";
 
 type ClassEntry = { className: string; level: number };
 type SpellCharacter = {
@@ -27,6 +29,7 @@ type CatalogSpell = {
   categoria: string;
   alcance: string;
   duracion: string;
+  description?: string | null;
 };
 
 export default function SpellsRegistry({
@@ -282,7 +285,7 @@ export default function SpellsRegistry({
         </div>
 
         {knownSpells.length > 0 ? (
-          <ul className="space-y-1">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {knownSpells
               .sort((a, b) => a.spellLevel - b.spellLevel || a.name.localeCompare(b.name))
               .map((spell, idx) => {
@@ -294,14 +297,46 @@ export default function SpellsRegistry({
                 return (
                   <li
                     key={idx}
-                    className="px-3 py-1.5 text-sm bg-secondary/50 rounded flex items-center justify-between gap-2"
+                    className="relative overflow-hidden px-3 py-2 text-sm bg-[#1a1510] border border-[#8B7355]/20 hover:border-[#D4AF37]/40 rounded-md flex items-center justify-between gap-2 transition-colors group"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={colorClass}>✧</span> {spell.name}
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className={colorClass}>✧</span> 
+                      <span className="truncate font-medium">{spell.name}</span>
                       {catalogInfo && (
                         <span className="text-[10px] text-muted-foreground/70">
                           {catalogInfo.escuela}
                         </span>
+                      )}
+                      {catalogInfo?.description && (
+                        <Popover.Root>
+                          <Popover.Trigger asChild>
+                            <button
+                              type="button"
+                              className="p-1 -ml-1 rounded-full text-muted-foreground hover:text-[#D4AF37] hover:bg-white/5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                              title="Ver descripción"
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                            </button>
+                          </Popover.Trigger>
+                          <Popover.Portal>
+                            <Popover.Content
+                              side="top"
+                              sideOffset={5}
+                              className="z-[60] w-[280px] max-w-[90vw] max-h-[250px] overflow-y-auto p-3 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                            >
+                              <div className="flex flex-col gap-2">
+                                <div className="border-b border-[#8B7355]/20 pb-1.5">
+                                  <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.name}</span>
+                                </div>
+                                <div 
+                                  className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed"
+                                  dangerouslySetInnerHTML={{ __html: catalogInfo.description }} 
+                                />
+                              </div>
+                              <Popover.Arrow className="fill-[#8B7355]/40" />
+                            </Popover.Content>
+                          </Popover.Portal>
+                        </Popover.Root>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
@@ -417,6 +452,22 @@ export default function SpellsRegistry({
         }
         .custom-animate-scale-down {
           animation: scaleDown 0.2s ease-in forwards;
+        }
+
+        /* Utilidad para la scrollbar de los popovers */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.2);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(212, 175, 55, 0.3);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(212, 175, 55, 0.5);
         }
       `}</style>
     </div>

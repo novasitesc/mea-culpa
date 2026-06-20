@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Search, X, Filter, Sparkles, XCircle } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { Search, X, Filter, Sparkles, XCircle, Info } from "lucide-react";
 
 export type CatalogSpell = {
   nombre: string;
@@ -11,6 +12,7 @@ export type CatalogSpell = {
   categoria: string;
   alcance: string;
   duracion: string;
+  description?: string | null;
 };
 
 interface SpellSearchModalProps {
@@ -102,13 +104,20 @@ const SpellCard = ({
   const colorClass = getSchoolColor(spell.escuela);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`text-left group relative overflow-hidden rounded-xl border transition-all duration-300 p-4 flex flex-col gap-2 min-h-[110px]
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`text-left group relative overflow-hidden rounded-xl border transition-all duration-300 p-4 flex flex-col gap-2 min-h-[110px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50
         ${animateIn ? "custom-animate-card-in" : ""}
         ${isSelected 
-          ? "border-green-500 bg-green-900/30 shadow-[0_0_15px_rgba(34,197,94,0.15)]" 
+          ? "border-green-500/40 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.08)]" 
           : "border-[#8B7355]/30 bg-[#1a1510] hover:bg-[#241c16] hover:border-[#D4AF37]/50"
         }
         ${isShaking ? "animate-shake border-red-500 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.35)]" : ""}
@@ -120,7 +129,7 @@ const SpellCard = ({
         ${isShaking 
           ? 'via-red-500' 
           : isSelected 
-            ? 'via-green-500' 
+            ? 'via-green-500/50' 
             : 'via-[#8B7355]/30 group-hover:via-[#D4AF37]/60'
         } 
         to-transparent transition-colors`} 
@@ -131,15 +140,50 @@ const SpellCard = ({
           ${isShaking 
             ? 'text-red-400' 
             : isSelected 
-              ? 'text-green-400' 
+              ? 'text-white' 
               : 'text-foreground group-hover:text-[#D4AF37]'
           }
         `}>
           {spell.nombre}
         </h4>
-        <span className="shrink-0 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/40 border border-[#8B7355]/30 text-muted-foreground uppercase">
-          Nv. {spell.nivel}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {spell.description && (
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-1 rounded-full text-muted-foreground hover:text-[#D4AF37] hover:bg-white/5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                  title="Ver descripción"
+                >
+                  <Info className="w-[14px] h-[14px]" />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  side="top"
+                  sideOffset={8}
+                  onClick={(e) => e.stopPropagation()}
+                  className="z-[60] w-[280px] max-w-[90vw] max-h-[250px] overflow-y-auto p-3 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="border-b border-[#8B7355]/20 pb-1.5">
+                      <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.nombre}</span>
+                    </div>
+                    <div 
+                      className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: spell.description }} 
+                    />
+                  </div>
+                  <Popover.Arrow className="fill-[#8B7355]/40" />
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          )}
+          <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/40 border border-[#8B7355]/30 text-muted-foreground uppercase">
+            Nv. {spell.nivel}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
@@ -152,7 +196,7 @@ const SpellCard = ({
           </span>
         )}
       </div>
-    </button>
+    </div>
   );
 };
 
@@ -506,6 +550,22 @@ export default function SpellSearchModal({
         }
         .animate-shake {
           animation: shake 0.4s ease-in-out !important;
+        }
+
+        /* Utilidad para la scrollbar de los popovers */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.2);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(212, 175, 55, 0.3);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(212, 175, 55, 0.5);
         }
       `}</style>
     </>
