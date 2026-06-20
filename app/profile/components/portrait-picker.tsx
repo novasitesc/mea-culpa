@@ -120,7 +120,6 @@ export default function PortraitPicker({
                     src={portraitPath}
                     alt={portraitPath.split("/").pop() ?? "Retrato"}
                     fill
-                    quality={100}
                     unoptimized
                     priority={isSelected}
                     loading="eager"
