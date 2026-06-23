@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { SLEEP_OPTIONS } from "@/lib/sleepOptions";
-import { markCharacterDead } from "@/lib/characterLife";
 
 async function getUserIdFromRequest(request: Request): Promise<string | null> {
   const authHeader = request.headers.get("Authorization");
@@ -19,25 +18,29 @@ async function getUserIdFromRequest(request: Request): Promise<string | null> {
   return user.id;
 }
 
-async function markCharacterAsDead(
+async function addFatigue(
   db: ReturnType<typeof createServerClient>,
   userId: string,
   characterId: number,
-  reason: string,
-  partidaId: string | null,
 ) {
-  const deadResult = await markCharacterDead({
-    db,
-    userId,
-    characterId,
-    reason,
-    partidaId,
-    metadata: { source: "sleep-options" },
-  });
+  const { data: char, error: fetchError } = await db
+    .from("personajes")
+    .select("puntos_cansancio")
+    .eq("id", characterId)
+    .eq("usuario_id", userId)
+    .single();
 
-  if (!deadResult.ok) {
-    throw new Error(deadResult.error ?? "No se pudo marcar al personaje como muerto");
-  }
+  if (fetchError) throw new Error(fetchError.message);
+
+  const current = Number((char as any)?.puntos_cansancio ?? 0);
+
+  const { error: updateError } = await db
+    .from("personajes")
+    .update({ puntos_cansancio: current + 1 })
+    .eq("id", characterId)
+    .eq("usuario_id", userId);
+
+  if (updateError) throw new Error(updateError.message);
 
   const { error: removePendingError } = await db
     .from("descansos_pendientes")
@@ -45,9 +48,7 @@ async function markCharacterAsDead(
     .eq("personaje_id", characterId)
     .eq("usuario_id", userId);
 
-  if (removePendingError) {
-    throw new Error(removePendingError.message);
-  }
+  if (removePendingError) throw new Error(removePendingError.message);
 }
 
 export async function GET(request: Request) {
@@ -143,24 +144,18 @@ export async function POST(request: Request) {
 
   if (action === "decline") {
     try {
-      await markCharacterAsDead(
-        db,
-        userId,
-        characterId,
-        "descanso_rechazado",
-        partidaId,
-      );
+      await addFatigue(db, userId, characterId);
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "No se pudo marcar muerto el personaje" },
+        { error: error instanceof Error ? error.message : "No se pudo registrar el cansancio" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       eliminated: false,
-      dead: true,
-      message: `${characterName} ha muerto. Puedes revivirlo desde el perfil.`,
+      dead: false,
+      message: `${characterName} acumula un punto de cansancio por no descansar.`,
     });
   }
 
@@ -182,27 +177,19 @@ export async function POST(request: Request) {
   const currentGold = Number((profile as any)?.oro ?? 0);
   if (currentGold < selectedOption.cost) {
     try {
-      await markCharacterAsDead(
-        db,
-        userId,
-        characterId,
-        "sin_oro_descanso",
-        partidaId,
-      );
+      await addFatigue(db, userId, characterId);
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "No se pudo marcar muerto el personaje" },
+        { error: error instanceof Error ? error.message : "No se pudo registrar el cansancio" },
         { status: 500 },
       );
     }
 
-    return NextResponse.json(
-      {
-        eliminated: false,
-        dead: true,
-        message: `${characterName} no tenía oro suficiente y ha muerto. Puedes revivirlo desde el perfil.`,
-      },
-    );
+    return NextResponse.json({
+      eliminated: false,
+      dead: false,
+      message: `${characterName} no tenía oro suficiente para descansar y acumula un punto de cansancio.`,
+    });
   }
 
   const { data: newGold, error: paymentError } = await db.rpc("modificar_oro", {
