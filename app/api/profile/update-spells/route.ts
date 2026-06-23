@@ -5,6 +5,8 @@ import {
   getCasterType,
   getMaxKnownSpells,
   getMaxSpellLevel,
+  getEffectiveMaxSpellLevel,
+  getMaxRegistrableSpells,
   normalizeSpells,
   validateSpells,
   type SpellEntry,
@@ -124,10 +126,15 @@ export async function POST(request: Request) {
       }
 
       // Precalcular el nivel máximo de conjuro por cada clase del personaje
+      // Bug #1 fix: también considerar el nivel máximo efectivo de multiclase
       const classMaxSpellLevel = new Map<string, number>();
       for (const c of clases) {
         classMaxSpellLevel.set(c.nombre_clase, getMaxSpellLevel(c.nombre_clase, c.nivel));
       }
+      // Nivel máximo efectivo considerando multiclase (PHB p.165)
+      const effectiveMaxLv = getEffectiveMaxSpellLevel(
+        clases.map(c => ({ className: c.nombre_clase, level: c.nivel })),
+      );
 
       for (const s of spellEntries) {
         const key = s.name.toLowerCase().trim();
@@ -145,10 +152,11 @@ export async function POST(request: Request) {
         }
 
         // Verificar si ALGUNA de las clases válidas para este conjuro tiene el nivel suficiente
+        // Bug #1 fix: También aceptar si el nivel efectivo de multiclase lo permite
         const canCast = validClassesForSpell.some(cName => {
           const maxLv = classMaxSpellLevel.get(cName) || 0;
           return maxLv >= s.spellLevel;
-        });
+        }) || s.spellLevel <= effectiveMaxLv;
 
         if (!canCast) {
           return NextResponse.json(
@@ -162,21 +170,25 @@ export async function POST(request: Request) {
     }
 
     // ──────────────────────────────────────────────────────────
-    // VALIDACIÓN DE LÍMITE TOTAL DE CONJUROS CONOCIDOS
+    // VALIDACIÓN DE LÍMITE TOTAL DE CONJUROS REGISTRABLES
     // ──────────────────────────────────────────────────────────
+    // Bug #2 fix: incluir TODOS los tipos de caster, no solo "known"
 
-    let totalMaxKnown = 0;
+    let totalMaxRegistrable = 0;
+    let isUnlimited = false;
     for (const c of clases) {
-      const type = getCasterType(c.nombre_clase);
-      if (type === "known") {
-        totalMaxKnown += getMaxKnownSpells(c.nombre_clase, c.nivel);
+      const max = getMaxRegistrableSpells(c.nombre_clase, c.nivel);
+      if (max === -1) {
+        isUnlimited = true; // Clérigo/Druida/Paladín: sin límite de registro
+      } else {
+        totalMaxRegistrable += max;
       }
     }
 
-    // Si tiene un límite y lo excede (nota: regularSpells y warlock arcanums se simplifican aquí a total max known para evitar complejidad excesiva en multiclases, si quisieramos arcanums se manejaría separado).
-    if (totalMaxKnown > 0 && spellEntries.length > totalMaxKnown) {
+    // Si tiene un límite y lo excede
+    if (!isUnlimited && totalMaxRegistrable > 0 && spellEntries.length > totalMaxRegistrable) {
       return NextResponse.json(
-        { error: `Excede el máximo de conjuros conocidos: ${spellEntries.length}/${totalMaxKnown}.` },
+        { error: `Excede el máximo de conjuros registrables: ${spellEntries.length}/${totalMaxRegistrable}.` },
         { status: 403 },
       );
     }

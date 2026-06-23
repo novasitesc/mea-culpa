@@ -2109,6 +2109,8 @@ type Character = {
   id: number;
   nombre: string;
   raza: string;
+  estado_vida: string;
+  muerto_en: string | null;
   clases: Array<{
     nombre_clase: string;
     nivel: number;
@@ -2207,6 +2209,30 @@ function CharactersFormModal({
     }
   };
 
+  const reviveCharacter = async (characterId: number) => {
+    if (!confirm("¿Revivir a este personaje sin cobrar oro?")) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        onToast("Personaje revivido exitosamente", "success");
+        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (charsRes.ok) setCharacters(await charsRes.json());
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch (error) {
+      onToast("Error al revivir", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal title={`Personajes de ${user.name}`} onClose={onClose} maxWidth="max-w-4xl">
       <div className="space-y-4">
@@ -2226,10 +2252,24 @@ function CharactersFormModal({
                 className="p-4 rounded border border-border bg-secondary/20 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     {character.nombre}
+                    {character.estado_vida === "muerto" && (
+                      <span className="text-[10px] bg-red-900/50 text-red-300 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Muerto</span>
+                    )}
                   </h3>
-                  {editingChar !== character.id && (
+                  <div className="flex items-center gap-2">
+                    {character.estado_vida === "muerto" && (
+                      <button
+                        onClick={() => reviveCharacter(character.id)}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
+                        title="F3: Revivir"
+                      >
+                        Revivir
+                      </button>
+                    )}
+                    {editingChar !== character.id && (
                     <button
                       onClick={() => {
                         setEditingChar(character.id);
@@ -2251,6 +2291,7 @@ function CharactersFormModal({
                       Editar
                     </button>
                   )}
+                  </div>
                 </div>
 
                 {editingChar === character.id && editForm ? (

@@ -138,7 +138,8 @@ export async function POST(request: Request) {
     const { count } = await db
       .from("personajes")
       .select("id", { count: "exact", head: true })
-      .eq("usuario_id", userId);
+      .eq("usuario_id", userId)
+      .neq("estado_vida", "enterrado");
 
     if ((count ?? 0) >= maxCharacterSlots) {
       return NextResponse.json(

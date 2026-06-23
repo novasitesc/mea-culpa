@@ -159,6 +159,7 @@ export async function GET(request: Request) {
     `,
     )
     .eq("usuario_id", userId)
+    .neq("estado_vida", "enterrado")
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)

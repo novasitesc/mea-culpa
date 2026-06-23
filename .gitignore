@@ -42,3 +42,8 @@ next-env.d.ts
 pnpm-lock.yaml
 conjuros.md
 scripts/seed_spells.js
+dnd5e.spells.json
+update-spells.js
+revisar_manual.txt
+package.json
+package-lock.json

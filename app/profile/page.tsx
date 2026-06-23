@@ -2,17 +2,15 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/header";
-import DiceModule from "../components/dice-module";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
-import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
+import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
-import PortraitPicker from "./components/portrait-picker";
-import SpellsRegistry from "./components/spells-registry";
-import { getCasterType, getMaxKnownSpells, type SpellEntry } from "@/lib/spells";
+import CharacterGrid from "./components/character-grid";
+import { type SpellEntry } from "@/lib/spells";
 
 type Player = {
   name: string;
@@ -175,14 +173,15 @@ export default function ProfilePage() {
     race: string;
     multiclass: ClassEntry[];
     alignment: string;
-    knownSpellsInput: string;
   }>({
     name: "",
     race: "",
     multiclass: [{ className: "", level: 1 }],
     alignment: "",
-    knownSpellsInput: "",
   });
+
+  const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const showProfileAlert = (
     title: string,
@@ -317,6 +316,31 @@ export default function ProfilePage() {
       );
     } finally {
       setSavingNivel20Url(false);
+    }
+  };
+
+  const handleDeleteCharacter = async () => {
+    if (!characterToDelete || !token) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/profile/delete-character?characterId=${characterToDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo eliminar el personaje");
+
+      showProfileAlert(
+        data.action === "killed" ? "Personaje Muerto" : "Personaje Eliminado",
+        data.action === "killed" ? `Tu personaje ${characterToDelete.name} ha muerto.` : `Tu personaje ${characterToDelete.name} fue eliminado permanentemente.`,
+        "success"
+      );
+      setCharacterToDelete(null);
+      await loadProfile();
+    } catch (err: any) {
+      showProfileAlert("Error", err.message, "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -472,23 +496,9 @@ export default function ProfilePage() {
 
     setIsCreating(true);
     try {
-      // Parsear conjuros ingresados
-      const parsedSpells = (newCharacter as any).knownSpellsInput
-        ? (newCharacter as any).knownSpellsInput
-          .split(",")
-          .map((s: string) => {
-            const match = s.trim().match(/^(.*?)\s*\((\d+)\)$/);
-            if (match) {
-              return { name: match[1].trim(), spellLevel: parseInt(match[2], 10) };
-            }
-            return { name: s.trim(), spellLevel: 1 };
-          })
-          .filter((s: { name: string; spellLevel: number }) => s.name.length > 0)
-        : [];
-
       const payload = {
         ...newCharacter,
-        knownSpells: parsedSpells,
+        knownSpells: [],
       };
 
       const response = await fetch("/api/profile/create-character", {
@@ -516,7 +526,6 @@ export default function ProfilePage() {
         race: "",
         multiclass: [{ className: "", level: 1 }],
         alignment: "",
-        knownSpellsInput: "",
       });
       setShowCreateModal(false);
       showProfileAlert(
@@ -752,10 +761,6 @@ export default function ProfilePage() {
 
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         <Header />
-
-        <div className="mt-4">
-          <DiceModule token={token} />
-        </div>
 
         <div className="space-y-10 mt-6">
           <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
@@ -1063,177 +1068,79 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <section className="space-y-6">
-            {characters.map((character) => (
-              <article
-                key={character.id}
-                className="rounded-lg border-2 border-[#8B7355] bg-card/80 p-6 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6"
-              >
-                <div className="space-y-4">
-                  <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
-                    <Image
-                      src={character.portrait || "/characters/profileplaceholder.webp"}
-                      alt={`${character.name} portrait`}
-                      fill
-                      quality={100}
-                      className="object-cover"
-                    />
-                  </div>
-                  {user && (
-                    <PortraitPicker
-                      userId={user.id}
-                      characterId={character.id}
-                      currentPortrait={character.portrait}
-                      onPortraitUpdated={(characterId, portrait) => {
-                        setProfile((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            characters: prev.characters.map((char) =>
-                              char.id === characterId
-                                ? { ...char, portrait }
-                                : char,
-                            ),
-                          };
-                        });
+          {/* Character Grid — Compact cards with expand/collapse */}
+          <CharacterGrid
+            characters={profile ? characters : null}
+            user={user}
+            token={token}
+            onOpenBag={(character) => {
+              setOpenBagModal(character.id);
+              setCurrentCharacter(character);
+              setBagItems(character.bag.items);
+            }}
+            onDeleteCharacter={(character) => setCharacterToDelete(character)}
+            onPortraitUpdated={(characterId, portrait) => {
+              setProfile((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  characters: prev.characters.map((char) =>
+                    char.id === characterId
+                      ? { ...char, portrait }
+                      : char,
+                  ),
+                };
+              });
+              setCurrentCharacter((prev) =>
+                prev && prev.id === characterId
+                  ? { ...prev, portrait }
+                  : prev,
+              );
+            }}
+            isDeleting={isDeleting}
+            onAlert={showProfileAlert}
+          />
 
-                        setCurrentCharacter((prev) =>
-                          prev && prev.id === characterId
-                            ? { ...prev, portrait }
-                            : prev,
-                        );
-                      }}
-                      onAlert={showProfileAlert}
-                    />
-                  )}
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground tracking-[0.3em] uppercase">
-                      {character.race}
-                    </p>
-                    <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
-                      {character.name}
-                    </h2>
-                    <p
-                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
-                        }`}
-                    >
-                      {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
-                    </p>
-                    {character.hasDismemberedLimb && (
-                      <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-300">
-                        <p>Miembros desmembrados:</p>
-                        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-orange-200/90">
-                          {character.dismemberedLimbs.length > 0
-                            ? character.dismemberedLimbs.join(", ")
-                            : "No especificado"}
-                        </p>
-                      </div>
-                    )}
-                    {character.lifeStatus === "muerto" && character.deadAt && (
-                      <p className="text-xs text-red-200/80 mt-1">
-                        Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
-                      </p>
-                    )}
-                    <div className="mt-2 space-y-1">
-                      {(character.multiclass ?? []).map((entry, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-center gap-2"
-                        >
-                          <span className="text-sm text-muted-foreground">
-                            {entry.className}{" "}
-                            <span className="text-[#D4AF37] font-semibold">
-                              Nv.{entry.level}
-                            </span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 rounded bg-[#8B7355] text-background text-center text-sm">
-                      {character.alignment}
-                    </div>
-                  </div>
-                </div>
+          {/* Equipment Modal — rendered outside the grid to avoid z-index issues */}
+          {openBagModal !== null && currentCharacter && (
+            <EquipmentModal
+              userId={user?.id ?? ""}
+              character={currentCharacter}
+              characters={characters}
+              onClose={() => setOpenBagModal(null)}
+              onRefreshProfile={loadProfile}
+              onSave={async (updatedCharacter, updatedBagItems) => {
+                const nextCharacter = updatedCharacter as Character;
+                const nextBagItems = updatedBagItems as Item[];
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(character.stats).map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded border border-border/60 bg-secondary/40 p-3 text-center"
-                      >
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest">
-                          {label}
-                        </p>
-                        <p className="text-2xl font-semibold text-foreground mt-1">
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                setCurrentCharacter(nextCharacter);
+                setBagItems(nextBagItems);
+                await saveBagChanges(
+                  openBagModal,
+                  nextCharacter,
+                  nextBagItems,
+                );
+              }}
+              onGoldUpdate={(newGold) => {
+                setProfile((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    player: {
+                      ...prev.player,
+                      oro: newGold,
+                    },
+                  };
+                });
 
-                  <EquipmentPreview character={character} />
-
-                  <SpellsRegistry character={character} token={token} />
-
-                  <div className="flex justify-end mt-2">
-                    <button
-                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-60 disabled:cursor-not-allowed"
-                      onClick={() => {
-                        setOpenBagModal(character.id);
-                        setCurrentCharacter(character);
-                        setBagItems(character.bag.items);
-                      }}
-                      disabled={character.lifeStatus === "muerto"}
-                    >
-                      {character.lifeStatus === "muerto" ? "Personaje muerto" : "Abrir Bolsa"}
-                    </button>
-                  </div>
-                  {openBagModal === character.id && (
-                    <EquipmentModal
-                      userId={user?.id ?? ""}
-                      character={character}
-                      characters={characters}
-                      onClose={() => setOpenBagModal(null)}
-                      onRefreshProfile={loadProfile}
-                      onSave={async (updatedCharacter, updatedBagItems) => {
-                        const nextCharacter = updatedCharacter as Character;
-                        const nextBagItems = updatedBagItems as Item[];
-
-                        setCurrentCharacter(nextCharacter);
-                        setBagItems(nextBagItems);
-                        await saveBagChanges(
-                          character.id,
-                          nextCharacter,
-                          nextBagItems,
-                        );
-                      }}
-                      onGoldUpdate={(newGold) => {
-                        setProfile((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            player: {
-                              ...prev.player,
-                              oro: newGold,
-                            },
-                          };
-                        });
-
-                        window.dispatchEvent(
-                          new CustomEvent("auth:refresh", {
-                            detail: { oro: newGold },
-                          }),
-                        );
-                      }}
-                    />
-                  )}
-                </div>
-              </article>
-            ))}
-          </section>
+                window.dispatchEvent(
+                  new CustomEvent("auth:refresh", {
+                    detail: { oro: newGold },
+                  }),
+                );
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -1410,14 +1317,11 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Multiclase - máximo 3 clases */}
+              {/* Selección de Clase Inicial (Multiclase deshabilitado en Nv.1) */}
               <div>
                 <div className="flex items-center mb-2">
                   <label className="text-sm font-medium text-muted-foreground">
-                    Clases{" "}
-                    <span className="text-xs text-muted-foreground/60">
-                      ({newCharacter.multiclass.length}/3)
-                    </span>
+                    Clase Inicial (Nivel 1)
                   </label>
                 </div>
                 <div className="space-y-2">
@@ -1465,77 +1369,12 @@ export default function ProfilePage() {
                             </option>
                           ))}
                       </select>
-
-                      {newCharacter.multiclass.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setNewCharacter((prev) => ({
-                              ...prev,
-                              multiclass: prev.multiclass.filter(
-                                (_, i) => i !== idx,
-                              ),
-                            }))
-                          }
-                          className="px-2 py-2 text-red-500 hover:bg-red-500/10 rounded transition text-sm"
-                        >
-                          ×
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
-                {newCharacter.multiclass.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewCharacter((prev) => ({
-                        ...prev,
-                        multiclass: [
-                          ...prev.multiclass,
-                          { className: "", level: 1 },
-                        ],
-                      }))
-                    }
-                    className="mt-2 w-full text-xs px-2 py-1.5 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
-                  >
-                    + Añadir clase
-                  </button>
-                )}
               </div>
 
-              {/* Sección de Conjuros Conocidos (Solo si aplica a la clase elegida) */}
-              {(() => {
-                let totalMaxKnown = 0;
-                newCharacter.multiclass.forEach(c => {
-                  if (c.className && getCasterType(c.className) === "known") {
-                    totalMaxKnown += getMaxKnownSpells(c.className, c.level);
-                  }
-                });
 
-                if (totalMaxKnown > 0) {
-                  return (
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">
-                        Conjuros Conocidos Iniciales
-                      </label>
-                      <input
-                        type="text"
-                        value={(newCharacter as any).knownSpellsInput ?? ""}
-                        onChange={(e) => {
-                          setNewCharacter(prev => ({ ...prev, knownSpellsInput: e.target.value }));
-                        }}
-                        className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        placeholder="Ej: Curar heridas (1), Escudo (1), Oscuridad (2)"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual. Formato: Nombre (Nivel), separados por coma. Si omites el nivel, será 1.
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
 
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-4">
@@ -1551,7 +1390,6 @@ export default function ProfilePage() {
                         race: "",
                         multiclass: [{ className: "", level: 1 }],
                         alignment: "",
-                        knownSpellsInput: "",
                       });
                     }}
                     disabled={isCreating}
@@ -1572,6 +1410,57 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmar Eliminar Personaje */}
+      <AnimatePresence>
+        {characterToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-sm bg-[#18130f] border-2 border-[#8B7355] rounded-xl p-6 shadow-2xl text-center relative overflow-hidden"
+            >
+              <h4 className="text-xl font-serif text-red-400 mb-2 tracking-wide">
+                {characterToDelete.lifeStatus === "muerto" ? "Eliminar Definitivamente" : "Matar Personaje"}
+              </h4>
+              
+              <p className="text-sm text-foreground mb-4">
+                {characterToDelete.lifeStatus === "muerto" ? (
+                  <>¿Estás seguro que quieres eliminar a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span> (Nivel {characterToDelete.multiclass.reduce((acc, c) => acc + c.level, 0)}, {characterToDelete.race})? Esta acción es irreversible y liberará un slot.</>
+                ) : (
+                  <>Si eliminas a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span>, este morirá. Quedará en tu lista de personajes muertos ocupando un slot hasta que lo revivas o lo elimines definitivamente.</>
+                )}
+              </p>
+              
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCharacterToDelete(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-semibold rounded border border-[#8B7355]/40 hover:bg-[#8B7355]/10 text-muted-foreground hover:text-foreground transition duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteCharacter}
+                  disabled={isDeleting}
+                  className="px-5 py-2 text-sm font-semibold rounded bg-red-700 hover:bg-red-800 text-white shadow-lg transition duration-200"
+                >
+                  {isDeleting ? "Procesando..." : characterToDelete.lifeStatus === "muerto" ? "Eliminar" : "Matar"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

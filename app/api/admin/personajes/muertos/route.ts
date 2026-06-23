@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     .select(
       "id, nombre, numero_slot, usuario_id, estado_vida, muerto_en, revivido_en, perfiles:usuario_id ( nombre )",
     )
-    .eq("estado_vida", "muerto")
+    .in("estado_vida", ["muerto", "enterrado"])
     .order("muerto_en", { ascending: false })
     .limit(limit);
 

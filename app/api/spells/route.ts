@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       // Consultar datos completos de esos conjuros
       let query = db
         .from("conjuros")
-        .select("nombre, nivel, escuela, categoria, alcance, duracion")
+        .select("nombre, nivel, escuela, categoria, alcance, duracion, description")
         .in("nombre", nombresUnicos)
         .order("nivel", { ascending: true })
         .order("nombre", { ascending: true });
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     // Sin filtro de clases: devolver todos los conjuros (con filtro de nivel opcional)
     let query = db
       .from("conjuros")
-      .select("nombre, nivel, escuela, categoria, alcance, duracion")
+      .select("nombre, nivel, escuela, categoria, alcance, duracion, description")
       .order("nivel", { ascending: true })
       .order("nombre", { ascending: true });
 
