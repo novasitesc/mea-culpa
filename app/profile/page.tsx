@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/header";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal from "./bolsa/bolsa";
@@ -147,6 +148,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, token } = useAuth();
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+  const mpPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
+  
+  useEffect(() => {
+    if (mpPublicKey) {
+      initMercadoPago(mpPublicKey, { locale: "es-MX" });
+    }
+  }, [mpPublicKey]);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [openBagModal, setOpenBagModal] = useState<number | null>(null);
   const [bagItems, setBagItems] = useState<Item[]>([]);
@@ -883,80 +891,96 @@ export default function ProfilePage() {
                   </p>
                 )}
 
-                {!paypalClientId ? (
-                  <p className="text-xs text-amber-300">
-                    Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el pago.
-                  </p>
-                ) : (
-                  <PayPalScriptProvider
-                    options={{
-                      clientId: paypalClientId,
-                      "client-id": paypalClientId,
-                      currency: "USD",
-                      intent: "capture",
-                    }}
-                  >
-                    <PayPalButtons
-                      style={{
-                        layout: "horizontal",
-                        label: "paypal",
-                        color: "gold",
-                        tagline: false,
-                      }}
-                      disabled={isUpgradingSlots || !canUnlockMoreSlots}
-                      createOrder={async () => {
-                        setSlotUpgradeMessage(null);
-                        setIsUpgradingSlots(true);
-                        try {
-                          return await createSlotUnlockOrder();
-                        } catch (error: unknown) {
-                          setIsUpgradingSlots(false);
-                          throw error;
-                        }
-                      }}
-                      onApprove={async (data) => {
-                        if (!data.orderID) {
-                          showProfileAlert(
-                            "Error de pago",
-                            "PayPal no devolvio orderID.",
-                            "error",
-                          );
-                          setIsUpgradingSlots(false);
-                          return;
-                        }
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  <div className="flex-1 w-full max-w-[200px]">
+                    {!paypalClientId ? (
+                      <p className="text-xs text-amber-300">
+                        Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
+                      </p>
+                    ) : (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId: paypalClientId,
+                          "client-id": paypalClientId,
+                          currency: "USD",
+                          intent: "capture",
+                        }}
+                      >
+                        <PayPalButtons
+                          style={{
+                            layout: "horizontal",
+                            label: "paypal",
+                            color: "gold",
+                            tagline: false,
+                            height: 48,
+                          }}
+                          disabled={isUpgradingSlots || !canUnlockMoreSlots}
+                          createOrder={async () => {
+                            setSlotUpgradeMessage(null);
+                            setIsUpgradingSlots(true);
+                            try {
+                              return await createSlotUnlockOrder();
+                            } catch (error: unknown) {
+                              setIsUpgradingSlots(false);
+                              throw error;
+                            }
+                          }}
+                          onApprove={async (data) => {
+                            if (!data.orderID) {
+                              showProfileAlert(
+                                "Error de pago",
+                                "PayPal no devolvio orderID.",
+                                "error",
+                              );
+                              setIsUpgradingSlots(false);
+                              return;
+                            }
 
-                        try {
-                          await captureSlotUnlockOrder(data.orderID);
-                          showProfileAlert(
-                            "Pago confirmado",
-                            "Tu slot adicional ya fue activado.",
-                            "success",
-                          );
-                        } catch (error: unknown) {
-                          showProfileAlert(
-                            "Error de pago",
-                            error instanceof Error ? error.message : "No se pudo confirmar el pago",
-                            "error",
-                          );
-                        } finally {
-                          setIsUpgradingSlots(false);
-                        }
-                      }}
-                      onCancel={() => {
-                        setSlotUpgradeMessage("Pago cancelado por el usuario.");
-                        setIsUpgradingSlots(false);
-                      }}
-                      onError={(error) => {
-                        showProfileAlert(
-                          "Error de PayPal",
-                          error instanceof Error ? error.message : "No se pudo procesar el pago",
-                          "error",
-                        );
-                        setIsUpgradingSlots(false);
-                      }}
-                    />
-                  </PayPalScriptProvider>
-                )}
+                            try {
+                              await captureSlotUnlockOrder(data.orderID);
+                              showProfileAlert(
+                                "Pago confirmado",
+                                "Tu slot adicional ya fue activado.",
+                                "success",
+                              );
+                            } catch (error: unknown) {
+                              showProfileAlert(
+                                "Error de pago",
+                                error instanceof Error ? error.message : "No se pudo confirmar el pago",
+                                "error",
+                              );
+                            } finally {
+                              setIsUpgradingSlots(false);
+                            }
+                          }}
+                          onCancel={() => {
+                            setSlotUpgradeMessage("Pago cancelado por el usuario.");
+                            setIsUpgradingSlots(false);
+                          }}
+                          onError={(error) => {
+                            showProfileAlert(
+                              "Error de PayPal",
+                              error instanceof Error ? error.message : "No se pudo procesar el pago",
+                              "error",
+                            );
+                            setIsUpgradingSlots(false);
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
+                    <button
+                      disabled={isUpgradingSlots || !canUnlockMoreSlots}
+                      className="w-full h-[48px] rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                      style={{ backgroundColor: "#009ee3" }}
+                      onClick={() => showProfileAlert("Mercado Pago", "La integracion con Mercado Pago estara disponible pronto.", "info")}
+                    >
+                      <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
+                    </button>
+                  </div>
+                </div>
 
                 {slotUpgradeMessage && (
                   <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
@@ -985,81 +1009,97 @@ export default function ProfilePage() {
                       ))}
                     </select>
 
-                    {!paypalClientId ? (
-                      <p className="text-xs text-red-200/80">
-                        Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el revive.
-                      </p>
-                    ) : (
-                      <PayPalScriptProvider
-                        options={{
-                          clientId: paypalClientId,
-                          "client-id": paypalClientId,
-                          currency: "USD",
-                          intent: "capture",
-                        }}
-                      >
-                        <PayPalButtons
-                          style={{
-                            layout: "horizontal",
-                            label: "paypal",
-                            color: "gold",
-                            tagline: false,
-                          }}
+                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                      <div className="flex-1 w-full max-w-[200px]">
+                        {!paypalClientId ? (
+                          <p className="text-xs text-red-200/80">
+                            Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
+                          </p>
+                        ) : (
+                          <PayPalScriptProvider
+                            options={{
+                              clientId: paypalClientId,
+                              "client-id": paypalClientId,
+                              currency: "USD",
+                              intent: "capture",
+                            }}
+                          >
+                            <PayPalButtons
+                              style={{
+                                layout: "horizontal",
+                                label: "paypal",
+                                color: "gold",
+                                tagline: false,
+                                height: 48,
+                              }}
+                              disabled={isRevivingCharacter || !reviveTargetCharacter}
+                              createOrder={async () => {
+                                if (!reviveTargetCharacter) {
+                                  throw new Error("Selecciona un personaje muerto");
+                                }
+
+                                setReviveMessage(null);
+                                setIsRevivingCharacter(true);
+                                try {
+                                  return await createReviveOrder(reviveTargetCharacter.id);
+                                } catch (error: unknown) {
+                                  setIsRevivingCharacter(false);
+                                  throw error;
+                                }
+                              }}
+                              onApprove={async (data) => {
+                                if (!data.orderID) {
+                                  showProfileAlert(
+                                    "Error de pago",
+                                    "PayPal no devolvió orderID.",
+                                    "error",
+                                  );
+                                  setIsRevivingCharacter(false);
+                                  return;
+                                }
+
+                                try {
+                                  await captureReviveOrder(data.orderID);
+                                  setReviveMessage("Revivir confirmado. Tu personaje volvió a la vida.");
+                                  showProfileAlert("Personaje revivido", "El revive se aplicó correctamente.", "success");
+                                } catch (error: unknown) {
+                                  showProfileAlert(
+                                    "Error de revive",
+                                    error instanceof Error ? error.message : "No se pudo confirmar el revive",
+                                    "error",
+                                  );
+                                } finally {
+                                  setIsRevivingCharacter(false);
+                                }
+                              }}
+                              onCancel={() => {
+                                setReviveMessage("Pago cancelado por el usuario.");
+                                setIsRevivingCharacter(false);
+                              }}
+                              onError={(error) => {
+                                showProfileAlert(
+                                  "Error de PayPal",
+                                  error instanceof Error ? error.message : "No se pudo procesar el pago",
+                                  "error",
+                                );
+                                setIsRevivingCharacter(false);
+                              }}
+                            />
+                          </PayPalScriptProvider>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
+                        <button
                           disabled={isRevivingCharacter || !reviveTargetCharacter}
-                          createOrder={async () => {
-                            if (!reviveTargetCharacter) {
-                              throw new Error("Selecciona un personaje muerto");
-                            }
-
-                            setReviveMessage(null);
-                            setIsRevivingCharacter(true);
-                            try {
-                              return await createReviveOrder(reviveTargetCharacter.id);
-                            } catch (error: unknown) {
-                              setIsRevivingCharacter(false);
-                              throw error;
-                            }
-                          }}
-                          onApprove={async (data) => {
-                            if (!data.orderID) {
-                              showProfileAlert(
-                                "Error de pago",
-                                "PayPal no devolvió orderID.",
-                                "error",
-                              );
-                              setIsRevivingCharacter(false);
-                              return;
-                            }
-
-                            try {
-                              await captureReviveOrder(data.orderID);
-                              setReviveMessage("Revivir confirmado. Tu personaje volvió a la vida.");
-                              showProfileAlert("Personaje revivido", "El revive se aplicó correctamente.", "success");
-                            } catch (error: unknown) {
-                              showProfileAlert(
-                                "Error de revive",
-                                error instanceof Error ? error.message : "No se pudo confirmar el revive",
-                                "error",
-                              );
-                            } finally {
-                              setIsRevivingCharacter(false);
-                            }
-                          }}
-                          onCancel={() => {
-                            setReviveMessage("Pago cancelado por el usuario.");
-                            setIsRevivingCharacter(false);
-                          }}
-                          onError={(error) => {
-                            showProfileAlert(
-                              "Error de PayPal",
-                              error instanceof Error ? error.message : "No se pudo procesar el pago",
-                              "error",
-                            );
-                            setIsRevivingCharacter(false);
-                          }}
-                        />
-                      </PayPalScriptProvider>
-                    )}
+                          className="w-full h-[48px] rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                          style={{ backgroundColor: "#009ee3" }}
+                          onClick={() => showProfileAlert("Mercado Pago", "La integracion con Mercado Pago estara disponible pronto.", "info")}
+                        >
+                          <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
+                        </button>
+                      </div>
+                    </div>
 
                     {reviveMessage && <p className="text-xs text-red-100/90">{reviveMessage}</p>}
                   </>
