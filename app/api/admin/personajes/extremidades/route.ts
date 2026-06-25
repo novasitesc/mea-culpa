@@ -9,7 +9,7 @@ export async function PATCH(request: Request) {
   if ("error" in result) return result.error;
   const { session } = result;
 
-  let body: { personajeId?: unknown; miembro?: unknown; desmembrado?: unknown };
+  let body: { personajeId?: unknown; miembro?: unknown; desmembrado?: unknown; miembroLabel?: unknown; partidaId?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -19,6 +19,8 @@ export async function PATCH(request: Request) {
   const personajeId = Number(body.personajeId);
   const miembro = String(body.miembro ?? "").trim();
   const desmembrado = Boolean(body.desmembrado);
+  const miembroLabel = body.miembroLabel ? String(body.miembroLabel) : miembro;
+  const partidaId = body.partidaId ? String(body.partidaId) : null;
 
   if (!Number.isFinite(personajeId) || personajeId <= 0) {
     return NextResponse.json({ error: "personajeId inválido" }, { status: 400 });
@@ -29,7 +31,7 @@ export async function PATCH(request: Request) {
 
   const { data: personaje, error: fetchError } = await session.db
     .from("personajes")
-    .select("id, extremidades")
+    .select("id, nombre, extremidades, usuario_id")
     .eq("id", personajeId)
     .maybeSingle();
 
@@ -59,6 +61,19 @@ export async function PATCH(request: Request) {
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  if (partidaId) {
+    await session.db.from("partidas_eventos").insert({
+      partida_id: partidaId,
+      tipo: "desmembramiento",
+      personaje_id: personajeId,
+      personaje_nombre: (personaje as any).nombre ?? null,
+      usuario_id: (personaje as any).usuario_id ?? null,
+      miembro,
+      miembro_label: miembroLabel,
+      desmembrado,
+    });
   }
 
   return NextResponse.json({ extremidades: Object.keys(current).length > 0 ? current : null });
