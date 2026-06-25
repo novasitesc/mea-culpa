@@ -76,14 +76,6 @@ export const sidebarItems = [
     href: "/partidas",
     subtitle: "(unete a partidas activas)",
   },
-  {
-    id: "dado",
-    label: "Dado",
-    icon: Dices,
-    hasIndicator: true,
-    href: "/dado",
-    subtitle: "(tirada de dados y notas)",
-  },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────
