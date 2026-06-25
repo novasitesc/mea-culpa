@@ -29,6 +29,7 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
+import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
@@ -2140,6 +2141,7 @@ function CharactersFormModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingChar, setEditingChar] = useState<number | null>(null);
+  const [reviveTarget, setReviveTarget] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     raza: string;
     clases: Array<{ nombre_clase: string; nivel: number }>;
@@ -2209,14 +2211,18 @@ function CharactersFormModal({
     }
   };
 
-  const reviveCharacter = async (characterId: number) => {
-    if (!confirm("¿Revivir a este personaje sin cobrar oro?")) return;
+  const reviveCharacter = (characterId: number) => {
+    setReviveTarget(characterId);
+  };
+
+  const executeRevive = async () => {
+    if (reviveTarget === null) return;
     setSaving(true);
     try {
       const res = await fetch("/api/profile/admin-revive", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId }),
+        body: JSON.stringify({ characterId: reviveTarget }),
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
@@ -2226,10 +2232,11 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al revivir", "error");
     } finally {
       setSaving(false);
+      setReviveTarget(null);
     }
   };
 
@@ -2424,6 +2431,18 @@ function CharactersFormModal({
           </button>
         </div>
       </div>
+
+      <ConfirmActionModal
+        open={reviveTarget !== null}
+        title="Revivir personaje"
+        description="¿Revivir a este personaje sin cobrar oro? Esta acción lo devolverá a la vida."
+        confirmText="Revivir"
+        cancelText="Cancelar"
+        confirmVariant="success"
+        isLoading={saving}
+        onConfirm={executeRevive}
+        onCancel={() => setReviveTarget(null)}
+      />
     </Modal>
   );
 }
