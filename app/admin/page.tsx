@@ -3874,6 +3874,8 @@ function DeadCharactersTab({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [reviveTarget, setReviveTarget] = useState<{ id: number; name: string } | null>(null);
+  const [reviving, setReviving] = useState(false);
 
   const loadCurrentDead = useCallback(async () => {
     setLoadingDead(true);
@@ -3916,6 +3918,30 @@ function DeadCharactersTab({
     setHistoryRows(data.data ?? []);
     setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
   }, [historyPage, token, onToast]);
+
+  const executeRevive = async () => {
+    if (!reviveTarget) return;
+    setReviving(true);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: reviveTarget.id }),
+      });
+      if (res.ok) {
+        onToast("Personaje revivido exitosamente", "success");
+        await loadCurrentDead();
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch {
+      onToast("Error al revivir", "error");
+    } finally {
+      setReviving(false);
+      setReviveTarget(null);
+    }
+  };
 
   useEffect(() => {
     loadCurrentDead();
@@ -4008,6 +4034,7 @@ function DeadCharactersTab({
                   <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Slot</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -4018,11 +4045,20 @@ function DeadCharactersTab({
                     <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setReviveTarget({ id: row.id, name: row.name })}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors"
+                      >
+                        Revivir
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredDeadRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                       No hay personajes muertos en este momento.
                     </td>
                   </tr>
@@ -4106,6 +4142,18 @@ function DeadCharactersTab({
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        open={reviveTarget !== null}
+        title="Revivir personaje"
+        description={`¿Revivir a "${reviveTarget?.name}" sin cobrar oro? Esta acción lo devolverá a la vida.`}
+        confirmText="Revivir"
+        cancelText="Cancelar"
+        confirmVariant="success"
+        isLoading={reviving}
+        onConfirm={executeRevive}
+        onCancel={() => setReviveTarget(null)}
+      />
     </div>
   );
 }
