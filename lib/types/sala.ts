@@ -57,9 +57,17 @@ export type EventoDesmembramiento = {
   desmembrado: boolean;
 };
 
+export type EventoConsumibleUsado = {
+  tipo: "consumible_usado";
+  personajeId: number;
+  personajeNombre: string;
+  objeto: { id: number; nombre: string; icono: string };
+};
+
 export type SalaEvento =
   | EventoDadoTirado
   | EventoAsignacionManual
   | EventoPartidaCerrada
   | EventoPartidaIniciada
-  | EventoDesmembramiento;
+  | EventoDesmembramiento
+  | EventoConsumibleUsado;
