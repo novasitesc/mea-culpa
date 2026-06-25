@@ -41,6 +41,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    mode: "onTouched",
   });
 
   // Ocultar scrollbar cuando se monta el componente
@@ -192,6 +193,8 @@ export default function LoginPage() {
                     type="email"
                     placeholder="tu@correo.com"
                     className="pl-10 bg-input border-border focus-visible:border-gold relative z-20"
+                    autoComplete="email"
+                    required
                     {...register("email")}
                     disabled={isLoading}
                   />
@@ -215,6 +218,11 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     className="pl-10 pr-10 bg-input border-border focus-visible:border-gold relative z-20"
+                    autoComplete="current-password"
+                    required
+                    minLength={6}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? "password-error" : undefined}
                     {...register("password")}
                     disabled={isLoading}
                   />
