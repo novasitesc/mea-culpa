@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
 
@@ -223,18 +225,18 @@ const SLOT_CONFIG: Record<SlotKey, { accepts: ItemType[]; label: string; icon: s
   amuleto:     { accepts: ["amuleto"],                          label: "Amuleto",   icon: "🔮" },
   capa:        { accepts: ["capa"],                            label: "Capa",      icon: "🧥" },
   cinturon:    { accepts: ["cinturón"],                        label: "Cinturón",  icon: "🪢" },
-  pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "🧥" },
+  pecho:       { accepts: ["armadura", "pecho"],              label: "Armadura",  icon: "👕" },
   manoizq:     { accepts: ["arma"],                            label: "Mano Izq",  icon: "🗡" },
   manoderecha: { accepts: ["arma"],                            label: "Mano Der",  icon: "🗡" },
   manos:       { accepts: ["guante", "manos"],                 label: "Manos",     icon: "🧤" },
-  anillo1:     { accepts: ["anillo"],                          label: "Anillo 1",  icon: "✨" },
-  anillo2:     { accepts: ["anillo"],                          label: "Anillo 2",  icon: "✨" },
-  anillo3:     { accepts: ["anillo"],                          label: "Anillo 3",  icon: "✨" },
+  anillo1:     { accepts: ["anillo"],                          label: "Anillo 1",  icon: "💍" },
+  anillo2:     { accepts: ["anillo"],                          label: "Anillo 2",  icon: "💍" },
+  anillo3:     { accepts: ["anillo"],                          label: "Anillo 3",  icon: "💍" },
   pies:        { accepts: ["botas"],                           label: "Pies",      icon: "🥾" },
 };
 
 const ITEM_ICONS: Partial<Record<ItemType, string>> = {
-  arma: "⚔️", cabeza: "👑", armadura: "🧥", pecho: "🧥", guante: "🧤", manos: "🧤",
+  arma: "⚔️", cabeza: "👑", armadura: "👕", pecho: "👕", guante: "🧤", manos: "🧤",
   botas: "🥾", pies: "🥾", anillo: "💍", collar: "📿",
   amuleto: "🔮", colgante: "💎", capa: "🧥",
   cinturón: "🪢", "gema-arma": "💠", "gema-capa": "🪶", "accesorio-arma": "🔩", "accesorio-capa": "🪶",
@@ -398,8 +400,8 @@ function SlotButton({
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518]",
       ].join(" ")}
     >
-      <span className={isWeaponSlot || isCapeSlot ? "text-4xl leading-none shrink-0" : "text-lg leading-none shrink-0"}>
-        {cfg.icon}
+      <span className={isWeaponSlot || isCapeSlot ? "shrink-0 flex items-center justify-center text-[#D4AF37]" : "shrink-0 flex items-center justify-center text-[#D4AF37]"}>
+        {getIconForString(item ? item.name : cfg.icon, isWeaponSlot || isCapeSlot ? "w-10 h-10" : "w-6 h-6", cfg.icon)}
       </span>
       <span
         className={
@@ -772,12 +774,12 @@ function BagItemCard({
           : undefined
       }
     >
-      <span className="text-xl leading-none">{icon}</span>
+      <span className="flex items-center justify-center leading-none text-[#D4AF37]">{getIconForString(item.name, "w-6 h-6", icon)}</span>
       <span className="text-[11px] text-[#e8d8b0] text-center leading-tight max-w-18">
         {item.name}
       </span>
-      <span className="text-[10px] text-[#D4AF37] leading-none">
-        {(item.price ?? 0).toLocaleString()} 🪙
+      <span className="text-[10px] text-[#D4AF37] leading-none flex items-center gap-1">
+        {(item.price ?? 0).toLocaleString()} <Coins className="w-2.5 h-2.5" />
       </span>
       <span className={`text-[9px] px-1.5 py-0.5 rounded capitalize tracking-wide ${tagColor}`}>
         {item.type}
@@ -838,6 +840,25 @@ export default function EquipmentModal({
   } | null>(null);
   const [selectedCapeSocket, setSelectedCapeSocket] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
+
+  const renderStatusMessage = (msg: string) => {
+    if (msg.startsWith("⚠")) {
+      return <span className="flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-amber-500" />{msg.slice(1).trim()}</span>;
+    }
+    if (msg.startsWith("✓")) {
+      return <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" />{msg.slice(1).trim()}</span>;
+    }
+    if (msg.startsWith("✗")) {
+      return <span className="flex items-center gap-1.5"><XCircle className="w-4 h-4 text-red-500" />{msg.slice(1).trim()}</span>;
+    }
+    if (msg.startsWith("↩")) {
+      return <span className="flex items-center gap-1.5"><Undo2 className="w-4 h-4 text-blue-400" />{msg.slice(1).trim()}</span>;
+    }
+    if (msg.startsWith("💰")) {
+      return <span className="flex items-center gap-1.5"><Coins className="w-4 h-4 text-yellow-400" />{msg.slice(1).trim()}</span>;
+    }
+    return msg;
+  };
   const [isSaving, setIsSaving] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [showSellConfirm, setShowSellConfirm] = useState(false);
@@ -1509,8 +1530,8 @@ export default function EquipmentModal({
             }}
           >
             <div>
-              <h2 className="text-sm tracking-[0.2em] uppercase text-[#D4AF37]">
-                ⚔ Equipo de {character.name}
+              <h2 className="text-sm tracking-[0.2em] uppercase text-[#D4AF37] flex items-center gap-2">
+                <Swords className="w-4 h-4" /> Equipo de {character.name}
               </h2>
               <p className="text-xs text-[#8a7a5a] mt-0.5">
                 Haz clic en un slot del personaje para equipar o desequipar objetos
@@ -1619,8 +1640,8 @@ export default function EquipmentModal({
             <div className="w-140 shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
               {/* Bag header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
-                  ⚜ Bolsa
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] flex items-center gap-1.5">
+                  <ShoppingBag className="w-3.5 h-3.5" /> Bolsa
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
@@ -1720,9 +1741,9 @@ export default function EquipmentModal({
                 "linear-gradient(90deg, #0f0e0c 0%, #1a1814 50%, #0f0e0c 100%)",
             }}
           >
-            <p className="flex-1 text-xs text-[#8a7a5a] italic">
-              {statusMsg}
-            </p>
+            <div className="flex-1 text-xs text-[#8a7a5a] italic">
+              {renderStatusMessage(statusMsg)}
+            </div>
             <p className="text-[10px] text-[#5a5040] hidden sm:block">
               Clic en slot equipado para desequipar
             </p>

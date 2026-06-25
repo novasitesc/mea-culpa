@@ -10,7 +10,11 @@ import {
   X,
   Plus,
   Minus,
+  Lock,
+  CheckCircle2,
+  MapPin,
 } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import Header from "@/app/components/header";
@@ -89,7 +93,7 @@ export default function TiendasPage() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState<React.ReactNode | null>(null);
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
@@ -166,7 +170,7 @@ export default function TiendasPage() {
       }
       return [...prev, { ...item, qty: 1 }];
     });
-    showNotification(`${item.icon} ${item.name} añadido al carrito`);
+    showNotification(<span className="flex items-center gap-1.5"><ShoppingCart className="w-4 h-4 text-[#D4AF37]" /> {item.name} añadido al carrito</span>);
   };
 
   const removeFromCart = (id: string) => {
@@ -272,7 +276,7 @@ export default function TiendasPage() {
         );
       }
       showNotification(
-        `✅ Compra completada · Saldo: ${(data.oro ?? 0).toLocaleString()} 🪙`,
+        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Compra completada · Saldo: {(data.oro ?? 0).toLocaleString()} <Coins className="w-4 h-4 text-yellow-500" /></span>
       );
     } catch {
       setBuyError("Error de conexión. Intenta de nuevo.");
@@ -281,7 +285,7 @@ export default function TiendasPage() {
     }
   };
 
-  const showNotification = (msg: string) => {
+  const showNotification = (msg: React.ReactNode) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 2500);
   };
@@ -354,7 +358,7 @@ export default function TiendasPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{e.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.price.toLocaleString()} 🪙 c/u
+                        {e.price.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" /> c/u
                       </p>
                     </div>
 
@@ -380,7 +384,7 @@ export default function TiendasPage() {
                     </div>
 
                     <span className="text-sm font-bold text-gold shrink-0 w-16 text-right">
-                      {(e.price * e.qty).toLocaleString()} 🪙
+                      {(e.price * e.qty).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                     </span>
 
                     <button
@@ -404,7 +408,7 @@ export default function TiendasPage() {
                   <p className="text-xs text-destructive text-center">
                     Te faltan{" "}
                     <strong>
-                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} 🪙
+                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                     </strong>{" "}
                     para esta compra
                   </p>
@@ -446,7 +450,7 @@ export default function TiendasPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   {cartCount} objeto{cartCount !== 1 ? "s" : ""} ·{" "}
                   <span className="text-gold font-semibold">
-                    {cartTotal.toLocaleString()} 🪙
+                    {cartTotal.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                   </span>
                 </p>
               </CardHeader>
@@ -463,7 +467,7 @@ export default function TiendasPage() {
                         key={item.id}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <span className="text-lg">{item.icon}</span>
+                        <span className="flex items-center justify-center text-[#D4AF37]">{getIconForString(item.name, "w-5 h-5", item.icon)}</span>
                         <span className="flex-1 truncate">{item.name}</span>
                         <span className="font-semibold text-gold shrink-0">
                           ×{item.qty}
@@ -516,7 +520,7 @@ export default function TiendasPage() {
                           </div>
                           {isSelected && (
                             <span className="text-gold text-lg shrink-0">
-                              ✓
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                             </span>
                           )}
                         </button>
@@ -612,8 +616,8 @@ export default function TiendasPage() {
                           >
                             <CardHeader className="pb-2 pt-4 px-4">
                               <div className="flex items-start gap-2.5">
-                                <span className="text-3xl shrink-0">
-                                  {shop.icon}
+                                <span className="text-3xl shrink-0 flex items-center justify-center text-[#D4AF37]">
+                                  {getIconForString(shop.name, "w-8 h-8", shop.icon)}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <CardTitle
@@ -721,8 +725,8 @@ export default function TiendasPage() {
                         <Card className="mb-6 border-gold-dim medieval-border">
                           <CardContent className="pt-6">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                              <span className="text-5xl">
-                                {activeShop.icon}
+                              <span className="text-5xl flex items-center justify-center text-[#D4AF37]">
+                                {getIconForString(activeShop.name, "w-14 h-14", activeShop.icon)}
                               </span>
                               <div className="flex-1">
                                 <h2 className="text-xl font-bold text-gold font-sans">
@@ -731,8 +735,8 @@ export default function TiendasPage() {
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {activeShop.description}
                                 </p>
-                                <p className="text-xs text-muted-foreground mt-2 italic">
-                                  📍 {activeShop.location} · Atendido por{" "}
+                                 <p className="text-xs text-muted-foreground mt-2 italic flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 shrink-0 text-gold/60" /> {activeShop.location} · Atendido por{" "}
                                   <strong>{activeShop.keeper}</strong>
                                 </p>
                               </div>
@@ -774,7 +778,7 @@ export default function TiendasPage() {
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between gap-2">
                                     <span className="text-3xl">
-                                      {item.icon}
+                                      <span className="flex items-center justify-center text-[#D4AF37] mr-1">{getIconForString(item.name, "w-4 h-4", item.icon)}</span>
                                     </span>
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
@@ -814,7 +818,7 @@ export default function TiendasPage() {
                                     className="w-full"
                                   >
                                     {bought
-                                      ? "Comprado ✓"
+                                      ? <><CheckCircle2 className="w-4 h-4 inline-block mr-1" /> Comprado</>
                                       : outOfStock
                                         ? "Sin stock"
                                         : inCart

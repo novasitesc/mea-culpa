@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Swords, Home } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 import Link from "next/link";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
@@ -280,7 +281,7 @@ export default function SalaPage() {
           <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
             <div className="p-5 border-b border-border">
               <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-1">Fin de la aventura</p>
-              <h2 className="text-lg font-bold text-gold">⚔️ {partida.titulo}</h2>
+              <h2 className="text-lg font-bold text-gold flex items-center gap-2"><Swords className="w-5 h-5 text-gold" /> {partida.titulo}</h2>
               <p className="text-sm text-foreground/50 font-sans mt-1">La partida ha finalizado.</p>
             </div>
 
@@ -309,8 +310,8 @@ export default function SalaPage() {
                             {items.map((r: any, j: number) => {
                               const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
                               return obj ? (
-                                <span key={j} className="text-sm text-green-400 font-semibold">
-                                  {obj.icono} {obj.nombre}
+                                <span key={j} className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
+                                  {getIconForString(obj.icono, "w-4 h-4 shrink-0")} {obj.nombre}
                                 </span>
                               ) : null;
                             })}
@@ -323,7 +324,7 @@ export default function SalaPage() {
                       return (
                         <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
                           {ev.tipoResultado === "item" && ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold">{ev.objeto.icono} {ev.objeto.nombre}</span>
+                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(ev.objeto.icono, "w-4 h-4 shrink-0")} {ev.objeto.nombre}</span>
                           ) : ev.tipoResultado === "oro" && ev.cantidadOro ? (
                             <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
                           ) : (
@@ -336,8 +337,8 @@ export default function SalaPage() {
                       return (
                         <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
                           {ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold">
-                              {ev.objeto.icono} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
+                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
+                              {getIconForString(ev.objeto.icono, "w-4 h-4 shrink-0")} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
                             </span>
                           ) : ev.cantidadOro ? (
                             <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
@@ -364,7 +365,7 @@ export default function SalaPage() {
                 onClick={() => router.push("/perfil")}
                 className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
               >
-                🏠 Pagar posada
+                <span className="flex items-center justify-center gap-1.5"><Home className="w-4 h-4" /> Pagar posada</span>
               </button>
             </div>
           </div>

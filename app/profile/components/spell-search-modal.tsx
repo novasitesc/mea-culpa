@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { Search, X, Filter, Sparkles, XCircle, Info } from "lucide-react";
+import { Search, X, Filter, Sparkles, XCircle, Info, Clock } from "lucide-react";
 
 export type CatalogSpell = {
   nombre: string;
@@ -188,11 +188,11 @@ const SpellCard = ({
 
       <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
         <span className={`text-[10px] px-2 py-0.5 rounded border ${colorClass} flex items-center gap-1`}>
-          <span>✧</span> {spell.escuela}
+          <Sparkles className="w-3 h-3" /> {spell.escuela}
         </span>
         {spell.duracion && (
-          <span className="text-[10px] px-2 py-0.5 rounded border border-[#8B7355]/20 bg-black/20 text-muted-foreground/80 truncate max-w-[120px]">
-            ⏱ {spell.duracion}
+          <span className="text-[10px] px-2 py-0.5 rounded border border-[#8B7355]/20 bg-black/20 text-muted-foreground/80 truncate max-w-[120px] flex items-center gap-1">
+            <Clock className="w-3 h-3" /> {spell.duracion}
           </span>
         )}
       </div>

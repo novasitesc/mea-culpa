@@ -12,6 +12,7 @@ import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CharacterGrid from "./components/character-grid";
 import { type SpellEntry } from "@/lib/spells";
+import { Coins, Lock, FileText } from "lucide-react";
 
 type Player = {
   name: string;
@@ -663,7 +664,7 @@ export default function ProfilePage() {
                 </p>
                 {player && (
                   <div className="flex items-center gap-1.5 mt-3">
-                    <span className="text-xl">🪙</span>
+                    <Coins className="w-6 h-6 text-yellow-500" />
                     <span className="text-2xl font-bold text-yellow-400 font-serif">
                       {(player.oro ?? 0).toLocaleString()}
                     </span>
@@ -739,7 +740,11 @@ export default function ProfilePage() {
                   }
                 >
                   {reachedCharacterLimit
-                    ? "Límite alcanzado 🔒"
+                    ? (
+                      <span className="flex items-center gap-1.5">
+                        Límite alcanzado <Lock className="w-4 h-4" />
+                      </span>
+                    )
                     : "Crear Personaje"}
                 </button>
               </div>
@@ -1195,7 +1200,7 @@ export default function ProfilePage() {
 
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-4">
-                  📝 Nota: Los atributos y equipo inicial se generarán
+                  <FileText className="w-3.5 h-3.5 inline-block -mt-0.5 mr-1" /> Nota: Los atributos y equipo inicial se generarán
                   automáticamente según la clase seleccionada.
                 </p>
                 <div className="flex gap-3">

@@ -12,7 +12,7 @@ import {
 } from "@/lib/spells";
 import SpellSearchModal from "./spell-search-modal";
 import * as Popover from "@radix-ui/react-popover";
-import { Info } from "lucide-react";
+import { Info, Sparkles, Lock } from "lucide-react";
 
 type ClassEntry = { className: string; level: number };
 type SpellCharacter = {
@@ -300,7 +300,7 @@ export default function SpellsRegistry({
                     className="relative overflow-hidden px-3 py-2 text-sm bg-[#1a1510] border border-[#8B7355]/20 hover:border-[#D4AF37]/40 rounded-md flex items-center justify-between gap-2 transition-colors group"
                   >
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <span className={colorClass}>✧</span> 
+                      <Sparkles className={`w-3.5 h-3.5 shrink-0 ${colorClass}`} /> 
                       <span className="truncate font-medium">{spell.name}</span>
                       {catalogInfo && (
                         <span className="text-[10px] text-muted-foreground/70">
@@ -365,7 +365,7 @@ export default function SpellsRegistry({
           />
         ) : (
           <p className="text-xs text-amber-200 mt-2">
-            🔒 Has alcanzado el límite de conjuros para tu nivel. Podrás
+            <Lock className="w-3.5 h-3.5 inline-block -mt-0.5 mr-1" /> Has alcanzado el límite de conjuros para tu nivel. Podrás
             aprender más al subir de nivel.
           </p>
         )}
@@ -382,7 +382,7 @@ export default function SpellsRegistry({
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
             
             <div className="mx-auto w-12 h-12 rounded-full border-2 border-[#D4AF37]/50 flex items-center justify-center mb-3 bg-[#241c16]">
-              <span className="text-[#D4AF37] text-lg font-serif">✧</span>
+              <Sparkles className="text-[#D4AF37] w-5 h-5" />
             </div>
             
             <h4 className="text-lg font-serif text-[#D4AF37] mb-2 tracking-wide">

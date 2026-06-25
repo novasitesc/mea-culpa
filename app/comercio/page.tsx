@@ -12,6 +12,7 @@ import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { Coins, ShoppingBag, UserRound, Check, X } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 
 type BagItem = {
   bagRowId: number;
@@ -90,8 +91,8 @@ const ITEM_TYPE_ICONS: Record<string, string> = {
   collar: "📿",
   anillo: "💍",
   amuleto: "🔮",
-  cinturón: "🧷",
-  cinturon: "🧷",
+  cinturón: "🪢",
+  cinturon: "🪢",
   arma: "⚔️",
   consumible: "🧪",
   ingrediente: "🌿",
@@ -236,7 +237,7 @@ export default function ComercioPage() {
 
     return sellerCharacter.bag.items.map((item) => ({
       value: item.bagRowId,
-      name: `${item.name} • ${(item.price ?? 0).toLocaleString()} 🪙`,
+      name: `${item.name} • ${(item.price ?? 0).toLocaleString()} oro`,
       icon: ITEM_TYPE_ICONS[item.type] ?? "📦",
       qty: item.cantidad ?? 1,
       searchText: `${item.name} ${item.type} ${item.price ?? 0}`,
@@ -658,13 +659,13 @@ export default function ComercioPage() {
                           >
                             <div className="min-w-0">
                               <p className="font-semibold text-sm text-foreground">
-                                {pub.item.icono} {pub.item.nombre} x{pub.item.cantidad}
+                                <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Vendedor: {pub.vendedor.nombre} · Estado: {pub.estado}
                               </p>
                               <p className="text-sm text-gold font-bold mt-1">
-                                {pub.precio.toLocaleString()} 🪙
+                                {(pub.precio ?? 0).toLocaleString()} <Coins className="w-4 h-4 inline-block text-yellow-500 -mt-0.5" />
                               </p>
                             </div>
                             <Button
@@ -718,13 +719,13 @@ export default function ComercioPage() {
                           className="rounded-lg border border-border p-3 bg-card/40"
                         >
                           <p className="font-semibold text-sm">
-                            {pub.item.icono} {pub.item.nombre}
+                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Comprador: {pub.comprador?.nombre ?? "Desconocido"}
                           </p>
                           <p className="text-sm text-gold font-bold mt-1">
-                            {pub.precio.toLocaleString()} 🪙
+                            {(pub.precio ?? 0).toLocaleString()} <Coins className="w-4 h-4 inline-block text-yellow-500 -mt-0.5" />
                           </p>
                           <div className="flex gap-2 mt-3">
                             <Button
@@ -762,13 +763,13 @@ export default function ComercioPage() {
                       myActivePublications.map((pub) => (
                         <div key={pub.id} className="rounded-lg border border-border p-3 bg-card/40">
                           <p className="text-sm font-semibold">
-                            {pub.item.icono} {pub.item.nombre} x{pub.item.cantidad}
+                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Estado: {pub.estado}
                           </p>
                           <p className="text-sm text-gold font-bold mt-1">
-                            {pub.precio.toLocaleString()} 🪙
+                            {(pub.precio ?? 0).toLocaleString()} <Coins className="w-4 h-4 inline-block text-yellow-500 -mt-0.5" />
                           </p>
                           <Button
                             size="sm"
@@ -795,11 +796,11 @@ export default function ComercioPage() {
                         {myRequestedPublications.map((pub) => (
                           <div key={`request-${pub.id}`} className="rounded-lg border border-border p-3 bg-card/40">
                             <p className="text-sm font-semibold">
-                              {pub.item.icono} {pub.item.nombre} x{pub.item.cantidad}
+                              <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
                             </p>
                             <p className="text-xs text-muted-foreground">Estado: {pub.estado}</p>
                             <p className="text-sm text-gold font-bold mt-1">
-                              Reservado: {pub.precio.toLocaleString()} 🪙
+                              Reservado: {(pub.precio ?? 0).toLocaleString()} <Coins className="w-4 h-4 inline-block text-yellow-500 -mt-0.5" />
                             </p>
                             <Button
                               size="sm"

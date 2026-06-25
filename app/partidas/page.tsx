@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Loader2, Shield } from "lucide-react";
+import { Clock, Loader2, Shield, Dices } from "lucide-react";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import FantasyAlert from "@/components/ui/fantasy-alert";
@@ -458,7 +458,7 @@ export default function PartidasPage() {
                           href={`/partidas/${selectedGameDetail.id}`}
                           className="inline-flex w-full justify-center rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
                         >
-                          🎲 Ir a sala (DM)
+                          <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Ir a sala (DM)</span>
                         </a>
                       </div>
                     ) : (
@@ -518,7 +518,7 @@ export default function PartidasPage() {
                             href={`/partidas/${selectedGameDetail.id}`}
                             className="w-full rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
                           >
-                            🎲 Entrar a sala
+                            <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Entrar a sala</span>
                           </a>
                         ) : (
                           <button
@@ -670,7 +670,7 @@ export default function PartidasPage() {
                                   href={`/partidas/${game.id}`}
                                   className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
                                 >
-                                  🎲 Entrar a sala
+                                  <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Entrar a sala</span>
                                 </a>
                               ) : (
                                 <button
