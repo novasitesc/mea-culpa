@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
-  ArrowRightLeft,
   Dice6,
   Skull,
   Copy,
@@ -215,11 +214,8 @@ type Tab =
   | "usuarios"
   | "tiendas"
   | "objetos"
-  | "transacciones"
+  | "economia"
   | "partidas"
-  | "partidas-activas"
-  | "historial-partidas"
-  | "impuestos"
   | "ruleta"
   | "dados"
   | "muertes";
@@ -4158,6 +4154,94 @@ function DeadCharactersTab({
   );
 }
 
+// ─── Partidas (grupo) ─────────────────────────────────────────────────────────
+
+function PartidasGroupTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [view, setView] = useState<"publicar" | "activas" | "historial">("activas");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        {(["activas", "publicar", "historial"] as const).map((v) => {
+          const label = v === "activas" ? "Activas" : v === "publicar" ? "Publicar" : "Historial";
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                view === v
+                  ? "bg-gold/20 border-gold/50 text-gold"
+                  : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "publicar" && <PartidasTab token={token} onToast={onToast} />}
+      {view === "activas" && <ActivePartidasTab token={token} onToast={onToast} />}
+      {view === "historial" && <PartidasHistoryTab token={token} onToast={onToast} />}
+    </div>
+  );
+}
+
+// ─── Economía (grupo) ─────────────────────────────────────────────────────────
+
+function EconomiaGroupTab({
+  token,
+  onToast,
+  isSuperAdmin,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
+}) {
+  const [view, setView] = useState<"transacciones" | "impuestos">("transacciones");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setView("transacciones")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            view === "transacciones"
+              ? "bg-gold/20 border-gold/50 text-gold"
+              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Transacciones
+        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setView("impuestos")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "impuestos"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Cobrar Impuestos
+          </button>
+        )}
+      </div>
+
+      {view === "transacciones" && <TransactionsTab token={token} onToast={onToast} />}
+      {isSuperAdmin && view === "impuestos" && <TaxesTab token={token} onToast={onToast} />}
+    </div>
+  );
+}
+
 // ─── Página principal del panel ───────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -4199,22 +4283,12 @@ export default function AdminPage() {
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
-    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "economia", label: "Economía", icon: Coins },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
     { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
-    { id: "partidas", label: "Publicar Partida", icon: Shield },
-    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
-    { id: "historial-partidas", label: "Historial", icon: Shield },
+    { id: "partidas", label: "Partidas", icon: Shield },
   ];
-
-  if (isSuperAdmin) {
-    tabs.splice(4, 0, {
-      id: "impuestos",
-      label: "Cobrar Impuestos",
-      icon: Coins,
-    });
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -4281,8 +4355,8 @@ export default function AdminPage() {
             {activeTab === "objetos" && (
               <ObjectsTab token={token} onToast={showToast} />
             )}
-            {activeTab === "transacciones" && (
-              <TransactionsTab token={token} onToast={showToast} />
+            {activeTab === "economia" && (
+              <EconomiaGroupTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
@@ -4290,20 +4364,11 @@ export default function AdminPage() {
             {activeTab === "dados" && (
               <DadosTab token={token} />
             )}
-            {isSuperAdmin && activeTab === "impuestos" && (
-              <TaxesTab token={token} onToast={showToast} />
-            )}
             {activeTab === "muertes" && (
               <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
-              <PartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "partidas-activas" && (
-              <ActivePartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "historial-partidas" && (
-              <PartidasHistoryTab token={token} onToast={showToast} />
+              <PartidasGroupTab token={token} onToast={showToast} />
             )}
           </div>
         </div>
