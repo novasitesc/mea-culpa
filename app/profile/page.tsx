@@ -768,7 +768,7 @@ export default function ProfilePage() {
                 )}
 
                 <div className="flex flex-col md:flex-row gap-4 items-start">
-                  <div className="flex-1 w-full max-w-[200px]">
+                  <div className="flex-1 w-full max-w-50">
                     {!paypalClientId ? (
                       <p className="text-xs text-amber-300">
                         Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
@@ -846,12 +846,12 @@ export default function ProfilePage() {
                     )}
                   </div>
                   
-                  <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
+                  <div className="flex-1 w-full max-w-50 flex items-center justify-center">
                     <button
                       disabled={isUpgradingSlots || !canUnlockMoreSlots}
-                      className="w-full h-[48px] rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                      className="w-full h-12 rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
                       style={{ backgroundColor: "#009ee3" }}
-                      onClick={() => showProfileAlert("Mercado Pago", "La integracion con Mercado Pago estara disponible pronto.", "info")}
+                      onClick={() => showProfileAlert("Mercado Pago", "La integración con Mercado Pago estará disponible pronto.", "info")}
                     >
                       <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
                     </button>
@@ -886,7 +886,7 @@ export default function ProfilePage() {
                     </select>
 
                     <div className="flex flex-col md:flex-row gap-4 items-start">
-                      <div className="flex-1 w-full max-w-[200px]">
+                      <div className="flex-1 w-full max-w-50">
                         {!paypalClientId ? (
                           <p className="text-xs text-red-200/80">
                             Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
@@ -965,12 +965,12 @@ export default function ProfilePage() {
                         )}
                       </div>
                       
-                      <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
+                      <div className="flex-1 w-full max-w-50 flex items-center justify-center">
                         <button
                           disabled={isRevivingCharacter || !reviveTargetCharacter}
-                          className="w-full h-[48px] rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                          className="w-full h-12 rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
                           style={{ backgroundColor: "#009ee3" }}
-                          onClick={() => showProfileAlert("Mercado Pago", "La integracion con Mercado Pago estara disponible pronto.", "info")}
+                          onClick={() => showProfileAlert("Mercado Pago", "La integración con Mercado Pago estará disponible pronto.", "info")}
                         >
                           <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
                         </button>
@@ -1235,7 +1235,7 @@ export default function ProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}

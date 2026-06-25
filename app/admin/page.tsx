@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
-  ArrowRightLeft,
   Dice6,
   Skull,
   Copy,
@@ -29,6 +28,7 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
+import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
@@ -214,11 +214,8 @@ type Tab =
   | "usuarios"
   | "tiendas"
   | "objetos"
-  | "transacciones"
+  | "economia"
   | "partidas"
-  | "partidas-activas"
-  | "historial-partidas"
-  | "impuestos"
   | "ruleta"
   | "dados"
   | "muertes";
@@ -2140,6 +2137,7 @@ function CharactersFormModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingChar, setEditingChar] = useState<number | null>(null);
+  const [reviveTarget, setReviveTarget] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     raza: string;
     clases: Array<{ nombre_clase: string; nivel: number }>;
@@ -2209,14 +2207,18 @@ function CharactersFormModal({
     }
   };
 
-  const reviveCharacter = async (characterId: number) => {
-    if (!confirm("¿Revivir a este personaje sin cobrar oro?")) return;
+  const reviveCharacter = (characterId: number) => {
+    setReviveTarget(characterId);
+  };
+
+  const executeRevive = async () => {
+    if (reviveTarget === null) return;
     setSaving(true);
     try {
       const res = await fetch("/api/profile/admin-revive", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId }),
+        body: JSON.stringify({ characterId: reviveTarget }),
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
@@ -2226,10 +2228,11 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al revivir", "error");
     } finally {
       setSaving(false);
+      setReviveTarget(null);
     }
   };
 
@@ -2424,6 +2427,18 @@ function CharactersFormModal({
           </button>
         </div>
       </div>
+
+      <ConfirmActionModal
+        open={reviveTarget !== null}
+        title="Revivir personaje"
+        description="¿Revivir a este personaje sin cobrar oro? Esta acción lo devolverá a la vida."
+        confirmText="Revivir"
+        cancelText="Cancelar"
+        confirmVariant="success"
+        isLoading={saving}
+        onConfirm={executeRevive}
+        onCancel={() => setReviveTarget(null)}
+      />
     </Modal>
   );
 }
@@ -3855,6 +3870,8 @@ function DeadCharactersTab({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [reviveTarget, setReviveTarget] = useState<{ id: number; name: string } | null>(null);
+  const [reviving, setReviving] = useState(false);
 
   const loadCurrentDead = useCallback(async () => {
     setLoadingDead(true);
@@ -3897,6 +3914,30 @@ function DeadCharactersTab({
     setHistoryRows(data.data ?? []);
     setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
   }, [historyPage, token, onToast]);
+
+  const executeRevive = async () => {
+    if (!reviveTarget) return;
+    setReviving(true);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: reviveTarget.id }),
+      });
+      if (res.ok) {
+        onToast("Personaje revivido exitosamente", "success");
+        await loadCurrentDead();
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch {
+      onToast("Error al revivir", "error");
+    } finally {
+      setReviving(false);
+      setReviveTarget(null);
+    }
+  };
 
   useEffect(() => {
     loadCurrentDead();
@@ -3989,6 +4030,7 @@ function DeadCharactersTab({
                   <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Slot</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -3999,11 +4041,20 @@ function DeadCharactersTab({
                     <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setReviveTarget({ id: row.id, name: row.name })}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors"
+                      >
+                        Revivir
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredDeadRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                       No hay personajes muertos en este momento.
                     </td>
                   </tr>
@@ -4087,6 +4138,106 @@ function DeadCharactersTab({
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        open={reviveTarget !== null}
+        title="Revivir personaje"
+        description={`¿Revivir a "${reviveTarget?.name}" sin cobrar oro? Esta acción lo devolverá a la vida.`}
+        confirmText="Revivir"
+        cancelText="Cancelar"
+        confirmVariant="success"
+        isLoading={reviving}
+        onConfirm={executeRevive}
+        onCancel={() => setReviveTarget(null)}
+      />
+    </div>
+  );
+}
+
+// ─── Partidas (grupo) ─────────────────────────────────────────────────────────
+
+function PartidasGroupTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [view, setView] = useState<"publicar" | "activas" | "historial">("activas");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        {(["activas", "publicar", "historial"] as const).map((v) => {
+          const label = v === "activas" ? "Activas" : v === "publicar" ? "Publicar" : "Historial";
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                view === v
+                  ? "bg-gold/20 border-gold/50 text-gold"
+                  : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "publicar" && <PartidasTab token={token} onToast={onToast} />}
+      {view === "activas" && <ActivePartidasTab token={token} onToast={onToast} />}
+      {view === "historial" && <PartidasHistoryTab token={token} onToast={onToast} />}
+    </div>
+  );
+}
+
+// ─── Economía (grupo) ─────────────────────────────────────────────────────────
+
+function EconomiaGroupTab({
+  token,
+  onToast,
+  isSuperAdmin,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
+}) {
+  const [view, setView] = useState<"transacciones" | "impuestos">("transacciones");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setView("transacciones")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            view === "transacciones"
+              ? "bg-gold/20 border-gold/50 text-gold"
+              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Transacciones
+        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setView("impuestos")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              view === "impuestos"
+                ? "bg-gold/20 border-gold/50 text-gold"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Cobrar Impuestos
+          </button>
+        )}
+      </div>
+
+      {view === "transacciones" && <TransactionsTab token={token} onToast={onToast} />}
+      {isSuperAdmin && view === "impuestos" && <TaxesTab token={token} onToast={onToast} />}
     </div>
   );
 }
@@ -4132,22 +4283,12 @@ export default function AdminPage() {
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
-    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "economia", label: "Economía", icon: Coins },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
     { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
-    { id: "partidas", label: "Publicar Partida", icon: Shield },
-    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
-    { id: "historial-partidas", label: "Historial", icon: Shield },
+    { id: "partidas", label: "Partidas", icon: Shield },
   ];
-
-  if (isSuperAdmin) {
-    tabs.splice(4, 0, {
-      id: "impuestos",
-      label: "Cobrar Impuestos",
-      icon: Coins,
-    });
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -4214,8 +4355,8 @@ export default function AdminPage() {
             {activeTab === "objetos" && (
               <ObjectsTab token={token} onToast={showToast} />
             )}
-            {activeTab === "transacciones" && (
-              <TransactionsTab token={token} onToast={showToast} />
+            {activeTab === "economia" && (
+              <EconomiaGroupTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
@@ -4223,20 +4364,11 @@ export default function AdminPage() {
             {activeTab === "dados" && (
               <DadosTab token={token} />
             )}
-            {isSuperAdmin && activeTab === "impuestos" && (
-              <TaxesTab token={token} onToast={showToast} />
-            )}
             {activeTab === "muertes" && (
               <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
-              <PartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "partidas-activas" && (
-              <ActivePartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "historial-partidas" && (
-              <PartidasHistoryTab token={token} onToast={showToast} />
+              <PartidasGroupTab token={token} onToast={showToast} />
             )}
           </div>
         </div>
