@@ -27,6 +27,8 @@ function mapLutCaras(rows: any[]) {
         objetoId: c.objeto_id ?? null,
         objetoNombre: obj?.nombre ?? null,
         objetoIcono: obj?.icono ?? null,
+        cantidadMin: c.cantidad_min ?? 1,
+        cantidadMax: c.cantidad_max ?? 1,
         subtablaId: c.subtabla_id ?? null,
         subtablaNombre: sub?.nombre ?? null,
       };
@@ -46,6 +48,8 @@ function mapSubtablaCaras(rows: any[]) {
         objetoId: c.objeto_id ?? null,
         objetoNombre: obj?.nombre ?? null,
         objetoIcono: obj?.icono ?? null,
+        cantidadMin: c.cantidad_min ?? 1,
+        cantidadMax: c.cantidad_max ?? 1,
         oroMin: c.oro_min ?? 0,
         oroMax: c.oro_max ?? 0,
       };
@@ -76,11 +80,11 @@ export async function GET(request: Request) {
   // Queries separadas para LUT/subtabla — fallan silenciosamente si las tablas no existen aún
   const { data: lutCarasData } = await session.db
     .from("dados_lut_caras")
-    .select(`id, recompensa_id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`);
+    .select(`id, recompensa_id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, cantidad_min, cantidad_max, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`);
 
   const { data: subtablaCarasData } = await session.db
     .from("dados_subtabla_caras")
-    .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, objeto:objeto_id(id, nombre, icono)`);
+    .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, objeto:objeto_id(id, nombre, icono)`);
 
   const lutMap = new Map<number, any[]>();
   for (const row of lutCarasData ?? []) {
@@ -246,6 +250,8 @@ export async function POST(request: Request) {
         tipo_dado_oro: null,
         multiplicador_oro: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
         objeto_id: c.tipo === "item" ? (Number(c.objetoId) || null) : null,
+        cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
+        cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
         subtabla_id: c.tipo === "subtabla" ? (Number(c.subtablaId) || null) : null,
       }));
 
@@ -263,6 +269,8 @@ export async function POST(request: Request) {
         numero_cara: Number(c.numeroCara),
         tipo: ["nada", "item", "oro"].includes(c.tipo) ? c.tipo : "nada",
         objeto_id: c.tipo === "item" && c.objetoId ? Number(c.objetoId) : null,
+        cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
+        cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
         oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : 0,
         oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 0,
       }));
@@ -366,6 +374,8 @@ export async function PUT(request: Request) {
         tipo_dado_oro: null,
         multiplicador_oro: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
         objeto_id: c.tipo === "item" ? (Number(c.objetoId) || null) : null,
+        cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
+        cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
         subtabla_id: c.tipo === "subtabla" ? (Number(c.subtablaId) || null) : null,
       }));
 
@@ -385,6 +395,8 @@ export async function PUT(request: Request) {
         numero_cara: Number(c.numeroCara),
         tipo: ["nada", "item", "oro"].includes(c.tipo) ? c.tipo : "nada",
         objeto_id: c.tipo === "item" && c.objetoId ? Number(c.objetoId) : null,
+        cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
+        cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
         oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : 0,
         oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 0,
       }));
