@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2 } from "lucide-react";
+import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2, Eye, ExternalLink } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
 import PrizeWheel from "./components/prize-wheel";
@@ -65,7 +65,7 @@ type PanPoint = {
 
 export default function HomePage(props: HomePageProps) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<div className="min-h-screen bg-background" style={{ scrollbarGutter: "stable" }} />}>
       <HomePageContent {...props} />
     </Suspense>
   );
@@ -80,6 +80,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
   const [activeSection, setActiveSection] = useState("inicio");
   const { rouletteEnabled: isRouletteEnabled } = useRouletteEnabled({ token });
   const [activeSlot, setActiveSlot] = useState(1);
+  const [isSlotSwitching, setIsSlotSwitching] = useState(false);
   const [noticias, setNoticias] = useState<NoticiaImage[]>([]);
   const [noticiaIdx, setNoticiaIdx] = useState(0);
   const [isNoticiaOpen, setIsNoticiaOpen] = useState(false);
@@ -493,9 +494,16 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                 </span>
               </div>
               <div className="p-4">
-                <div className="relative aspect-square bg-background rounded-lg flex items-center justify-center mb-3 border border-border overflow-hidden">
+                <div
+                  className="relative aspect-square bg-background rounded-lg flex items-center justify-center mb-3 border border-border overflow-hidden transition-opacity duration-300 ease-in-out"
+                  style={{ opacity: isSlotSwitching ? 0 : 1 }}
+                >
                   {isProfileLoading ? (
-                    <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex flex-col gap-3 p-3 animate-pulse">
+                      <div className="flex-1 rounded-lg bg-secondary" />
+                      <div className="h-4 w-3/4 mx-auto rounded bg-secondary" />
+                      <div className="h-3 w-1/2 mx-auto rounded bg-secondary" />
+                    </div>
                   ) : (
                     <img
                       src={
@@ -510,16 +518,15 @@ function HomePageContent({ forcedSection }: HomePageProps) {
                     />
                   )}
                 </div>
-                <div className="text-center">
+                <div
+                  className="text-center transition-opacity duration-300 ease-in-out"
+                  style={{ opacity: isSlotSwitching ? 0 : 1 }}
+                >
                   {isProfileLoading ? (
-                    <>
-                      <p className="text-gold font-medium font-sans">
-                        Cargando...
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Obteniendo personaje
-                      </p>
-                    </>
+                    <div className="space-y-2 animate-pulse">
+                      <div className="h-4 w-2/3 mx-auto rounded bg-secondary" />
+                      <div className="h-3 w-1/2 mx-auto rounded bg-secondary" />
+                    </div>
                   ) : activeCharacter ? (
                     <>
                       <p className="text-gold font-medium font-sans">
@@ -549,64 +556,86 @@ function HomePageContent({ forcedSection }: HomePageProps) {
 
             {/* Character Slots */}
             <div className="space-y-2">
-              {characterSlots.map((slot) => (
-                <button
-                  key={slot.id}
-                  onClick={() => {
-                    if (!slot.locked) {
-                      setActiveSlot(slot.id);
-                      router.push("/profile");
-                    }
-                  }}
-                  disabled={slot.locked}
-                  className={`w-full rounded-lg border p-3 flex items-center gap-3 transition-all ${
-                    slot.locked
-                      ? "bg-background border-secondary cursor-not-allowed"
-                      : activeSlot === slot.id
-                        ? "bg-card border-gold medieval-border"
-                        : "bg-card border-border hover:border-gold-dim"
-                  }`}
-                >
-                  <div
-                    className={`w-10 h-10 rounded flex items-center justify-center ${
-                      slot.locked ? "bg-secondary" : "bg-muted"
+              {characterSlots.map((slot) => {
+                const isSelected = activeSlot === slot.id;
+                return (
+                  <button
+                    key={slot.id}
+                    onClick={() => {
+                      if (slot.locked || isSelected || isSlotSwitching) return;
+                      setIsSlotSwitching(true);
+                      // Fade out → switch → fade in
+                      setTimeout(() => {
+                        setActiveSlot(slot.id);
+                        setTimeout(() => setIsSlotSwitching(false), 50);
+                      }, 300);
+                    }}
+                    disabled={slot.locked}
+                    className={`w-full rounded-lg border p-3 flex items-center gap-3 transition-all duration-200 ${
+                      slot.locked
+                        ? "bg-background border-secondary cursor-not-allowed"
+                        : isSelected
+                          ? "bg-card border-gold medieval-border"
+                          : "bg-card border-border hover:border-gold-dim"
                     }`}
                   >
-                    {slot.locked ? (
-                      <Lock className="w-5 h-5 text-muted-foreground" />
-                    ) : (
-                      <User className="w-5 h-5 text-gold" />
-                    )}
-                  </div>
-                  <div className="flex-1 text-left">
-                    {slot.locked ? (
-                      <p className="text-xs text-muted-foreground">
-                        Slot bloqueado
-                      </p>
-                    ) : (
-                      <>
-                        <p className="text-sm text-foreground font-medium font-sans">
-                          {slot.character?.name}
-                        </p>
+                    <div
+                      className={`w-10 h-10 rounded flex items-center justify-center shrink-0 ${
+                        slot.locked ? "bg-secondary" : "bg-muted"
+                      }`}
+                    >
+                      {slot.locked ? (
+                        <Lock className="w-5 h-5 text-muted-foreground" />
+                      ) : isSelected ? (
+                        <Eye className="w-5 h-5 text-gold" />
+                      ) : (
+                        <User className="w-5 h-5 text-gold" />
+                      )}
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      {slot.locked ? (
                         <p className="text-xs text-muted-foreground">
-                          {(slot.character?.multiclass ?? [])
-                            .map((c) => c.className)
-                            .join(" / ")}
+                          Slot bloqueado
                         </p>
-                      </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground font-medium font-sans truncate">
+                            {slot.character?.name ?? "Slot vacío"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {slot.character
+                              ? (slot.character.multiclass ?? [])
+                                  .map((c) => c.className)
+                                  .join(" / ")
+                              : "Sin personaje"}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {isSelected && !slot.locked && (
+                      <span className="text-[10px] text-gold/80 uppercase tracking-wider font-semibold shrink-0">
+                        Activo
+                      </span>
                     )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Unlock Message */}
-            <div className="bg-card rounded-lg border border-border p-3">
+            {/* Ver todos + Unlock Message */}
+            <div className="bg-card rounded-lg border border-border p-3 space-y-2">
+              <button
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-gold-dim/50 text-gold hover:bg-gold/10 text-sm font-medium transition-colors font-sans"
+                onClick={() => router.push("/profile")}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ver todos los personajes
+              </button>
               <p className="text-xs text-muted-foreground text-center">
                 Slots: {profile?.characters?.length ?? 0}/{maxCharacterSlots}. Puedes ampliar hasta 5 con pago.
               </p>
               <button
-                className="w-full mt-2 bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans"
+                className="w-full bg-gold hover:bg-gold-dim text-background font-medium text-sm py-2 rounded transition-colors font-sans"
                 onClick={() => router.push("/profile")}
               >
                 Comprar slot de personaje

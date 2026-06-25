@@ -558,7 +558,7 @@ export default function TiendasPage() {
         {/* Layout con sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 mt-4">
           <Sidebar />
-          <div>
+          <div className="min-h-screen">
             {/* Título de sección */}
             <div className="mb-6 flex items-center justify-between">
               <div>
