@@ -45,6 +45,9 @@ export default function SalaPage() {
       setPartida(data.partida);
       setParticipantes(data.participantes);
       setEsAdmin(data.esAdmin);
+      if (data.eventos?.length > 0) {
+        setEventos(data.eventos);
+      }
     } finally {
       setLoadingData(false);
     }
