@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   const { data: perfil, error: perfilError } = await db
     .from("perfiles")
-    .select("nivel, ultima_partida_finalizada_en")
+    .select("nivel, ultima_partida_finalizada_en, es_admin")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -48,6 +48,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: perfilError.message }, { status: 500 });
   }
 
+  const esAdmin = (perfil as any)?.es_admin === true;
   const accountLevel = normalizeAccountLevel((perfil as any)?.nivel ?? 1);
   const maxVisibleTier = accountLevel >= 2 ? 2 : 1;
 
@@ -110,6 +111,7 @@ export async function GET(request: Request) {
         inicio_en,
         tier,
         creada_en,
+        creada_por,
         creador:creada_por ( nombre ),
         partida_participantes (
           id,
@@ -127,12 +129,43 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const payload = (partidas ?? []).map((p: any) => {
+  // Buscar partidas en progreso donde el usuario es participante
+  const { data: activaRows } = await db
+    .from("partidas")
+    .select(`
+      id, titulo, comentario, estado, minimo_jugadores, maximo_jugadores,
+      limite_jugadores, piso, inicio_en, tier, creada_en, creada_por,
+      creador:creada_por ( nombre ),
+      partida_participantes!inner (
+        id, personaje_id, usuario_id, personaje:personaje_id ( nombre )
+      )
+    `)
+    .eq("estado", "en_progreso")
+    .eq("partida_participantes.usuario_id", user.id);
+
+  // Para admins: también traer partidas en progreso que ellos crearon (aunque no sean participantes)
+  const { data: dmActivaRows } = esAdmin
+    ? await db
+        .from("partidas")
+        .select(`
+          id, titulo, comentario, estado, minimo_jugadores, maximo_jugadores,
+          limite_jugadores, piso, inicio_en, tier, creada_en, creada_por,
+          creador:creada_por ( nombre ),
+          partida_participantes (
+            id, personaje_id, usuario_id, personaje:personaje_id ( nombre )
+          )
+        `)
+        .eq("estado", "en_progreso")
+        .eq("creada_por", user.id)
+    : { data: [] };
+
+  function buildEntry(p: any, opts: { esDmDe?: boolean } = {}) {
     const participants = p.partida_participantes ?? [];
     const participantCount = participants.length;
     const minPlayers = Math.max(5, Number(p.minimo_jugadores ?? 5));
     const maxPlayers = Math.max(5, Number(p.maximo_jugadores ?? p.limite_jugadores ?? 6));
     const slotsRemaining = Math.max(0, maxPlayers - participantCount);
+    const isDm = opts.esDmDe ?? (esAdmin && p.creada_por === user!.id);
 
     return {
       id: p.id,
@@ -148,19 +181,14 @@ export async function GET(request: Request) {
       startTime: p.inicio_en,
       tier: Number(p.tier ?? 1),
       isFull: participantCount >= maxPlayers,
-      inCooldown,
-      cooldownEndsAt:
-        inCooldown && cooldownEndsAtMs != null
-          ? new Date(cooldownEndsAtMs).toISOString()
-          : null,
-      cooldownSecondsRemaining:
-        inCooldown && cooldownEndsAtMs != null
-          ? Math.max(0, Math.floor((cooldownEndsAtMs - nowMs) / 1000))
-          : 0,
+      inCooldown: isDm ? false : inCooldown,
+      cooldownEndsAt: isDm ? null : (inCooldown && cooldownEndsAtMs != null ? new Date(cooldownEndsAtMs).toISOString() : null),
+      cooldownSecondsRemaining: isDm ? 0 : (inCooldown && cooldownEndsAtMs != null ? Math.max(0, Math.floor((cooldownEndsAtMs - nowMs) / 1000)) : 0),
       createdAt: p.creada_en,
       createdBy: p.creador?.nombre ?? null,
+      esDmDe: isDm,
       joinedCharacterIds: participants
-        .filter((pp: any) => pp.usuario_id === user.id)
+        .filter((pp: any) => pp.usuario_id === user!.id)
         .map((pp: any) => Number(pp.personaje_id)),
       participants: participants.map((pp: any) => ({
         id: pp.id,
@@ -169,7 +197,18 @@ export async function GET(request: Request) {
         userId: pp.usuario_id,
       })),
     };
-  });
+  }
+
+  const payload = (partidas ?? []).map((p: any) => buildEntry(p));
+
+  // Añadir partidas activas (en_progreso) donde el usuario es participante o DM
+  const existingIds = new Set(payload.map((p: any) => p.id));
+
+  for (const p of [...(activaRows ?? []), ...(dmActivaRows ?? [])]) {
+    if (existingIds.has((p as any).id)) continue;
+    existingIds.add((p as any).id);
+    payload.push(buildEntry(p as any));
+  }
 
   return NextResponse.json(payload);
 }

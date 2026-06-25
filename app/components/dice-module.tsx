@@ -8,6 +8,10 @@ import type { DadoRecompensa, RollResult, LutCaraResult } from "@/lib/types/dado
 
 type Props = {
   token: string | null;
+  rollApiUrl?: string;
+  extraBody?: Record<string, unknown>;
+  hideCost?: boolean;
+  onRollComplete?: (result: RollResult & { recompensaNombre: string; tipoDado: string }) => void;
 };
 
 type AlertState = {
@@ -40,7 +44,7 @@ function rewardDescription(r: DadoRecompensa): string {
   return "";
 }
 
-export default function DiceModule({ token }: Props) {
+export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onRollComplete }: Props) {
   const [recompensas, setRecompensas] = useState<DadoRecompensa[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -92,7 +96,7 @@ export default function DiceModule({ token }: Props) {
     setLutResultados(null);
 
     try {
-      const res = await fetch("/api/dados/roll", {
+      const res = await fetch(rollApiUrl ?? "/api/dados/roll", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -101,6 +105,7 @@ export default function DiceModule({ token }: Props) {
         body: JSON.stringify({
           recompensa_id: selectedReward.id,
           cantidad: selectedReward.tipo === "lut" ? cantidad : 1,
+          ...extraBody,
         }),
       });
 
@@ -118,6 +123,8 @@ export default function DiceModule({ token }: Props) {
       setRollResult(data);
       if (data.lutResultados) setLutResultados(data.lutResultados);
       setRollingState("done");
+
+      onRollComplete?.({ ...data, recompensaNombre: selectedReward.nombre, tipoDado: selectedReward.tipoDado });
 
       if (selectedReward.tipo === "lut" && data.lutResultados) {
         const oros = (data.lutResultados as LutCaraResult[])
@@ -239,7 +246,7 @@ export default function DiceModule({ token }: Props) {
                         {selectedReward.descripcion}
                       </p>
                     )}
-                    {selectedReward.costoOro > 0 && (
+                    {!hideCost && selectedReward.costoOro > 0 && (
                       <p className="text-[11px] text-gold/70 font-sans">
                         Costo: {selectedReward.costoOro.toLocaleString("es-ES")} oro
                         {selectedReward.tipo === "lut" && cantidad > 1 && (
