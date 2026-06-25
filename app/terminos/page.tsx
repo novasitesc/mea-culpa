@@ -13,7 +13,7 @@ export default function TerminosDeServicio() {
           </Button>
         </Link>
         
-        <div className="bg-card border-2 border-[#8B4513] shadow-[inset_0_0_20px_rgba(0,0,0,0.5),_0_0_10px_rgba(139,69,19,0.2)] rounded-lg p-6 md:p-10">
+        <div className="bg-card border-2 border-[#8B4513] shadow-[inset_0_0_20px_rgba(0,0,0,0.5),0_0_10px_rgba(139,69,19,0.2)] rounded-lg p-6 md:p-10">
           <h1 className="text-3xl md:text-4xl font-serif text-gold mb-8 text-center border-b border-gold/20 pb-6">
             Condiciones de Servicio
           </h1>
