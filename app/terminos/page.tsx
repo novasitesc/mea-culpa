@@ -6,7 +6,7 @@ export default function TerminosDeServicio() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 lg:p-12 relative">
       <div className="max-w-4xl mx-auto relative z-10">
-        <Link href="/">
+        <Link href="/login">
           <Button variant="ghost" className="mb-6 hover:bg-gold/10 hover:text-gold text-muted-foreground transition-colors">
             <ChevronLeft className="w-4 h-4 mr-2" />
             Volver al Inicio
