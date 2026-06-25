@@ -301,6 +301,7 @@ export async function GET(request: Request) {
       lifeStatus: p.estado_vida ?? "vivo",
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
+      puntoCansancio: Number(p.puntos_cansancio ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),

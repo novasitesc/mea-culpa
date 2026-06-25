@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Cinzel, Cinzel_Decorative, MedievalSharp } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import GlobalSleepModal from './components/GlobalSleepModal'
 import './globals.css'
 
 const _cinzel = Cinzel({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -43,6 +44,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         {children}
+        <GlobalSleepModal />
         <Analytics />
       </body>
     </html>

@@ -22,6 +22,7 @@ import {
   Skull,
   Sparkles,
   Backpack,
+  Zap,
 } from "lucide-react";
 import { EquipmentPreview } from "../bolsa/bolsa";
 import SpellsRegistry from "./spells-registry";
@@ -118,6 +119,7 @@ export type Character = {
   knownSpells?: SpellEntryLocal[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
+  puntoCansancio: number;
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -274,6 +276,11 @@ export default function CharacterCard({
               </span>
             </>
           )}
+          <span className="text-[#8B7355]">·</span>
+          <span className="inline-flex items-center gap-1">
+            <Zap className="w-3 h-3 text-[#8B7355]" />
+            Cansancio: {character.puntoCansancio}
+          </span>
         </div>
 
         {/* ─── Expandable Detail Panel ─── */}

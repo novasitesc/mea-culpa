@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/header";
@@ -105,6 +105,7 @@ type Character = {
   knownSpells?: SpellEntry[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
+  puntoCansancio: number;
 };
 
 type ProfileResponse = {
@@ -117,30 +118,6 @@ type ProfileAlert = {
   title: string;
   message: string;
   variant: "info" | "success" | "warning" | "error";
-};
-
-type SleepOption = {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  homeLabel: string;
-};
-
-type SleepPendingCharacter = {
-  pendingId: string;
-  characterId: number;
-  characterName: string;
-  partidaId: string | null;
-  partidaTitle: string;
-  requiredAt: string | null;
-  partidaFinalizedAt: string | null;
-};
-
-type SleepStatusResponse = {
-  playerGold: number;
-  options: SleepOption[];
-  pendingCharacters: SleepPendingCharacter[];
 };
 
 export default function ProfilePage() {
@@ -157,10 +134,6 @@ export default function ProfilePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
-  const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
-  const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
-  const [resolvingSleep, setResolvingSleep] = useState(false);
-  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [slotUpgradeMessage, setSlotUpgradeMessage] = useState<string | null>(null);
   const [isUpgradingSlots, setIsUpgradingSlots] = useState(false);
   const [selectedDeadCharacterId, setSelectedDeadCharacterId] = useState<number | null>(null);
@@ -341,91 +314,6 @@ export default function ProfilePage() {
       showProfileAlert("Error", err.message, "error");
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const isFetchingSleep = useRef(false);
-
-  const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token || isFetchingSleep.current) return;
-
-    isFetchingSleep.current = true;
-    setLoadingSleepStatus(true);
-    try {
-      const res = await fetch("/api/profile/sleep-options", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudo cargar el estado de descanso");
-      }
-
-      const data = (await res.json()) as SleepStatusResponse;
-      setSleepStatus(data);
-    } catch (error) {
-      console.error("Error loading sleep status:", error);
-    } finally {
-      setLoadingSleepStatus(false);
-      setTimeout(() => { isFetchingSleep.current = false; }, 1000); // Cooldown de 1s para evitar ráfagas
-    }
-  }, [isAuthenticated, token]);
-
-  const resolveSleepDecision = async (
-    pendingId: string,
-    action: "pay" | "decline",
-    optionId?: string,
-  ) => {
-    if (!token) return;
-
-    setResolvingSleep(true);
-    try {
-      const res = await fetch("/api/profile/sleep-options", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ pendingId, action, optionId: optionId ?? null }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      const message = String(data.message ?? "No se pudo resolver el descanso");
-      const sleepKilledCharacter = Boolean(data.dead);
-
-      if (!res.ok && !data.eliminated && !data.dead) {
-        throw new Error(String(data.error ?? message));
-      }
-
-      showProfileAlert(
-        sleepKilledCharacter
-          ? "Personaje muerto"
-          : data.eliminated
-            ? "Personaje eliminado"
-            : "Descanso resuelto",
-        message,
-        sleepKilledCharacter ? "warning" : data.eliminated ? "error" : "success",
-      );
-
-      setShowDeleteConfirmModal(false);
-
-      if (typeof data.newGold === "number") {
-        window.dispatchEvent(
-          new CustomEvent("auth:refresh", {
-            detail: { oro: data.newGold },
-          }),
-        );
-      }
-
-      await Promise.all([loadSleepStatus(), loadProfile()]);
-    } catch (error) {
-      console.error("Error resolving sleep decision:", error);
-      showProfileAlert(
-        "No se pudo resolver",
-        error instanceof Error ? error.message : "Error desconocido",
-        "error",
-      );
-    } finally {
-      setResolvingSleep(false);
     }
   };
 
@@ -677,19 +565,10 @@ export default function ProfilePage() {
   }, [loadProfile]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) return;
-    loadSleepStatus();
-  }, [isAuthenticated, token, loadSleepStatus]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !token) return;
-
-    const intervalId = window.setInterval(() => {
-      loadSleepStatus();
-    }, 60000); // Cambiado a 60s para reducir tráfico
-
-    return () => window.clearInterval(intervalId);
-  }, [isAuthenticated, token, loadSleepStatus]);
+    const handler = () => loadProfile();
+    window.addEventListener("profile:refresh", handler);
+    return () => window.removeEventListener("profile:refresh", handler);
+  }, [loadProfile]);
 
   useEffect(() => {
     const deadOnly = (profile?.characters ?? []).filter(
@@ -727,9 +606,6 @@ export default function ProfilePage() {
   const reachedCharacterLimit = characters.length >= maxCharacterSlots;
   const canUnlockMoreSlots = maxCharacterSlots < 5;
   const nextSlotTarget = Math.min(5, maxCharacterSlots + 1);
-  const pendingSleepCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
-  const hasPendingSleep = !!pendingSleepCharacter;
-
   const hasAllDead = characters.length > 0 && deadCharacters.length === characters.length;
 
   const selectedDeadCharacter = deadCharacters.find(
@@ -1143,105 +1019,6 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-
-      {hasPendingSleep && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-[#B8860B]">
-                Descanso Obligatorio
-              </p>
-              <h2 className="text-2xl font-serif text-[#D4AF37] mt-2">
-                {pendingSleepCharacter.characterName} debe elegir donde dormir
-              </h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                La partida "{pendingSleepCharacter.partidaTitle}" finalizo. Si no pagas descanso,
-                el personaje morirá y deberás revivirlo desde tu perfil.
-              </p>
-            </div>
-
-            <div className="rounded border border-border/70 bg-secondary/20 p-3 text-sm text-muted-foreground">
-              Oro disponible: <span className="text-yellow-400 font-semibold">{(sleepStatus?.playerGold ?? 0).toLocaleString()}</span>
-            </div>
-
-            <div className="space-y-3">
-              {(sleepStatus?.options ?? []).map((option) => {
-                const canPay = (sleepStatus?.playerGold ?? 0) >= option.cost;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() =>
-                      resolveSleepDecision(
-                        pendingSleepCharacter.pendingId,
-                        "pay",
-                        option.id,
-                      )
-                    }
-                    disabled={resolvingSleep || loadingSleepStatus}
-                    className="w-full text-left rounded border border-border bg-background/60 p-4 hover:border-[#D4AF37] hover:bg-background transition disabled:opacity-60"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{option.name}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[#D4AF37] font-bold">{option.cost} oro</p>
-                        {!canPay && <p className="text-xs text-red-400">No alcanza</p>}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirmModal(true)}
-                disabled={resolvingSleep || loadingSleepStatus}
-                className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
-              >
-                No pagar (dejar morir al personaje)
-              </button>
-            </div>
-          </div>
-
-          {showDeleteConfirmModal && (
-            <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70">
-              <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
-                <h3 className="text-lg font-semibold text-red-300">
-                  Confirmar muerte
-                </h3>
-                <p className="text-sm text-red-100/90 leading-relaxed">
-                  El personaje quedará muerto hasta que pagues revive. ¿Estás seguro?
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirmModal(false)}
-                    disabled={resolvingSleep}
-                    className="flex-1 px-4 py-2 rounded border border-border text-foreground hover:bg-secondary/40 transition disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      resolveSleepDecision(pendingSleepCharacter.pendingId, "decline")
-                    }
-                    disabled={resolvingSleep}
-                    className="flex-1 px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 transition disabled:opacity-60"
-                  >
-                    Sí, dejar morir
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Modal de Crear Personaje */}
       {showCreateModal && (
