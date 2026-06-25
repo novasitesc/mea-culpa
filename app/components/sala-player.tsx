@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import SalaFeed from "@/app/components/sala-feed";
-import type { SalaPartida, SalaParticipante, SalaEvento, EventoConsumibleUsado } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 
 type Consumible = {
   bolsaId: number;
@@ -71,14 +71,8 @@ export default function SalaPlayer({ partida, participantes, eventos, token, onE
       if (!res.ok) return;
       const data = await res.json();
 
-      const evento: EventoConsumibleUsado = {
-        tipo: "consumible_usado",
-        personajeId: data.personajeId,
-        personajeNombre: data.personajeNombre,
-        objeto: data.objeto,
-      };
-      onEvent(evento);
-
+      // The server broadcasts the event to all channel subscribers (DM + players).
+      // Don't broadcast client-side to avoid duplicates in the local feed.
       if (data.cantidadRestante <= 0) {
         setConsumibles((prev) => prev.filter((x) => x.bolsaId !== c.bolsaId));
       } else {

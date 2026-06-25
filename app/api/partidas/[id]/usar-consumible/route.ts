@@ -92,5 +92,18 @@ export async function POST(
     cantidad: 1,
   });
 
+  // Broadcast server-side so ALL clients (DM + other players) receive the event
+  // regardless of client channel state. Service role bypasses any restrictions.
+  await db.channel(`partida-sala-${partidaId}`).send({
+    type: "broadcast",
+    event: "consumible_usado",
+    payload: {
+      tipo: "consumible_usado",
+      personajeId,
+      personajeNombre,
+      objeto,
+    },
+  });
+
   return NextResponse.json({ objeto, cantidadRestante, personajeId, personajeNombre });
 }
