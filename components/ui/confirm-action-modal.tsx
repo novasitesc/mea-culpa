@@ -9,6 +9,7 @@ type ConfirmActionModalProps = {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  confirmVariant?: "destructive" | "success";
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -20,6 +21,7 @@ export default function ConfirmActionModal({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   isLoading = false,
+  confirmVariant = "destructive",
   onConfirm,
   onCancel,
 }: ConfirmActionModalProps) {
@@ -52,7 +54,11 @@ export default function ConfirmActionModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-destructive/60 bg-destructive/20 px-3 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/30 disabled:opacity-60"
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+              confirmVariant === "success"
+                ? "border border-emerald-600/60 bg-emerald-700/20 text-emerald-400 hover:bg-emerald-700/30"
+                : "border border-destructive/60 bg-destructive/20 text-destructive hover:bg-destructive/30"
+            }`}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {confirmText}

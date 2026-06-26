@@ -41,7 +41,7 @@ export async function POST(
 
   const { data: participante } = await db
     .from("partida_participantes")
-    .select("id, usuario_id")
+    .select("id, usuario_id, personaje:personaje_id ( nombre )")
     .eq("partida_id", partidaId)
     .eq("personaje_id", personajeId)
     .maybeSingle();
@@ -51,6 +51,7 @@ export async function POST(
   }
 
   const targetUserId = (participante as any).usuario_id as string;
+  const personajeNombre: string = (participante as any).personaje?.nombre ?? "";
 
   if (tipo === "item") {
     if (!objetoId) {
@@ -77,9 +78,24 @@ export async function POST(
       .eq("id", objetoId)
       .maybeSingle();
 
+    const objData = obj ? { id: objetoId, nombre: (obj as any).nombre, icono: (obj as any).icono } : null;
+
+    await db.from("partidas_eventos").insert({
+      partida_id: partidaId,
+      tipo: "asignacion_manual",
+      personaje_id: personajeId,
+      personaje_nombre: personajeNombre,
+      usuario_id: targetUserId,
+      tipo_resultado: "item",
+      objeto_id: String(objetoId),
+      objeto_nombre: objData?.nombre ?? null,
+      objeto_icono: objData?.icono ?? null,
+      cantidad: assignResult.grantedQty,
+    });
+
     return NextResponse.json({
       tipo: "item",
-      objeto: obj ? { id: objetoId, nombre: (obj as any).nombre, icono: (obj as any).icono } : null,
+      objeto: objData,
       cantidad: assignResult.grantedQty,
     });
   }
@@ -100,6 +116,16 @@ export async function POST(
     if (goldError) {
       return NextResponse.json({ error: goldError.message }, { status: 500 });
     }
+
+    await db.from("partidas_eventos").insert({
+      partida_id: partidaId,
+      tipo: "asignacion_manual",
+      personaje_id: personajeId,
+      personaje_nombre: personajeNombre,
+      usuario_id: targetUserId,
+      tipo_resultado: "oro",
+      cantidad_oro: oroDelta,
+    });
 
     return NextResponse.json({ tipo: "oro", cantidadOro: oroDelta });
   }

@@ -597,7 +597,7 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[620px,1fr] gap-0">
+        <div className="grid grid-cols-1 xl:grid-cols-[700px,1fr] gap-0">
           <div
             className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
             style={{ background: "rgba(0,0,0,0.15)" }}
@@ -606,7 +606,7 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
               Personaje
             </span>
 
-            <div className="relative w-65 h-92.5">
+            <div className="relative w-[280px] h-[380px] translate-x-[70px] xl:translate-x-[120px] scale-90 sm:scale-100">
               <svg
                 viewBox="0 0 280 380"
                 fill="none"

@@ -159,6 +159,7 @@ export async function GET(request: Request) {
     `,
     )
     .eq("usuario_id", userId)
+    .neq("estado_vida", "enterrado")
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
@@ -300,6 +301,7 @@ export async function GET(request: Request) {
       lifeStatus: p.estado_vida ?? "vivo",
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
+      puntoCansancio: Number(p.puntos_cansancio ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),

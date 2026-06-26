@@ -22,13 +22,7 @@ export default function SalaPage() {
   const [partida, setPartida] = useState<SalaPartida | null>(null);
   const [participantes, setParticipantes] = useState<SalaParticipante[]>([]);
   const [esAdmin, setEsAdmin] = useState(false);
-  const [eventos, setEventos] = useState<SalaEvento[]>(() => {
-    if (typeof window === "undefined" || !partidaId) return [];
-    try {
-      const saved = localStorage.getItem(`sala-eventos-${partidaId}`);
-      return saved ? (JSON.parse(saved) as SalaEvento[]) : [];
-    } catch { return []; }
-  });
+  const [eventos, setEventos] = useState<SalaEvento[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [showFinalModal, setShowFinalModal] = useState(false);
@@ -51,6 +45,9 @@ export default function SalaPage() {
       setPartida(data.partida);
       setParticipantes(data.participantes);
       setEsAdmin(data.esAdmin);
+      if (data.eventos?.length > 0) {
+        setEventos(data.eventos);
+      }
     } finally {
       setLoadingData(false);
     }
@@ -69,13 +66,6 @@ export default function SalaPage() {
 
   useEffect(() => { esAdminRef.current = esAdmin; }, [esAdmin]);
 
-  // Persist feed to localStorage whenever eventos changes
-  useEffect(() => {
-    if (!partidaId) return;
-    try {
-      localStorage.setItem(`sala-eventos-${partidaId}`, JSON.stringify(eventos));
-    } catch {}
-  }, [eventos, partidaId]);
 
   // Supabase Realtime channel
   useEffect(() => {
@@ -93,7 +83,6 @@ export default function SalaPage() {
         setEventos((prev) => [...prev, payload]);
       })
       .on("broadcast", { event: "partida_cerrada" }, () => {
-        try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
         if (esAdminRef.current) {
           router.push("/partidas");
         } else {
@@ -102,6 +91,9 @@ export default function SalaPage() {
       })
       .on("broadcast", { event: "partida_iniciada" }, () => {
         void loadSala();
+      })
+      .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
+        setEventos((prev) => [...prev, payload]);
       })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         setEventos((prev) => [...prev, payload]);
@@ -141,7 +133,6 @@ export default function SalaPage() {
     });
 
     if (ev.tipo === "partida_cerrada") {
-      try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
       if (esAdmin) {
         router.push("/partidas");
       } else {
@@ -212,7 +203,7 @@ export default function SalaPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 mt-4">
           <Sidebar />
 
-          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-4 flex flex-col gap-4 min-h-[600px]">
+          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-4 flex flex-col gap-4 min-h-150">
             {/* Header de la sala */}
             <div className="flex items-center gap-3 pb-3 border-b border-gold-dim/20">
               <Link
@@ -266,6 +257,8 @@ export default function SalaPage() {
                     partida={partida}
                     participantes={participantes}
                     eventos={eventos}
+                    token={token}
+                    onEvent={handleEvent}
                   />
                 )}
               </div>

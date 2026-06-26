@@ -1,6 +1,71 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import type { SalaEvento } from "@/lib/types/sala";
+
+function mapEventoRow(row: any): SalaEvento | null {
+  switch (row.tipo) {
+    case "partida_iniciada": return { tipo: "partida_iniciada" };
+    case "partida_cerrada":  return { tipo: "partida_cerrada" };
+    case "desmembramiento":  return {
+      tipo: "desmembramiento",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      miembro:         row.miembro,
+      miembroLabel:    row.miembro_label ?? row.miembro,
+      desmembrado:     row.desmembrado,
+    };
+    case "consumible_usado": return {
+      tipo: "consumible_usado",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      objeto: {
+        id:     Number(row.objeto_id),
+        nombre: row.objeto_nombre ?? "",
+        icono:  row.objeto_icono  ?? "",
+      },
+    };
+    case "asignacion_manual": return {
+      tipo: "asignacion_manual",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      ...(row.tipo_resultado === "item" && row.objeto_nombre ? {
+        objeto:   { id: Number(row.objeto_id), nombre: row.objeto_nombre, icono: row.objeto_icono ?? "" },
+        cantidad: row.cantidad ?? 1,
+      } : {}),
+      ...(row.tipo_resultado === "oro" ? { cantidadOro: row.cantidad_oro } : {}),
+    };
+    case "dado_tirado": {
+      const meta = row.metadata as any;
+      if (meta?.tipo && ["item", "oro", "nada", "subtabla"].includes(meta.tipo)) {
+        return {
+          tipo: "dado_tirado",
+          tipoDado:         row.tipo_dado ?? "d20",
+          recompensaNombre: row.recompensa_nombre ?? "",
+          resultados:       [],
+          tipoResultado:    row.tipo_resultado ?? "",
+          personajeNombre:  row.personaje_nombre ?? "",
+          personajeId:      row.personaje_id ?? 0,
+          lutResultados:    [meta],
+        };
+      }
+      return {
+        tipo: "dado_tirado",
+        tipoDado:         row.tipo_dado ?? "",
+        recompensaNombre: row.recompensa_nombre ?? "",
+        resultados:       meta?.resultados ?? [],
+        tipoResultado:    row.tipo_resultado ?? "",
+        personajeNombre:  row.personaje_nombre ?? "",
+        personajeId:      row.personaje_id ?? 0,
+        ...(row.tipo_resultado === "item" && row.objeto_nombre ? {
+          objeto: { id: Number(row.objeto_id), nombre: row.objeto_nombre, icono: row.objeto_icono ?? "" },
+        } : {}),
+        ...(row.tipo_resultado === "oro" ? { cantidadOro: row.cantidad_oro } : {}),
+      };
+    }
+    default: return null;
+  }
+}
 
 export async function GET(
   request: Request,
@@ -54,6 +119,14 @@ export async function GET(
     .select("id, personaje_id, usuario_id, muerto, personaje:personaje_id(nombre, extremidades)")
     .eq("partida_id", partidaId);
 
+  const { data: eventosRows } = await db
+    .from("partidas_eventos")
+    .select("*")
+    .eq("partida_id", partidaId)
+    .order("creado_en", { ascending: true });
+
+  const eventos = (eventosRows ?? []).map(mapEventoRow).filter((e): e is SalaEvento => e !== null);
+
   return NextResponse.json({
     partida: {
       id: (partida as any).id,
@@ -72,5 +145,6 @@ export async function GET(
       nombre: p.personaje?.nombre ?? "Personaje",
       extremidades: (p.personaje as any)?.extremidades ?? null,
     })),
+    eventos,
   });
 }

@@ -121,6 +121,22 @@ export function useAuth() {
     return { success: true };
   };
 
+  const loginWithOAuth = async (
+    provider: "google" | "discord",
+  ): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await getSupabase().auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  };
+
   const logout = async () => {
     await getSupabase().auth.signOut();
     setUser(null);
@@ -136,6 +152,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user,
     login,
+    loginWithOAuth,
     logout,
     refreshUser,
     token,

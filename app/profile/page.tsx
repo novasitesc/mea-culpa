@@ -1,18 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/header";
-import DiceModule from "../components/dice-module";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
-import EquipmentModal, { EquipmentPreview } from "./bolsa/bolsa";
+import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
-import PortraitPicker from "./components/portrait-picker";
-import SpellsRegistry from "./components/spells-registry";
-import { getCasterType, getMaxKnownSpells, type SpellEntry } from "@/lib/spells";
+import CharacterGrid from "./components/character-grid";
+import { type SpellEntry } from "@/lib/spells";
 
 type Player = {
   name: string;
@@ -107,6 +106,7 @@ type Character = {
   knownSpells?: SpellEntry[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
+  puntoCansancio: number;
 };
 
 type ProfileResponse = {
@@ -121,34 +121,17 @@ type ProfileAlert = {
   variant: "info" | "success" | "warning" | "error";
 };
 
-type SleepOption = {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  homeLabel: string;
-};
-
-type SleepPendingCharacter = {
-  pendingId: string;
-  characterId: number;
-  characterName: string;
-  partidaId: string | null;
-  partidaTitle: string;
-  requiredAt: string | null;
-  partidaFinalizedAt: string | null;
-};
-
-type SleepStatusResponse = {
-  playerGold: number;
-  options: SleepOption[];
-  pendingCharacters: SleepPendingCharacter[];
-};
-
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, token } = useAuth();
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+  const mpPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
+  
+  useEffect(() => {
+    if (mpPublicKey) {
+      initMercadoPago(mpPublicKey, { locale: "es-MX" });
+    }
+  }, [mpPublicKey]);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [openBagModal, setOpenBagModal] = useState<number | null>(null);
   const [bagItems, setBagItems] = useState<Item[]>([]);
@@ -159,10 +142,6 @@ export default function ProfilePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [profileAlert, setProfileAlert] = useState<ProfileAlert | null>(null);
-  const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
-  const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
-  const [resolvingSleep, setResolvingSleep] = useState(false);
-  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [slotUpgradeMessage, setSlotUpgradeMessage] = useState<string | null>(null);
   const [isUpgradingSlots, setIsUpgradingSlots] = useState(false);
   const [selectedDeadCharacterId, setSelectedDeadCharacterId] = useState<number | null>(null);
@@ -175,14 +154,15 @@ export default function ProfilePage() {
     race: string;
     multiclass: ClassEntry[];
     alignment: string;
-    knownSpellsInput: string;
   }>({
     name: "",
     race: "",
     multiclass: [{ className: "", level: 1 }],
     alignment: "",
-    knownSpellsInput: "",
   });
+
+  const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const showProfileAlert = (
     title: string,
@@ -320,88 +300,28 @@ export default function ProfilePage() {
     }
   };
 
-  const isFetchingSleep = useRef(false);
-
-  const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token || isFetchingSleep.current) return;
-
-    isFetchingSleep.current = true;
-    setLoadingSleepStatus(true);
+  const handleDeleteCharacter = async () => {
+    if (!characterToDelete || !token) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch("/api/profile/sleep-options", {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`/api/profile/delete-character?characterId=${characterToDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (!res.ok) {
-        throw new Error("No se pudo cargar el estado de descanso");
-      }
-
-      const data = (await res.json()) as SleepStatusResponse;
-      setSleepStatus(data);
-    } catch (error) {
-      console.error("Error loading sleep status:", error);
-    } finally {
-      setLoadingSleepStatus(false);
-      setTimeout(() => { isFetchingSleep.current = false; }, 1000); // Cooldown de 1s para evitar ráfagas
-    }
-  }, [isAuthenticated, token]);
-
-  const resolveSleepDecision = async (
-    pendingId: string,
-    action: "pay" | "decline",
-    optionId?: string,
-  ) => {
-    if (!token) return;
-
-    setResolvingSleep(true);
-    try {
-      const res = await fetch("/api/profile/sleep-options", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ pendingId, action, optionId: optionId ?? null }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      const message = String(data.message ?? "No se pudo resolver el descanso");
-      const sleepKilledCharacter = Boolean(data.dead);
-
-      if (!res.ok && !data.eliminated && !data.dead) {
-        throw new Error(String(data.error ?? message));
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo eliminar el personaje");
 
       showProfileAlert(
-        sleepKilledCharacter
-          ? "Personaje muerto"
-          : data.eliminated
-            ? "Personaje eliminado"
-            : "Descanso resuelto",
-        message,
-        sleepKilledCharacter ? "warning" : data.eliminated ? "error" : "success",
+        data.action === "killed" ? "Personaje Muerto" : "Personaje Eliminado",
+        data.action === "killed" ? `Tu personaje ${characterToDelete.name} ha muerto.` : `Tu personaje ${characterToDelete.name} fue eliminado permanentemente.`,
+        "success"
       );
-
-      setShowDeleteConfirmModal(false);
-
-      if (typeof data.newGold === "number") {
-        window.dispatchEvent(
-          new CustomEvent("auth:refresh", {
-            detail: { oro: data.newGold },
-          }),
-        );
-      }
-
-      await Promise.all([loadSleepStatus(), loadProfile()]);
-    } catch (error) {
-      console.error("Error resolving sleep decision:", error);
-      showProfileAlert(
-        "No se pudo resolver",
-        error instanceof Error ? error.message : "Error desconocido",
-        "error",
-      );
+      setCharacterToDelete(null);
+      await loadProfile();
+    } catch (err: any) {
+      showProfileAlert("Error", err.message, "error");
     } finally {
-      setResolvingSleep(false);
+      setIsDeleting(false);
     }
   };
 
@@ -472,23 +392,9 @@ export default function ProfilePage() {
 
     setIsCreating(true);
     try {
-      // Parsear conjuros ingresados
-      const parsedSpells = (newCharacter as any).knownSpellsInput
-        ? (newCharacter as any).knownSpellsInput
-          .split(",")
-          .map((s: string) => {
-            const match = s.trim().match(/^(.*?)\s*\((\d+)\)$/);
-            if (match) {
-              return { name: match[1].trim(), spellLevel: parseInt(match[2], 10) };
-            }
-            return { name: s.trim(), spellLevel: 1 };
-          })
-          .filter((s: { name: string; spellLevel: number }) => s.name.length > 0)
-        : [];
-
       const payload = {
         ...newCharacter,
-        knownSpells: parsedSpells,
+        knownSpells: [],
       };
 
       const response = await fetch("/api/profile/create-character", {
@@ -516,7 +422,6 @@ export default function ProfilePage() {
         race: "",
         multiclass: [{ className: "", level: 1 }],
         alignment: "",
-        knownSpellsInput: "",
       });
       setShowCreateModal(false);
       showProfileAlert(
@@ -668,19 +573,10 @@ export default function ProfilePage() {
   }, [loadProfile]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) return;
-    loadSleepStatus();
-  }, [isAuthenticated, token, loadSleepStatus]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !token) return;
-
-    const intervalId = window.setInterval(() => {
-      loadSleepStatus();
-    }, 60000); // Cambiado a 60s para reducir tráfico
-
-    return () => window.clearInterval(intervalId);
-  }, [isAuthenticated, token, loadSleepStatus]);
+    const handler = () => loadProfile();
+    window.addEventListener("profile:refresh", handler);
+    return () => window.removeEventListener("profile:refresh", handler);
+  }, [loadProfile]);
 
   useEffect(() => {
     const deadOnly = (profile?.characters ?? []).filter(
@@ -718,9 +614,6 @@ export default function ProfilePage() {
   const reachedCharacterLimit = characters.length >= maxCharacterSlots;
   const canUnlockMoreSlots = maxCharacterSlots < 5;
   const nextSlotTarget = Math.min(5, maxCharacterSlots + 1);
-  const pendingSleepCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
-  const hasPendingSleep = !!pendingSleepCharacter;
-
   const hasAllDead = characters.length > 0 && deadCharacters.length === characters.length;
 
   const selectedDeadCharacter = deadCharacters.find(
@@ -752,10 +645,6 @@ export default function ProfilePage() {
 
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         <Header />
-
-        <div className="mt-4">
-          <DiceModule token={token} />
-        </div>
 
         <div className="space-y-10 mt-6">
           <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
@@ -878,80 +767,96 @@ export default function ProfilePage() {
                   </p>
                 )}
 
-                {!paypalClientId ? (
-                  <p className="text-xs text-amber-300">
-                    Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el pago.
-                  </p>
-                ) : (
-                  <PayPalScriptProvider
-                    options={{
-                      clientId: paypalClientId,
-                      "client-id": paypalClientId,
-                      currency: "USD",
-                      intent: "capture",
-                    }}
-                  >
-                    <PayPalButtons
-                      style={{
-                        layout: "horizontal",
-                        label: "paypal",
-                        color: "gold",
-                        tagline: false,
-                      }}
-                      disabled={isUpgradingSlots || !canUnlockMoreSlots}
-                      createOrder={async () => {
-                        setSlotUpgradeMessage(null);
-                        setIsUpgradingSlots(true);
-                        try {
-                          return await createSlotUnlockOrder();
-                        } catch (error: unknown) {
-                          setIsUpgradingSlots(false);
-                          throw error;
-                        }
-                      }}
-                      onApprove={async (data) => {
-                        if (!data.orderID) {
-                          showProfileAlert(
-                            "Error de pago",
-                            "PayPal no devolvio orderID.",
-                            "error",
-                          );
-                          setIsUpgradingSlots(false);
-                          return;
-                        }
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  <div className="flex-1 w-full max-w-50">
+                    {!paypalClientId ? (
+                      <p className="text-xs text-amber-300">
+                        Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
+                      </p>
+                    ) : (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId: paypalClientId,
+                          "client-id": paypalClientId,
+                          currency: "USD",
+                          intent: "capture",
+                        }}
+                      >
+                        <PayPalButtons
+                          style={{
+                            layout: "horizontal",
+                            label: "paypal",
+                            color: "gold",
+                            tagline: false,
+                            height: 48,
+                          }}
+                          disabled={isUpgradingSlots || !canUnlockMoreSlots}
+                          createOrder={async () => {
+                            setSlotUpgradeMessage(null);
+                            setIsUpgradingSlots(true);
+                            try {
+                              return await createSlotUnlockOrder();
+                            } catch (error: unknown) {
+                              setIsUpgradingSlots(false);
+                              throw error;
+                            }
+                          }}
+                          onApprove={async (data) => {
+                            if (!data.orderID) {
+                              showProfileAlert(
+                                "Error de pago",
+                                "PayPal no devolvio orderID.",
+                                "error",
+                              );
+                              setIsUpgradingSlots(false);
+                              return;
+                            }
 
-                        try {
-                          await captureSlotUnlockOrder(data.orderID);
-                          showProfileAlert(
-                            "Pago confirmado",
-                            "Tu slot adicional ya fue activado.",
-                            "success",
-                          );
-                        } catch (error: unknown) {
-                          showProfileAlert(
-                            "Error de pago",
-                            error instanceof Error ? error.message : "No se pudo confirmar el pago",
-                            "error",
-                          );
-                        } finally {
-                          setIsUpgradingSlots(false);
-                        }
-                      }}
-                      onCancel={() => {
-                        setSlotUpgradeMessage("Pago cancelado por el usuario.");
-                        setIsUpgradingSlots(false);
-                      }}
-                      onError={(error) => {
-                        showProfileAlert(
-                          "Error de PayPal",
-                          error instanceof Error ? error.message : "No se pudo procesar el pago",
-                          "error",
-                        );
-                        setIsUpgradingSlots(false);
-                      }}
-                    />
-                  </PayPalScriptProvider>
-                )}
+                            try {
+                              await captureSlotUnlockOrder(data.orderID);
+                              showProfileAlert(
+                                "Pago confirmado",
+                                "Tu slot adicional ya fue activado.",
+                                "success",
+                              );
+                            } catch (error: unknown) {
+                              showProfileAlert(
+                                "Error de pago",
+                                error instanceof Error ? error.message : "No se pudo confirmar el pago",
+                                "error",
+                              );
+                            } finally {
+                              setIsUpgradingSlots(false);
+                            }
+                          }}
+                          onCancel={() => {
+                            setSlotUpgradeMessage("Pago cancelado por el usuario.");
+                            setIsUpgradingSlots(false);
+                          }}
+                          onError={(error) => {
+                            showProfileAlert(
+                              "Error de PayPal",
+                              error instanceof Error ? error.message : "No se pudo procesar el pago",
+                              "error",
+                            );
+                            setIsUpgradingSlots(false);
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 w-full max-w-50 flex items-center justify-center">
+                    <button
+                      disabled={isUpgradingSlots || !canUnlockMoreSlots}
+                      className="w-full h-12 rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                      style={{ backgroundColor: "#009ee3" }}
+                      onClick={() => showProfileAlert("Mercado Pago", "La integración con Mercado Pago estará disponible pronto.", "info")}
+                    >
+                      <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
+                    </button>
+                  </div>
+                </div>
 
                 {slotUpgradeMessage && (
                   <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
@@ -980,81 +885,97 @@ export default function ProfilePage() {
                       ))}
                     </select>
 
-                    {!paypalClientId ? (
-                      <p className="text-xs text-red-200/80">
-                        Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID para habilitar el revive.
-                      </p>
-                    ) : (
-                      <PayPalScriptProvider
-                        options={{
-                          clientId: paypalClientId,
-                          "client-id": paypalClientId,
-                          currency: "USD",
-                          intent: "capture",
-                        }}
-                      >
-                        <PayPalButtons
-                          style={{
-                            layout: "horizontal",
-                            label: "paypal",
-                            color: "gold",
-                            tagline: false,
-                          }}
+                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                      <div className="flex-1 w-full max-w-50">
+                        {!paypalClientId ? (
+                          <p className="text-xs text-red-200/80">
+                            Configura NEXT_PUBLIC_PAYPAL_CLIENT_ID.
+                          </p>
+                        ) : (
+                          <PayPalScriptProvider
+                            options={{
+                              clientId: paypalClientId,
+                              "client-id": paypalClientId,
+                              currency: "USD",
+                              intent: "capture",
+                            }}
+                          >
+                            <PayPalButtons
+                              style={{
+                                layout: "horizontal",
+                                label: "paypal",
+                                color: "gold",
+                                tagline: false,
+                                height: 48,
+                              }}
+                              disabled={isRevivingCharacter || !reviveTargetCharacter}
+                              createOrder={async () => {
+                                if (!reviveTargetCharacter) {
+                                  throw new Error("Selecciona un personaje muerto");
+                                }
+
+                                setReviveMessage(null);
+                                setIsRevivingCharacter(true);
+                                try {
+                                  return await createReviveOrder(reviveTargetCharacter.id);
+                                } catch (error: unknown) {
+                                  setIsRevivingCharacter(false);
+                                  throw error;
+                                }
+                              }}
+                              onApprove={async (data) => {
+                                if (!data.orderID) {
+                                  showProfileAlert(
+                                    "Error de pago",
+                                    "PayPal no devolvió orderID.",
+                                    "error",
+                                  );
+                                  setIsRevivingCharacter(false);
+                                  return;
+                                }
+
+                                try {
+                                  await captureReviveOrder(data.orderID);
+                                  setReviveMessage("Revivir confirmado. Tu personaje volvió a la vida.");
+                                  showProfileAlert("Personaje revivido", "El revive se aplicó correctamente.", "success");
+                                } catch (error: unknown) {
+                                  showProfileAlert(
+                                    "Error de revive",
+                                    error instanceof Error ? error.message : "No se pudo confirmar el revive",
+                                    "error",
+                                  );
+                                } finally {
+                                  setIsRevivingCharacter(false);
+                                }
+                              }}
+                              onCancel={() => {
+                                setReviveMessage("Pago cancelado por el usuario.");
+                                setIsRevivingCharacter(false);
+                              }}
+                              onError={(error) => {
+                                showProfileAlert(
+                                  "Error de PayPal",
+                                  error instanceof Error ? error.message : "No se pudo procesar el pago",
+                                  "error",
+                                );
+                                setIsRevivingCharacter(false);
+                              }}
+                            />
+                          </PayPalScriptProvider>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 w-full max-w-50 flex items-center justify-center">
+                        <button
                           disabled={isRevivingCharacter || !reviveTargetCharacter}
-                          createOrder={async () => {
-                            if (!reviveTargetCharacter) {
-                              throw new Error("Selecciona un personaje muerto");
-                            }
-
-                            setReviveMessage(null);
-                            setIsRevivingCharacter(true);
-                            try {
-                              return await createReviveOrder(reviveTargetCharacter.id);
-                            } catch (error: unknown) {
-                              setIsRevivingCharacter(false);
-                              throw error;
-                            }
-                          }}
-                          onApprove={async (data) => {
-                            if (!data.orderID) {
-                              showProfileAlert(
-                                "Error de pago",
-                                "PayPal no devolvió orderID.",
-                                "error",
-                              );
-                              setIsRevivingCharacter(false);
-                              return;
-                            }
-
-                            try {
-                              await captureReviveOrder(data.orderID);
-                              setReviveMessage("Revivir confirmado. Tu personaje volvió a la vida.");
-                              showProfileAlert("Personaje revivido", "El revive se aplicó correctamente.", "success");
-                            } catch (error: unknown) {
-                              showProfileAlert(
-                                "Error de revive",
-                                error instanceof Error ? error.message : "No se pudo confirmar el revive",
-                                "error",
-                              );
-                            } finally {
-                              setIsRevivingCharacter(false);
-                            }
-                          }}
-                          onCancel={() => {
-                            setReviveMessage("Pago cancelado por el usuario.");
-                            setIsRevivingCharacter(false);
-                          }}
-                          onError={(error) => {
-                            showProfileAlert(
-                              "Error de PayPal",
-                              error instanceof Error ? error.message : "No se pudo procesar el pago",
-                              "error",
-                            );
-                            setIsRevivingCharacter(false);
-                          }}
-                        />
-                      </PayPalScriptProvider>
-                    )}
+                          className="w-full h-12 rounded flex items-center justify-center font-bold text-white transition disabled:opacity-50 hover:opacity-90"
+                          style={{ backgroundColor: "#009ee3" }}
+                          onClick={() => showProfileAlert("Mercado Pago", "La integración con Mercado Pago estará disponible pronto.", "info")}
+                        >
+                          <img src="/mercado-pago.png" alt="Mercado Pago" className="h-10 object-contain" />
+                        </button>
+                      </div>
+                    </div>
 
                     {reviveMessage && <p className="text-xs text-red-100/90">{reviveMessage}</p>}
                   </>
@@ -1063,278 +984,81 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <section className="space-y-6">
-            {characters.map((character) => (
-              <article
-                key={character.id}
-                className="rounded-lg border-2 border-[#8B7355] bg-card/80 p-6 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6"
-              >
-                <div className="space-y-4">
-                  <div className="relative aspect-square w-64 md:w-72 mx-auto rounded border-2 border-[#8B7355] overflow-hidden bg-secondary/40">
-                    <Image
-                      src={character.portrait || "/characters/profileplaceholder.webp"}
-                      alt={`${character.name} portrait`}
-                      fill
-                      quality={100}
-                      className="object-cover"
-                    />
-                  </div>
-                  {user && (
-                    <PortraitPicker
-                      userId={user.id}
-                      characterId={character.id}
-                      currentPortrait={character.portrait}
-                      onPortraitUpdated={(characterId, portrait) => {
-                        setProfile((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            characters: prev.characters.map((char) =>
-                              char.id === characterId
-                                ? { ...char, portrait }
-                                : char,
-                            ),
-                          };
-                        });
+          {/* Character Grid — Compact cards with expand/collapse */}
+          <CharacterGrid
+            characters={profile ? characters : null}
+            user={user}
+            token={token}
+            onOpenBag={(character) => {
+              setOpenBagModal(character.id);
+              setCurrentCharacter(character);
+              setBagItems(character.bag.items);
+            }}
+            onDeleteCharacter={(character) => setCharacterToDelete(character)}
+            onPortraitUpdated={(characterId, portrait) => {
+              setProfile((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  characters: prev.characters.map((char) =>
+                    char.id === characterId
+                      ? { ...char, portrait }
+                      : char,
+                  ),
+                };
+              });
+              setCurrentCharacter((prev) =>
+                prev && prev.id === characterId
+                  ? { ...prev, portrait }
+                  : prev,
+              );
+            }}
+            isDeleting={isDeleting}
+            onAlert={showProfileAlert}
+          />
 
-                        setCurrentCharacter((prev) =>
-                          prev && prev.id === characterId
-                            ? { ...prev, portrait }
-                            : prev,
-                        );
-                      }}
-                      onAlert={showProfileAlert}
-                    />
-                  )}
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground tracking-[0.3em] uppercase">
-                      {character.race}
-                    </p>
-                    <h2 className="text-2xl font-serif text-[#D4AF37] tracking-wide">
-                      {character.name}
-                    </h2>
-                    <p
-                      className={`mt-2 text-xs font-semibold uppercase tracking-wider ${character.lifeStatus === "muerto" ? "text-red-300" : "text-emerald-300"
-                        }`}
-                    >
-                      {character.lifeStatus === "muerto" ? "Muerto" : "Vivo"}
-                    </p>
-                    {character.hasDismemberedLimb && (
-                      <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-300">
-                        <p>Miembros desmembrados:</p>
-                        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-orange-200/90">
-                          {character.dismemberedLimbs.length > 0
-                            ? character.dismemberedLimbs.join(", ")
-                            : "No especificado"}
-                        </p>
-                      </div>
-                    )}
-                    {character.lifeStatus === "muerto" && character.deadAt && (
-                      <p className="text-xs text-red-200/80 mt-1">
-                        Murió: {new Date(character.deadAt).toLocaleString("es-ES")}
-                      </p>
-                    )}
-                    <div className="mt-2 space-y-1">
-                      {(character.multiclass ?? []).map((entry, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-center gap-2"
-                        >
-                          <span className="text-sm text-muted-foreground">
-                            {entry.className}{" "}
-                            <span className="text-[#D4AF37] font-semibold">
-                              Nv.{entry.level}
-                            </span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 rounded bg-[#8B7355] text-background text-center text-sm">
-                      {character.alignment}
-                    </div>
-                  </div>
-                </div>
+          {/* Equipment Modal — rendered outside the grid to avoid z-index issues */}
+          {openBagModal !== null && currentCharacter && (
+            <EquipmentModal
+              userId={user?.id ?? ""}
+              character={currentCharacter}
+              characters={characters}
+              onClose={() => setOpenBagModal(null)}
+              onRefreshProfile={loadProfile}
+              onSave={async (updatedCharacter, updatedBagItems) => {
+                const nextCharacter = updatedCharacter as Character;
+                const nextBagItems = updatedBagItems as Item[];
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.entries(character.stats).map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded border border-border/60 bg-secondary/40 p-3 text-center"
-                      >
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest">
-                          {label}
-                        </p>
-                        <p className="text-2xl font-semibold text-foreground mt-1">
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <EquipmentPreview character={character} />
-
-                  <SpellsRegistry character={character} token={token} />
-
-                  <div className="flex justify-end mt-2">
-                    <button
-                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-60 disabled:cursor-not-allowed"
-                      onClick={() => {
-                        setOpenBagModal(character.id);
-                        setCurrentCharacter(character);
-                        setBagItems(character.bag.items);
-                      }}
-                      disabled={character.lifeStatus === "muerto"}
-                    >
-                      {character.lifeStatus === "muerto" ? "Personaje muerto" : "Abrir Bolsa"}
-                    </button>
-                  </div>
-                  {openBagModal === character.id && (
-                    <EquipmentModal
-                      userId={user?.id ?? ""}
-                      character={character}
-                      characters={characters}
-                      onClose={() => setOpenBagModal(null)}
-                      onRefreshProfile={loadProfile}
-                      onSave={async (updatedCharacter, updatedBagItems) => {
-                        const nextCharacter = updatedCharacter as Character;
-                        const nextBagItems = updatedBagItems as Item[];
-
-                        setCurrentCharacter(nextCharacter);
-                        setBagItems(nextBagItems);
-                        await saveBagChanges(
-                          character.id,
-                          nextCharacter,
-                          nextBagItems,
-                        );
-                      }}
-                      onGoldUpdate={(newGold) => {
-                        setProfile((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            player: {
-                              ...prev.player,
-                              oro: newGold,
-                            },
-                          };
-                        });
-
-                        window.dispatchEvent(
-                          new CustomEvent("auth:refresh", {
-                            detail: { oro: newGold },
-                          }),
-                        );
-                      }}
-                    />
-                  )}
-                </div>
-              </article>
-            ))}
-          </section>
-        </div>
-      </div>
-
-      {hasPendingSleep && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-[#B8860B]">
-                Descanso Obligatorio
-              </p>
-              <h2 className="text-2xl font-serif text-[#D4AF37] mt-2">
-                {pendingSleepCharacter.characterName} debe elegir donde dormir
-              </h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                La partida "{pendingSleepCharacter.partidaTitle}" finalizo. Si no pagas descanso,
-                el personaje morirá y deberás revivirlo desde tu perfil.
-              </p>
-            </div>
-
-            <div className="rounded border border-border/70 bg-secondary/20 p-3 text-sm text-muted-foreground">
-              Oro disponible: <span className="text-yellow-400 font-semibold">{(sleepStatus?.playerGold ?? 0).toLocaleString()}</span>
-            </div>
-
-            <div className="space-y-3">
-              {(sleepStatus?.options ?? []).map((option) => {
-                const canPay = (sleepStatus?.playerGold ?? 0) >= option.cost;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() =>
-                      resolveSleepDecision(
-                        pendingSleepCharacter.pendingId,
-                        "pay",
-                        option.id,
-                      )
-                    }
-                    disabled={resolvingSleep || loadingSleepStatus}
-                    className="w-full text-left rounded border border-border bg-background/60 p-4 hover:border-[#D4AF37] hover:bg-background transition disabled:opacity-60"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{option.name}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[#D4AF37] font-bold">{option.cost} oro</p>
-                        {!canPay && <p className="text-xs text-red-400">No alcanza</p>}
-                      </div>
-                    </div>
-                  </button>
+                setCurrentCharacter(nextCharacter);
+                setBagItems(nextBagItems);
+                await saveBagChanges(
+                  openBagModal,
+                  nextCharacter,
+                  nextBagItems,
                 );
-              })}
-            </div>
+              }}
+              onGoldUpdate={(newGold) => {
+                setProfile((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    player: {
+                      ...prev.player,
+                      oro: newGold,
+                    },
+                  };
+                });
 
-            <div className="pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirmModal(true)}
-                disabled={resolvingSleep || loadingSleepStatus}
-                className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
-              >
-                No pagar (dejar morir al personaje)
-              </button>
-            </div>
-          </div>
-
-          {showDeleteConfirmModal && (
-            <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70">
-              <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
-                <h3 className="text-lg font-semibold text-red-300">
-                  Confirmar muerte
-                </h3>
-                <p className="text-sm text-red-100/90 leading-relaxed">
-                  El personaje quedará muerto hasta que pagues revive. ¿Estás seguro?
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirmModal(false)}
-                    disabled={resolvingSleep}
-                    className="flex-1 px-4 py-2 rounded border border-border text-foreground hover:bg-secondary/40 transition disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      resolveSleepDecision(pendingSleepCharacter.pendingId, "decline")
-                    }
-                    disabled={resolvingSleep}
-                    className="flex-1 px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 transition disabled:opacity-60"
-                  >
-                    Sí, dejar morir
-                  </button>
-                </div>
-              </div>
-            </div>
+                window.dispatchEvent(
+                  new CustomEvent("auth:refresh", {
+                    detail: { oro: newGold },
+                  }),
+                );
+              }}
+            />
           )}
         </div>
-      )}
+      </div>
 
       {/* Modal de Crear Personaje */}
       {showCreateModal && (
@@ -1410,14 +1134,11 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Multiclase - máximo 3 clases */}
+              {/* Selección de Clase Inicial (Multiclase deshabilitado en Nv.1) */}
               <div>
                 <div className="flex items-center mb-2">
                   <label className="text-sm font-medium text-muted-foreground">
-                    Clases{" "}
-                    <span className="text-xs text-muted-foreground/60">
-                      ({newCharacter.multiclass.length}/3)
-                    </span>
+                    Clase Inicial (Nivel 1)
                   </label>
                 </div>
                 <div className="space-y-2">
@@ -1465,77 +1186,12 @@ export default function ProfilePage() {
                             </option>
                           ))}
                       </select>
-
-                      {newCharacter.multiclass.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setNewCharacter((prev) => ({
-                              ...prev,
-                              multiclass: prev.multiclass.filter(
-                                (_, i) => i !== idx,
-                              ),
-                            }))
-                          }
-                          className="px-2 py-2 text-red-500 hover:bg-red-500/10 rounded transition text-sm"
-                        >
-                          ×
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
-                {newCharacter.multiclass.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewCharacter((prev) => ({
-                        ...prev,
-                        multiclass: [
-                          ...prev.multiclass,
-                          { className: "", level: 1 },
-                        ],
-                      }))
-                    }
-                    className="mt-2 w-full text-xs px-2 py-1.5 rounded border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
-                  >
-                    + Añadir clase
-                  </button>
-                )}
               </div>
 
-              {/* Sección de Conjuros Conocidos (Solo si aplica a la clase elegida) */}
-              {(() => {
-                let totalMaxKnown = 0;
-                newCharacter.multiclass.forEach(c => {
-                  if (c.className && getCasterType(c.className) === "known") {
-                    totalMaxKnown += getMaxKnownSpells(c.className, c.level);
-                  }
-                });
 
-                if (totalMaxKnown > 0) {
-                  return (
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">
-                        Conjuros Conocidos Iniciales
-                      </label>
-                      <input
-                        type="text"
-                        value={(newCharacter as any).knownSpellsInput ?? ""}
-                        onChange={(e) => {
-                          setNewCharacter(prev => ({ ...prev, knownSpellsInput: e.target.value }));
-                        }}
-                        className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        placeholder="Ej: Curar heridas (1), Escudo (1), Oscuridad (2)"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Tu clase puede elegir hasta {totalMaxKnown} conjuros al nivel actual. Formato: Nombre (Nivel), separados por coma. Si omites el nivel, será 1.
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
 
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-4">
@@ -1551,7 +1207,6 @@ export default function ProfilePage() {
                         race: "",
                         multiclass: [{ className: "", level: 1 }],
                         alignment: "",
-                        knownSpellsInput: "",
                       });
                     }}
                     disabled={isCreating}
@@ -1572,6 +1227,57 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmar Eliminar Personaje */}
+      <AnimatePresence>
+        {characterToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-sm bg-[#18130f] border-2 border-[#8B7355] rounded-xl p-6 shadow-2xl text-center relative overflow-hidden"
+            >
+              <h4 className="text-xl font-serif text-red-400 mb-2 tracking-wide">
+                {characterToDelete.lifeStatus === "muerto" ? "Eliminar Definitivamente" : "Matar Personaje"}
+              </h4>
+              
+              <p className="text-sm text-foreground mb-4">
+                {characterToDelete.lifeStatus === "muerto" ? (
+                  <>¿Estás seguro que quieres eliminar a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span> (Nivel {characterToDelete.multiclass.reduce((acc, c) => acc + c.level, 0)}, {characterToDelete.race})? Esta acción es irreversible y liberará un slot.</>
+                ) : (
+                  <>Si eliminas a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span>, este morirá. Quedará en tu lista de personajes muertos ocupando un slot hasta que lo revivas o lo elimines definitivamente.</>
+                )}
+              </p>
+              
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCharacterToDelete(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-semibold rounded border border-[#8B7355]/40 hover:bg-[#8B7355]/10 text-muted-foreground hover:text-foreground transition duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteCharacter}
+                  disabled={isDeleting}
+                  className="px-5 py-2 text-sm font-semibold rounded bg-red-700 hover:bg-red-800 text-white shadow-lg transition duration-200"
+                >
+                  {isDeleting ? "Procesando..." : characterToDelete.lifeStatus === "muerto" ? "Eliminar" : "Matar"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

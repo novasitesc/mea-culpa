@@ -6,6 +6,8 @@ type Character = {
   id: number;
   nombre: string;
   raza: string;
+  estado_vida: string;
+  muerto_en: string | null;
   clases: Array<{
     nombre_clase: string;
     nivel: number;
@@ -41,6 +43,8 @@ export async function GET(request: NextRequest) {
       id,
       nombre,
       raza,
+      estado_vida,
+      muerto_en,
       clases_personaje (
         nombre_clase,
         nivel
@@ -65,6 +69,8 @@ export async function GET(request: NextRequest) {
     id: p.id,
     nombre: p.nombre,
     raza: p.raza,
+    estado_vida: p.estado_vida,
+    muerto_en: p.muerto_en,
     clases: p.clases_personaje ?? [],
     estadisticas: p.estadisticas_personaje ? p.estadisticas_personaje[0] : null,
   }));
