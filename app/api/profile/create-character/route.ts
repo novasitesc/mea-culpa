@@ -139,7 +139,7 @@ export async function POST(request: Request) {
       .from("personajes")
       .select("id", { count: "exact", head: true })
       .eq("usuario_id", userId)
-      .neq("estado_vida", "enterrado");
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     if ((count ?? 0) >= maxCharacterSlots) {
       return NextResponse.json(
@@ -155,7 +155,8 @@ export async function POST(request: Request) {
     const { data: existingSlots } = await db
       .from("personajes")
       .select("numero_slot")
-      .eq("usuario_id", userId);
+      .eq("usuario_id", userId)
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     const usedSlots = new Set(
       (existingSlots ?? []).map((s: any) => s.numero_slot),

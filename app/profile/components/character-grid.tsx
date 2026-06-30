@@ -12,6 +12,7 @@
  * desde Supabase (cuando profile es null).
  */
 
+import { AnimatePresence } from "framer-motion";
 import CharacterCard, { type Character } from "./character-card";
 
 // ─── Skeleton Component ───────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ export interface CharacterGridProps {
   onOpenBag: (character: Character) => void;
   onDeleteCharacter: (character: Character) => void;
   onPortraitUpdated: (characterId: number, portrait: string) => void;
+  onNivel20Updated: (characterId: number, url: string | null) => void;
   isDeleting: boolean;
   onAlert: (
     title: string,
@@ -81,6 +83,7 @@ export default function CharacterGrid({
   onOpenBag,
   onDeleteCharacter,
   onPortraitUpdated,
+  onNivel20Updated,
   isDeleting,
   onAlert,
 }: CharacterGridProps) {
@@ -119,20 +122,23 @@ export default function CharacterGrid({
        * El panel de detalle se despliega debajo de la tarjeta en ambos layouts.
        */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-        {characters.map((character, index) => (
-          <CharacterCard
-            key={character.id}
-            character={character}
-            index={index}
-            user={user}
-            token={token}
-            onOpenBag={onOpenBag}
-            onDeleteCharacter={onDeleteCharacter}
-            onPortraitUpdated={onPortraitUpdated}
-            isDeleting={isDeleting}
-            onAlert={onAlert}
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {characters.map((character, index) => (
+            <CharacterCard
+              key={character.id}
+              character={character}
+              index={index}
+              user={user}
+              token={token}
+              onOpenBag={onOpenBag}
+              onDeleteCharacter={onDeleteCharacter}
+              onPortraitUpdated={onPortraitUpdated}
+              onNivel20Updated={onNivel20Updated}
+              isDeleting={isDeleting}
+              onAlert={onAlert}
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </section>
   );

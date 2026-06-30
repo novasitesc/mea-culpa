@@ -127,7 +127,7 @@ export async function GET(request: Request) {
   // Obtener perfil del jugador
   const { data: perfil } = await db
     .from("perfiles")
-    .select("nombre, rol, nivel, hogar, oro, max_personajes, nivel20_url")
+    .select("nombre, rol, nivel, hogar, oro, max_personajes")
     .eq("id", userId)
     .single();
 
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
     `,
     )
     .eq("usuario_id", userId)
-    .neq("estado_vida", "enterrado")
+    .not("estado_vida", "in", '("enterrado","eliminado")')
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
@@ -291,6 +291,7 @@ export async function GET(request: Request) {
     return {
       id: p.id,
       name: p.nombre,
+      nivel20Url: p.nivel20_url ?? null,
       multiclass: clases.map((c: any) => ({
         className: c.nombre_clase,
         level: c.nivel,
@@ -403,7 +404,6 @@ export async function GET(request: Request) {
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
       maxCharacterSlots: perfil?.max_personajes ?? 2,
-      nivel20Url: perfil?.nivel20_url ?? null,
     },
     characters,
     userId,
@@ -418,7 +418,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { nivel20Url?: unknown };
+  let body: { nivel20Url?: unknown; characterId?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -432,15 +432,39 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const characterId = Number(body.characterId);
+  if (!Number.isFinite(characterId) || characterId <= 0) {
+    return NextResponse.json(
+      { error: "characterId es requerido" },
+      { status: 400 },
+    );
+  }
+
   const normalized = normalizeNivel20Url(body.nivel20Url);
   if (normalized.error) {
     return NextResponse.json({ error: normalized.error }, { status: 400 });
   }
 
+  // Verify the character belongs to this user
+  const { data: charCheck } = await db
+    .from("personajes")
+    .select("id")
+    .eq("id", characterId)
+    .eq("usuario_id", user.id)
+    .single();
+
+  if (!charCheck) {
+    return NextResponse.json(
+      { error: "Personaje no encontrado o no te pertenece" },
+      { status: 404 },
+    );
+  }
+
   const { data, error } = await db
-    .from("perfiles")
+    .from("personajes")
     .update({ nivel20_url: normalized.value })
-    .eq("id", user.id)
+    .eq("id", characterId)
+    .eq("usuario_id", user.id)
     .select("nivel20_url")
     .single();
 
@@ -450,6 +474,7 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({
     success: true,
+    characterId,
     nivel20Url: data?.nivel20_url ?? normalized.value,
   });
 }

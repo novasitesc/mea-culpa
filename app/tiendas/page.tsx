@@ -90,7 +90,48 @@ export default function TiendasPage() {
   const [isLoadingShops, setIsLoadingShops] = useState(true);
   const [isLoadingShop, setIsLoadingShop] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const cartKey = user?.id ? `mc_tiendas_cart_${user.id}` : null;
   const [cart, setCart] = useState<CartEntry[]>([]);
+
+  useEffect(() => {
+    if (!cartKey) {
+      setCart([]);
+      return;
+    }
+    try {
+      localStorage.removeItem("mc_tiendas_cart");
+    } catch {}
+
+    const loadCart = () => {
+      try {
+        const saved = localStorage.getItem(cartKey);
+        const parsed = saved ? JSON.parse(saved) : [];
+        setCart((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev;
+          return parsed;
+        });
+      } catch {
+        setCart([]);
+      }
+    };
+
+    loadCart();
+    window.addEventListener("storage", loadCart);
+    window.addEventListener("cart:update", loadCart);
+    return () => {
+      window.removeEventListener("storage", loadCart);
+      window.removeEventListener("cart:update", loadCart);
+    };
+  }, [cartKey]);
+
+  useEffect(() => {
+    if (!cartKey) return;
+    try {
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      window.dispatchEvent(new Event("cart:update"));
+    } catch {}
+  }, [cart, cartKey]);
+
   const [cartOpen, setCartOpen] = useState(false);
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<React.ReactNode | null>(null);
@@ -313,7 +354,7 @@ export default function TiendasPage() {
         )}
 
         {/* Botón carrito flotante */}
-        {cartCount > 0 && (
+        {Boolean(user?.id) && cartCount > 0 && (
           <button
             onClick={() => setCartOpen(true)}
             className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl font-medium transition-colors ${
@@ -353,7 +394,7 @@ export default function TiendasPage() {
               <CardContent className="pt-4 space-y-3">
                 {cart.map((e) => (
                   <div key={e.id} className="flex items-center gap-3">
-                    <span className="text-xl shrink-0">{e.icon}</span>
+                    <span className="flex items-center justify-center text-[#D4AF37] shrink-0">{getIconForString(e.name, "w-6 h-6", e.icon)}</span>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{e.name}</p>

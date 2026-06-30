@@ -21,7 +21,6 @@ type Player = {
   home: string;
   oro: number;
   maxCharacterSlots: number;
-  nivel20Url: string | null;
 };
 
 type ArmorSlots = {
@@ -89,6 +88,7 @@ type Character = {
   id: number;
   userId?: string;
   name: string;
+  nivel20Url: string | null;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
   alignment: string;
@@ -127,7 +127,7 @@ export default function ProfilePage() {
   const { user, isAuthenticated, isLoading, token } = useAuth();
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
   const mpPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
-  
+
   useEffect(() => {
     if (mpPublicKey) {
       initMercadoPago(mpPublicKey, { locale: "es-MX" });
@@ -148,8 +148,6 @@ export default function ProfilePage() {
   const [selectedDeadCharacterId, setSelectedDeadCharacterId] = useState<number | null>(null);
   const [isRevivingCharacter, setIsRevivingCharacter] = useState(false);
   const [reviveMessage, setReviveMessage] = useState<string | null>(null);
-  const [nivel20UrlInput, setNivel20UrlInput] = useState("");
-  const [savingNivel20Url, setSavingNivel20Url] = useState(false);
   const [newCharacter, setNewCharacter] = useState<{
     name: string;
     race: string;
@@ -164,6 +162,20 @@ export default function ProfilePage() {
 
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"confirm" | "transfer">("confirm");
+  const [transferTarget, setTransferTarget] = useState<{ type: "character" | "guild" | "none"; targetId?: number }>({ type: "none" });
+
+  const openDeleteModal = (char: Character) => {
+    setCharacterToDelete(char);
+    setDeleteStep("confirm");
+    // Por defecto si hay otros personajes, preseleccionar el primero
+    const otherChars = (profile?.characters ?? []).filter(c => c.id !== char.id);
+    if (otherChars.length > 0) {
+      setTransferTarget({ type: "character", targetId: otherChars[0].id });
+    } else {
+      setTransferTarget({ type: "guild" });
+    }
+  };
 
   const showProfileAlert = (
     title: string,
@@ -193,119 +205,18 @@ export default function ProfilePage() {
         home: data.player.home,
         oro: user.oro,
         maxCharacterSlots: data.player.maxCharacterSlots ?? 2,
-        nivel20Url: data.player.nivel20Url ?? null,
       },
     });
-
-    setNivel20UrlInput(data.player.nivel20Url ?? "");
   }, [isAuthenticated, user]);
 
-  const normalizeNivel20UrlForClient = (rawValue: string): {
-    value: string | null;
-    error: string | null;
-  } => {
-    const trimmed = rawValue.trim();
-    if (!trimmed) {
-      return { value: null, error: null };
-    }
 
-    let parsed: URL;
-    try {
-      parsed = new URL(trimmed);
-    } catch {
-      return { value: null, error: "Ingresa una URL valida" };
-    }
-
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return {
-        value: null,
-        error: "La URL debe iniciar con http:// o https://",
-      };
-    }
-
-    const hostname = parsed.hostname.toLowerCase();
-    const isNivel20Domain =
-      hostname === "nivel20.com" || hostname.endsWith(".nivel20.com");
-
-    if (!isNivel20Domain) {
-      return {
-        value: null,
-        error: "Solo se permiten enlaces de nivel20.com",
-      };
-    }
-
-    return { value: parsed.toString(), error: null };
-  };
-
-  const saveNivel20Url = async () => {
-    if (!token || !profile) return;
-
-    const normalized = normalizeNivel20UrlForClient(nivel20UrlInput);
-    if (normalized.error) {
-      showProfileAlert("URL invalida", normalized.error, "warning");
-      return;
-    }
-
-    setSavingNivel20Url(true);
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ nivel20Url: normalized.value }),
-      });
-
-      const data = (await res.json().catch(() => ({}))) as {
-        success?: boolean;
-        error?: string;
-        nivel20Url?: string | null;
-      };
-
-      if (!res.ok) {
-        throw new Error(data.error ?? "No se pudo guardar el enlace de Nivel20");
-      }
-
-      const persistedValue = data.nivel20Url ?? normalized.value;
-      setProfile((prev) =>
-        prev
-          ? {
-            ...prev,
-            player: {
-              ...prev.player,
-              nivel20Url: persistedValue,
-            },
-          }
-          : prev,
-      );
-      setNivel20UrlInput(persistedValue ?? "");
-
-      window.dispatchEvent(new CustomEvent("auth:refresh", { detail: {} }));
-      showProfileAlert(
-        "Perfil actualizado",
-        persistedValue
-          ? "Enlace de Nivel20 guardado correctamente."
-          : "Enlace de Nivel20 eliminado.",
-        "success",
-      );
-    } catch (error) {
-      console.error("Error saving Nivel20 URL:", error);
-      showProfileAlert(
-        "No se pudo guardar",
-        error instanceof Error ? error.message : "Error desconocido",
-        "error",
-      );
-    } finally {
-      setSavingNivel20Url(false);
-    }
-  };
-
-  const handleDeleteCharacter = async () => {
+  const handleDeleteCharacter = async (transferType = "none", targetId?: number) => {
     if (!characterToDelete || !token) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/profile/delete-character?characterId=${characterToDelete.id}`, {
+      let url = `/api/profile/delete-character?characterId=${characterToDelete.id}&transferTargetType=${transferType}`;
+      if (targetId) url += `&transferTargetId=${targetId}`;
+      const res = await fetch(url, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -313,8 +224,8 @@ export default function ProfilePage() {
       if (!res.ok) throw new Error(data.error || "No se pudo eliminar el personaje");
 
       showProfileAlert(
-        data.action === "killed" ? "Personaje Muerto" : "Personaje Eliminado",
-        data.action === "killed" ? `Tu personaje ${characterToDelete.name} ha muerto.` : `Tu personaje ${characterToDelete.name} fue eliminado permanentemente.`,
+        "Personaje Eliminado",
+        data.message || `Tu personaje ${characterToDelete.name} fue eliminado permanentemente y su slot fue liberado.`,
         "success"
       );
       setCharacterToDelete(null);
@@ -673,50 +584,6 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
-
-                <div className="mt-4 space-y-3 max-w-2xl">
-                  <label className="block text-xs tracking-[0.2em] uppercase text-[#B8860B]">
-                    Link de Nivel20
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="url"
-                      value={nivel20UrlInput}
-                      onChange={(e) => setNivel20UrlInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          saveNivel20Url();
-                        }
-                      }}
-                      placeholder="https://nivel20.com/games/dnd-5"
-                      className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                    />
-                    <button
-                      type="button"
-                      onClick={saveNivel20Url}
-                      disabled={savingNivel20Url}
-                      className="px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {savingNivel20Url ? "Guardando..." : "Guardar"}
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Se permite nivel20.com y subdominios (por ejemplo www.nivel20.com).
-                  </p>
-
-                  {player?.nivel20Url && (
-                    <a
-                      href={player.nivel20Url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-[#D4AF37] hover:text-[#B8860B] underline underline-offset-4"
-                    >
-                      Abrir mi partida en Nivel20
-                    </a>
-                  )}
-                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">
@@ -730,8 +597,8 @@ export default function ProfilePage() {
                   disabled={reachedCharacterLimit}
                   onClick={() => setShowCreateModal(true)}
                   className={`px-4 py-2 rounded font-semibold text-sm transition-all ${reachedCharacterLimit
-                      ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                      : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
+                    ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
                     }`}
                   title={
                     reachedCharacterLimit
@@ -850,7 +717,7 @@ export default function ProfilePage() {
                       </PayPalScriptProvider>
                     )}
                   </div>
-                  
+
                   <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
                     <button
                       disabled={isUpgradingSlots || !canUnlockMoreSlots}
@@ -969,7 +836,7 @@ export default function ProfilePage() {
                           </PayPalScriptProvider>
                         )}
                       </div>
-                      
+
                       <div className="flex-1 w-full max-w-[200px] flex items-center justify-center">
                         <button
                           disabled={isRevivingCharacter || !reviveTargetCharacter}
@@ -999,7 +866,7 @@ export default function ProfilePage() {
               setCurrentCharacter(character);
               setBagItems(character.bag.items);
             }}
-            onDeleteCharacter={(character) => setCharacterToDelete(character)}
+            onDeleteCharacter={openDeleteModal}
             onPortraitUpdated={(characterId, portrait) => {
               setProfile((prev) => {
                 if (!prev) return prev;
@@ -1018,267 +885,419 @@ export default function ProfilePage() {
                   : prev,
               );
             }}
+            onNivel20Updated={(characterId, url) => {
+              setProfile((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  characters: prev.characters.map((char) =>
+                    char.id === characterId
+                      ? { ...char, nivel20Url: url }
+                      : char,
+                  ),
+                };
+              });
+            }}
             isDeleting={isDeleting}
             onAlert={showProfileAlert}
           />
 
           {/* Equipment Modal — rendered outside the grid to avoid z-index issues */}
-          {openBagModal !== null && currentCharacter && (
-            <EquipmentModal
-              userId={user?.id ?? ""}
-              character={currentCharacter}
-              characters={characters}
-              onClose={() => setOpenBagModal(null)}
-              onRefreshProfile={loadProfile}
-              onSave={async (updatedCharacter, updatedBagItems) => {
-                const nextCharacter = updatedCharacter as Character;
-                const nextBagItems = updatedBagItems as Item[];
+          <AnimatePresence>
+            {openBagModal !== null && currentCharacter && (
+              <EquipmentModal
+                key="equipment-modal"
+                userId={user?.id ?? ""}
+                character={currentCharacter}
+                characters={characters}
+                onClose={() => setOpenBagModal(null)}
+                onRefreshProfile={loadProfile}
+                onSave={async (updatedCharacter, updatedBagItems) => {
+                  const nextCharacter = updatedCharacter as Character;
+                  const nextBagItems = updatedBagItems as Item[];
 
-                setCurrentCharacter(nextCharacter);
-                setBagItems(nextBagItems);
-                await saveBagChanges(
-                  openBagModal,
-                  nextCharacter,
-                  nextBagItems,
-                );
-              }}
-              onGoldUpdate={(newGold) => {
-                setProfile((prev) => {
-                  if (!prev) return prev;
-                  return {
-                    ...prev,
-                    player: {
-                      ...prev.player,
-                      oro: newGold,
-                    },
-                  };
-                });
+                  setCurrentCharacter(nextCharacter);
+                  setBagItems(nextBagItems);
+                  await saveBagChanges(
+                    openBagModal,
+                    nextCharacter,
+                    nextBagItems,
+                  );
+                }}
+                onGoldUpdate={(newGold) => {
+                  setProfile((prev) => {
+                    if (!prev) return prev;
+                    return {
+                      ...prev,
+                      player: {
+                        ...prev.player,
+                        oro: newGold,
+                      },
+                    };
+                  });
 
-                window.dispatchEvent(
-                  new CustomEvent("auth:refresh", {
-                    detail: { oro: newGold },
-                  }),
-                );
-              }}
-            />
-          )}
+                  window.dispatchEvent(
+                    new CustomEvent("auth:refresh", {
+                      detail: { oro: newGold },
+                    }),
+                  );
+                }}
+              />
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Modal de Crear Personaje */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/20 p-4">
-          <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
-            <button
-              className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
-              onClick={() => setShowCreateModal(false)}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/60 p-4 overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowCreateModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 15 }}
+              animate={{
+                scale: 1,
+                opacity: 1,
+                y: 0,
+                transition: { type: "spring", damping: 26, stiffness: 320 },
+              }}
+              exit={{
+                scale: 0.94,
+                opacity: 0,
+                y: 15,
+                transition: { duration: 0.18, ease: "easeInOut" },
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-background rounded-xl border border-gold-dim shadow-2xl p-6 w-full max-w-2xl relative my-auto"
             >
-              ×
-            </button>
-            <h2 className="text-2xl font-bold mb-6 text-[#D4AF37] uppercase tracking-wider">
-              Crear Nuevo Personaje
-            </h2>
+              <button
+                className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
+                onClick={() => setShowCreateModal(false)}
+              >
+                ×
+              </button>
+              <h2 className="text-2xl font-bold mb-6 text-[#D4AF37] uppercase tracking-wider">
+                Crear Nuevo Personaje
+              </h2>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Nombre del Personaje
-                </label>
-                <input
-                  type="text"
-                  value={newCharacter.name}
-                  onChange={(e) =>
-                    setNewCharacter({ ...newCharacter, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                  placeholder="Ej: Aragorn"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Raza
+                    Nombre del Personaje
                   </label>
                   <input
                     type="text"
-                    value={newCharacter.race}
+                    value={newCharacter.name}
                     onChange={(e) =>
-                      setNewCharacter({ ...newCharacter, race: e.target.value })
+                      setNewCharacter({ ...newCharacter, name: e.target.value })
                     }
                     className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                    placeholder="Ej: Elfo, Humano, Semiorco..."
+                    placeholder="Ej: Aragorn"
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-2">
+                      Raza
+                    </label>
+                    <input
+                      type="text"
+                      value={newCharacter.race}
+                      onChange={(e) =>
+                        setNewCharacter({ ...newCharacter, race: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                      placeholder="Ej: Elfo, Humano, Semiorco..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-2">
+                      Alineamiento
+                    </label>
+                    <select
+                      value={newCharacter.alignment}
+                      onChange={(e) =>
+                        setNewCharacter({
+                          ...newCharacter,
+                          alignment: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
+                    >
+                      <option value="">Selecciona un alineamiento</option>
+                      <option value="Legal Bueno">Legal Bueno</option>
+                      <option value="Legal Neutral">Legal Neutral</option>
+                      <option value="Legal Malo">Legal Malo</option>
+                      <option value="Neutral Bueno">Neutral Bueno</option>
+                      <option value="Neutral">Neutral</option>
+                      <option value="Neutral Malo">Neutral Malo</option>
+                      <option value="Caótico Bueno">Caótico Bueno</option>
+                      <option value="Caótico Neutral">Caótico Neutral</option>
+                      <option value="Caótico Malo">Caótico Malo</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Selección de Clase Inicial (Multiclase deshabilitado en Nv.1) */}
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Alineamiento
-                  </label>
-                  <select
-                    value={newCharacter.alignment}
-                    onChange={(e) =>
-                      setNewCharacter({
-                        ...newCharacter,
-                        alignment: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                  >
-                    <option value="">Selecciona un alineamiento</option>
-                    <option value="Legal Bueno">Legal Bueno</option>
-                    <option value="Legal Neutral">Legal Neutral</option>
-                    <option value="Legal Malo">Legal Malo</option>
-                    <option value="Neutral Bueno">Neutral Bueno</option>
-                    <option value="Neutral">Neutral</option>
-                    <option value="Neutral Malo">Neutral Malo</option>
-                    <option value="Caótico Bueno">Caótico Bueno</option>
-                    <option value="Caótico Neutral">Caótico Neutral</option>
-                    <option value="Caótico Malo">Caótico Malo</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Selección de Clase Inicial (Multiclase deshabilitado en Nv.1) */}
-              <div>
-                <div className="flex items-center mb-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Clase Inicial (Nivel 1)
-                  </label>
-                </div>
-                <div className="space-y-2">
-                  {newCharacter.multiclass.map((entry, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <select
-                        value={entry.className}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewCharacter((prev) => ({
-                            ...prev,
-                            multiclass: prev.multiclass.map((c, i) =>
-                              i === idx ? { ...c, className: val } : c,
-                            ),
-                          }));
-                        }}
-                        className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                      >
-                        <option value="">Selecciona una clase</option>
-                        {[
-                          { value: "Bárbaro", label: "Bárbaro" },
-                          { value: "Bardo", label: "Bardo" },
-                          { value: "Clérigo", label: "Clérigo" },
-                          { value: "Druida", label: "Druida" },
-                          { value: "Guerrero", label: "Guerrero" },
-                          { value: "Monje", label: "Monje" },
-                          { value: "Paladín", label: "Paladín" },
-                          { value: "Explorador", label: "Explorador" },
-                          { value: "Pícaro", label: "Pícaro" },
-                          { value: "Hechicero", label: "Hechicero" },
-                          { value: "Brujo", label: "Brujo" },
-                          { value: "Mago", label: "Mago" },
-                        ]
-                          .filter(
-                            (cls) =>
-                              cls.value === entry.className ||
-                              !newCharacter.multiclass.some(
-                                (c, i) =>
-                                  i !== idx && c.className === cls.value,
+                  <div className="flex items-center mb-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Clase Inicial (Nivel 1)
+                    </label>
+                  </div>
+                  <div className="space-y-2">
+                    {newCharacter.multiclass.map((entry, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <select
+                          value={entry.className}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewCharacter((prev) => ({
+                              ...prev,
+                              multiclass: prev.multiclass.map((c, i) =>
+                                i === idx ? { ...c, className: val } : c,
                               ),
-                          )
-                          .map((cls) => (
-                            <option key={cls.value} value={cls.value}>
-                              {cls.label}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  ))}
+                            }));
+                          }}
+                          className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
+                        >
+                          <option value="">Selecciona una clase</option>
+                          {[
+                            { value: "Bárbaro", label: "Bárbaro" },
+                            { value: "Bardo", label: "Bardo" },
+                            { value: "Clérigo", label: "Clérigo" },
+                            { value: "Druida", label: "Druida" },
+                            { value: "Guerrero", label: "Guerrero" },
+                            { value: "Monje", label: "Monje" },
+                            { value: "Paladín", label: "Paladín" },
+                            { value: "Explorador", label: "Explorador" },
+                            { value: "Pícaro", label: "Pícaro" },
+                            { value: "Hechicero", label: "Hechicero" },
+                            { value: "Brujo", label: "Brujo" },
+                            { value: "Mago", label: "Mago" },
+                          ]
+                            .filter(
+                              (cls) =>
+                                cls.value === entry.className ||
+                                !newCharacter.multiclass.some(
+                                  (c, i) =>
+                                    i !== idx && c.className === cls.value,
+                                ),
+                            )
+                            .map((cls) => (
+                              <option key={cls.value} value={cls.value}>
+                                {cls.label}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+
+
+                <div className="pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-4">
+                    <FileText className="w-3.5 h-3.5 inline-block -mt-0.5 mr-1" /> Nota: Los atributos y equipo inicial se generarán
+                    automáticamente según la clase seleccionada.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowCreateModal(false);
+                        setNewCharacter({
+                          name: "",
+                          race: "",
+                          multiclass: [{ className: "", level: 1 }],
+                          alignment: "",
+                        });
+                      }}
+                      disabled={isCreating}
+                      className="flex-1 px-4 py-2 rounded border border-border bg-secondary text-foreground font-semibold hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={createCharacter}
+                      disabled={isCreating}
+                      className="flex-1 px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCreating ? "Creando..." : "Crear Personaje"}
+                    </button>
+                  </div>
                 </div>
               </div>
-
-
-
-              <div className="pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground mb-4">
-                  <FileText className="w-3.5 h-3.5 inline-block -mt-0.5 mr-1" /> Nota: Los atributos y equipo inicial se generarán
-                  automáticamente según la clase seleccionada.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      setNewCharacter({
-                        name: "",
-                        race: "",
-                        multiclass: [{ className: "", level: 1 }],
-                        alignment: "",
-                      });
-                    }}
-                    disabled={isCreating}
-                    className="flex-1 px-4 py-2 rounded border border-border bg-secondary text-foreground font-semibold hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={createCharacter}
-                    disabled={isCreating}
-                    className="flex-1 px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isCreating ? "Creando..." : "Crear Personaje"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Confirmar Eliminar Personaje */}
       <AnimatePresence>
         {characterToDelete && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-sm bg-[#18130f] border-2 border-[#8B7355] rounded-xl p-6 shadow-2xl text-center relative overflow-hidden"
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 15 }}
+              animate={{
+                scale: 1,
+                opacity: 1,
+                y: 0,
+                transition: { type: "spring", damping: 25, stiffness: 300 },
+              }}
+              exit={{
+                scale: 0.94,
+                opacity: 0,
+                y: 15,
+                transition: { duration: 0.18, ease: "easeInOut" },
+              }}
+              className="w-full max-w-md bg-[#18130f] border-2 border-[#8B7355] rounded-xl p-6 shadow-2xl text-left relative overflow-hidden"
             >
-              <h4 className="text-xl font-serif text-red-400 mb-2 tracking-wide">
-                {characterToDelete.lifeStatus === "muerto" ? "Eliminar Definitivamente" : "Matar Personaje"}
-              </h4>
-              
-              <p className="text-sm text-foreground mb-4">
-                {characterToDelete.lifeStatus === "muerto" ? (
-                  <>¿Estás seguro que quieres eliminar a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span> (Nivel {characterToDelete.multiclass.reduce((acc, c) => acc + c.level, 0)}, {characterToDelete.race})? Esta acción es irreversible y liberará un slot.</>
-                ) : (
-                  <>Si eliminas a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span>, este morirá. Quedará en tu lista de personajes muertos ocupando un slot hasta que lo revivas o lo elimines definitivamente.</>
-                )}
-              </p>
-              
-              <div className="flex justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCharacterToDelete(null)}
-                  disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-semibold rounded border border-[#8B7355]/40 hover:bg-[#8B7355]/10 text-muted-foreground hover:text-foreground transition duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteCharacter}
-                  disabled={isDeleting}
-                  className="px-5 py-2 text-sm font-semibold rounded bg-red-700 hover:bg-red-800 text-white shadow-lg transition duration-200"
-                >
-                  {isDeleting ? "Procesando..." : characterToDelete.lifeStatus === "muerto" ? "Eliminar" : "Matar"}
-                </button>
-              </div>
+              {deleteStep === "confirm" ? (
+                <>
+                  <h4 className="text-xl font-serif text-red-400 mb-2 tracking-wide text-center">
+                    Eliminar Personaje
+                  </h4>
+                  <p className="text-sm text-foreground mb-4 text-center">
+                    ¿Estás seguro que quieres eliminar a <span className="font-bold text-amber-100 font-serif">"{characterToDelete.name}"</span>?
+                    <br /><br />
+                    <span className="text-red-300 font-semibold">Esta opción es permanente e irreversible y el personaje NO se podrá revivir.</span>
+                    <br /><br />
+                    Al eliminarlo, su slot quedará liberado inmediatamente para crear un nuevo personaje.
+                  </p>
+                  <div className="flex justify-center gap-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setCharacterToDelete(null)}
+                      disabled={isDeleting}
+                      className="px-4 py-2 text-sm font-semibold rounded border border-[#8B7355]/40 hover:bg-[#8B7355]/10 text-muted-foreground hover:text-foreground transition duration-500"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const itemCount = characterToDelete.bag?.items?.length ?? 0;
+                        if (itemCount > 0) {
+                          setDeleteStep("transfer");
+                        } else {
+                          handleDeleteCharacter("none");
+                        }
+                      }}
+                      disabled={isDeleting}
+                      className="px-5 py-2 text-sm font-semibold rounded bg-red-700 hover:bg-red-800 text-white shadow-lg transition duration-1100"
+                    >
+                      Continuar para Eliminar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h4 className="text-xl font-serif text-[#D4AF37] mb-2 tracking-wide text-center">
+                    Transferencia de Objetos
+                  </h4>
+                  <p className="text-sm text-foreground mb-4">
+                    <span className="font-bold text-amber-100">"{characterToDelete.name}"</span> tiene <span className="font-bold text-yellow-400">{characterToDelete.bag?.items?.length ?? 0}</span> objeto(s) en su bolsa. ¿A dónde deseas enviarlos antes de eliminar al personaje?
+                  </p>
+
+                  <div className="space-y-3 my-4">
+                    {/* Opción 1: Otro personaje */}
+                    {(profile?.characters ?? []).filter(c => c.id !== characterToDelete.id).length > 0 && (
+                      <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${transferTarget.type === "character" ? "border-[#D4AF37] bg-[#D4AF37]/10" : "border-border/60 bg-secondary/20"}`}>
+                        <input
+                          type="radio"
+                          name="transferTarget"
+                          checked={transferTarget.type === "character"}
+                          onChange={() => {
+                            const otherChars = (profile?.characters ?? []).filter(c => c.id !== characterToDelete.id);
+                            setTransferTarget({ type: "character", targetId: otherChars[0]?.id });
+                          }}
+                          className="accent-[#D4AF37]"
+                        />
+                        <div className="flex-1 text-sm">
+                          <p className="font-semibold text-foreground">Enviar a otro personaje</p>
+                          {transferTarget.type === "character" && (
+                            <select
+                              value={transferTarget.targetId}
+                              onChange={(e) => setTransferTarget({ type: "character", targetId: Number(e.target.value) })}
+                              className="mt-2 w-full p-1.5 rounded bg-background border border-[#8B7355] text-sm text-foreground focus:outline-none"
+                            >
+                              {(profile?.characters ?? []).filter(c => c.id !== characterToDelete.id).map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.race})</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </label>
+                    )}
+
+                    {/* Opción 2: Gremio */}
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${transferTarget.type === "guild" ? "border-[#D4AF37] bg-[#D4AF37]/10" : "border-border/60 bg-secondary/20"}`}>
+                      <input
+                        type="radio"
+                        name="transferTarget"
+                        checked={transferTarget.type === "guild"}
+                        onChange={() => setTransferTarget({ type: "guild" })}
+                        className="accent-[#D4AF37]"
+                      />
+                      <div className="text-sm">
+                        <p className="font-semibold text-foreground">Enviar a la Bóveda del Gremio</p>
+                        <p className="text-xs text-muted-foreground">Si estás en un gremio, los objetos irán al baúl.</p>
+                      </div>
+                    </label>
+
+                    {/* Opción 3: Descartar */}
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${transferTarget.type === "none" ? "border-red-500 bg-red-500/10" : "border-border/60 bg-secondary/20"}`}>
+                      <input
+                        type="radio"
+                        name="transferTarget"
+                        checked={transferTarget.type === "none"}
+                        onChange={() => setTransferTarget({ type: "none" })}
+                        className="accent-red-500"
+                      />
+                      <div className="text-sm">
+                        <p className="font-semibold text-red-300">No transferir (descartar objetos)</p>
+                        <p className="text-xs text-muted-foreground">Los objetos se perderán al eliminar el personaje.</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-center gap-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep("confirm")}
+                      disabled={isDeleting}
+                      className="px-4 py-2 text-sm font-semibold rounded border border-[#8B7355]/40 hover:bg-[#8B7355]/10 text-muted-foreground hover:text-foreground transition duration-200"
+                    >
+                      Atrás
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCharacter(transferTarget.type, transferTarget.targetId)}
+                      disabled={isDeleting}
+                      className="px-5 py-2 text-sm font-semibold rounded bg-red-700 hover:bg-red-800 text-white shadow-lg transition duration-200"
+                    >
+                      {isDeleting ? "Procesando..." : "Confirmar Eliminación"}
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -75,7 +75,7 @@ export default function SalaPage() {
     if (!partidaId) return;
     try {
       localStorage.setItem(`sala-eventos-${partidaId}`, JSON.stringify(eventos));
-    } catch {}
+    } catch { }
   }, [eventos, partidaId]);
 
   // Supabase Realtime channel
@@ -94,7 +94,7 @@ export default function SalaPage() {
         setEventos((prev) => [...prev, payload]);
       })
       .on("broadcast", { event: "partida_cerrada" }, () => {
-        try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
+        try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
         if (esAdminRef.current) {
           router.push("/partidas");
         } else {
@@ -111,14 +111,14 @@ export default function SalaPage() {
             prev.map((p) =>
               p.personajeId === payload.personajeId
                 ? {
-                    ...p,
-                    extremidades: {
-                      ...(p.extremidades ?? {}),
-                      ...(payload.desmembrado
-                        ? { [payload.miembro]: false }
-                        : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
-                    },
-                  }
+                  ...p,
+                  extremidades: {
+                    ...(p.extremidades ?? {}),
+                    ...(payload.desmembrado
+                      ? { [payload.miembro]: false }
+                      : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
+                  },
+                }
                 : p,
             ),
           );
@@ -142,7 +142,7 @@ export default function SalaPage() {
     });
 
     if (ev.tipo === "partida_cerrada") {
-      try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch {}
+      try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
       if (esAdmin) {
         router.push("/partidas");
       } else {
@@ -162,11 +162,11 @@ export default function SalaPage() {
         prev.map((p) =>
           p.personajeId === ev.personajeId
             ? {
-                ...p,
-                extremidades: ev.desmembrado
-                  ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
-                  : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
-              }
+              ...p,
+              extremidades: ev.desmembrado
+                ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
+                : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
+            }
             : p,
         ),
       );
@@ -183,10 +183,10 @@ export default function SalaPage() {
 
   const mySessionItems = myPersonajeId != null
     ? eventos.filter(
-        (ev) =>
-          (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
-          (ev as any).personajeId === myPersonajeId,
-      )
+      (ev) =>
+        (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
+        (ev as any).personajeId === myPersonajeId,
+    )
     : [];
 
   if (isLoading) {
@@ -362,7 +362,7 @@ export default function SalaPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/perfil")}
+                onClick={() => router.push("/profile")}
                 className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
               >
                 <span className="flex items-center justify-center gap-1.5"><Home className="w-4 h-4" /> Pagar posada</span>

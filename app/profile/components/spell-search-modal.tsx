@@ -148,7 +148,7 @@ const SpellCard = ({
         </h4>
         <div className="flex items-center gap-1 shrink-0">
           {spell.description && (
-            <Popover.Root>
+            <Popover.Root modal={false}>
               <Popover.Trigger asChild>
                 <button
                   type="button"
@@ -164,14 +164,16 @@ const SpellCard = ({
                   side="top"
                   sideOffset={8}
                   onClick={(e) => e.stopPropagation()}
-                  className="z-[60] w-[280px] max-w-[90vw] max-h-[250px] overflow-y-auto p-3 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  className="z-[60] w-[320px] sm:w-[350px] max-w-[90vw] max-h-[280px] overflow-y-auto overscroll-contain p-3.5 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 pointer-events-auto"
                 >
                   <div className="flex flex-col gap-2">
                     <div className="border-b border-[#8B7355]/20 pb-1.5">
                       <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.nombre}</span>
                     </div>
                     <div 
-                      className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed"
+                      className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed select-text"
                       dangerouslySetInnerHTML={{ __html: spell.description }} 
                     />
                   </div>
@@ -181,7 +183,7 @@ const SpellCard = ({
             </Popover.Root>
           )}
           <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/40 border border-[#8B7355]/30 text-muted-foreground uppercase">
-            Nv. {spell.nivel}
+            {spell.nivel === 0 ? "Truco" : `Nv. ${spell.nivel}`}
           </span>
         </div>
       </div>

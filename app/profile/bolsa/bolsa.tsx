@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import FantasyAlert from "@/components/ui/fantasy-alert";
-import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
+import { AnimatePresence, motion } from "framer-motion";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
 
@@ -334,6 +335,7 @@ function SlotButton({
   onSelectCapeSocket,
   readOnly = false,
   onReadOnlyAttempt,
+  layoutMode = "absolute",
 }: {
   slotKey: SlotKey;
   item: Item | null;
@@ -349,6 +351,7 @@ function SlotButton({
   onSelectCapeSocket?: (socketIndex: number) => void;
   readOnly?: boolean;
   onReadOnlyAttempt?: () => void;
+  layoutMode?: "absolute" | "grid";
 }) {
   const cfg = SLOT_CONFIG[slotKey];
   const isWeaponSlot = slotKey === "manoizq" || slotKey === "manoderecha";
@@ -357,6 +360,7 @@ function SlotButton({
   const unlockedCapeSockets = getUnlockedCapeSocketCount(capeLevel ?? 0);
 
   const positionStyle: React.CSSProperties = (() => {
+    if (layoutMode === "grid") return {};
     const base: React.CSSProperties = { position: "absolute" };
     const positions: Record<SlotKey, React.CSSProperties> = {
       cabeza:      { top: "6px",   left: "50%", transform: "translateX(-50%)" },
@@ -378,6 +382,7 @@ function SlotButton({
 
   return (
     <button
+      type="button"
       onClick={() => {
         if (readOnly) {
           onReadOnlyAttempt?.();
@@ -388,7 +393,9 @@ function SlotButton({
       title={item ? item.name : cfg.label}
       style={positionStyle}
       className={[
-        isWeaponSlot || isCapeSlot
+        layoutMode === "grid"
+          ? "w-full min-h-[78px] flex flex-col items-center justify-center gap-1.5 p-2.5"
+          : isWeaponSlot || isCapeSlot
           ? "w-36 h-72 flex flex-col items-center justify-start gap-3 pt-8"
           : "w-15 h-13 flex flex-col items-center justify-center gap-0.5",
         "rounded-lg border text-center transition-all duration-200",
@@ -400,14 +407,14 @@ function SlotButton({
           : "border-[#3a3020] bg-[#141210] hover:border-[#8B7355] hover:bg-[#2a2518]",
       ].join(" ")}
     >
-      <span className={isWeaponSlot || isCapeSlot ? "shrink-0 flex items-center justify-center text-[#D4AF37]" : "shrink-0 flex items-center justify-center text-[#D4AF37]"}>
-        {getIconForString(item ? item.name : cfg.icon, isWeaponSlot || isCapeSlot ? "w-10 h-10" : "w-6 h-6", cfg.icon)}
+      <span className={isWeaponSlot || isCapeSlot && layoutMode !== "grid" ? "shrink-0 flex items-center justify-center text-[#D4AF37]" : "shrink-0 flex items-center justify-center text-[#D4AF37]"}>
+        {getIconForString(item ? item.name : cfg.icon, isWeaponSlot || isCapeSlot ? (layoutMode === "grid" ? "w-7 h-7" : "w-10 h-10") : "w-6 h-6", cfg.icon)}
       </span>
       <span
         className={
-          isWeaponSlot || isCapeSlot
+          (isWeaponSlot || isCapeSlot) && layoutMode !== "grid"
             ? "text-sm text-[#8a7a5a] tracking-[0.18em] uppercase leading-none shrink-0"
-            : "text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none"
+            : "text-[9px] text-[#8a7a5a] tracking-wide uppercase leading-none font-semibold"
         }
       >
         {cfg.label}
@@ -415,116 +422,120 @@ function SlotButton({
       {item && (
         <span
           className={
-            isWeaponSlot || isCapeSlot
-              ? "block w-full max-w-28 shrink-0 text-center text-sm text-[#D4AF37] leading-snug px-2 overflow-hidden text-ellipsis whitespace-nowrap"
-              : "text-[8px] text-[#D4AF37] leading-none max-w-13 truncate px-0.5"
+            (isWeaponSlot || isCapeSlot) && layoutMode !== "grid"
+              ? "block w-full max-w-28 shrink-0 text-center text-sm text-[#D4AF37] leading-snug px-2 overflow-hidden text-ellipsis whitespace-nowrap font-medium"
+              : "text-[10px] text-[#D4AF37] leading-tight max-w-full truncate px-0.5 font-medium"
           }
         >
           {item.name}
         </span>
       )}
       {isWeaponSlot && (
-        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
-          <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
+        <div className={layoutMode === "grid" ? "mt-1 w-full rounded border border-[#4a3e22] bg-[#0f0e0c]/80 p-1.5 flex flex-col gap-1" : "mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5"}>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-[#8a7a5a]">
             Nv. {weaponLevel ?? 0} · {unlockedWeaponSockets}/3
           </span>
-          {[0, 1, 2].map((i) => {
-            const unlocked = i < unlockedWeaponSockets;
-            const socketItem = weaponSocketItems?.[i] ?? null;
-            const isSelected = weaponSelectedSocketIndex === i;
+          <div className={layoutMode === "grid" ? "grid grid-cols-3 gap-1 w-full" : "flex flex-col gap-1.5"}>
+            {[0, 1, 2].map((i) => {
+              const unlocked = i < unlockedWeaponSockets;
+              const socketItem = weaponSocketItems?.[i] ?? null;
+              const isSelected = weaponSelectedSocketIndex === i;
 
-            return (
-              <div
-                key={`${slotKey}-socket-${i}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (readOnly) {
-                    onReadOnlyAttempt?.();
-                    return;
+              return (
+                <div
+                  key={`${slotKey}-socket-${i}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (readOnly) {
+                      onReadOnlyAttempt?.();
+                      return;
+                    }
+                    if (!unlocked) {
+                      return;
+                    }
+                    onSelectWeaponSocket?.(slotKey, i);
+                  }}
+                  className={[
+                    "h-7 rounded border text-[8px] flex items-center justify-center px-1 text-center truncate",
+                    unlocked
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-45",
+                    isSelected
+                      ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
+                      : unlocked
+                      ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
+                      : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
+                  ].join(" ")}
+                  title={
+                    unlocked
+                      ? socketItem
+                        ? socketItem.name
+                        : "Slot vacío"
+                      : "Bloqueado por nivel de arma"
                   }
-                  if (!unlocked) {
-                    return;
-                  }
-                  onSelectWeaponSocket?.(slotKey, i);
-                }}
-                className={[
-                  "h-8 rounded border text-[9px] flex items-center justify-center px-1 text-center",
-                  unlocked
-                    ? "cursor-pointer"
-                    : "cursor-not-allowed opacity-45",
-                  isSelected
-                    ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
-                    : unlocked
-                    ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
-                    : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
-                ].join(" ")}
-                title={
-                  unlocked
-                    ? socketItem
-                      ? socketItem.name
-                      : "Slot vacío"
-                    : "Bloqueado por nivel de arma"
-                }
-              >
-                {!unlocked
-                  ? `Slot ${i + 1} bloqueado`
-                  : socketItem
-                  ? socketItem.name
-                  : `Slot ${i + 1} vacío`}
-              </div>
-            );
-          })}
+                >
+                  {!unlocked
+                    ? `Bloq.`
+                    : socketItem
+                    ? socketItem.name
+                    : `Vacío`}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       {isCapeSlot && (
-        <div className="mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5">
-          <span className="text-[10px] tracking-[0.14em] uppercase text-[#8a7a5a]">
+        <div className={layoutMode === "grid" ? "mt-1 w-full rounded border border-[#4a3e22] bg-[#0f0e0c]/80 p-1.5 flex flex-col gap-1" : "mt-auto mb-4 w-28 shrink-0 rounded-md border border-[#4a3e22] bg-[#0f0e0c]/70 px-2 py-2 flex flex-col gap-1.5"}>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-[#8a7a5a]">
             Nv. {capeLevel ?? 0} · {unlockedCapeSockets}/3
           </span>
-          {[0, 1, 2].map((i) => {
-            const unlocked = i < unlockedCapeSockets;
-            const socketItem = capeSocketItems?.[i] ?? null;
-            const isSelected = capeSelectedSocketIndex === i;
+          <div className={layoutMode === "grid" ? "grid grid-cols-3 gap-1 w-full" : "flex flex-col gap-1.5"}>
+            {[0, 1, 2].map((i) => {
+              const unlocked = i < unlockedCapeSockets;
+              const socketItem = capeSocketItems?.[i] ?? null;
+              const isSelected = capeSelectedSocketIndex === i;
 
-            return (
-              <div
-                key={`${slotKey}-cape-socket-${i}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (readOnly) {
-                    onReadOnlyAttempt?.();
-                    return;
+              return (
+                <div
+                  key={`${slotKey}-cape-socket-${i}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (readOnly) {
+                      onReadOnlyAttempt?.();
+                      return;
+                    }
+                    if (!unlocked) return;
+                    onSelectCapeSocket?.(i);
+                  }}
+                  className={[
+                    "h-7 rounded border text-[8px] flex items-center justify-center px-1 text-center truncate",
+                    unlocked
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-45",
+                    isSelected
+                      ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
+                      : unlocked
+                      ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
+                      : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
+                  ].join(" ")}
+                  title={
+                    unlocked
+                      ? socketItem
+                        ? socketItem.name
+                        : "Slot vacío"
+                      : "Bloqueado por nivel de capa"
                   }
-                  if (!unlocked) return;
-                  onSelectCapeSocket?.(i);
-                }}
-                className={[
-                  "h-8 rounded border text-[9px] flex items-center justify-center px-1 text-center",
-                  unlocked
-                    ? "cursor-pointer"
-                    : "cursor-not-allowed opacity-45",
-                  isSelected
-                    ? "border-[#D4AF37] bg-[#1e1a0a] text-[#D4AF37]"
-                    : unlocked
-                    ? "border-[#6b5a2a] bg-black/20 text-[#cbb58a] hover:border-[#8B7355]"
-                    : "border-[#3a3020] bg-black/20 text-[#6b5a2a]",
-                ].join(" ")}
-                title={
-                  unlocked
-                    ? socketItem
-                      ? socketItem.name
-                      : "Slot vacío"
-                    : "Bloqueado por nivel de capa"
-                }
-              >
-                {!unlocked
-                  ? `Slot ${i + 1} bloqueado`
-                  : socketItem
-                  ? socketItem.name
-                  : `Slot ${i + 1} vacío`}
-              </div>
-            );
-          })}
+                >
+                  {!unlocked
+                    ? `Bloq.`
+                    : socketItem
+                    ? socketItem.name
+                    : `Vacío`}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </button>
@@ -562,8 +573,6 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
   const equipped = buildEquippedMap(character);
   const weaponSockets = buildWeaponSockets(character);
   const capeSockets = buildCapeSockets(character);
-  const bagItems = character.bag.items;
-  const emptySlots = character.bag.maxSlots - bagItems.length;
   const [noticeId, setNoticeId] = useState(0);
   const notifyOpenBag = () => {
     setNoticeId((prev) => prev + 1);
@@ -595,108 +604,107 @@ export function EquipmentPreview({ character }: EquipmentPreviewProps) {
           }}
         >
           <h3 className="text-xs tracking-[0.2em] uppercase text-[#D4AF37]">
-            Equipo y Bolsa
+            Equipo del Personaje
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[700px,1fr] gap-0">
-          <div
-            className="flex flex-col items-center gap-3 p-4 border-b xl:border-b-0 xl:border-r border-[#2a2518]"
-            style={{ background: "rgba(0,0,0,0.15)" }}
-          >
-            <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
-              Personaje
-            </span>
+        <div
+          className="flex flex-col items-center gap-3 p-4 w-full overflow-hidden"
+          style={{ background: "rgba(0,0,0,0.15)" }}
+        >
+          <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
+            Personaje
+          </span>
 
-            <div className="relative w-[280px] h-[380px] translate-x-[70px] xl:translate-x-[120px] scale-90 sm:scale-100">
-              <svg
-                viewBox="0 0 280 380"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="absolute inset-0 w-full h-full"
-              >
-                <defs>
-                  <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2a2618" />
-                    <stop offset="100%" stopColor="#1a1610" />
-                  </linearGradient>
-                </defs>
-                <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-                <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
-                <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-                <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-                <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
-              </svg>
+          {/* Desktop Figure (<xl hidden) */}
+          <div className="hidden xl:block relative w-[280px] h-[380px] translate-x-[120px]">
+            <svg
+              viewBox="0 0 280 380"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute inset-0 w-full h-full"
+            >
+              <defs>
+                <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2a2618" />
+                  <stop offset="100%" stopColor="#1a1610" />
+                </linearGradient>
+              </defs>
+              <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+              <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
+              <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
+              <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
+              <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
+            </svg>
 
-              {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
-                const weaponSlot =
-                  key === "manoizq" || key === "manoderecha" ? key : null;
+            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
+              const weaponSlot =
+                key === "manoizq" || key === "manoderecha" ? key : null;
 
-                return (
-                  <SlotButton
-                    key={key}
-                    slotKey={key}
-                    item={equipped[key]}
-                    selected={false}
-                    onSelect={() => {}}
-                    weaponLevel={
-                      weaponSlot
-                        ? getWeaponLevelForSlot(character, equipped, weaponSlot)
-                        : undefined
-                    }
-                    weaponSocketItems={
-                      weaponSlot ? weaponSockets[weaponSlot] : undefined
-                    }
-                    weaponSelectedSocketIndex={null}
-                    capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
-                    capeSocketItems={key === "capa" ? capeSockets : undefined}
-                    capeSelectedSocketIndex={null}
-                    readOnly
-                    onReadOnlyAttempt={notifyOpenBag}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355]">
-                ⚜ Bolsa
-              </h3>
-              <span className="text-xs text-[#8a7a5a]">
-                {bagItems.length} / {character.bag.maxSlots} espacios
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
-              {bagItems.map((item, idx) => (
-                <BagItemCard
-                  key={`${item.name}-${idx}`}
-                  item={item}
-                  selectedSlot={null}
-                  onEquip={() => {}}
+              return (
+                <SlotButton
+                  key={key}
+                  slotKey={key}
+                  item={equipped[key]}
+                  selected={false}
+                  onSelect={() => {}}
+                  weaponLevel={
+                    weaponSlot
+                      ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                      : undefined
+                  }
+                  weaponSocketItems={
+                    weaponSlot ? weaponSockets[weaponSlot] : undefined
+                  }
+                  weaponSelectedSocketIndex={null}
+                  capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                  capeSocketItems={key === "capa" ? capeSockets : undefined}
+                  capeSelectedSocketIndex={null}
                   readOnly
                   onReadOnlyAttempt={notifyOpenBag}
                 />
-              ))}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div
-                  key={`empty-${i}`}
-                  className="flex items-center justify-center min-h-20 rounded-lg border border-dashed border-[#2a2518]/60"
-                  style={{ background: "rgba(20,18,16,0.4)" }}
-                >
-                  <span className="text-[10px] text-[#3a3020]">Vacío</span>
-                </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile Grid (<xl) */}
+          <div className="xl:hidden w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
+              const weaponSlot =
+                key === "manoizq" || key === "manoderecha" ? key : null;
+
+              return (
+                <SlotButton
+                  key={key}
+                  slotKey={key}
+                  item={equipped[key]}
+                  selected={false}
+                  onSelect={() => {}}
+                  weaponLevel={
+                    weaponSlot
+                      ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                      : undefined
+                  }
+                  weaponSocketItems={
+                    weaponSlot ? weaponSockets[weaponSlot] : undefined
+                  }
+                  weaponSelectedSocketIndex={null}
+                  capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                  capeSocketItems={key === "capa" ? capeSockets : undefined}
+                  capeSelectedSocketIndex={null}
+                  readOnly
+                  onReadOnlyAttempt={notifyOpenBag}
+                  layoutMode="grid"
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -866,6 +874,12 @@ export default function EquipmentModal({
   const [selectedTargetCharacterId, setSelectedTargetCharacterId] = useState<number | null>(null);
   const [isMoving, setIsMoving] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (character?.id) {
+      localStorage.setItem(`mc_bag_last_count_${character.id}`, bagItems.length.toString());
+    }
+  }, [character?.id, bagItems.length]);
 
   const selectedBagItem =
     selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
@@ -1509,16 +1523,37 @@ export default function EquipmentModal({
       `}</style>
 
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/40"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 backdrop-blur-md bg-black/60 overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
       >
         {/* Modal */}
-        <div
-          className="relative w-full max-w-412.5 rounded-xl flex flex-col overflow-hidden max-h-[150vh]"
+        <motion.div
+          initial={{ scale: 0.94, opacity: 0, y: 15 }}
+          animate={{
+            scale: 1,
+            opacity: 1,
+            y: 0,
+            transition: { type: "spring", damping: 26, stiffness: 320 },
+          }}
+          exit={{
+            scale: 0.94,
+            opacity: 0,
+            y: 15,
+            transition: { duration: 0.18, ease: "easeInOut" },
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-412.5 rounded-xl flex flex-col overflow-hidden max-h-[92vh] my-auto shadow-2xl border border-[#8B7355]"
           style={{
             background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
-            border: "1px solid #8B7355",
           }}
         >
           {/* ── Header ── */}
@@ -1530,114 +1565,30 @@ export default function EquipmentModal({
             }}
           >
             <div>
-              <h2 className="text-sm tracking-[0.2em] uppercase text-[#D4AF37] flex items-center gap-2">
+              <h2 className="text-sm tracking-[0.2em] uppercase text-[#D4AF37] flex items-center gap-2 font-bold">
                 <Swords className="w-4 h-4" /> Equipo de {character.name}
               </h2>
               <p className="text-xs text-[#8a7a5a] mt-0.5">
-                Haz clic en un slot del personaje para equipar o desequipar objetos
+                Haz clic en un slot para equipar o desequipar objetos
               </p>
             </div>
             <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded text-[#8a7a5a] hover:text-[#e8d8b0] hover:bg-white/5 transition-all text-lg"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-[#8a7a5a] hover:text-[#e8d8b0] hover:bg-white/10 transition-all cursor-pointer z-20"
+              title="Cerrar bolsa"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* ── Body ── */}
-          <div className="flex overflow-hidden flex-1 min-h-0">
-            {/* LEFT: Character figure */}
-            <div
-              className="w-225 shrink-0 flex flex-col items-center gap-3 p-4 border-r border-[#2a2518] overflow-y-auto"
-              style={{ background: "rgba(0,0,0,0.15)" }}
-            >
-              <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
-                Personaje
-              </span>
-
-              {/* Figure */}
-              <div className="relative w-65 h-92.5 md:ml-34 xl:ml-72">
-                {/* SVG silhouette */}
-                <svg
-                  viewBox="0 0 280 380"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="absolute inset-0 w-full h-full"
-                >
-                  <defs>
-                    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2a2618" />
-                      <stop offset="100%" stopColor="#1a1610" />
-                    </linearGradient>
-                  </defs>
-                  {/* Head */}
-                  <circle cx="140" cy="62" r="34" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
-                  {/* Neck */}
-                  <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1" />
-                  {/* Torso */}
-                  <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
-                  {/* Left arm */}
-                  <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Right arm */}
-                  <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Hands */}
-                  <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Legs */}
-                  <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Feet */}
-                  <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Center line */}
-                  <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
-                </svg>
-
-                {/* Slot buttons */}
-                {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
-                  (() => {
-                    const selectedBagItem =
-                      selectedBagIndex !== null ? bagItems[selectedBagIndex] : null;
-                    const isCompatibleWithSelectedBagItem =
-                      !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
-                    const weaponSlot =
-                      key === "manoizq" || key === "manoderecha" ? key : null;
-
-                    return (
-                  <SlotButton
-                    key={key}
-                    slotKey={key}
-                    item={equipped[key]}
-                    selected={selectedSlot === key || isCompatibleWithSelectedBagItem}
-                    onSelect={selectSlot}
-                    weaponLevel={
-                      weaponSlot
-                        ? getWeaponLevelForSlot(character, equipped, weaponSlot)
-                        : undefined
-                    }
-                    weaponSocketItems={
-                      weaponSlot ? weaponSockets[weaponSlot] : undefined
-                    }
-                    weaponSelectedSocketIndex={
-                      weaponSlot && selectedWeaponSocket?.weaponSlot === weaponSlot
-                        ? selectedWeaponSocket.socketIndex
-                        : null
-                    }
-                    onSelectWeaponSocket={selectWeaponSocket}
-                    capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
-                    capeSocketItems={key === "capa" ? capeSockets : undefined}
-                    capeSelectedSocketIndex={key === "capa" ? selectedCapeSocket : null}
-                    onSelectCapeSocket={selectCapeSocket}
-                  />
-                    );
-                  })()
-                ))}
-              </div>
-            </div>
-
-            {/* RIGHT: Bag */}
-            <div className="w-140 shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0">
+          <div className="flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden flex-1 min-h-0">
+            {/* LEFT / TOP: Bag */}
+            <div className="w-full xl:w-140 shrink-0 flex flex-col p-4 gap-3 overflow-y-auto min-w-0 border-b xl:border-b-0 xl:border-r border-[#2a2518]">
               {/* Bag header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-xs tracking-[0.2em] uppercase text-[#8B7355] flex items-center gap-1.5">
@@ -1731,6 +1682,132 @@ export default function EquipmentModal({
                 ))}
               </div>
             </div>
+
+            {/* RIGHT / BOTTOM: Character figure */}
+            <div
+              className="w-full xl:w-225 shrink-0 flex flex-col items-center gap-3 p-4 overflow-y-auto"
+              style={{ background: "rgba(0,0,0,0.15)" }}
+            >
+              <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-semibold">
+                Slots de Personaje
+              </span>
+
+              {/* Desktop Figure (<xl hidden) */}
+              <div className="hidden xl:block relative w-65 h-92.5 md:ml-34 xl:ml-72">
+                {/* SVG silhouette */}
+                <svg
+                  viewBox="0 0 280 380"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="absolute inset-0 w-full h-full"
+                >
+                  <defs>
+                    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2a2618" />
+                      <stop offset="100%" stopColor="#1a1610" />
+                    </linearGradient>
+                  </defs>
+                  {/* Head */}
+                  <circle cx="140" cy="62" r="34" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
+                  {/* Neck */}
+                  <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1" />
+                  {/* Torso */}
+                  <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
+                  {/* Left arm */}
+                  <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  {/* Right arm */}
+                  <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  {/* Hands */}
+                  <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  {/* Legs */}
+                  <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  {/* Feet */}
+                  <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
+                  {/* Center line */}
+                  <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
+                </svg>
+
+                {/* Slot buttons */}
+                {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
+                  (() => {
+                    const weaponSlot =
+                      key === "manoizq" || key === "manoderecha" ? key : null;
+                    const isCompatible =
+                      !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
+                    return (
+                      <SlotButton
+                        key={key}
+                        slotKey={key}
+                        item={equipped[key]}
+                        selected={selectedSlot === key || isCompatible}
+                        onSelect={() => selectSlot(key)}
+                        weaponLevel={
+                          weaponSlot
+                            ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                            : undefined
+                        }
+                        weaponSocketItems={
+                          weaponSlot ? weaponSockets[weaponSlot] : undefined
+                        }
+                        weaponSelectedSocketIndex={
+                          weaponSlot && selectedWeaponSocket?.weaponSlot === weaponSlot
+                            ? selectedWeaponSocket.socketIndex
+                            : null
+                        }
+                        onSelectWeaponSocket={selectWeaponSocket}
+                        capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                        capeSocketItems={key === "capa" ? capeSockets : undefined}
+                        capeSelectedSocketIndex={key === "capa" ? selectedCapeSocket : null}
+                        onSelectCapeSocket={selectCapeSocket}
+                      />
+                    );
+                  })()
+                ))}
+              </div>
+
+              {/* Mobile Grid (<xl) */}
+              <div className="xl:hidden w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 pt-1">
+                {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
+                  (() => {
+                    const weaponSlot =
+                      key === "manoizq" || key === "manoderecha" ? key : null;
+                    const isCompatible =
+                      !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
+                    return (
+                      <SlotButton
+                        key={key}
+                        slotKey={key}
+                        item={equipped[key]}
+                        selected={selectedSlot === key || isCompatible}
+                        onSelect={() => selectSlot(key)}
+                        weaponLevel={
+                          weaponSlot
+                            ? getWeaponLevelForSlot(character, equipped, weaponSlot)
+                            : undefined
+                        }
+                        weaponSocketItems={
+                          weaponSlot ? weaponSockets[weaponSlot] : undefined
+                        }
+                        weaponSelectedSocketIndex={
+                          weaponSlot && selectedWeaponSocket?.weaponSlot === weaponSlot
+                            ? selectedWeaponSocket.socketIndex
+                            : null
+                        }
+                        onSelectWeaponSocket={selectWeaponSocket}
+                        capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
+                        capeSocketItems={key === "capa" ? capeSockets : undefined}
+                        capeSelectedSocketIndex={key === "capa" ? selectedCapeSocket : null}
+                        onSelectCapeSocket={selectCapeSocket}
+                        layoutMode="grid"
+                      />
+                    );
+                  })()
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* ── Footer ── */}
@@ -1759,8 +1836,8 @@ export default function EquipmentModal({
               {isSaving ? "Guardando..." : "Guardar Cambios"}
             </button>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {showSellConfirm && selectedBagItem && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

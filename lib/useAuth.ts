@@ -14,7 +14,6 @@ export interface User {
   oro: number;
   isAdmin: boolean;
   rolSistema: string;
-  nivel20Url: string | null;
 }
 
 export function useAuth() {
@@ -83,11 +82,10 @@ export function useAuth() {
     return () => window.removeEventListener("auth:refresh", handleAuthRefresh);
   }, [user]);
 
-  /** Lee el perfil de la tabla `perfiles` y construye el objeto User */
   async function hydrateProfile(uid: string, email: string) {
     const { data } = await getSupabase()
       .from("perfiles")
-      .select("nombre, rol, nivel, hogar, oro, es_admin, rol_sistema, nivel20_url")
+      .select("nombre, rol, nivel, hogar, oro, es_admin, rol_sistema")
       .eq("id", uid)
       .single();
 
@@ -102,7 +100,6 @@ export function useAuth() {
       isAdmin: data?.es_admin ?? false,
       rolSistema:
         data?.rol_sistema ?? (data?.es_admin ? "admin" : "usuario"),
-      nivel20Url: data?.nivel20_url ?? null,
     });
   }
 

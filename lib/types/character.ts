@@ -67,6 +67,7 @@ export type Character = {
   id: number;
   userId?: string;
   name: string;
+  nivel20Url?: string | null;
   multiclass: ClassEntry[]; // máximo 3 clases
   race: string;
   alignment: string;

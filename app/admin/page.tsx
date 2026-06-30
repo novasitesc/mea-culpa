@@ -2127,6 +2127,7 @@ type Character = {
     sabiduria: number;
     carisma: number;
   } | null;
+  nivel20Url: string | null;
 };
 
 function CharactersFormModal({
@@ -2155,6 +2156,7 @@ function CharactersFormModal({
       sabiduria: number;
       carisma: number;
     };
+    nivel20Url: string;
   } | null>(null);
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -2190,6 +2192,7 @@ function CharactersFormModal({
           raza: editForm.raza,
           clases: editForm.clases,
           estadisticas: editForm.estadisticas,
+          nivel20Url: editForm.nivel20Url,
         }),
       });
 
@@ -2237,6 +2240,29 @@ function CharactersFormModal({
     }
   };
 
+  const deleteCharacter = async (characterId: number, nombre: string) => {
+    if (!confirm(`¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al personaje "${nombre}"?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/characters?characterId=${characterId}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (res.ok) {
+        onToast("Personaje eliminado exitosamente", "success");
+        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
+        if (charsRes.ok) setCharacters(await charsRes.json());
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al eliminar personaje", "error");
+      }
+    } catch (error) {
+      onToast("Error al eliminar personaje", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal title={`Personajes de ${user.name}`} onClose={onClose} maxWidth="max-w-4xl">
       <div className="space-y-4">
@@ -2274,27 +2300,37 @@ function CharactersFormModal({
                       </button>
                     )}
                     {editingChar !== character.id && (
-                    <button
-                      onClick={() => {
-                        setEditingChar(character.id);
-                        setEditForm({
-                          raza: character.raza,
-                          clases: character.clases,
-                          estadisticas: character.estadisticas || {
-                            fuerza: 10,
-                            destreza: 10,
-                            constitucion: 10,
-                            inteligencia: 10,
-                            sabiduria: 10,
-                            carisma: 10,
-                          },
-                        });
-                      }}
-                      className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
-                    >
-                      Editar
-                    </button>
-                  )}
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingChar(character.id);
+                            setEditForm({
+                              raza: character.raza,
+                              clases: character.clases,
+                              estadisticas: character.estadisticas || {
+                                fuerza: 10,
+                                destreza: 10,
+                                constitucion: 10,
+                                inteligencia: 10,
+                                sabiduria: 10,
+                                carisma: 10,
+                              },
+                              nivel20Url: character.nivel20Url ?? "",
+                            });
+                          }}
+                          className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => deleteCharacter(character.id, character.nombre)}
+                          disabled={saving}
+                          className="px-3 py-1.5 bg-destructive hover:bg-destructive/80 text-white text-xs rounded transition-colors disabled:opacity-60"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -2378,6 +2414,19 @@ function CharactersFormModal({
                       </div>
                     </div>
 
+                    {/* Link Nivel20 */}
+                    <FormField label="Link Nivel20">
+                      <input
+                        type="url"
+                        value={editForm.nivel20Url}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, nivel20Url: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="https://nivel20.com/games/..."
+                      />
+                    </FormField>
+
                     {/* Botones */}
                     <div className="flex gap-2 justify-end pt-3 border-t border-border">
                       <button
@@ -2410,6 +2459,10 @@ function CharactersFormModal({
                         .map((c) => `${c.nombre_clase} (Nv.${c.nivel})`)
                         .join(", ")}
                     </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs font-semibold text-[#B8860B]">Nivel20:</span>
+                      <Nivel20Link url={character.nivel20Url} />
+                    </div>
                   </div>
                 )}
               </div>

@@ -285,67 +285,89 @@ export default function SpellsRegistry({
         </div>
 
         {knownSpells.length > 0 ? (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {knownSpells
-              .sort((a, b) => a.spellLevel - b.spellLevel || a.name.localeCompare(b.name))
-              .map((spell, idx) => {
-                const catalogInfo = catalogByName.get(spell.name.toLowerCase().trim());
-                const colorClass = catalogInfo
-                  ? (schoolColors[catalogInfo.escuela] ?? "text-blue-300")
-                  : "text-blue-300";
+          <div className="space-y-4">
+            {Array.from(new Set(knownSpells.map((s) => s.spellLevel)))
+              .sort((a, b) => a - b)
+              .map((level) => {
+                const spellsInLevel = knownSpells
+                  .filter((s) => s.spellLevel === level)
+                  .sort((a, b) => a.name.localeCompare(b.name));
 
                 return (
-                  <li
-                    key={idx}
-                    className="relative overflow-hidden px-3 py-2 text-sm bg-[#1a1510] border border-[#8B7355]/20 hover:border-[#D4AF37]/40 rounded-md flex items-center justify-between gap-2 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <Sparkles className={`w-3.5 h-3.5 shrink-0 ${colorClass}`} /> 
-                      <span className="truncate font-medium">{spell.name}</span>
-                      {catalogInfo && (
-                        <span className="text-[10px] text-muted-foreground/70">
-                          {catalogInfo.escuela}
-                        </span>
-                      )}
-                      {catalogInfo?.description && (
-                        <Popover.Root>
-                          <Popover.Trigger asChild>
-                            <button
-                              type="button"
-                              className="p-1 -ml-1 rounded-full text-muted-foreground hover:text-[#D4AF37] hover:bg-white/5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
-                              title="Ver descripción"
-                            >
-                              <Info className="w-3.5 h-3.5" />
-                            </button>
-                          </Popover.Trigger>
-                          <Popover.Portal>
-                            <Popover.Content
-                              side="top"
-                              sideOffset={5}
-                              className="z-[60] w-[280px] max-w-[90vw] max-h-[250px] overflow-y-auto p-3 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-                            >
-                              <div className="flex flex-col gap-2">
-                                <div className="border-b border-[#8B7355]/20 pb-1.5">
-                                  <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.name}</span>
-                                </div>
-                                <div 
-                                  className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed"
-                                  dangerouslySetInnerHTML={{ __html: catalogInfo.description }} 
-                                />
-                              </div>
-                              <Popover.Arrow className="fill-[#8B7355]/40" />
-                            </Popover.Content>
-                          </Popover.Portal>
-                        </Popover.Root>
-                      )}
+                  <div key={level} className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-[#8B7355]/20 pb-1">
+                      <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-wider font-serif">
+                        {level === 0 ? "Trucos" : `Nivel ${level}`}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground bg-black/30 px-1.5 py-0.5 rounded font-mono">
+                        {spellsInLevel.length}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
-                      Nivel {spell.spellLevel}
-                    </span>
-                  </li>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {spellsInLevel.map((spell, idx) => {
+                        const catalogInfo = catalogByName.get(spell.name.toLowerCase().trim());
+                        const colorClass = catalogInfo
+                          ? (schoolColors[catalogInfo.escuela] ?? "text-blue-300")
+                          : "text-blue-300";
+
+                        return (
+                          <li
+                            key={idx}
+                            className="relative overflow-hidden px-3 py-2 text-sm bg-[#1a1510] border border-[#8B7355]/20 hover:border-[#D4AF37]/40 rounded-md flex items-center justify-between gap-2 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${colorClass}`} /> 
+                              <span className="truncate font-medium">{spell.name}</span>
+                              {catalogInfo && (
+                                <span className="text-[10px] text-muted-foreground/70">
+                                  {catalogInfo.escuela}
+                                </span>
+                              )}
+                              {catalogInfo?.description && (
+                                <Popover.Root modal={false}>
+                                  <Popover.Trigger asChild>
+                                    <button
+                                      type="button"
+                                      className="p-1 -ml-1 rounded-full text-muted-foreground hover:text-[#D4AF37] hover:bg-white/5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                                      title="Ver descripción"
+                                    >
+                                      <Info className="w-3.5 h-3.5" />
+                                    </button>
+                                  </Popover.Trigger>
+                                  <Popover.Portal>
+                                    <Popover.Content
+                                      side="top"
+                                      sideOffset={5}
+                                      onWheel={(e) => e.stopPropagation()}
+                                      onTouchMove={(e) => e.stopPropagation()}
+                                      className="z-[60] w-[320px] sm:w-[350px] max-w-[90vw] max-h-[280px] overflow-y-auto overscroll-contain p-3.5 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 pointer-events-auto"
+                                    >
+                                      <div className="flex flex-col gap-2">
+                                        <div className="border-b border-[#8B7355]/20 pb-1.5">
+                                          <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.name}</span>
+                                        </div>
+                                        <div 
+                                          className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed select-text"
+                                          dangerouslySetInnerHTML={{ __html: catalogInfo.description }} 
+                                        />
+                                      </div>
+                                      <Popover.Arrow className="fill-[#8B7355]/40" />
+                                    </Popover.Content>
+                                  </Popover.Portal>
+                                </Popover.Root>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded shrink-0">
+                              {level === 0 ? "Truco" : `Nivel ${level}`}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 );
               })}
-          </ul>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">
             No hay conjuros registrados aún.
@@ -397,7 +419,7 @@ export default function SpellsRegistry({
               {pendingSpells.map((s, i) => (
                 <div key={i} className="flex items-center gap-2 justify-center pb-1.5 border-b border-[#8B7355]/10 last:border-0 last:pb-0">
                   <span className="border-r border-[#8B7355]/20 pr-2 truncate max-w-[120px] text-[#D4AF37] font-semibold">{s.nombre}</span>
-                  <span className="border-r border-[#8B7355]/20 pr-2">Nv. {s.nivel}</span>
+                  <span className="border-r border-[#8B7355]/20 pr-2">{s.nivel === 0 ? "Truco" : `Nv. ${s.nivel}`}</span>
                   <span className="truncate">{s.escuela}</span>
                 </div>
               ))}
