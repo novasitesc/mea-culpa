@@ -354,7 +354,7 @@ export default function SalaPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/perfil")}
+                onClick={() => router.push("/profile")}
                 className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
               >
                 🏠 Pagar posada
