@@ -28,15 +28,34 @@ export function useAuth() {
     const supabase = getSupabase();
 
     async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      if (!ignore && session?.access_token) setToken(session.access_token);
-      if (!ignore && session?.user) {
-        await hydrateProfile(session.user.id, session.user.email ?? "");
+        // getSession() puede fallar si el refresh token almacenado es inválido
+        // (sesión revocada, localStorage corrupto, etc.). En ese caso limpiamos
+        // la sesión local para que el usuario quede como no autenticado.
+        if (error) {
+          console.warn("[useAuth] Error al obtener sesión:", error.message);
+          if (error.message.toLowerCase().includes("refresh token")) {
+            await supabase.auth.signOut({ scope: "local" });
+          }
+          if (!ignore) setIsLoading(false);
+          return;
+        }
+
+        if (!ignore && session?.access_token) setToken(session.access_token);
+        if (!ignore && session?.user) {
+          await hydrateProfile(session.user.id, session.user.email ?? "");
+        }
+        if (!ignore) setIsLoading(false);
+      } catch (err) {
+        // Captura errores de red u otros inesperados durante el refresh
+        console.warn("[useAuth] Excepción al cargar sesión:", err);
+        if (!ignore) setIsLoading(false);
       }
-      if (!ignore) setIsLoading(false);
     }
 
     loadSession();

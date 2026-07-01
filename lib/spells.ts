@@ -164,11 +164,6 @@ export function getWizardMinSpells(level: number): number {
   return 6 + (Math.min(level, 20) - 1) * 2;
 }
 
-// Distribución mínima garantizada del Mago por nivel de conjuro
-export function getWizardDistribution(): Record<number, number> {
-  return { 1: 6, 2: 4, 3: 4, 4: 4, 5: 4, 6: 4, 7: 4, 8: 4, 9: 6 };
-}
-
 // ---------- Multiclase: Caster Level Combinado (PHB p.165) ----------
 
 type ClassLevelEntry = { className: string; level: number };

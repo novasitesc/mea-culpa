@@ -2159,7 +2159,10 @@ function CharactersFormModal({
     nivel20Url: string;
   } | null>(null);
 
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = useMemo(
+    () => ({ Authorization: `Bearer ${token}` }),
+    [token],
+  );
 
   useEffect(() => {
     const loadCharacters = async () => {
@@ -2177,7 +2180,8 @@ function CharactersFormModal({
       }
     };
     loadCharacters();
-  }, [user.id, token, headers, onToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, headers]);
 
   const saveCharacter = async (characterId: number) => {
     if (!editForm) return;
@@ -2227,14 +2231,48 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
-        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
-        if (charsRes.ok) setCharacters(await charsRes.json());
+        // Actualización optimista: marcar al personaje como 'vivo' en el estado local
+        setCharacters((prev) =>
+          prev.map((c) =>
+            c.id === characterId ? { ...c, estado_vida: "vivo", muerto_en: null } : c,
+          ),
+        );
       } else {
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
     } catch (error) {
       onToast("Error al revivir", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const killCharacter = async (characterId: number, nombre: string) => {
+    if (!confirm(`¿Marcar a "${nombre}" como MUERTO? El personaje seguirá visible y podrá ser revivido.`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/characters/kill", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        onToast(`${nombre} marcado como muerto`, "success");
+        // Actualización optimista: marcar al personaje como 'muerto' en el estado local
+        setCharacters((prev) =>
+          prev.map((c) =>
+            c.id === characterId
+              ? { ...c, estado_vida: "muerto", muerto_en: new Date().toISOString() }
+              : c,
+          ),
+        );
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al matar personaje", "error");
+      }
+    } catch (error) {
+      onToast("Error al matar personaje", "error");
     } finally {
       setSaving(false);
     }
@@ -2250,8 +2288,10 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje eliminado exitosamente", "success");
-        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
-        if (charsRes.ok) setCharacters(await charsRes.json());
+        // Actualización optimista: saca el personaje del estado local inmediatamente
+        // (el GET de recarga traería el personaje con estado_vida='eliminado' porque
+        // el endpoint no los filtra, causando que siguiera visible en el modal)
+        setCharacters((prev) => prev.filter((c) => c.id !== characterId));
       } else {
         const e = await res.json();
         onToast(e.error ?? "Error al eliminar personaje", "error");
@@ -2294,9 +2334,19 @@ function CharactersFormModal({
                         onClick={() => reviveCharacter(character.id)}
                         disabled={saving}
                         className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
-                        title="F3: Revivir"
+                        title="Revivir personaje"
                       >
                         Revivir
+                      </button>
+                    )}
+                    {character.estado_vida === "vivo" && editingChar !== character.id && (
+                      <button
+                        onClick={() => killCharacter(character.id, character.nombre)}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
+                        title="Matar personaje (queda visible, puede revivirse)"
+                      >
+                        Matar
                       </button>
                     )}
                     {editingChar !== character.id && (
@@ -3912,6 +3962,7 @@ function DeadCharactersTab({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [reviving, setReviving] = useState<number | null>(null);
 
   const loadCurrentDead = useCallback(async () => {
     setLoadingDead(true);
@@ -3930,6 +3981,33 @@ function DeadCharactersTab({
     const data = await res.json();
     setDeadRows(data.data ?? []);
   }, [token, onToast]);
+
+  const reviveDeadCharacter = async (characterId: number, name: string) => {
+    if (!confirm(`¿Revivir a "${name}" sin cobrar oro?`)) return;
+    setReviving(characterId);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        onToast(`${name} revivido exitosamente`, "success");
+        // Actualización optimista: sacar de la lista de muertos actuales
+        setDeadRows((prev) => prev.filter((r) => r.id !== characterId));
+      } else {
+        const e = await res.json().catch(() => ({}));
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch {
+      onToast("Error al revivir", "error");
+    } finally {
+      setReviving(null);
+    }
+  };
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -4046,6 +4124,7 @@ function DeadCharactersTab({
                   <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Slot</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Murió</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Revivió</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -4056,11 +4135,22 @@ function DeadCharactersTab({
                     <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        onClick={() => reviveDeadCharacter(row.id, row.name)}
+                        disabled={reviving === row.id}
+                        className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60 flex items-center gap-1 mx-auto"
+                        title="Revivir sin cobrar oro"
+                      >
+                        {reviving === row.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Revivir
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredDeadRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                       No hay personajes muertos en este momento.
                     </td>
                   </tr>
