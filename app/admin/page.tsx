@@ -25,6 +25,7 @@ import {
   Dices,
   Crown,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { useAuth } from "@/lib/useAuth";
@@ -308,6 +309,106 @@ function Modal({
           </button>
         </div>
         <div className="p-5 overflow-y-auto min-h-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente Modal de Confirmación Estilo Medieval ─────────────────────────
+
+export type ConfirmModalConfig = {
+  isOpen: boolean;
+  title: string;
+  message: React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: "danger" | "warning" | "success";
+  onConfirm: () => void;
+};
+
+function ConfirmActionModal({
+  config,
+  onClose,
+}: {
+  config: ConfirmModalConfig | null;
+  onClose: () => void;
+}) {
+  if (!config || !config.isOpen) return null;
+
+  const getVariantStyles = () => {
+    if (config.variant === "danger") {
+      return {
+        icon: <Skull className="w-6 h-6 text-blood animate-pulse" />,
+        headerBg: "bg-blood/10 border-blood/30",
+        border: "border-blood/50 shadow-[0_0_40px_rgba(139,0,0,0.35)]",
+        btnConfirm: "bg-blood hover:bg-blood/80 text-white shadow-lg shadow-blood/30",
+        accentLine: "from-transparent via-blood to-transparent",
+      };
+    }
+    if (config.variant === "success") {
+      return {
+        icon: <Sparkles className="w-6 h-6 text-emerald-400 animate-spin" style={{ animationDuration: "3s" }} />,
+        headerBg: "bg-emerald-950/20 border-emerald-500/30",
+        border: "border-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.25)]",
+        btnConfirm: "bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30",
+        accentLine: "from-transparent via-emerald-400 to-transparent",
+      };
+    }
+    return {
+      icon: <AlertTriangle className="w-6 h-6 text-gold animate-bounce" style={{ animationDuration: "2s" }} />,
+      headerBg: "bg-gold/10 border-gold/30",
+      border: "border-gold-dim/60 shadow-[0_0_40px_rgba(212,175,55,0.25)]",
+      btnConfirm: "bg-gold hover:bg-gold-dim text-background font-bold shadow-lg shadow-gold/30",
+      accentLine: "from-transparent via-gold to-transparent",
+    };
+  };
+
+  const styles = getVariantStyles();
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className={`bg-card border-2 ${styles.border} rounded-xl w-full max-w-md overflow-hidden flex flex-col relative`}>
+        {/* Resplandor superior místico */}
+        <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.accentLine} opacity-80`} />
+
+        <div className={`flex items-center justify-between p-5 border-b ${styles.headerBg}`}>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg border bg-background/80 shadow-inner flex items-center justify-center">
+              {styles.icon}
+            </div>
+            <h3 className="text-lg font-serif font-bold tracking-wide text-foreground">{config.title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 text-sm text-muted-foreground leading-relaxed">
+          {config.message}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 p-4 bg-secondary/40 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors border border-border/60"
+          >
+            {config.cancelText ?? "Cancelar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              config.onConfirm();
+              onClose();
+            }}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${styles.btnConfirm}`}
+          >
+            {config.confirmText ?? "Confirmar"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -602,12 +703,7 @@ function TransactionsTab({
                   }`}
                 >
                   <td className="px-3 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                    {new Date(t.creado_en).toLocaleString("es-ES", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatDateTime(t.creado_en)}
                   </td>
                   <td className="px-3 py-3 font-medium text-foreground">
                     {t.nombre_usuario}
@@ -1141,7 +1237,7 @@ function ActivePartidasTab({
                 <p className="text-xs text-muted-foreground">
                   Min {entry.minPlayers} · Piso {entry.floor} · Tier {entry.tier}
                   {entry.startTime
-                    ? ` · Inicio ${new Date(entry.startTime).toLocaleString("es-ES")}`
+                    ? ` · Inicio ${formatDateTime(entry.startTime)}`
                     : ""}
                 </p>
               </div>
@@ -1429,13 +1525,7 @@ function PartidasHistoryTab({
                       {entry.title}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleString("es-ES", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatDateTime(entry.createdAt)}
                       {entry.createdBy ? ` · ${entry.createdBy}` : ""}
                     </p>
                   </div>
@@ -2220,8 +2310,9 @@ function CharactersFormModal({
     }
   };
 
-  const reviveCharacter = async (characterId: number) => {
-    if (!confirm("¿Revivir a este personaje sin cobrar oro?")) return;
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
+
+  const executeRevive = async (characterId: number) => {
     setSaving(true);
     try {
       const res = await fetch("/api/profile/admin-revive", {
@@ -2231,7 +2322,6 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
-        // Actualización optimista: marcar al personaje como 'vivo' en el estado local
         setCharacters((prev) =>
           prev.map((c) =>
             c.id === characterId ? { ...c, estado_vida: "vivo", muerto_en: null } : c,
@@ -2248,8 +2338,18 @@ function CharactersFormModal({
     }
   };
 
-  const killCharacter = async (characterId: number, nombre: string) => {
-    if (!confirm(`¿Marcar a "${nombre}" como MUERTO? El personaje seguirá visible y podrá ser revivido.`)) return;
+  const reviveCharacter = (characterId: number, nombre?: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Resurrección de Personaje",
+      message: `¿Estás seguro de que deseas revivir a "${nombre ?? "este personaje"}" sin cobrarle oro? Regresará inmediatamente a la vida.`,
+      confirmText: "Revivir personaje",
+      variant: "success",
+      onConfirm: () => executeRevive(characterId),
+    });
+  };
+
+  const executeKill = async (characterId: number, nombre: string) => {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/characters/kill", {
@@ -2259,7 +2359,6 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast(`${nombre} marcado como muerto`, "success");
-        // Actualización optimista: marcar al personaje como 'muerto' en el estado local
         setCharacters((prev) =>
           prev.map((c) =>
             c.id === characterId
@@ -2278,8 +2377,18 @@ function CharactersFormModal({
     }
   };
 
-  const deleteCharacter = async (characterId: number, nombre: string) => {
-    if (!confirm(`¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al personaje "${nombre}"?`)) return;
+  const killCharacter = (characterId: number, nombre: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Sentencia de Muerte",
+      message: `¿Deseas marcar a "${nombre}" como MUERTO? Su vida actual llegará a cero, pero seguirá visible en la interfaz y podrá ser revivido en cualquier momento.`,
+      confirmText: "Ejecutar / Matar",
+      variant: "danger",
+      onConfirm: () => executeKill(characterId, nombre),
+    });
+  };
+
+  const executeDelete = async (characterId: number, nombre: string) => {
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/characters?characterId=${characterId}`, {
@@ -2288,9 +2397,6 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje eliminado exitosamente", "success");
-        // Actualización optimista: saca el personaje del estado local inmediatamente
-        // (el GET de recarga traería el personaje con estado_vida='eliminado' porque
-        // el endpoint no los filtra, causando que siguiera visible en el modal)
         setCharacters((prev) => prev.filter((c) => c.id !== characterId));
       } else {
         const e = await res.json();
@@ -2301,6 +2407,17 @@ function CharactersFormModal({
     } finally {
       setSaving(false);
     }
+  };
+
+  const deleteCharacter = (characterId: number, nombre: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Eliminación Definitiva",
+      message: `¿Estás completamente seguro de que deseas ELIMINAR PERMANENTEMENTE al personaje "${nombre}"? Esta acción no se puede deshacer y borrará al personaje del sistema.`,
+      confirmText: "Destruir para siempre",
+      variant: "danger",
+      onConfirm: () => executeDelete(characterId, nombre),
+    });
   };
 
   return (
@@ -2531,6 +2648,7 @@ function CharactersFormModal({
           </button>
         </div>
       </div>
+      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </Modal>
   );
 }
@@ -3982,8 +4100,9 @@ function DeadCharactersTab({
     setDeadRows(data.data ?? []);
   }, [token, onToast]);
 
-  const reviveDeadCharacter = async (characterId: number, name: string) => {
-    if (!confirm(`¿Revivir a "${name}" sin cobrar oro?`)) return;
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
+
+  const executeReviveDead = async (characterId: number, name: string) => {
     setReviving(characterId);
     try {
       const res = await fetch("/api/profile/admin-revive", {
@@ -4007,6 +4126,17 @@ function DeadCharactersTab({
     } finally {
       setReviving(null);
     }
+  };
+
+  const reviveDeadCharacter = (characterId: number, name: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Resurrección Arcana",
+      message: `¿Estás seguro de que deseas revivir al personaje "${name}" sin cobrarle oro? Regresará inmediatamente al mundo de los vivos.`,
+      confirmText: "Revivir personaje",
+      variant: "success",
+      onConfirm: () => executeReviveDead(characterId, name),
+    });
   };
 
   const loadHistory = useCallback(async () => {
@@ -4234,6 +4364,7 @@ function DeadCharactersTab({
           </div>
         </div>
       )}
+      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </div>
   );
 }
