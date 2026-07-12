@@ -38,7 +38,7 @@ function renderEvento(ev: SalaEvento, i: number) {
               const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
               return obj ? (
                 <span key={j} className="text-xs text-green-400 font-semibold flex items-center gap-1.5">
-                  {getIconForString(obj.icono, "w-3.5 h-3.5 shrink-0")} {obj.nombre}
+                  {getIconForString(obj.nombre, "w-3.5 h-3.5 shrink-0", obj.icono)} {obj.nombre}
                 </span>
               ) : null;
             })}
@@ -64,7 +64,7 @@ function renderEvento(ev: SalaEvento, i: number) {
           </p>
           <p className="text-xs font-sans truncate">
             {tipoResultado === "item" && objeto ? (
-              <span className="text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(objeto.icono, "w-3.5 h-3.5 shrink-0")} {objeto.nombre}</span>
+              <span className="text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(objeto.nombre, "w-3.5 h-3.5 shrink-0", objeto.icono)} {objeto.nombre}</span>
             ) : tipoResultado === "oro" && cantidadOro != null ? (
               <span className="text-gold font-semibold">+{cantidadOro.toLocaleString("es-ES")} oro</span>
             ) : (
@@ -85,7 +85,7 @@ function renderEvento(ev: SalaEvento, i: number) {
         <p className="text-xs font-sans">
           {objeto ? (
             <span className="text-green-400 font-semibold flex items-center gap-1.5">
-              {getIconForString(objeto.icono, "w-3.5 h-3.5 shrink-0")} {objeto.nombre}{cantidad && cantidad > 1 ? ` ×${cantidad}` : ""}
+              {getIconForString(objeto.nombre, "w-3.5 h-3.5 shrink-0", objeto.icono)} {objeto.nombre}{cantidad && cantidad > 1 ? ` ×${cantidad}` : ""}
             </span>
           ) : cantidadOro != null ? (
             <span className="text-gold font-semibold">+{cantidadOro.toLocaleString("es-ES")} oro</span>

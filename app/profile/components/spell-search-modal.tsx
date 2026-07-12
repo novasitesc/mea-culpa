@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
+import DOMPurify from "isomorphic-dompurify";
 import { Search, X, Filter, Sparkles, XCircle, Info, Clock } from "lucide-react";
+
+// Etiquetas de formato permitidas en las descripciones de conjuros.
+// Sin atributos: elimina on*, href, src, style y demás vectores de XSS.
+const SPELL_ALLOWED_TAGS = ["p", "br", "ul", "ol", "li", "em", "strong", "i", "b"];
 
 export type CatalogSpell = {
   nombre: string;
@@ -174,7 +179,12 @@ const SpellCard = ({
                     </div>
                     <div 
                       className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed select-text"
-                      dangerouslySetInnerHTML={{ __html: spell.description }} 
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(spell.description ?? "", {
+                          ALLOWED_TAGS: SPELL_ALLOWED_TAGS,
+                          ALLOWED_ATTR: [],
+                        }),
+                      }}
                     />
                   </div>
                   <Popover.Arrow className="fill-[#8B7355]/40" />

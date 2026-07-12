@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   try {
-    const { userId, fromCharacterId, toCharacterId, bagIndex } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const { fromCharacterId, toCharacterId, bagIndex } = await request.json();
 
     if (
-      !userId ||
       !fromCharacterId ||
       !toCharacterId ||
       typeof bagIndex !== "number" ||
@@ -26,16 +32,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = createServerClient();
-
     // Validar personaje de origen
-    const fromLifeCheck = await ensureOwnedAliveCharacter(db, String(userId), Number(fromCharacterId));
+    const fromLifeCheck = await ensureOwnedAliveCharacter(db, String(user.id), Number(fromCharacterId));
     if (!fromLifeCheck.ok) {
       return NextResponse.json({ error: `Origen: ${fromLifeCheck.error}` }, { status: fromLifeCheck.status });
     }
 
     // Validar personaje de destino
-    const toLifeCheck = await ensureOwnedAliveCharacter(db, String(userId), Number(toCharacterId));
+    const toLifeCheck = await ensureOwnedAliveCharacter(db, String(user.id), Number(toCharacterId));
     if (!toLifeCheck.ok) {
       return NextResponse.json({ error: `Destino: ${toLifeCheck.error}` }, { status: toLifeCheck.status });
     }

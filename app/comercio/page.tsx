@@ -659,7 +659,7 @@ export default function ComercioPage() {
                           >
                             <div className="min-w-0">
                               <p className="font-semibold text-sm text-foreground">
-                                <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
+                                <span className="flex items-center gap-1.5">{getIconForString(pub.item.nombre, "w-4 h-4 text-[#D4AF37] shrink-0", pub.item.icono)} {pub.item.nombre} x{pub.item.cantidad}</span>
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Vendedor: {pub.vendedor.nombre} · Estado: {pub.estado}
@@ -719,7 +719,7 @@ export default function ComercioPage() {
                           className="rounded-lg border border-border p-3 bg-card/40"
                         >
                           <p className="font-semibold text-sm">
-                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre}</span>
+                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.nombre, "w-4 h-4 text-[#D4AF37] shrink-0", pub.item.icono)} {pub.item.nombre}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Comprador: {pub.comprador?.nombre ?? "Desconocido"}
@@ -763,7 +763,7 @@ export default function ComercioPage() {
                       myActivePublications.map((pub) => (
                         <div key={pub.id} className="rounded-lg border border-border p-3 bg-card/40">
                           <p className="text-sm font-semibold">
-                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
+                            <span className="flex items-center gap-1.5">{getIconForString(pub.item.nombre, "w-4 h-4 text-[#D4AF37] shrink-0", pub.item.icono)} {pub.item.nombre} x{pub.item.cantidad}</span>
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Estado: {pub.estado}
@@ -796,7 +796,7 @@ export default function ComercioPage() {
                         {myRequestedPublications.map((pub) => (
                           <div key={`request-${pub.id}`} className="rounded-lg border border-border p-3 bg-card/40">
                             <p className="text-sm font-semibold">
-                              <span className="flex items-center gap-1.5">{getIconForString(pub.item.icono, "w-4 h-4 text-[#D4AF37] shrink-0")} {pub.item.nombre} x{pub.item.cantidad}</span>
+                              <span className="flex items-center gap-1.5">{getIconForString(pub.item.nombre, "w-4 h-4 text-[#D4AF37] shrink-0", pub.item.icono)} {pub.item.nombre} x{pub.item.cantidad}</span>
                             </p>
                             <p className="text-xs text-muted-foreground">Estado: {pub.estado}</p>
                             <p className="text-sm text-gold font-bold mt-1">

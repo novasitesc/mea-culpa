@@ -612,7 +612,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                                 )}
                                 {items.map((item) => (
                                   <span key={item.id} className="text-xs text-green-400 font-semibold font-sans flex items-center gap-1.5">
-                                    {getIconForString(item.icono, "w-3.5 h-3.5 shrink-0")} {item.nombre}{item.qty > 1 ? ` ×${item.qty}` : ""}
+                                    {getIconForString(item.nombre, "w-3.5 h-3.5 shrink-0", item.icono)} {item.nombre}{item.qty > 1 ? ` ×${item.qty}` : ""}
                                   </span>
                                 ))}
                               </div>

@@ -311,7 +311,7 @@ export default function SalaPage() {
                               const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
                               return obj ? (
                                 <span key={j} className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
-                                  {getIconForString(obj.icono, "w-4 h-4 shrink-0")} {obj.nombre}
+                                  {getIconForString(obj.nombre, "w-4 h-4 shrink-0", obj.icono)} {obj.nombre}
                                 </span>
                               ) : null;
                             })}
@@ -324,7 +324,7 @@ export default function SalaPage() {
                       return (
                         <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
                           {ev.tipoResultado === "item" && ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(ev.objeto.icono, "w-4 h-4 shrink-0")} {ev.objeto.nombre}</span>
+                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(ev.objeto.nombre, "w-4 h-4 shrink-0", ev.objeto.icono)} {ev.objeto.nombre}</span>
                           ) : ev.tipoResultado === "oro" && ev.cantidadOro ? (
                             <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
                           ) : (
@@ -338,7 +338,7 @@ export default function SalaPage() {
                         <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
                           {ev.objeto ? (
                             <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
-                              {getIconForString(ev.objeto.icono, "w-4 h-4 shrink-0")} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
+                              {getIconForString(ev.objeto.nombre, "w-4 h-4 shrink-0", ev.objeto.icono)} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
                             </span>
                           ) : ev.cantidadOro ? (
                             <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>

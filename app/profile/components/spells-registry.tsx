@@ -12,7 +12,12 @@ import {
 } from "@/lib/spells";
 import SpellSearchModal from "./spell-search-modal";
 import * as Popover from "@radix-ui/react-popover";
+import DOMPurify from "isomorphic-dompurify";
 import { Info, Sparkles, Lock } from "lucide-react";
+
+// Etiquetas de formato permitidas en las descripciones de conjuros.
+// Sin atributos: elimina on*, href, src, style y demás vectores de XSS.
+const SPELL_ALLOWED_TAGS = ["p", "br", "ul", "ol", "li", "em", "strong", "i", "b"];
 
 type ClassEntry = { className: string; level: number };
 type SpellCharacter = {
@@ -348,7 +353,12 @@ export default function SpellsRegistry({
                                         </div>
                                         <div 
                                           className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed select-text"
-                                          dangerouslySetInnerHTML={{ __html: catalogInfo.description }} 
+                                          dangerouslySetInnerHTML={{
+                                            __html: DOMPurify.sanitize(catalogInfo.description ?? "", {
+                                              ALLOWED_TAGS: SPELL_ALLOWED_TAGS,
+                                              ALLOWED_ATTR: [],
+                                            }),
+                                          }}
                                         />
                                       </div>
                                       <Popover.Arrow className="fill-[#8B7355]/40" />

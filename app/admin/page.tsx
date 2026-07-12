@@ -486,7 +486,7 @@ function Toast({
 }) {
   return (
     <div
-      className={`fixed bottom-6 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
+      className={`fixed bottom-20 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
         type === "success"
           ? "bg-green-900/90 border border-green-700 text-green-200"
           : "bg-destructive/90 border border-destructive text-white"
@@ -2715,7 +2715,7 @@ function ShopsTab({
               {/* Cabecera de tarjeta */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(shop.icon, "w-6 h-6")}</span>
+                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(shop.name, "w-6 h-6", shop.icon)}</span>
                   <div>
                     <p className="font-semibold text-foreground text-sm leading-tight">
                       {shop.name}
@@ -3083,7 +3083,7 @@ function ShopItemsModal({
                   <tr key={item.id} className="border-b border-border last:border-0">
                     <td className="px-2 py-2">
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center w-5 h-5">{getIconForString(item.object?.icon ?? "📦", "w-4 h-4 text-[#D4AF37]")}</span>
+                        <span className="flex items-center justify-center w-5 h-5">{getIconForString(item.object?.name ?? "📦", "w-4 h-4 text-[#D4AF37]", item.object?.icon)}</span>
                         <span className="font-medium text-foreground">
                           {item.object?.name ?? `Objeto #${item.objetoId}`}
                         </span>
@@ -3317,7 +3317,7 @@ function ShopItemFormModal({
               />
               {selectedObject ? (
                 <p className="text-xs text-muted-foreground">
-                  Seleccionado: <span className="inline-flex items-center gap-1 mx-1">{getIconForString(selectedObject.icon, "w-3 h-3 text-[#D4AF37]")}</span> {selectedObject.name} ({selectedObject.itemType})
+                  Seleccionado: <span className="inline-flex items-center gap-1 mx-1">{getIconForString(selectedObject.name, "w-3 h-3 text-[#D4AF37]", selectedObject.icon)}</span> {selectedObject.name} ({selectedObject.itemType})
                 </p>
               ) : null}
             </div>
@@ -3467,7 +3467,7 @@ function ObjectsTab({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(obj.icon, "w-6 h-6")}</span>
+                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(obj.name, "w-6 h-6", obj.icon)}</span>
                   <div>
                     <p className="font-semibold text-foreground text-sm leading-tight">
                       {obj.name}

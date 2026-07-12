@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { calculateBagSlots } from "@/lib/types/character";
 import {
   getCasterType,
@@ -60,9 +61,16 @@ function generateStatsForClass(className: string) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterData } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const userId = user.id;
 
-    if (!userId || !characterData) {
+    const { characterData } = await request.json();
+
+    if (!characterData) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -116,8 +124,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const db = createServerClient();
 
     const { data: perfil, error: perfilError } = await db
       .from("perfiles")

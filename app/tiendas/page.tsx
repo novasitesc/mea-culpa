@@ -348,7 +348,7 @@ export default function TiendasPage() {
 
         {/* Notificación flotante */}
         {notification && (
-          <div className="fixed bottom-6 right-6 z-50 bg-card border border-gold-dim text-foreground px-4 py-3 rounded-lg shadow-xl text-sm medieval-border animate-in slide-in-from-bottom-4">
+          <div className="fixed bottom-20 right-6 z-50 bg-card border border-gold-dim text-foreground px-4 py-3 rounded-lg shadow-xl text-sm medieval-border animate-in slide-in-from-bottom-4">
             {notification}
           </div>
         )}

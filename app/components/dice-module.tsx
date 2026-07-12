@@ -289,7 +289,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                           </span>
                         ) : rollResult.objeto ? (
                           <span className="text-green-400 font-bold flex items-center gap-1">
-                            {rollResult.objeto.icono && <span>{getIconForString(rollResult.objeto.icono, "w-4 h-4 shrink-0")}</span>}
+                            {rollResult.objeto.icono && <span>{getIconForString(rollResult.objeto.nombre, "w-4 h-4 shrink-0", rollResult.objeto.icono)}</span>}
                             {rollResult.objeto.nombre}
                           </span>
                         ) : null}
@@ -345,7 +345,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
 
                       {r.tipo === "item" && r.objeto && (
                         <span className="text-green-400 font-semibold leading-6 flex items-center gap-1.5">
-                          {getIconForString(r.objeto.icono, "w-4 h-4 shrink-0")} {r.objeto.nombre}
+                          {getIconForString(r.objeto.nombre, "w-4 h-4 shrink-0", r.objeto.icono)} {r.objeto.nombre}
                         </span>
                       )}
 
@@ -372,7 +372,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                           </span>
                           {r.subRoll.objeto ? (
                             <span className="text-green-400 font-semibold flex items-center gap-1.5">
-                              {getIconForString(r.subRoll.objeto.icono, "w-4 h-4 shrink-0")} {r.subRoll.objeto.nombre}
+                              {getIconForString(r.subRoll.objeto.nombre, "w-4 h-4 shrink-0", r.subRoll.objeto.icono)} {r.subRoll.objeto.nombre}
                             </span>
                           ) : r.subRoll.cantidadOro !== undefined ? (
                             <span className="text-gold font-semibold">
@@ -407,7 +407,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                         <span className="text-gold/60 shrink-0">
                           {si.valorMin === si.valorMax ? si.valorMin : `${si.valorMin}–${si.valorMax}`}
                         </span>
-                        <span className="truncate flex items-center gap-1.5">{getIconForString(si.objetoIcono, "w-3 h-3 shrink-0")} {si.objetoNombre}</span>
+                        <span className="truncate flex items-center gap-1.5">{getIconForString(si.objetoNombre, "w-3 h-3 shrink-0", si.objetoIcono)} {si.objetoNombre}</span>
                       </div>
                     ))}
                   </div>

@@ -413,7 +413,7 @@ export function RuletaTab({
                           <div className="font-medium text-foreground truncate flex items-center gap-1.5">
                             {pool.rewardType === "oro"
                               ? pool.label || `Oro x${pool.goldAmount ?? 0}`
-                              : <>{getIconForString(pool.object?.icon ?? "📦", "w-4 h-4 shrink-0 text-[#D4AF37]")} {pool.label || pool.object?.name || "Objeto"}</>}
+                              : <>{getIconForString(pool.object?.name ?? "📦", "w-4 h-4 shrink-0 text-[#D4AF37]", pool.object?.icon)} {pool.label || pool.object?.name || "Objeto"}</>}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {pool.rewardType === "oro"

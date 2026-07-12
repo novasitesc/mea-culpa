@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 const ALLOWED_PORTRAITS = new Set([
@@ -20,9 +21,15 @@ const ALLOWED_PORTRAITS = new Set([
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterId, portrait } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    if (!userId || !characterId || !portrait) {
+    const { characterId, portrait } = await request.json();
+
+    if (!characterId || !portrait) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -36,9 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = createServerClient();
-
-    const lifeCheck = await ensureOwnedAliveCharacter(db, String(userId), Number(characterId));
+    const lifeCheck = await ensureOwnedAliveCharacter(db, String(user.id), Number(characterId));
     if (!lifeCheck.ok) {
       return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
     }
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
       .from("personajes")
       .update({ retrato: portrait })
       .eq("id", characterId)
-      .eq("usuario_id", userId);
+      .eq("usuario_id", user.id);
 
     if (updateError) {
       console.error("Error updating portrait:", updateError);

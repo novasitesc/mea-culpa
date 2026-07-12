@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
+import { getSupabase } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
@@ -1409,9 +1410,16 @@ export default function EquipmentModal({
     setIsSelling(true);
     setShowSellConfirm(false);
     try {
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
+
       const response = await fetch("/api/profile/sell-item", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({
           userId,
           characterId: character.id,
@@ -1470,9 +1478,16 @@ export default function EquipmentModal({
       await onSave(updatedCharacter, bagItems);
 
       // 2. Realizar el movimiento en la base de datos
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
+
       const response = await fetch("/api/profile/move-item", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({
           userId,
           fromCharacterId: character.id,
