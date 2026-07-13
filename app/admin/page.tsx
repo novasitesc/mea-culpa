@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
-  ArrowRightLeft,
   Dice6,
   Skull,
   Copy,
@@ -34,6 +33,7 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
+import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
@@ -194,6 +194,27 @@ type PartidaHistoryParticipant = {
   nivel20Url: string | null;
 };
 
+type PartidaEvento = {
+  id: string;
+  tipo: string;
+  personajeId: number | null;
+  personajeNombre: string | null;
+  usuarioId: string | null;
+  tipoDado: string | null;
+  recompensaNombre: string | null;
+  tipoResultado: string | null;
+  objetoId: string | null;
+  objetoNombre: string | null;
+  objetoIcono: string | null;
+  cantidad: number | null;
+  cantidadOro: number | null;
+  miembro: string | null;
+  miembroLabel: string | null;
+  desmembrado: boolean | null;
+  metadata: unknown;
+  creadoEn: string;
+};
+
 type PartidaHistoryEntry = {
   id: string;
   title: string;
@@ -213,17 +234,15 @@ type PartidaHistoryEntry = {
   createdBy: string | null;
   participants: PartidaHistoryParticipant[];
   items: PartidaHistoryItem[];
+  eventos: PartidaEvento[];
 };
 
 type Tab =
   | "usuarios"
   | "tiendas"
   | "objetos"
-  | "transacciones"
+  | "economia"
   | "partidas"
-  | "partidas-activas"
-  | "historial-partidas"
-  | "impuestos"
   | "ruleta"
   | "dados"
   | "muertes";
@@ -1450,6 +1469,111 @@ function ActivePartidasTab({
 
 // ─── Historial de Partidas ───────────────────────────────────────────────────
 
+function formatDuration(startIso: string, endIso: string): string {
+  const diff = Math.max(0, new Date(endIso).getTime() - new Date(startIso).getTime());
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function EventoRow({ ev }: { ev: PartidaEvento }) {
+  if (ev.tipo === "partida_iniciada") {
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-green-400/80">▶ Partida iniciada</span>
+      </div>
+    );
+  }
+  if (ev.tipo === "partida_cerrada") {
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-red-400/80">🏁 Partida cerrada</span>
+      </div>
+    );
+  }
+  if (ev.tipo === "desmembramiento") {
+    const accion = ev.desmembrado ? "perdió" : "recuperó";
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-orange-400/90">
+          ⚔️ <span className="text-foreground/80">{ev.personajeNombre}</span> {accion} {ev.miembroLabel ?? ev.miembro}
+        </span>
+      </div>
+    );
+  }
+  if (ev.tipo === "dado_tirado") {
+    const dado = ev.tipoDado ? ev.tipoDado.toUpperCase() : "dado";
+    let resultado = "";
+    if (ev.tipoResultado === "item" && ev.objetoNombre) {
+      resultado = `→ ${ev.objetoIcono ?? "📦"} ${ev.objetoNombre}${ev.cantidad && ev.cantidad > 1 ? ` x${ev.cantidad}` : ""}`;
+    } else if (ev.tipoResultado === "oro" && ev.cantidadOro) {
+      resultado = `→ 🪙 ${ev.cantidadOro} oro`;
+    } else if (ev.tipoResultado === "nada") {
+      resultado = "→ nada";
+    } else if (ev.tipoResultado === "subtabla") {
+      const sub = (ev.metadata as any)?.subRoll;
+      if (sub?.objeto) resultado = `→ ${sub.objeto.icono ?? "📦"} ${sub.objeto.nombre} (subtabla)`;
+      else if (sub?.cantidadOro) resultado = `→ 🪙 ${sub.cantidadOro} oro (subtabla)`;
+      else resultado = "→ subtabla";
+    }
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-blue-300/90">
+          🎲 <span className="text-foreground/80">{ev.personajeNombre}</span> tiró {dado}
+          {ev.recompensaNombre ? <span className="text-muted-foreground"> en {ev.recompensaNombre}</span> : null}
+          {resultado ? <span className="text-foreground/70"> {resultado}</span> : null}
+        </span>
+      </div>
+    );
+  }
+  if (ev.tipo === "asignacion_manual") {
+    let detalle = "";
+    if (ev.tipoResultado === "item" && ev.objetoNombre) {
+      detalle = `${ev.objetoIcono ?? "📦"} ${ev.objetoNombre}${ev.cantidad && ev.cantidad > 1 ? ` x${ev.cantidad}` : ""}`;
+    } else if (ev.tipoResultado === "oro" && ev.cantidadOro) {
+      detalle = `🪙 ${ev.cantidadOro} oro`;
+    }
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-purple-300/90">
+          📦 Admin asignó <span className="text-foreground/80">{detalle}</span> a <span className="text-foreground/80">{ev.personajeNombre}</span>
+        </span>
+      </div>
+    );
+  }
+  if (ev.tipo === "consumible_usado") {
+    return (
+      <div className="flex items-start gap-3 py-1.5">
+        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
+        <span className="text-[10px] text-emerald-400/90">
+          🧪 <span className="text-foreground/80">{ev.personajeNombre}</span> usó {ev.objetoIcono ?? ""} {ev.objetoNombre}
+        </span>
+      </div>
+    );
+  }
+  return null;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, { label: string; cls: string }> = {
+    abierta:      { label: "Abierta",      cls: "bg-blue-900/40 text-blue-300 border-blue-700/40" },
+    en_progreso:  { label: "En progreso",  cls: "bg-yellow-900/40 text-yellow-300 border-yellow-700/40" },
+    finalizada:   { label: "Finalizada",   cls: "bg-green-900/40 text-green-300 border-green-700/40" },
+  };
+  const { label, cls } = cfg[status] ?? { label: status, cls: "bg-secondary text-muted-foreground border-border" };
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cls}`}>{label}</span>;
+}
+
 function PartidasHistoryTab({
   token,
   onToast,
@@ -1460,6 +1584,14 @@ function PartidasHistoryTab({
   const [history, setHistory] = useState<PartidaHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<Record<string, "participantes" | "eventos" | "items" | null>>({});
+
+  function toggleSection(partidaId: string, section: "participantes" | "eventos" | "items") {
+    setExpandedSection((prev) => ({
+      ...prev,
+      [partidaId]: prev[partidaId] === section ? null : section,
+    }));
+  }
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -1481,9 +1613,7 @@ function PartidasHistoryTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Registro de partidas creadas
-        </p>
+        <p className="text-sm text-muted-foreground">Registro completo de partidas</p>
         <button
           type="button"
           onClick={loadHistory}
@@ -1504,21 +1634,59 @@ function PartidasHistoryTab({
       ) : (
         <div className="flex flex-col gap-3">
           {history.map((entry) => {
-            const totalGold = entry.participants.reduce(
-              (sum, p) => sum + (p.gold ?? 0),
-              0,
-            );
+            const totalGoldDelta = entry.participants.reduce((sum, p) => sum + (p.gold ?? 0), 0);
+            const totalItemCount = entry.items.reduce((sum, i) => sum + i.qty, 0);
+            const deadCount = entry.participants.filter((p) => p.dead).length;
             const isOpen = expandedId === entry.id;
+            const activeSection = expandedSection[entry.id] ?? null;
+
+            const startLabel = entry.startTime
+              ? new Date(entry.startTime).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : new Date(entry.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+            const duration = entry.startTime && entry.finalizedAt
+              ? formatDuration(entry.startTime, entry.finalizedAt)
+              : null;
+
+            // Aggregate items from eventos (more granular than transacciones_objetos)
+            const itemsFromEventos = new Map<string, { nombre: string; icono: string; qty: number }>();
+            for (const ev of entry.eventos ?? []) {
+              if ((ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") && ev.objetoNombre) {
+                const key = ev.objetoId ?? ev.objetoNombre;
+                const cur = itemsFromEventos.get(key);
+                const qty = ev.cantidad ?? 1;
+                itemsFromEventos.set(key, cur
+                  ? { ...cur, qty: cur.qty + qty }
+                  : { nombre: ev.objetoNombre, icono: ev.objetoIcono ?? "📦", qty });
+              }
+              // Items from subtabla metadata
+              if (ev.tipo === "dado_tirado" && ev.tipoResultado === "subtabla") {
+                const sub = (ev.metadata as any)?.subRoll;
+                if (sub?.objeto) {
+                  const key = String(sub.objeto.id);
+                  const cur = itemsFromEventos.get(key);
+                  itemsFromEventos.set(key, cur
+                    ? { ...cur, qty: cur.qty + 1 }
+                    : { nombre: sub.objeto.nombre, icono: sub.objeto.icono ?? "📦", qty: 1 });
+                }
+              }
+            }
+            const aggregatedItems = Array.from(itemsFromEventos.entries()).map(([k, v]) => ({ key: k, ...v }));
+            // Fall back to transacciones_objetos if no eventos yet
+            const displayItems = aggregatedItems.length > 0 ? aggregatedItems : entry.items.map((it) => ({
+              key: String(it.objectId),
+              nombre: it.objectName,
+              icono: it.objectIcon,
+              qty: it.qty,
+            }));
 
             return (
-              <div
-                key={entry.id}
-                className="border border-border rounded-xl p-4 bg-secondary/10"
-              >
+              <div key={entry.id} className="border border-border rounded-xl bg-secondary/10 overflow-hidden">
+                {/* Header */}
                 <button
                   type="button"
                   onClick={() => setExpandedId(isOpen ? null : entry.id)}
-                  className="w-full flex items-center justify-between gap-3 text-left"
+                  className="w-full flex items-start justify-between gap-3 text-left p-4 hover:bg-secondary/20 transition-colors"
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -1529,78 +1697,110 @@ function PartidasHistoryTab({
                       {entry.createdBy ? ` · ${entry.createdBy}` : ""}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{entry.participants.length} jugadores</span>
-                    <span className="text-gold">+{totalGold} oro</span>
+                  <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
+                    <span>{entry.participants.length} jugadores{deadCount > 0 ? ` · ${deadCount} 💀` : ""}</span>
+                    {totalGoldDelta > 0 && <span className="text-gold">+{totalGoldDelta} oro</span>}
+                    {totalItemCount > 0 && <span>{totalItemCount} ítems</span>}
                   </div>
                 </button>
 
+                {/* Expanded sections */}
                 {isOpen && (
-                  <div className="mt-4 flex flex-col gap-4">
-                    {entry.comment && (
-                      <p className="text-xs text-muted-foreground">
-                        {entry.comment}
-                      </p>
+                  <div className="border-t border-border">
+                    {/* Section tabs */}
+                    <div className="flex border-b border-border">
+                      {(["participantes", "eventos", "items"] as const).map((sec) => {
+                        const labels: Record<string, string> = {
+                          participantes: `Participantes (${entry.participants.length})`,
+                          eventos: `Log de eventos (${(entry.eventos ?? []).length})`,
+                          items: `Ítems (${displayItems.length})`,
+                        };
+                        return (
+                          <button
+                            key={sec}
+                            type="button"
+                            onClick={() => toggleSection(entry.id, sec)}
+                            className={`px-4 py-2 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${
+                              activeSection === sec
+                                ? "bg-secondary/40 text-foreground"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
+                            }`}
+                          >
+                            {labels[sec]}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Participantes */}
+                    {activeSection === "participantes" && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-secondary/30 border-b border-border">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Personaje</th>
+                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Jugador</th>
+                              <th className="px-3 py-2 text-center text-muted-foreground font-medium">Oro final</th>
+                              <th className="px-3 py-2 text-center text-muted-foreground font-medium">Estado</th>
+                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Comentario</th>
+                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Nivel20</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entry.participants.map((p) => (
+                              <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/10">
+                                <td className="px-3 py-2 text-foreground font-medium">{p.characterName}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{p.userName}</td>
+                                <td className="px-3 py-2 text-center text-gold font-medium">{p.gold > 0 ? `+${p.gold}` : "—"}</td>
+                                <td className="px-3 py-2 text-center">
+                                  {p.dead
+                                    ? <span className="text-red-400">💀 Muerto</span>
+                                    : <span className="text-green-400/80">Vivo</span>}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground">{p.comment || "—"}</td>
+                                <td className="px-3 py-2"><Nivel20Link url={p.nivel20Url} /></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
 
-                    <div className="overflow-x-auto rounded-lg border border-border">
-                      <table className="w-full text-xs">
-                        <thead className="bg-secondary/50 border-b border-border">
-                          <tr>
-                            <th className="px-2 py-2 text-left">Personaje</th>
-                            <th className="px-2 py-2 text-left">Usuario</th>
-                            <th className="px-2 py-2 text-center">Oro</th>
-                            <th className="px-2 py-2 text-left">Estado</th>
-                            <th className="px-2 py-2 text-left">Comentario</th>
-                            <th className="px-2 py-2 text-left">Nivel20</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {entry.participants.map((p) => (
-                            <tr key={p.id} className="border-b border-border last:border-0">
-                              <td className="px-2 py-2 text-foreground">
-                                {p.characterName}
-                              </td>
-                              <td className="px-2 py-2 text-muted-foreground">
-                                {p.userName}
-                              </td>
-                              <td className="px-2 py-2 text-center text-gold">
-                                {p.gold}
-                              </td>
-                              <td className="px-2 py-2 text-muted-foreground">
-                                {p.dead ? "Muerto" : "Vivo"}
-                              </td>
-                              <td className="px-2 py-2 text-muted-foreground">
-                                {p.comment || "-"}
-                              </td>
-                              <td className="px-2 py-2">
-                                <Nivel20Link url={p.nivel20Url} />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {/* Log de eventos */}
+                    {activeSection === "eventos" && (
+                      <div className="p-4">
+                        {(entry.eventos ?? []).length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            No hay eventos registrados. Los eventos se guardan a partir de ahora (partidas nuevas).
+                          </p>
+                        ) : (
+                          <div className="divide-y divide-border/30">
+                            {(entry.eventos ?? []).map((ev) => (
+                              <EventoRow key={ev.id} ev={ev} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs font-semibold text-foreground mb-2">
-                        Objetos entregados
-                      </p>
-                      {entry.items.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">
-                          Sin objetos registrados
-                        </p>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {entry.items.map((item, idx) => (
-                            <div key={`${item.objectId}-${idx}`} className="text-xs text-muted-foreground">
-                              <span className="mr-2">{item.objectIcon}</span>
-                              {item.objectName} x{item.qty}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {/* Ítems */}
+                    {activeSection === "items" && (
+                      <div className="p-4">
+                        {displayItems.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Sin ítems registrados.</p>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {displayItems.map((item) => (
+                              <div key={item.key} className="flex items-center gap-2 text-xs text-foreground/80 bg-secondary/20 rounded-lg px-3 py-2 border border-border/50">
+                                <span>{item.icono}</span>
+                                <span className="truncate">{item.nombre}</span>
+                                {item.qty > 1 && <span className="ml-auto text-muted-foreground shrink-0">x{item.qty}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2235,6 +2435,7 @@ function CharactersFormModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingChar, setEditingChar] = useState<number | null>(null);
+  const [reviveTarget, setReviveTarget] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     raza: string;
     clases: Array<{ nombre_clase: string; nivel: number }>;
@@ -2318,7 +2519,7 @@ function CharactersFormModal({
       const res = await fetch("/api/profile/admin-revive", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId }),
+        body: JSON.stringify({ characterId: reviveTarget }),
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
@@ -2331,10 +2532,11 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al revivir", "error");
     } finally {
       setSaving(false);
+      setReviveTarget(null);
     }
   };
 
@@ -4163,6 +4365,30 @@ function DeadCharactersTab({
     setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
   }, [historyPage, token, onToast]);
 
+  const executeRevive = async () => {
+    if (!reviveTarget) return;
+    setReviving(true);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: reviveTarget.id }),
+      });
+      if (res.ok) {
+        onToast("Personaje revivido exitosamente", "success");
+        await loadCurrentDead();
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch {
+      onToast("Error al revivir", "error");
+    } finally {
+      setReviving(false);
+      setReviveTarget(null);
+    }
+  };
+
   useEffect(() => {
     loadCurrentDead();
   }, [loadCurrentDead]);
@@ -4410,22 +4636,12 @@ export default function AdminPage() {
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
-    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
+    { id: "economia", label: "Economía", icon: Coins },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
     { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
-    { id: "partidas", label: "Publicar Partida", icon: Shield },
-    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
-    { id: "historial-partidas", label: "Historial", icon: Shield },
+    { id: "partidas", label: "Partidas", icon: Shield },
   ];
-
-  if (isSuperAdmin) {
-    tabs.splice(4, 0, {
-      id: "impuestos",
-      label: "Cobrar Impuestos",
-      icon: Coins,
-    });
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -4492,8 +4708,8 @@ export default function AdminPage() {
             {activeTab === "objetos" && (
               <ObjectsTab token={token} onToast={showToast} />
             )}
-            {activeTab === "transacciones" && (
-              <TransactionsTab token={token} onToast={showToast} />
+            {activeTab === "economia" && (
+              <EconomiaGroupTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
@@ -4501,20 +4717,11 @@ export default function AdminPage() {
             {activeTab === "dados" && (
               <DadosTab token={token} />
             )}
-            {isSuperAdmin && activeTab === "impuestos" && (
-              <TaxesTab token={token} onToast={showToast} />
-            )}
             {activeTab === "muertes" && (
               <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
-              <PartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "partidas-activas" && (
-              <ActivePartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "historial-partidas" && (
-              <PartidasHistoryTab token={token} onToast={showToast} />
+              <PartidasGroupTab token={token} onToast={showToast} />
             )}
           </div>
         </div>

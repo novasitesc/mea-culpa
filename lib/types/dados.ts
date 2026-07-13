@@ -34,6 +34,8 @@ export type LutCara = {
   objetoId: number | null
   objetoNombre: string | null
   objetoIcono: string | null
+  cantidadMin: number
+  cantidadMax: number
   subtablaId: number | null
   subtablaNombre: string | null
 }
@@ -46,6 +48,8 @@ export type SubtablaCara = {
   objetoId: number | null
   objetoNombre: string | null
   objetoIcono: string | null
+  cantidadMin: number
+  cantidadMax: number
   oroMin: number
   oroMax: number
 }
@@ -71,6 +75,7 @@ export type LutCaraResult = {
   cara: number
   tipo: LutCaraTipo
   objeto?: { id: number; nombre: string; icono: string }
+  cantidadObjeto?: number
   oroDetalle?: {
     formula: string
     dados: number[]
@@ -83,6 +88,7 @@ export type LutCaraResult = {
     subtablaId: number
     cara: number
     objeto: { id: number; nombre: string; icono: string } | null
+    cantidadObjeto?: number
     cantidadOro?: number
   }
 }

@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
 
   const partidaIds = (partidas ?? []).map((p: any) => p.id);
   const itemsByPartida = new Map<string, any[]>();
+  const eventosByPartida = new Map<string, any[]>();
 
   if (partidaIds.length > 0) {
     const { data: items, error: itemsError } = await session.db
@@ -97,11 +98,31 @@ export async function GET(request: NextRequest) {
     }
 
     for (const item of items ?? []) {
-      const partidaId = (item as any).partida_id;
-      if (!partidaId) continue;
-      const list = itemsByPartida.get(partidaId) ?? [];
+      const pid = (item as any).partida_id;
+      if (!pid) continue;
+      const list = itemsByPartida.get(pid) ?? [];
       list.push(item);
-      itemsByPartida.set(partidaId, list);
+      itemsByPartida.set(pid, list);
+    }
+
+    const { data: eventos, error: eventosError } = await session.db
+      .from("partidas_eventos")
+      .select(
+        "id, partida_id, tipo, personaje_id, personaje_nombre, usuario_id, tipo_dado, recompensa_nombre, tipo_resultado, objeto_id, objeto_nombre, objeto_icono, cantidad, cantidad_oro, miembro, miembro_label, desmembrado, metadata, creado_en",
+      )
+      .in("partida_id", partidaIds)
+      .order("creado_en", { ascending: true });
+
+    if (eventosError) {
+      return NextResponse.json({ error: eventosError.message }, { status: 500 });
+    }
+
+    for (const ev of eventos ?? []) {
+      const pid = (ev as any).partida_id;
+      if (!pid) continue;
+      const list = eventosByPartida.get(pid) ?? [];
+      list.push(ev);
+      eventosByPartida.set(pid, list);
     }
   }
 
@@ -144,6 +165,26 @@ export async function GET(request: NextRequest) {
         objectName: it.objeto?.nombre ?? "",
         objectIcon: it.objeto?.icono ?? "📦",
         qty: it.cantidad ?? 1,
+      })),
+      eventos: (eventosByPartida.get(p.id) ?? []).map((ev: any) => ({
+        id: ev.id,
+        tipo: ev.tipo,
+        personajeId: ev.personaje_id ?? null,
+        personajeNombre: ev.personaje_nombre ?? null,
+        usuarioId: ev.usuario_id ?? null,
+        tipoDado: ev.tipo_dado ?? null,
+        recompensaNombre: ev.recompensa_nombre ?? null,
+        tipoResultado: ev.tipo_resultado ?? null,
+        objetoId: ev.objeto_id ?? null,
+        objetoNombre: ev.objeto_nombre ?? null,
+        objetoIcono: ev.objeto_icono ?? null,
+        cantidad: ev.cantidad ?? null,
+        cantidadOro: ev.cantidad_oro ?? null,
+        miembro: ev.miembro ?? null,
+        miembroLabel: ev.miembro_label ?? null,
+        desmembrado: ev.desmembrado ?? null,
+        metadata: ev.metadata ?? null,
+        creadoEn: ev.creado_en,
       })),
     };
   });
@@ -295,6 +336,11 @@ export async function PATCH(request: NextRequest) {
     if (startError) {
       return NextResponse.json({ error: startError.message }, { status: 500 });
     }
+
+    await session.db.from("partidas_eventos").insert({
+      partida_id: partidaId,
+      tipo: "partida_iniciada",
+    });
 
     return NextResponse.json({ id: partidaId, status: "en_progreso" });
   }
@@ -709,6 +755,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: pendingSleepError.message }, { status: 500 });
     }
   }
+
+  await session.db.from("partidas_eventos").insert({
+    partida_id: partidaId,
+    tipo: "partida_cerrada",
+  });
 
   return NextResponse.json({
     id: (updated as any).id,

@@ -84,7 +84,7 @@ type CartEntry = ShopItem & { qty: number };
 
 export default function TiendasPage() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isLoading: isAuthLoading } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
@@ -140,6 +140,8 @@ export default function TiendasPage() {
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
+  // Render gate: validar acceso a tienda antes de renderizar contenido
+  const [isShopAccessValidated, setIsShopAccessValidated] = useState(false);
 
   // Cargar lista de tiendas
   useEffect(() => {
@@ -148,6 +150,23 @@ export default function TiendasPage() {
       .then((data: ShopListItem[]) => setShops(data))
       .finally(() => setIsLoadingShops(false));
   }, []);
+
+  // Render gate: validar acceso a la tienda cuando el usuario esté cargado
+  useEffect(() => {
+    if (!activeShop) {
+      setIsShopAccessValidated(false);
+      return;
+    }
+
+    // Si la auth aún está cargando, no validar aún
+    if (isAuthLoading) {
+      setIsShopAccessValidated(false);
+      return;
+    }
+
+    // Si tenemos usuario cargado, validar acceso inmediatamente
+    setIsShopAccessValidated(true);
+  }, [activeShop, isAuthLoading]);
 
   // Cargar personajes del usuario (para el selector de bolsa al comprar)
   useEffect(() => {
@@ -180,10 +199,21 @@ export default function TiendasPage() {
   const openShop = (id: string) => {
     setIsLoadingShop(true);
     setFilterCategory("all");
+    setIsShopAccessValidated(false); // Reset validation when opening a new shop
     fetch(`/api/tiendas?id=${id}`)
       .then((r) => r.json())
       .then((data: Shop) => setActiveShop(data))
       .finally(() => setIsLoadingShop(false));
+  };
+
+  // Helper: validar acceso a una tienda
+  const checkShopAccess = (shop: Shop | null, currentUser: typeof user): boolean => {
+    if (!shop || !currentUser) return false;
+    return (
+      currentUser.level > 10 ||
+      !shop.minLevel ||
+      currentUser.level >= shop.minLevel
+    );
   };
 
   // Categorías únicas de la tienda activa
@@ -631,7 +661,7 @@ export default function TiendasPage() {
             {/* ── Vista: lista de tiendas ────────────────────────────────────── */}
             {!activeShop && (
               <div>
-                {isLoadingShops ? (
+                {isLoadingShops || isAuthLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[...Array(5)].map((_, i) => (
                       <div
@@ -708,7 +738,8 @@ export default function TiendasPage() {
             {/* ── Vista: tienda individual ───────────────────────────────────── */}
             {activeShop && (
               <div>
-                {isLoadingShop ? (
+                {/* Render gate: No renderizar nada hasta validar acceso */}
+                {isAuthLoading || !isShopAccessValidated ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {[...Array(6)].map((_, i) => (
                       <div
@@ -717,49 +748,11 @@ export default function TiendasPage() {
                       />
                     ))}
                   </div>
-                ) : (
-                  (() => {
-                    // desbloqueo global: cualquier usuario con nivel > 10 tiene acceso a todo
-                    const hasAccess =
-                      (user && user.level > 10) ||
-                      !activeShop.minLevel ||
-                      (user && user.level >= activeShop.minLevel);
+                ) : (() => {
+                  // Acceso validado: determinar si el usuario tiene permisos
+                  const hasAccess = checkShopAccess(activeShop, user);
 
-                    if (!hasAccess) {
-                      return (
-                        <div className="flex flex-col items-center justify-center gap-6 py-20">
-                          <img
-                            src="/incognito.png"
-                            alt="Acceso denegado"
-                            className="w-24 h-24 object-contain opacity-80"
-                          />
-                          <div className="text-center max-w-sm">
-                            <h2 className="text-2xl font-bold text-gold mb-2">
-                              Acceso restringido
-                            </h2>
-                            <p className="text-muted-foreground text-sm mb-4">
-                              No tienes el nivel suficiente para acceder a{" "}
-                              {activeShop.name}.
-                            </p>
-                            <p className="text-gold font-bold text-lg">
-                              Nivel requerido: {activeShop.minLevel}
-                            </p>
-                            <p className="text-muted-foreground text-sm mt-2">
-                              Tu nivel actual: {user?.level || "No definido"}
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            onClick={() => setActiveShop(null)}
-                            className="mt-4"
-                          >
-                            <ChevronLeft className="w-4 h-4 mr-2" />
-                            Volver a tiendas
-                          </Button>
-                        </div>
-                      );
-                    }
-
+                  if (!hasAccess) {
                     return (
                       <>
                         {/* Cabecera de la tienda */}
@@ -801,20 +794,14 @@ export default function TiendasPage() {
                                 </Select>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Grid de items */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {visibleItems.map((item) => {
-                            const bought = purchasedItems.has(item.id);
-                            const outOfStock = item.stock === 0;
-                            const inCart = cart.some((e) => e.id === item.id);
-
-                            return (
-                              <Card
-                                key={item.id}
-                                className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
+                            {/* Filtro de categoría */}
+                            <div className="shrink-0">
+                              <Select
+                                value={filterCategory}
+                                onChange={(e) =>
+                                  setFilterCategory(e.target.value)
+                                }
+                                className="w-44"
                               >
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between gap-2">

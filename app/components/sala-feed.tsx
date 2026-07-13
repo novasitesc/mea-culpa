@@ -114,6 +114,19 @@ function renderEvento(ev: SalaEvento, i: number) {
     );
   }
 
+  if (ev.tipo === "consumible_usado") {
+    return (
+      <div key={i} className="flex items-center gap-2 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in duration-300">
+        <span className="text-base shrink-0">🧪</span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> usó </span>
+          <span className="text-emerald-400 font-semibold">{ev.objeto.icono} {ev.objeto.nombre}</span>
+        </p>
+      </div>
+    );
+  }
+
   return null;
 }
 

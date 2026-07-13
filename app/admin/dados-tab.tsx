@@ -29,6 +29,8 @@ type LutCaraForm = {
   oroMin: string;
   oroMax: string;
   objetoId: number | null;
+  cantidadMin: string;
+  cantidadMax: string;
   subtablaId: number | null;
 };
 
@@ -38,6 +40,8 @@ type SubtablaCaraForm = {
   numeroCara: number;
   tipo: SubtablaCaraTipo;
   objetoId: number | null;
+  cantidadMin: string;
+  cantidadMax: string;
   oroMin: string;
   oroMax: string;
 };
@@ -73,6 +77,8 @@ type RecompensaFull = {
     tipoDadoOro: DiceType | null;
     multiplicadorOro: number;
     objetoId: number | null;
+    cantidadMin: number;
+    cantidadMax: number;
     subtablaId: number | null;
   }>;
   subtablaCaras?: Array<{
@@ -80,6 +86,8 @@ type RecompensaFull = {
     numeroCara: number;
     tipo: SubtablaCaraTipo;
     objetoId: number | null;
+    cantidadMin: number;
+    cantidadMax: number;
     oroMin: number;
     oroMax: number;
   }>;
@@ -117,6 +125,8 @@ function makeEmptyLutCaras(): LutCaraForm[] {
     oroMin: "10",
     oroMax: "50",
     objetoId: null,
+    cantidadMin: "1",
+    cantidadMax: "1",
     subtablaId: null,
   }));
 }
@@ -126,6 +136,8 @@ function makeEmptySubtablaCaras(): SubtablaCaraForm[] {
     numeroCara: i + 1,
     tipo: "nada" as SubtablaCaraTipo,
     objetoId: null,
+    cantidadMin: "1",
+    cantidadMax: "1",
     oroMin: "10",
     oroMax: "50",
   }));
@@ -214,6 +226,8 @@ export function DadosTab({ token }: { token: string | null }) {
         oroMin: String(saved.cantidadDados ?? 10),
         oroMax: String(saved.multiplicadorOro ?? 50),
         objetoId: saved.objetoId,
+        cantidadMin: String(saved.cantidadMin ?? 1),
+        cantidadMax: String(saved.cantidadMax ?? 1),
         subtablaId: saved.subtablaId,
       };
     });
@@ -225,6 +239,8 @@ export function DadosTab({ token }: { token: string | null }) {
         numeroCara: saved.numeroCara,
         tipo: (saved.tipo ?? "nada") as SubtablaCaraTipo,
         objetoId: saved.objetoId,
+        cantidadMin: String(saved.cantidadMin ?? 1),
+        cantidadMax: String(saved.cantidadMax ?? 1),
         oroMin: String(saved.oroMin ?? 10),
         oroMax: String(saved.oroMax ?? 50),
       };
@@ -330,6 +346,8 @@ export function DadosTab({ token }: { token: string | null }) {
                 oroMin: parseInt(c.oroMin) || 0,
                 oroMax: parseInt(c.oroMax) || 0,
                 objetoId: c.tipo === "item" ? c.objetoId : null,
+                cantidadMin: c.tipo === "item" ? (parseInt(c.cantidadMin) || 1) : 1,
+                cantidadMax: c.tipo === "item" ? (parseInt(c.cantidadMax) || 1) : 1,
                 subtablaId: c.tipo === "subtabla" ? c.subtablaId : null,
               }))
             : [],
@@ -339,6 +357,8 @@ export function DadosTab({ token }: { token: string | null }) {
                 numeroCara: c.numeroCara,
                 tipo: c.tipo,
                 objetoId: c.tipo === "item" ? c.objetoId : null,
+                cantidadMin: c.tipo === "item" ? (parseInt(c.cantidadMin) || 1) : 1,
+                cantidadMax: c.tipo === "item" ? (parseInt(c.cantidadMax) || 1) : 1,
                 oroMin: c.tipo === "oro" ? parseInt(c.oroMin) || 0 : 0,
                 oroMax: c.tipo === "oro" ? parseInt(c.oroMax) || 0 : 0,
               }))
@@ -665,14 +685,32 @@ export function DadosTab({ token }: { token: string | null }) {
                         </div>
 
                         {cara.tipo === "item" && (
-                          <ObjectSelector
-                            items={objectSelectorItems}
-                            value={cara.objetoId}
-                            onChange={(v) => updateLutCara(idx, "objetoId", v)}
-                            placeholder="Elegir ítem…"
-                            searchable
-                            searchPlaceholder="Buscar…"
-                          />
+                          <>
+                            <ObjectSelector
+                              items={objectSelectorItems}
+                              value={cara.objetoId}
+                              onChange={(v) => updateLutCara(idx, "objetoId", v)}
+                              placeholder="Elegir ítem…"
+                              searchable
+                              searchPlaceholder="Buscar…"
+                            />
+                            <div className="flex items-center gap-1.5">
+                              <GoldAmountInput
+                                value={cara.cantidadMin}
+                                onChangeValue={(v) => updateLutCara(idx, "cantidadMin", v)}
+                                min={1}
+                                className="w-14 text-xs px-1.5 py-1 h-auto"
+                              />
+                              <span className="text-foreground/40 text-xs">–</span>
+                              <GoldAmountInput
+                                value={cara.cantidadMax}
+                                onChangeValue={(v) => updateLutCara(idx, "cantidadMax", v)}
+                                min={1}
+                                className="w-14 text-xs px-1.5 py-1 h-auto"
+                              />
+                              <span className="text-foreground/30 text-[10px]">uds.</span>
+                            </div>
+                          </>
                         )}
 
                         {cara.tipo === "oro" && (
@@ -744,14 +782,32 @@ export function DadosTab({ token }: { token: string | null }) {
                         </div>
 
                         {cara.tipo === "item" && (
-                          <ObjectSelector
-                            items={objectSelectorItems}
-                            value={cara.objetoId}
-                            onChange={(v) => updateSubtablaCara(idx, "objetoId", v)}
-                            placeholder="Seleccionar ítem…"
-                            searchable
-                            searchPlaceholder="Buscar ítem…"
-                          />
+                          <>
+                            <ObjectSelector
+                              items={objectSelectorItems}
+                              value={cara.objetoId}
+                              onChange={(v) => updateSubtablaCara(idx, "objetoId", v)}
+                              placeholder="Seleccionar ítem…"
+                              searchable
+                              searchPlaceholder="Buscar ítem…"
+                            />
+                            <div className="flex items-center gap-1.5">
+                              <GoldAmountInput
+                                value={cara.cantidadMin}
+                                onChangeValue={(v) => updateSubtablaCara(idx, "cantidadMin", v)}
+                                min={1}
+                                className="w-14 text-xs px-1.5 py-1 h-auto"
+                              />
+                              <span className="text-foreground/40 text-xs">–</span>
+                              <GoldAmountInput
+                                value={cara.cantidadMax}
+                                onChangeValue={(v) => updateSubtablaCara(idx, "cantidadMax", v)}
+                                min={1}
+                                className="w-14 text-xs px-1.5 py-1 h-auto"
+                              />
+                              <span className="text-foreground/30 text-[10px]">uds.</span>
+                            </div>
+                          </>
                         )}
 
                         {cara.tipo === "oro" && (

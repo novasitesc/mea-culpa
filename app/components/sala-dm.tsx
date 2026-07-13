@@ -241,7 +241,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       const res = await fetch("/api/admin/personajes/extremidades", {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ personajeId, miembro, desmembrado }),
+        body: JSON.stringify({ personajeId, miembro, miembroLabel: label, desmembrado, partidaId: partida.id }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
