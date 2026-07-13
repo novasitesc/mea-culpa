@@ -165,7 +165,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="space-y-3">
+    <aside className="hidden space-y-3 lg:block">
       {sidebarItems.map((item) => {
         const staticDisabled = "disabled" in item && item.disabled;
         const roulettePending =

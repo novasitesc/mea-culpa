@@ -10,7 +10,11 @@ import {
   X,
   Plus,
   Minus,
+  Lock,
+  CheckCircle2,
+  MapPin,
 } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import Header from "@/app/components/header";
@@ -86,10 +90,51 @@ export default function TiendasPage() {
   const [isLoadingShops, setIsLoadingShops] = useState(true);
   const [isLoadingShop, setIsLoadingShop] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const cartKey = user?.id ? `mc_tiendas_cart_${user.id}` : null;
   const [cart, setCart] = useState<CartEntry[]>([]);
+
+  useEffect(() => {
+    if (!cartKey) {
+      setCart([]);
+      return;
+    }
+    try {
+      localStorage.removeItem("mc_tiendas_cart");
+    } catch {}
+
+    const loadCart = () => {
+      try {
+        const saved = localStorage.getItem(cartKey);
+        const parsed = saved ? JSON.parse(saved) : [];
+        setCart((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev;
+          return parsed;
+        });
+      } catch {
+        setCart([]);
+      }
+    };
+
+    loadCart();
+    window.addEventListener("storage", loadCart);
+    window.addEventListener("cart:update", loadCart);
+    return () => {
+      window.removeEventListener("storage", loadCart);
+      window.removeEventListener("cart:update", loadCart);
+    };
+  }, [cartKey]);
+
+  useEffect(() => {
+    if (!cartKey) return;
+    try {
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      window.dispatchEvent(new Event("cart:update"));
+    } catch {}
+  }, [cart, cartKey]);
+
   const [cartOpen, setCartOpen] = useState(false);
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState<React.ReactNode | null>(null);
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
@@ -196,7 +241,7 @@ export default function TiendasPage() {
       }
       return [...prev, { ...item, qty: 1 }];
     });
-    showNotification(`${item.icon} ${item.name} añadido al carrito`);
+    showNotification(<span className="flex items-center gap-1.5"><ShoppingCart className="w-4 h-4 text-[#D4AF37]" /> {item.name} añadido al carrito</span>);
   };
 
   const removeFromCart = (id: string) => {
@@ -302,7 +347,7 @@ export default function TiendasPage() {
         );
       }
       showNotification(
-        `✅ Compra completada · Saldo: ${(data.oro ?? 0).toLocaleString()} 🪙`,
+        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Compra completada · Saldo: {(data.oro ?? 0).toLocaleString()} <Coins className="w-4 h-4 text-yellow-500" /></span>
       );
     } catch {
       setBuyError("Error de conexión. Intenta de nuevo.");
@@ -311,7 +356,7 @@ export default function TiendasPage() {
     }
   };
 
-  const showNotification = (msg: string) => {
+  const showNotification = (msg: React.ReactNode) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 2500);
   };
@@ -333,13 +378,13 @@ export default function TiendasPage() {
 
         {/* Notificación flotante */}
         {notification && (
-          <div className="fixed bottom-6 right-6 z-50 bg-card border border-gold-dim text-foreground px-4 py-3 rounded-lg shadow-xl text-sm medieval-border animate-in slide-in-from-bottom-4">
+          <div className="fixed bottom-20 right-6 z-50 bg-card border border-gold-dim text-foreground px-4 py-3 rounded-lg shadow-xl text-sm medieval-border animate-in slide-in-from-bottom-4">
             {notification}
           </div>
         )}
 
         {/* Botón carrito flotante */}
-        {cartCount > 0 && (
+        {Boolean(user?.id) && cartCount > 0 && (
           <button
             onClick={() => setCartOpen(true)}
             className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl font-medium transition-colors ${
@@ -379,12 +424,12 @@ export default function TiendasPage() {
               <CardContent className="pt-4 space-y-3">
                 {cart.map((e) => (
                   <div key={e.id} className="flex items-center gap-3">
-                    <span className="text-xl shrink-0">{e.icon}</span>
+                    <span className="flex items-center justify-center text-[#D4AF37] shrink-0">{getIconForString(e.name, "w-6 h-6", e.icon)}</span>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{e.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.price.toLocaleString()} 🪙 c/u
+                        {e.price.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" /> c/u
                       </p>
                     </div>
 
@@ -410,7 +455,7 @@ export default function TiendasPage() {
                     </div>
 
                     <span className="text-sm font-bold text-gold shrink-0 w-16 text-right">
-                      {(e.price * e.qty).toLocaleString()} 🪙
+                      {(e.price * e.qty).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                     </span>
 
                     <button
@@ -434,7 +479,7 @@ export default function TiendasPage() {
                   <p className="text-xs text-destructive text-center">
                     Te faltan{" "}
                     <strong>
-                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} 🪙
+                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                     </strong>{" "}
                     para esta compra
                   </p>
@@ -476,7 +521,7 @@ export default function TiendasPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   {cartCount} objeto{cartCount !== 1 ? "s" : ""} ·{" "}
                   <span className="text-gold font-semibold">
-                    {cartTotal.toLocaleString()} 🪙
+                    {cartTotal.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
                   </span>
                 </p>
               </CardHeader>
@@ -493,7 +538,7 @@ export default function TiendasPage() {
                         key={item.id}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <span className="text-lg">{item.icon}</span>
+                        <span className="flex items-center justify-center text-[#D4AF37]">{getIconForString(item.name, "w-5 h-5", item.icon)}</span>
                         <span className="flex-1 truncate">{item.name}</span>
                         <span className="font-semibold text-gold shrink-0">
                           ×{item.qty}
@@ -546,7 +591,7 @@ export default function TiendasPage() {
                           </div>
                           {isSelected && (
                             <span className="text-gold text-lg shrink-0">
-                              ✓
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                             </span>
                           )}
                         </button>
@@ -642,8 +687,8 @@ export default function TiendasPage() {
                           >
                             <CardHeader className="pb-2 pt-4 px-4">
                               <div className="flex items-start gap-2.5">
-                                <span className="text-3xl shrink-0">
-                                  {shop.icon}
+                                <span className="text-3xl shrink-0 flex items-center justify-center text-[#D4AF37]">
+                                  {getIconForString(shop.name, "w-8 h-8", shop.icon)}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <CardTitle
@@ -709,59 +754,45 @@ export default function TiendasPage() {
 
                   if (!hasAccess) {
                     return (
-                      <div className="flex flex-col items-center justify-center gap-6 py-20">
-                        <img
-                          src="/incognito.png"
-                          alt="Acceso denegado"
-                          className="w-24 h-24 object-contain opacity-80"
-                        />
-                        <div className="text-center max-w-sm">
-                          <h2 className="text-2xl font-bold text-gold mb-2">
-                            Acceso restringido
-                          </h2>
-                          <p className="text-muted-foreground text-sm mb-4">
-                            No tienes el nivel suficiente para acceder a{" "}
-                            {activeShop.name}.
-                          </p>
-                          <p className="text-gold font-bold text-lg">
-                            Nivel requerido: {activeShop.minLevel}
-                          </p>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            Tu nivel actual: {user?.level || "No definido"}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => setActiveShop(null)}
-                          className="mt-4"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          Volver a tiendas
-                        </Button>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <>
-                      {/* Cabecera de la tienda */}
-                      <Card className="mb-6 border-gold-dim medieval-border">
-                        <CardContent className="pt-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <span className="text-5xl">
-                              {activeShop.icon}
-                            </span>
-                            <div className="flex-1">
-                              <h2 className="text-xl font-bold text-gold font-sans">
-                                {activeShop.name}
-                              </h2>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {activeShop.description}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-2 italic">
-                                📍 {activeShop.location} · Atendido por{" "}
-                                <strong>{activeShop.keeper}</strong>
-                              </p>
+                      <>
+                        {/* Cabecera de la tienda */}
+                        <Card className="mb-6 border-gold-dim medieval-border">
+                          <CardContent className="pt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <span className="text-5xl flex items-center justify-center text-[#D4AF37]">
+                                {getIconForString(activeShop.name, "w-14 h-14", activeShop.icon)}
+                              </span>
+                              <div className="flex-1">
+                                <h2 className="text-xl font-bold text-gold font-sans">
+                                  {activeShop.name}
+                                </h2>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {activeShop.description}
+                                </p>
+                                 <p className="text-xs text-muted-foreground mt-2 italic flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 shrink-0 text-gold/60" /> {activeShop.location} · Atendido por{" "}
+                                  <strong>{activeShop.keeper}</strong>
+                                </p>
+                              </div>
+                              {/* Filtro de categoría */}
+                              <div className="shrink-0">
+                                <Select
+                                  value={filterCategory}
+                                  onChange={(e) =>
+                                    setFilterCategory(e.target.value)
+                                  }
+                                  className="w-44"
+                                >
+                                  {categories.map((cat) => (
+                                    <option key={cat} value={cat}>
+                                      {cat === "all"
+                                        ? "Todas las categorías"
+                                        : cat.charAt(0).toUpperCase() +
+                                          cat.slice(1)}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
                             </div>
                             {/* Filtro de categoría */}
                             <div className="shrink-0">
@@ -772,90 +803,65 @@ export default function TiendasPage() {
                                 }
                                 className="w-44"
                               >
-                                {categories.map((cat) => (
-                                  <option key={cat} value={cat}>
-                                    {cat === "all"
-                                      ? "Todas las categorías"
-                                      : cat.charAt(0).toUpperCase() +
-                                        cat.slice(1)}
-                                  </option>
-                                ))}
-                              </Select>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Grid de items */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {visibleItems.map((item) => {
-                          const bought = purchasedItems.has(item.id);
-                          const outOfStock = item.stock === 0;
-                          const inCart = cart.some((e) => e.id === item.id);
-
-                          return (
-                            <Card
-                              key={item.id}
-                              className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
-                            >
-                              <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className="text-3xl">
-                                    {item.icon}
-                                  </span>
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
-                                  >
-                                    {item.rarity}
-                                  </span>
-                                </div>
-                                <CardTitle className="text-sm text-foreground mt-2 leading-tight">
-                                  {item.name}
-                                </CardTitle>
-                              </CardHeader>
-
-                              <CardContent className="flex-1 flex flex-col gap-3 pt-0">
-                                <CardDescription className="text-xs leading-relaxed flex-1">
-                                  {item.description}
-                                </CardDescription>
-
-                                <div className="flex items-center justify-between mt-auto">
-                                  {/* Precio */}
-                                  <span className="flex items-center gap-1 font-bold text-gold text-sm">
-                                    <Coins className="w-4 h-4" />
-                                    {item.price.toLocaleString()}
-                                  </span>
-                                  {/* Stock */}
-                                  {item.stock !== null && (
-                                    <span className="text-xs text-muted-foreground">
-                                      Stock: {item.stock}
+                                <CardHeader className="pb-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="text-3xl">
+                                      <span className="flex items-center justify-center text-[#D4AF37] mr-1">{getIconForString(item.name, "w-4 h-4", item.icon)}</span>
                                     </span>
-                                  )}
-                                </div>
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
+                                    >
+                                      {item.rarity}
+                                    </span>
+                                  </div>
+                                  <CardTitle className="text-sm text-foreground mt-2 leading-tight">
+                                    {item.name}
+                                  </CardTitle>
+                                </CardHeader>
 
-                                <Button
-                                  size="sm"
-                                  variant={inCart ? "secondary" : "default"}
-                                  disabled={bought || outOfStock}
-                                  onClick={() => addToCart(item)}
-                                  className="w-full"
-                                >
-                                  {bought
-                                    ? "Comprado ✓"
-                                    : outOfStock
-                                      ? "Sin stock"
-                                      : inCart
-                                        ? "En carrito +"
-                                        : "Añadir al carrito"}
-                                </Button>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    </>
-                  );
-                })()}
+                                <CardContent className="flex-1 flex flex-col gap-3 pt-0">
+                                  <CardDescription className="text-xs leading-relaxed flex-1">
+                                    {item.description}
+                                  </CardDescription>
+
+                                  <div className="flex items-center justify-between mt-auto">
+                                    {/* Precio */}
+                                    <span className="flex items-center gap-1 font-bold text-gold text-sm">
+                                      <Coins className="w-4 h-4" />
+                                      {item.price.toLocaleString()}
+                                    </span>
+                                    {/* Stock */}
+                                    {item.stock !== null && (
+                                      <span className="text-xs text-muted-foreground">
+                                        Stock: {item.stock}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant={inCart ? "secondary" : "default"}
+                                    disabled={bought || outOfStock}
+                                    onClick={() => addToCart(item)}
+                                    className="w-full"
+                                  >
+                                    {bought
+                                      ? <><CheckCircle2 className="w-4 h-4 inline-block mr-1" /> Comprado</>
+                                      : outOfStock
+                                        ? "Sin stock"
+                                        : inCart
+                                          ? "En carrito +"
+                                          : "Añadir al carrito"}
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()
+                )}
               </div>
             )}
           </div>

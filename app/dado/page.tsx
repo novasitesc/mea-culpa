@@ -13,7 +13,7 @@ export default function DadoPage() {
     <div className="min-h-screen p-6 text-foreground bg-background relative z-10 space-y-4">
       <Header />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-3">
+        <div className="hidden lg:block lg:col-span-3">
           <Sidebar />
         </div>
         <main className="lg:col-span-9 space-y-4">

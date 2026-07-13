@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
 import NotasWidget from "@/app/components/notas-widget";
@@ -468,7 +469,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                           {dismembering === loadKey ? (
                             <Loader2 className="w-3 h-3 animate-spin shrink-0" />
                           ) : (
-                            <span className="text-[10px] shrink-0">{isDismembered ? "✂" : "○"}</span>
+                            <span className="text-[10px] shrink-0">{isDismembered ? <Scissors className="w-3 h-3 text-rose-400" /> : "○"}</span>
                           )}
                           {label}
                         </button>
@@ -610,8 +611,8 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                                   </span>
                                 )}
                                 {items.map((item) => (
-                                  <span key={item.id} className="text-xs text-green-400 font-semibold font-sans">
-                                    {item.icono} {item.nombre}{item.qty > 1 ? ` ×${item.qty}` : ""}
+                                  <span key={item.id} className="text-xs text-green-400 font-semibold font-sans flex items-center gap-1.5">
+                                    {getIconForString(item.nombre, "w-3.5 h-3.5 shrink-0", item.icono)} {item.nombre}{item.qty > 1 ? ` ×${item.qty}` : ""}
                                   </span>
                                 ))}
                               </div>

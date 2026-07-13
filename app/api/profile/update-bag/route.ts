@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
 export async function POST(request: Request) {
   try {
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const {
-      userId,
       characterId,
       bagItems,
       armor,
@@ -16,16 +22,14 @@ export async function POST(request: Request) {
     } =
       await request.json();
 
-    if (!userId || !characterId) {
+    if (!characterId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    const db = createServerClient();
-
-    const lifeCheck = await ensureOwnedAliveCharacter(db, String(userId), Number(characterId));
+    const lifeCheck = await ensureOwnedAliveCharacter(db, String(user.id), Number(characterId));
     if (!lifeCheck.ok) {
       return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
     }

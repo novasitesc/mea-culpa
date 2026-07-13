@@ -51,8 +51,9 @@ export async function POST(request: Request) {
       type,
       title: title.trim(),
       description: description.trim(),
-      page_url: typeof page_url === "string" ? page_url : null,
-      user_agent: typeof user_agent === "string" ? user_agent : null,
+      // Acotar longitud para evitar abuso de almacenamiento con payloads enormes.
+      page_url: typeof page_url === "string" ? page_url.slice(0, 500) : null,
+      user_agent: typeof user_agent === "string" ? user_agent.slice(0, 500) : null,
     });
 
     if (error) {

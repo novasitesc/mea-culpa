@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
           oro_delta,
           comentario,
           muerto,
-          personaje:personaje_id ( nombre ),
-          usuario:usuario_id ( nombre, nivel20_url )
+          personaje:personaje_id ( nombre, nivel20_url ),
+          usuario:usuario_id ( nombre )
         )
       `,
     )
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
         gold: pp.oro_delta ?? 0,
         comment: pp.comentario ?? "",
         dead: pp.muerto ?? false,
-        nivel20Url: pp.usuario?.nivel20_url ?? null,
+        nivel20Url: pp.personaje?.nivel20_url ?? null,
       })),
       items: (itemsByPartida.get(p.id) ?? []).map((it: any) => ({
         characterId: it.personaje_id,

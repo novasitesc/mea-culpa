@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { Crown, Package, Shield, Users } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 
 type Character = {
   id: number;
@@ -518,7 +519,7 @@ export default function GremioPage() {
     <div className="min-h-screen p-6 text-foreground bg-background relative z-10 space-y-4">
       <Header />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-3">
+        <div className="hidden lg:block lg:col-span-3">
           <Sidebar activeSection="gremio" />
         </div>
 
@@ -752,8 +753,8 @@ export default function GremioPage() {
                     <>
                       {selectedBaulItem && (
                         <div className="rounded-lg border border-border p-3 bg-card/50">
-                          <p className="font-semibold text-gold">
-                            {selectedBaulItem.object.icono} {selectedBaulItem.object.nombre}
+                          <p className="font-semibold text-gold flex items-center gap-2">
+                            {getIconForString(selectedBaulItem.object.nombre, "w-4 h-4 text-[#D4AF37]", selectedBaulItem.object.icono)} {selectedBaulItem.object.nombre}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Valor: {selectedBaulItem.object.precio.toLocaleString()} oro
@@ -794,8 +795,8 @@ export default function GremioPage() {
                           key={req.id}
                           className="rounded-lg border border-border p-3 bg-card/50"
                         >
-                          <p className="text-sm text-gold font-semibold">
-                            {req.item.icono} {req.item.nombre} x{req.item.cantidad}
+                          <p className="text-sm text-gold font-semibold flex items-center gap-2">
+                            {getIconForString(req.item.nombre, "w-4 h-4 text-[#D4AF37]", req.item.icono)} {req.item.nombre} x{req.item.cantidad}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Solicitante: {req.requesterName} | Destino: {req.targetCharacter.name}

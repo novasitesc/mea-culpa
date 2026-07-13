@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
+import MobileNav from "./mobile-nav";
 
 // Botones del header
 const headerButtons = [
@@ -51,10 +52,11 @@ export default function Header() {
 
   return (
     <header className="flex items-center justify-between mb-6 bg-card rounded-lg border border-border p-3 medieval-border">
-      {/* Logo */}
-      <div className="flex items-center gap-3">
+      {/* Burger (solo móvil) + Logo */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <MobileNav />
         <div
-          className="relative w-16 h-12 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer"
+          className="relative w-12 h-10 sm:w-16 sm:h-12 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer"
           onClick={() => router.push("/")}
         >
           <Image
@@ -67,10 +69,10 @@ export default function Header() {
           />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gold tracking-wider font-sans">
+          <h1 className="text-base sm:text-xl font-bold text-gold tracking-wider font-sans">
             MEA CULPA
           </h1>
-          <p className="text-xs text-muted-foreground">RPG Online</p>
+          <p className="hidden sm:block text-xs text-muted-foreground">RPG Online</p>
         </div>
       </div>
 
@@ -86,7 +88,7 @@ export default function Header() {
         ) : isAuthenticated && user ? (
           <>
             {user.isAdmin && (
-              <div className="relative group">
+              <div className="relative group hidden lg:block">
                 <button
                   onClick={() => router.push("/admin")}
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
@@ -104,7 +106,7 @@ export default function Header() {
               </div>
             )}
             {headerButtons.map((button) => (
-              <div key={button.id} className="relative group">
+              <div key={button.id} className="relative group hidden lg:block">
                 <button
                   onClick={() =>
                     button.href &&
@@ -130,6 +132,11 @@ export default function Header() {
                 )}
               </div>
             ))}
+            {/* Oro compacto en móvil (nombre y nivel viven en el drawer) */}
+            <div className="sm:hidden flex items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-xs font-semibold text-yellow-400">
+              <Coins className="w-3 h-3" />
+              {user.oro.toLocaleString()}
+            </div>
             <div className="hidden sm:block text-right mx-2">
               <p className="text-sm font-medium text-gold">{user.name}</p>
               <div className="flex items-center justify-end gap-2">
@@ -144,7 +151,7 @@ export default function Header() {
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-secondary hover:bg-muted text-muted-foreground hover:text-destructive font-medium rounded-lg transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-secondary hover:bg-muted text-muted-foreground hover:text-destructive font-medium rounded-lg transition-all hidden lg:flex items-center gap-2"
               title="Cerrar Sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -156,7 +163,7 @@ export default function Header() {
             {headerButtons.slice(0, 2).map((button) => (
               <button
                 key={button.id}
-                className="w-10 h-10 rounded-full flex items-center justify-center bg-secondary text-muted-foreground hover:bg-muted hover:text-gold transition-all"
+                className="w-10 h-10 rounded-full hidden lg:flex items-center justify-center bg-secondary text-muted-foreground hover:bg-muted hover:text-gold transition-all"
                 title={button.label}
               >
                 <button.icon className="w-5 h-5" />
