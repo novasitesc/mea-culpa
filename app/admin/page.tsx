@@ -33,7 +33,6 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
-import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
@@ -4365,30 +4364,6 @@ function DeadCharactersTab({
     setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
   }, [historyPage, token, onToast]);
 
-  const executeRevive = async () => {
-    if (!reviveTarget) return;
-    setReviving(true);
-    try {
-      const res = await fetch("/api/profile/admin-revive", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId: reviveTarget.id }),
-      });
-      if (res.ok) {
-        onToast("Personaje revivido exitosamente", "success");
-        await loadCurrentDead();
-      } else {
-        const e = await res.json();
-        onToast(e.error ?? "Error al revivir", "error");
-      }
-    } catch {
-      onToast("Error al revivir", "error");
-    } finally {
-      setReviving(false);
-      setReviveTarget(null);
-    }
-  };
-
   useEffect(() => {
     loadCurrentDead();
   }, [loadCurrentDead]);
@@ -4591,6 +4566,98 @@ function DeadCharactersTab({
         </div>
       )}
       <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+    </div>
+  );
+}
+
+// ─── Grupos de pestañas ───────────────────────────────────────────────────────
+
+function GroupSubTabs<T extends string>({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { id: T; label: string }[];
+  active: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 mb-6">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            active === tab.id
+              ? "border-gold/60 bg-gold/10 text-gold"
+              : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EconomiaGroupTab({
+  token,
+  onToast,
+  isSuperAdmin,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
+}) {
+  type EconomiaSubTab = "transacciones" | "impuestos";
+  const [subTab, setSubTab] = useState<EconomiaSubTab>("transacciones");
+
+  const subTabs: { id: EconomiaSubTab; label: string }[] = [
+    { id: "transacciones", label: "Transacciones" },
+    ...(isSuperAdmin
+      ? [{ id: "impuestos" as const, label: "Impuestos" }]
+      : []),
+  ];
+
+  return (
+    <div>
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      {subTab === "transacciones" && (
+        <TransactionsTab token={token} onToast={onToast} />
+      )}
+      {isSuperAdmin && subTab === "impuestos" && (
+        <TaxesTab token={token} onToast={onToast} />
+      )}
+    </div>
+  );
+}
+
+function PartidasGroupTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  type PartidasSubTab = "crear" | "activas" | "historial";
+  const [subTab, setSubTab] = useState<PartidasSubTab>("crear");
+
+  const subTabs: { id: PartidasSubTab; label: string }[] = [
+    { id: "crear", label: "Crear partida" },
+    { id: "activas", label: "Partidas activas" },
+    { id: "historial", label: "Historial" },
+  ];
+
+  return (
+    <div>
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      {subTab === "crear" && <PartidasTab token={token} onToast={onToast} />}
+      {subTab === "activas" && (
+        <ActivePartidasTab token={token} onToast={onToast} />
+      )}
+      {subTab === "historial" && (
+        <PartidasHistoryTab token={token} onToast={onToast} />
+      )}
     </div>
   );
 }

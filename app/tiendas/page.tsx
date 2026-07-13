@@ -754,6 +754,40 @@ export default function TiendasPage() {
 
                   if (!hasAccess) {
                     return (
+                      <div className="flex flex-col items-center justify-center gap-6 py-20">
+                        <img
+                          src="/incognito.png"
+                          alt="Acceso denegado"
+                          className="w-24 h-24 object-contain opacity-80"
+                        />
+                        <div className="text-center max-w-sm">
+                          <h2 className="text-2xl font-bold text-gold mb-2">
+                            Acceso restringido
+                          </h2>
+                          <p className="text-muted-foreground text-sm mb-4">
+                            No tienes el nivel suficiente para acceder a{" "}
+                            {activeShop.name}.
+                          </p>
+                          <p className="text-gold font-bold text-lg">
+                            Nivel requerido: {activeShop.minLevel}
+                          </p>
+                          <p className="text-muted-foreground text-sm mt-2">
+                            Tu nivel actual: {user?.level || "No definido"}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveShop(null)}
+                          className="mt-4"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          Volver a tiendas
+                        </Button>
+                      </div>
+                    );
+                  }
+
+                  return (
                       <>
                         {/* Cabecera de la tienda */}
                         <Card className="mb-6 border-gold-dim medieval-border">
@@ -794,14 +828,20 @@ export default function TiendasPage() {
                                 </Select>
                               </div>
                             </div>
-                            {/* Filtro de categoría */}
-                            <div className="shrink-0">
-                              <Select
-                                value={filterCategory}
-                                onChange={(e) =>
-                                  setFilterCategory(e.target.value)
-                                }
-                                className="w-44"
+                          </CardContent>
+                        </Card>
+
+                        {/* Grid de items */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {visibleItems.map((item) => {
+                            const bought = purchasedItems.has(item.id);
+                            const outOfStock = item.stock === 0;
+                            const inCart = cart.some((e) => e.id === item.id);
+
+                            return (
+                              <Card
+                                key={item.id}
+                                className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
                               >
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between gap-2">
@@ -860,8 +900,7 @@ export default function TiendasPage() {
                         </div>
                       </>
                     );
-                  })()
-                )}
+                  })()}
               </div>
             )}
           </div>
