@@ -11,6 +11,7 @@ import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CharacterGrid from "./components/character-grid";
+import PartidasHistorial from "./components/partidas-historial";
 import { type SpellEntry } from "@/lib/spells";
 
 type Player = {
@@ -1057,6 +1058,8 @@ export default function ProfilePage() {
               }}
             />
           )}
+
+          <PartidasHistorial token={token} />
         </div>
       </div>
 
