@@ -13,6 +13,8 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const characterId = searchParams.get("characterId");
+    const transferTargetType = searchParams.get("transferTargetType") || "none";
+    const transferTargetId = searchParams.get("transferTargetId");
 
     if (!characterId) {
       return NextResponse.json({ error: "ID de personaje requerido" }, { status: 400 });
@@ -21,7 +23,7 @@ export async function DELETE(request: Request) {
     // 1. Obtener el personaje para verificar su estado actual
     const { data: personaje, error: fetchError } = await db
       .from("personajes")
-      .select("id, estado_vida")
+      .select("id, estado_vida, numero_slot")
       .eq("id", characterId)
       .eq("usuario_id", user.id)
       .single();
@@ -30,36 +32,101 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Personaje no encontrado" }, { status: 404 });
     }
 
-    // 2. Si el personaje está vivo, lo matamos
-    if (personaje.estado_vida !== "muerto") {
-      const { error: updateError } = await db
-        .from("personajes")
-        .update({ 
-          estado_vida: "muerto",
-          muerto_en: new Date().toISOString()
-        })
-        .eq("id", characterId)
-        .eq("usuario_id", user.id);
+    // No permitir eliminar un personaje ya eliminado/enterrado
+    if (personaje.estado_vida === "eliminado" || personaje.estado_vida === "enterrado") {
+      return NextResponse.json(
+        { error: "Este personaje ya fue eliminado" },
+        { status: 409 }
+      );
+    }
 
-      if (updateError) {
-        return NextResponse.json({ error: "Error al matar al personaje" }, { status: 500 });
+    // 2. Lógica de transferencia de ítems si se solicitó
+    if (transferTargetType === "character" && transferTargetId) {
+      const targetIdNum = Number(transferTargetId);
+      if (targetIdNum !== Number(characterId)) {
+        // Consultar cuántos ítems tiene el destino en su bolsa
+        const { count: targetCount } = await db
+          .from("bolsa_objetos")
+          .select("id", { count: "exact", head: true })
+          .eq("personaje_id", targetIdNum);
+
+        let currentOrder = targetCount ?? 0;
+
+        // Obtener ítems del personaje a eliminar que no estén en trade
+        const { data: sourceItems } = await db
+          .from("bolsa_objetos")
+          .select("id")
+          .eq("personaje_id", characterId)
+          .eq("publicado_en_trade", false);
+
+        for (const item of sourceItems ?? []) {
+          currentOrder++;
+          await db
+            .from("bolsa_objetos")
+            .update({
+              personaje_id: targetIdNum,
+              orden: currentOrder,
+              fue_comerciado: true,
+            })
+            .eq("id", item.id);
+        }
       }
+    } else if (transferTargetType === "guild") {
+      const { data: membership } = await db
+        .from("gremio_miembros")
+        .select("gremio_id")
+        .eq("usuario_id", user.id)
+        .maybeSingle();
 
-      return NextResponse.json({ success: true, action: "killed" });
-    } 
-    
-    // 3. Si el personaje ya está muerto, lo ocultamos del perfil (enterrado)
-    const { error: deleteError } = await db
+      if (membership) {
+        const { data: sourceItems } = await db
+          .from("bolsa_objetos")
+          .select("id, objeto_id, cantidad")
+          .eq("personaje_id", characterId)
+          .eq("publicado_en_trade", false);
+
+        for (const item of sourceItems ?? []) {
+          if (item.objeto_id) {
+            await db.rpc("depositar_gremio_baul_con_limite", {
+              p_gremio_id: membership.gremio_id,
+              p_objeto_id: item.objeto_id,
+              p_cantidad: item.cantidad ?? 1,
+              p_depositante_usuario_id: user.id,
+            });
+            await db.from("bolsa_objetos").delete().eq("id", item.id);
+          }
+        }
+      }
+    }
+
+    // Limpiar ítems restantes en bolsa si quedaron
+    await db.from("bolsa_objetos").delete().eq("personaje_id", characterId);
+
+    // 3. Eliminar el personaje: marcar como 'eliminado' y liberar el slot
+    const { error: updateError } = await db
       .from("personajes")
-      .update({ estado_vida: "enterrado", numero_slot: null })
+      .update({
+        estado_vida: "eliminado",
+        numero_slot: null,
+        eliminado_en: new Date().toISOString(),
+      })
       .eq("id", characterId)
       .eq("usuario_id", user.id);
 
-    if (deleteError) {
-      return NextResponse.json({ error: "Error al enterrar el personaje" }, { status: 500 });
+    if (updateError) {
+      console.error("Error al eliminar personaje:", updateError);
+      return NextResponse.json(
+        { error: "Error al eliminar el personaje" },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true, action: "deleted" });
+    return NextResponse.json({
+      success: true,
+      action: "deleted",
+      freedSlot: personaje.numero_slot,
+      message: "Personaje eliminado permanentemente. El slot ha sido liberado.",
+    });
 
   } catch (error) {
     console.error("Error en delete-character:", error);

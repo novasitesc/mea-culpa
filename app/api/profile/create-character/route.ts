@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { calculateBagSlots } from "@/lib/types/character";
 import {
   getCasterType,
@@ -60,9 +61,16 @@ function generateStatsForClass(className: string) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterData } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const userId = user.id;
 
-    if (!userId || !characterData) {
+    const { characterData } = await request.json();
+
+    if (!characterData) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -117,8 +125,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = createServerClient();
-
     const { data: perfil, error: perfilError } = await db
       .from("perfiles")
       .select("max_personajes")
@@ -139,7 +145,7 @@ export async function POST(request: Request) {
       .from("personajes")
       .select("id", { count: "exact", head: true })
       .eq("usuario_id", userId)
-      .neq("estado_vida", "enterrado");
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     if ((count ?? 0) >= maxCharacterSlots) {
       return NextResponse.json(
@@ -155,7 +161,8 @@ export async function POST(request: Request) {
     const { data: existingSlots } = await db
       .from("personajes")
       .select("numero_slot")
-      .eq("usuario_id", userId);
+      .eq("usuario_id", userId)
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     const usedSlots = new Set(
       (existingSlots ?? []).map((s: any) => s.numero_slot),

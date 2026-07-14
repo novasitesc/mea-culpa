@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
+import { Package, Droplet, Dices } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
   eventos: SalaEvento[];
@@ -26,7 +28,7 @@ function renderEvento(ev: SalaEvento, i: number) {
       return (
         <div key={i} className="flex flex-col gap-1 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in duration-300">
           <p className="text-[11px] text-foreground/50 font-sans">
-            🎲 DM tiró <span className="text-gold/80">{recompensaNombre}</span>
+            <Dices className="w-3.5 h-3.5 text-gold/80 inline-block mr-1 -mt-0.5" /> DM tiró <span className="text-gold/80">{recompensaNombre}</span>
             {lutResultados.length > 1 && <span> ×{lutResultados.length}</span>}
             {" → "}
             <span className="text-foreground/70">{personajeNombre}</span>
@@ -35,8 +37,8 @@ function renderEvento(ev: SalaEvento, i: number) {
             {items.map((r, j) => {
               const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
               return obj ? (
-                <span key={j} className="text-xs text-green-400 font-semibold">
-                  {obj.icono} {obj.nombre}
+                <span key={j} className="text-xs text-green-400 font-semibold flex items-center gap-1.5">
+                  {getIconForString(obj.nombre, "w-3.5 h-3.5 shrink-0", obj.icono)} {obj.nombre}
                 </span>
               ) : null;
             })}
@@ -58,11 +60,11 @@ function renderEvento(ev: SalaEvento, i: number) {
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-foreground/50 font-sans">
-            🎲 <span className="text-gold/80">{tipoDado?.toUpperCase()}</span> · {recompensaNombre}
+            <Dices className="w-3.5 h-3.5 text-gold/80 inline-block mr-1 -mt-0.5" /> <span className="text-gold/80">{tipoDado?.toUpperCase()}</span> · {recompensaNombre}
           </p>
           <p className="text-xs font-sans truncate">
             {tipoResultado === "item" && objeto ? (
-              <span className="text-green-400 font-semibold">{objeto.icono} {objeto.nombre}</span>
+              <span className="text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(objeto.nombre, "w-3.5 h-3.5 shrink-0", objeto.icono)} {objeto.nombre}</span>
             ) : tipoResultado === "oro" && cantidadOro != null ? (
               <span className="text-gold font-semibold">+{cantidadOro.toLocaleString("es-ES")} oro</span>
             ) : (
@@ -79,11 +81,11 @@ function renderEvento(ev: SalaEvento, i: number) {
     const { objeto, cantidadOro, personajeNombre, cantidad } = ev;
     return (
       <div key={i} className="flex items-center gap-2 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in duration-300">
-        <span className="text-base shrink-0">📦</span>
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-gold/10 border border-gold/30 rounded text-gold"><Package className="w-4 h-4" /></span>
         <p className="text-xs font-sans">
           {objeto ? (
-            <span className="text-green-400 font-semibold">
-              {objeto.icono} {objeto.nombre}{cantidad && cantidad > 1 ? ` ×${cantidad}` : ""}
+            <span className="text-green-400 font-semibold flex items-center gap-1.5">
+              {getIconForString(objeto.nombre, "w-3.5 h-3.5 shrink-0", objeto.icono)} {objeto.nombre}{cantidad && cantidad > 1 ? ` ×${cantidad}` : ""}
             </span>
           ) : cantidadOro != null ? (
             <span className="text-gold font-semibold">+{cantidadOro.toLocaleString("es-ES")} oro</span>
@@ -100,7 +102,7 @@ function renderEvento(ev: SalaEvento, i: number) {
         key={i}
         className="flex items-center gap-2 py-2 border-b border-rose-900/30 last:border-0 animate-in fade-in duration-300"
       >
-        <span className="text-base shrink-0">🩸</span>
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-rose-900/20 border border-rose-900/50 rounded text-rose-500"><Droplet className="w-4 h-4" /></span>
         <p className="text-xs font-sans">
           <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
           <span className="text-foreground/40"> {ev.desmembrado ? "perdió" : "recuperó"} </span>

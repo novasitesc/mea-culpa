@@ -21,14 +21,18 @@ import {
   Skull,
   Copy,
   ExternalLink,
+  Dices,
+  Crown,
+  MapPin,
+  Sparkles,
 } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
-import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
@@ -328,6 +332,106 @@ function Modal({
   );
 }
 
+// ─── Componente Modal de Confirmación Estilo Medieval ─────────────────────────
+
+export type ConfirmModalConfig = {
+  isOpen: boolean;
+  title: string;
+  message: React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: "danger" | "warning" | "success";
+  onConfirm: () => void;
+};
+
+function ConfirmActionModal({
+  config,
+  onClose,
+}: {
+  config: ConfirmModalConfig | null;
+  onClose: () => void;
+}) {
+  if (!config || !config.isOpen) return null;
+
+  const getVariantStyles = () => {
+    if (config.variant === "danger") {
+      return {
+        icon: <Skull className="w-6 h-6 text-blood animate-pulse" />,
+        headerBg: "bg-blood/10 border-blood/30",
+        border: "border-blood/50 shadow-[0_0_40px_rgba(139,0,0,0.35)]",
+        btnConfirm: "bg-blood hover:bg-blood/80 text-white shadow-lg shadow-blood/30",
+        accentLine: "from-transparent via-blood to-transparent",
+      };
+    }
+    if (config.variant === "success") {
+      return {
+        icon: <Sparkles className="w-6 h-6 text-emerald-400 animate-spin" style={{ animationDuration: "3s" }} />,
+        headerBg: "bg-emerald-950/20 border-emerald-500/30",
+        border: "border-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.25)]",
+        btnConfirm: "bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30",
+        accentLine: "from-transparent via-emerald-400 to-transparent",
+      };
+    }
+    return {
+      icon: <AlertTriangle className="w-6 h-6 text-gold animate-bounce" style={{ animationDuration: "2s" }} />,
+      headerBg: "bg-gold/10 border-gold/30",
+      border: "border-gold-dim/60 shadow-[0_0_40px_rgba(212,175,55,0.25)]",
+      btnConfirm: "bg-gold hover:bg-gold-dim text-background font-bold shadow-lg shadow-gold/30",
+      accentLine: "from-transparent via-gold to-transparent",
+    };
+  };
+
+  const styles = getVariantStyles();
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className={`bg-card border-2 ${styles.border} rounded-xl w-full max-w-md overflow-hidden flex flex-col relative`}>
+        {/* Resplandor superior místico */}
+        <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.accentLine} opacity-80`} />
+
+        <div className={`flex items-center justify-between p-5 border-b ${styles.headerBg}`}>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg border bg-background/80 shadow-inner flex items-center justify-center">
+              {styles.icon}
+            </div>
+            <h3 className="text-lg font-serif font-bold tracking-wide text-foreground">{config.title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 text-sm text-muted-foreground leading-relaxed">
+          {config.message}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 p-4 bg-secondary/40 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors border border-border/60"
+          >
+            {config.cancelText ?? "Cancelar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              config.onConfirm();
+              onClose();
+            }}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${styles.btnConfirm}`}
+          >
+            {config.confirmText ?? "Confirmar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Campo de formulario ──────────────────────────────────────────────────────
 
 function FormField({
@@ -400,7 +504,7 @@ function Toast({
 }) {
   return (
     <div
-      className={`fixed bottom-6 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
+      className={`fixed bottom-20 right-6 z-60 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2 ${
         type === "success"
           ? "bg-green-900/90 border border-green-700 text-green-200"
           : "bg-destructive/90 border border-destructive text-white"
@@ -617,12 +721,7 @@ function TransactionsTab({
                   }`}
                 >
                   <td className="px-3 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                    {new Date(t.creado_en).toLocaleString("es-ES", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatDateTime(t.creado_en)}
                   </td>
                   <td className="px-3 py-3 font-medium text-foreground">
                     {t.nombre_usuario}
@@ -1156,7 +1255,7 @@ function ActivePartidasTab({
                 <p className="text-xs text-muted-foreground">
                   Min {entry.minPlayers} · Piso {entry.floor} · Tier {entry.tier}
                   {entry.startTime
-                    ? ` · Inicio ${new Date(entry.startTime).toLocaleString("es-ES")}`
+                    ? ` · Inicio ${formatDateTime(entry.startTime)}`
                     : ""}
                 </p>
               </div>
@@ -1177,9 +1276,9 @@ function ActivePartidasTab({
                     href={`/partidas/${entry.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 transition-colors"
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 transition-colors flex items-center gap-1.5"
                   >
-                    🎲 Ir a sala
+                    <Dices className="w-3.5 h-3.5" /> Ir a sala
                   </a>
                 )}
                 <button
@@ -1588,23 +1687,14 @@ function PartidasHistoryTab({
                   onClick={() => setExpandedId(isOpen ? null : entry.id)}
                   className="w-full flex items-start justify-between gap-3 text-left p-4 hover:bg-secondary/20 transition-colors"
                 >
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                      <StatusBadge status={entry.status} />
-                      <span className="text-[10px] text-muted-foreground/70 border border-border/50 rounded px-1.5 py-0.5">
-                        Piso {entry.floor} · Tier {entry.tier}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-                      {entry.createdBy && <span>DM: <span className="text-foreground/70">{entry.createdBy}</span></span>}
-                      <span>·</span>
-                      <span>{startLabel}</span>
-                      {duration && <><span>·</span><span className="text-foreground/60">⏱ {duration}</span></>}
-                    </div>
-                    {entry.comment && (
-                      <p className="text-[11px] text-muted-foreground/60 italic truncate max-w-xs">{entry.comment}</p>
-                    )}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {entry.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDateTime(entry.createdAt)}
+                      {entry.createdBy ? ` · ${entry.createdBy}` : ""}
+                    </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
                     <span>{entry.participants.length} jugadores{deadCount > 0 ? ` · ${deadCount} 💀` : ""}</span>
@@ -1884,7 +1974,7 @@ function UsersTab({
                   <td className="px-3 py-3 text-center whitespace-nowrap">
                     {u.rolSistema === "super_admin" ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#5d7dcf]/60 bg-[#1a2648] text-[#c8d9ff] text-[11px] font-semibold whitespace-nowrap shadow-[0_0_10px_rgba(93,125,207,0.2)]">
-                        👑 super_admin
+                        <Crown className="w-3 h-3" /> super_admin
                       </span>
                     ) : u.isAdmin ? (
                       <span className="inline-flex items-center px-2 py-0.5 bg-gold/20 text-gold rounded text-[11px] font-semibold whitespace-nowrap">
@@ -2326,6 +2416,7 @@ type Character = {
     sabiduria: number;
     carisma: number;
   } | null;
+  nivel20Url: string | null;
 };
 
 function CharactersFormModal({
@@ -2355,9 +2446,13 @@ function CharactersFormModal({
       sabiduria: number;
       carisma: number;
     };
+    nivel20Url: string;
   } | null>(null);
 
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = useMemo(
+    () => ({ Authorization: `Bearer ${token}` }),
+    [token],
+  );
 
   useEffect(() => {
     const loadCharacters = async () => {
@@ -2375,7 +2470,8 @@ function CharactersFormModal({
       }
     };
     loadCharacters();
-  }, [user.id, token, headers, onToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, headers]);
 
   const saveCharacter = async (characterId: number) => {
     if (!editForm) return;
@@ -2390,6 +2486,7 @@ function CharactersFormModal({
           raza: editForm.raza,
           clases: editForm.clases,
           estadisticas: editForm.estadisticas,
+          nivel20Url: editForm.nivel20Url,
         }),
       });
 
@@ -2413,12 +2510,9 @@ function CharactersFormModal({
     }
   };
 
-  const reviveCharacter = (characterId: number) => {
-    setReviveTarget(characterId);
-  };
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
 
-  const executeRevive = async () => {
-    if (reviveTarget === null) return;
+  const executeRevive = async (characterId: number) => {
     setSaving(true);
     try {
       const res = await fetch("/api/profile/admin-revive", {
@@ -2428,8 +2522,11 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
-        const charsRes = await fetch(`/api/admin/characters?userId=${user.id}`, { headers });
-        if (charsRes.ok) setCharacters(await charsRes.json());
+        setCharacters((prev) =>
+          prev.map((c) =>
+            c.id === characterId ? { ...c, estado_vida: "vivo", muerto_en: null } : c,
+          ),
+        );
       } else {
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
@@ -2440,6 +2537,88 @@ function CharactersFormModal({
       setSaving(false);
       setReviveTarget(null);
     }
+  };
+
+  const reviveCharacter = (characterId: number, nombre?: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Resurrección de Personaje",
+      message: `¿Estás seguro de que deseas revivir a "${nombre ?? "este personaje"}" sin cobrarle oro? Regresará inmediatamente a la vida.`,
+      confirmText: "Revivir personaje",
+      variant: "success",
+      onConfirm: () => executeRevive(characterId),
+    });
+  };
+
+  const executeKill = async (characterId: number, nombre: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/characters/kill", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        onToast(`${nombre} marcado como muerto`, "success");
+        setCharacters((prev) =>
+          prev.map((c) =>
+            c.id === characterId
+              ? { ...c, estado_vida: "muerto", muerto_en: new Date().toISOString() }
+              : c,
+          ),
+        );
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al matar personaje", "error");
+      }
+    } catch (error) {
+      onToast("Error al matar personaje", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const killCharacter = (characterId: number, nombre: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Sentencia de Muerte",
+      message: `¿Deseas marcar a "${nombre}" como MUERTO? Su vida actual llegará a cero, pero seguirá visible en la interfaz y podrá ser revivido en cualquier momento.`,
+      confirmText: "Ejecutar / Matar",
+      variant: "danger",
+      onConfirm: () => executeKill(characterId, nombre),
+    });
+  };
+
+  const executeDelete = async (characterId: number, nombre: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/characters?characterId=${characterId}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (res.ok) {
+        onToast("Personaje eliminado exitosamente", "success");
+        setCharacters((prev) => prev.filter((c) => c.id !== characterId));
+      } else {
+        const e = await res.json();
+        onToast(e.error ?? "Error al eliminar personaje", "error");
+      }
+    } catch (error) {
+      onToast("Error al eliminar personaje", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteCharacter = (characterId: number, nombre: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Eliminación Definitiva",
+      message: `¿Estás completamente seguro de que deseas ELIMINAR PERMANENTEMENTE al personaje "${nombre}"? Esta acción no se puede deshacer y borrará al personaje del sistema.`,
+      confirmText: "Destruir para siempre",
+      variant: "danger",
+      onConfirm: () => executeDelete(characterId, nombre),
+    });
   };
 
   return (
@@ -2473,33 +2652,53 @@ function CharactersFormModal({
                         onClick={() => reviveCharacter(character.id)}
                         disabled={saving}
                         className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
-                        title="F3: Revivir"
+                        title="Revivir personaje"
                       >
                         Revivir
                       </button>
                     )}
+                    {character.estado_vida === "vivo" && editingChar !== character.id && (
+                      <button
+                        onClick={() => killCharacter(character.id, character.nombre)}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
+                        title="Matar personaje (queda visible, puede revivirse)"
+                      >
+                        Matar
+                      </button>
+                    )}
                     {editingChar !== character.id && (
-                    <button
-                      onClick={() => {
-                        setEditingChar(character.id);
-                        setEditForm({
-                          raza: character.raza,
-                          clases: character.clases,
-                          estadisticas: character.estadisticas || {
-                            fuerza: 10,
-                            destreza: 10,
-                            constitucion: 10,
-                            inteligencia: 10,
-                            sabiduria: 10,
-                            carisma: 10,
-                          },
-                        });
-                      }}
-                      className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
-                    >
-                      Editar
-                    </button>
-                  )}
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingChar(character.id);
+                            setEditForm({
+                              raza: character.raza,
+                              clases: character.clases,
+                              estadisticas: character.estadisticas || {
+                                fuerza: 10,
+                                destreza: 10,
+                                constitucion: 10,
+                                inteligencia: 10,
+                                sabiduria: 10,
+                                carisma: 10,
+                              },
+                              nivel20Url: character.nivel20Url ?? "",
+                            });
+                          }}
+                          className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => deleteCharacter(character.id, character.nombre)}
+                          disabled={saving}
+                          className="px-3 py-1.5 bg-destructive hover:bg-destructive/80 text-white text-xs rounded transition-colors disabled:opacity-60"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -2583,6 +2782,19 @@ function CharactersFormModal({
                       </div>
                     </div>
 
+                    {/* Link Nivel20 */}
+                    <FormField label="Link Nivel20">
+                      <input
+                        type="url"
+                        value={editForm.nivel20Url}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, nivel20Url: e.target.value })
+                        }
+                        className={inputCls}
+                        placeholder="https://nivel20.com/games/..."
+                      />
+                    </FormField>
+
                     {/* Botones */}
                     <div className="flex gap-2 justify-end pt-3 border-t border-border">
                       <button
@@ -2615,6 +2827,10 @@ function CharactersFormModal({
                         .map((c) => `${c.nombre_clase} (Nv.${c.nivel})`)
                         .join(", ")}
                     </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs font-semibold text-[#B8860B]">Nivel20:</span>
+                      <Nivel20Link url={character.nivel20Url} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -2633,18 +2849,7 @@ function CharactersFormModal({
           </button>
         </div>
       </div>
-
-      <ConfirmActionModal
-        open={reviveTarget !== null}
-        title="Revivir personaje"
-        description="¿Revivir a este personaje sin cobrar oro? Esta acción lo devolverá a la vida."
-        confirmText="Revivir"
-        cancelText="Cancelar"
-        confirmVariant="success"
-        isLoading={saving}
-        onConfirm={executeRevive}
-        onCancel={() => setReviveTarget(null)}
-      />
+      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </Modal>
   );
 }
@@ -2711,7 +2916,7 @@ function ShopsTab({
               {/* Cabecera de tarjeta */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{shop.icon}</span>
+                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(shop.name, "w-6 h-6", shop.icon)}</span>
                   <div>
                     <p className="font-semibold text-foreground text-sm leading-tight">
                       {shop.name}
@@ -2753,7 +2958,7 @@ function ShopsTab({
 
               {/* Footer de tarjeta */}
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
-                <span>📍 {shop.location}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gold/80" /> {shop.location}</span>
                 <div className="flex items-center gap-2">
                   {shop.minLevel && (
                     <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded">
@@ -3079,7 +3284,7 @@ function ShopItemsModal({
                   <tr key={item.id} className="border-b border-border last:border-0">
                     <td className="px-2 py-2">
                       <div className="flex items-center gap-2">
-                        <span>{item.object?.icon ?? "📦"}</span>
+                        <span className="flex items-center justify-center w-5 h-5">{getIconForString(item.object?.name ?? "📦", "w-4 h-4 text-[#D4AF37]", item.object?.icon)}</span>
                         <span className="font-medium text-foreground">
                           {item.object?.name ?? `Objeto #${item.objetoId}`}
                         </span>
@@ -3313,7 +3518,7 @@ function ShopItemFormModal({
               />
               {selectedObject ? (
                 <p className="text-xs text-muted-foreground">
-                  Seleccionado: {selectedObject.icon} {selectedObject.name} ({selectedObject.itemType})
+                  Seleccionado: <span className="inline-flex items-center gap-1 mx-1">{getIconForString(selectedObject.name, "w-3 h-3 text-[#D4AF37]", selectedObject.icon)}</span> {selectedObject.name} ({selectedObject.itemType})
                 </p>
               ) : null}
             </div>
@@ -3463,7 +3668,7 @@ function ObjectsTab({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{obj.icon}</span>
+                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(obj.name, "w-6 h-6", obj.icon)}</span>
                   <div>
                     <p className="font-semibold text-foreground text-sm leading-tight">
                       {obj.name}
@@ -3500,7 +3705,7 @@ function ObjectsTab({
                   <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
                     {obj.rarity}
                   </span>
-                  <span className="text-gold">{obj.price.toLocaleString()} 🪙</span>
+                  <span className="text-gold flex items-center gap-1">{obj.price.toLocaleString()} <Coins className="w-3.5 h-3.5" /></span>
                 </div>
                 <span>{formatDate(obj.createdAt)}</span>
               </div>
@@ -4076,8 +4281,7 @@ function DeadCharactersTab({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
-  const [reviveTarget, setReviveTarget] = useState<{ id: number; name: string } | null>(null);
-  const [reviving, setReviving] = useState(false);
+  const [reviving, setReviving] = useState<number | null>(null);
 
   const loadCurrentDead = useCallback(async () => {
     setLoadingDead(true);
@@ -4096,6 +4300,45 @@ function DeadCharactersTab({
     const data = await res.json();
     setDeadRows(data.data ?? []);
   }, [token, onToast]);
+
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
+
+  const executeReviveDead = async (characterId: number, name: string) => {
+    setReviving(characterId);
+    try {
+      const res = await fetch("/api/profile/admin-revive", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        onToast(`${name} revivido exitosamente`, "success");
+        // Actualización optimista: sacar de la lista de muertos actuales
+        setDeadRows((prev) => prev.filter((r) => r.id !== characterId));
+      } else {
+        const e = await res.json().catch(() => ({}));
+        onToast(e.error ?? "Error al revivir", "error");
+      }
+    } catch {
+      onToast("Error al revivir", "error");
+    } finally {
+      setReviving(null);
+    }
+  };
+
+  const reviveDeadCharacter = (characterId: number, name: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Resurrección Arcana",
+      message: `¿Estás seguro de que deseas revivir al personaje "${name}" sin cobrarle oro? Regresará inmediatamente al mundo de los vivos.`,
+      confirmText: "Revivir personaje",
+      variant: "success",
+      onConfirm: () => executeReviveDead(characterId, name),
+    });
+  };
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -4120,30 +4363,6 @@ function DeadCharactersTab({
     setHistoryRows(data.data ?? []);
     setHistoryTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
   }, [historyPage, token, onToast]);
-
-  const executeRevive = async () => {
-    if (!reviveTarget) return;
-    setReviving(true);
-    try {
-      const res = await fetch("/api/profile/admin-revive", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId: reviveTarget.id }),
-      });
-      if (res.ok) {
-        onToast("Personaje revivido exitosamente", "success");
-        await loadCurrentDead();
-      } else {
-        const e = await res.json();
-        onToast(e.error ?? "Error al revivir", "error");
-      }
-    } catch {
-      onToast("Error al revivir", "error");
-    } finally {
-      setReviving(false);
-      setReviveTarget(null);
-    }
-  };
 
   useEffect(() => {
     loadCurrentDead();
@@ -4249,10 +4468,12 @@ function DeadCharactersTab({
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.revivedAt)}</td>
                     <td className="px-3 py-3 text-center">
                       <button
-                        type="button"
-                        onClick={() => setReviveTarget({ id: row.id, name: row.name })}
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors"
+                        onClick={() => reviveDeadCharacter(row.id, row.name)}
+                        disabled={reviving === row.id}
+                        className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60 flex items-center gap-1 mx-auto"
+                        title="Revivir sin cobrar oro"
                       >
+                        {reviving === row.id && <Loader2 className="w-3 h-3 animate-spin" />}
                         Revivir
                       </button>
                     </td>
@@ -4344,63 +4565,40 @@ function DeadCharactersTab({
           </div>
         </div>
       )}
-
-      <ConfirmActionModal
-        open={reviveTarget !== null}
-        title="Revivir personaje"
-        description={`¿Revivir a "${reviveTarget?.name}" sin cobrar oro? Esta acción lo devolverá a la vida.`}
-        confirmText="Revivir"
-        cancelText="Cancelar"
-        confirmVariant="success"
-        isLoading={reviving}
-        onConfirm={executeRevive}
-        onCancel={() => setReviveTarget(null)}
-      />
+      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </div>
   );
 }
 
-// ─── Partidas (grupo) ─────────────────────────────────────────────────────────
+// ─── Grupos de pestañas ───────────────────────────────────────────────────────
 
-function PartidasGroupTab({
-  token,
-  onToast,
+function GroupSubTabs<T extends string>({
+  tabs,
+  active,
+  onChange,
 }: {
-  token: string;
-  onToast: (msg: string, type: "success" | "error") => void;
+  tabs: { id: T; label: string }[];
+  active: T;
+  onChange: (id: T) => void;
 }) {
-  const [view, setView] = useState<"publicar" | "activas" | "historial">("activas");
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        {(["activas", "publicar", "historial"] as const).map((v) => {
-          const label = v === "activas" ? "Activas" : v === "publicar" ? "Publicar" : "Historial";
-          return (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                view === v
-                  ? "bg-gold/20 border-gold/50 text-gold"
-                  : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {view === "publicar" && <PartidasTab token={token} onToast={onToast} />}
-      {view === "activas" && <ActivePartidasTab token={token} onToast={onToast} />}
-      {view === "historial" && <PartidasHistoryTab token={token} onToast={onToast} />}
+    <div className="flex flex-wrap gap-2 mb-6">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            active === tab.id
+              ? "border-gold/60 bg-gold/10 text-gold"
+              : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }
-
-// ─── Economía (grupo) ─────────────────────────────────────────────────────────
 
 function EconomiaGroupTab({
   token,
@@ -4411,39 +4609,55 @@ function EconomiaGroupTab({
   onToast: (msg: string, type: "success" | "error") => void;
   isSuperAdmin: boolean;
 }) {
-  const [view, setView] = useState<"transacciones" | "impuestos">("transacciones");
+  type EconomiaSubTab = "transacciones" | "impuestos";
+  const [subTab, setSubTab] = useState<EconomiaSubTab>("transacciones");
+
+  const subTabs: { id: EconomiaSubTab; label: string }[] = [
+    { id: "transacciones", label: "Transacciones" },
+    ...(isSuperAdmin
+      ? [{ id: "impuestos" as const, label: "Impuestos" }]
+      : []),
+  ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setView("transacciones")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-            view === "transacciones"
-              ? "bg-gold/20 border-gold/50 text-gold"
-              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Transacciones
-        </button>
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setView("impuestos")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              view === "impuestos"
-                ? "bg-gold/20 border-gold/50 text-gold"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Cobrar Impuestos
-          </button>
-        )}
-      </div>
+    <div>
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      {subTab === "transacciones" && (
+        <TransactionsTab token={token} onToast={onToast} />
+      )}
+      {isSuperAdmin && subTab === "impuestos" && (
+        <TaxesTab token={token} onToast={onToast} />
+      )}
+    </div>
+  );
+}
 
-      {view === "transacciones" && <TransactionsTab token={token} onToast={onToast} />}
-      {isSuperAdmin && view === "impuestos" && <TaxesTab token={token} onToast={onToast} />}
+function PartidasGroupTab({
+  token,
+  onToast,
+}: {
+  token: string;
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  type PartidasSubTab = "crear" | "activas" | "historial";
+  const [subTab, setSubTab] = useState<PartidasSubTab>("crear");
+
+  const subTabs: { id: PartidasSubTab; label: string }[] = [
+    { id: "crear", label: "Crear partida" },
+    { id: "activas", label: "Partidas activas" },
+    { id: "historial", label: "Historial" },
+  ];
+
+  return (
+    <div>
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      {subTab === "crear" && <PartidasTab token={token} onToast={onToast} />}
+      {subTab === "activas" && (
+        <ActivePartidasTab token={token} onToast={onToast} />
+      )}
+      {subTab === "historial" && (
+        <PartidasHistoryTab token={token} onToast={onToast} />
+      )}
     </div>
   );
 }

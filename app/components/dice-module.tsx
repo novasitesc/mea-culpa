@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Coins, Package, List, Loader2, ChevronDown, ChevronUp, Dices } from "lucide-react";
 import DiceVisual from "./dice-visual";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { getIconForString } from "@/lib/iconMapper";
 import type { DadoRecompensa, RollResult, LutCaraResult } from "@/lib/types/dados";
 
 type Props = {
@@ -168,7 +169,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
         className="w-full flex items-center justify-between px-4 py-2.5 bg-linear-to-r from-gold-dim/20 to-transparent hover:from-gold-dim/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-gold text-sm font-serif tracking-wider">🎲 Dados</span>
+          <span className="text-gold text-sm font-serif tracking-wider flex items-center gap-1.5"><Dices className="w-4 h-4" /> Dados</span>
           {selectedReward && (
             <span className="text-[10px] text-foreground/50 font-sans uppercase tracking-widest">
               — {selectedReward.tipoDado.toUpperCase()}
@@ -288,7 +289,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                           </span>
                         ) : rollResult.objeto ? (
                           <span className="text-green-400 font-bold flex items-center gap-1">
-                            {rollResult.objeto.icono && <span>{rollResult.objeto.icono}</span>}
+                            {rollResult.objeto.icono && <span>{getIconForString(rollResult.objeto.nombre, "w-4 h-4 shrink-0", rollResult.objeto.icono)}</span>}
                             {rollResult.objeto.nombre}
                           </span>
                         ) : null}
@@ -315,9 +316,9 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                             Tirando…
                           </span>
                         ) : selectedReward.tipo === "lut" && cantidad > 1 ? (
-                          `🎲 Tirar ×${cantidad}`
+                          <span className="flex items-center gap-1.5"><Dices className="w-4 h-4" /> Tirar ×{cantidad}</span>
                         ) : (
-                          "🎲 Tirar"
+                          <span className="flex items-center gap-1.5"><Dices className="w-4 h-4" /> Tirar</span>
                         )}
                       </button>
                     )}
@@ -343,8 +344,8 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                       )}
 
                       {r.tipo === "item" && r.objeto && (
-                        <span className="text-green-400 font-semibold leading-6">
-                          {r.objeto.icono} {r.objeto.nombre}
+                        <span className="text-green-400 font-semibold leading-6 flex items-center gap-1.5">
+                          {getIconForString(r.objeto.nombre, "w-4 h-4 shrink-0", r.objeto.icono)} {r.objeto.nombre}
                         </span>
                       )}
 
@@ -370,8 +371,8 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                             {r.subRoll.subtablaNombre} → cara {r.subRoll.cara}
                           </span>
                           {r.subRoll.objeto ? (
-                            <span className="text-green-400 font-semibold">
-                              {r.subRoll.objeto.icono} {r.subRoll.objeto.nombre}
+                            <span className="text-green-400 font-semibold flex items-center gap-1.5">
+                              {getIconForString(r.subRoll.objeto.nombre, "w-4 h-4 shrink-0", r.subRoll.objeto.icono)} {r.subRoll.objeto.nombre}
                             </span>
                           ) : r.subRoll.cantidadOro !== undefined ? (
                             <span className="text-gold font-semibold">
@@ -406,7 +407,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                         <span className="text-gold/60 shrink-0">
                           {si.valorMin === si.valorMax ? si.valorMin : `${si.valorMin}–${si.valorMax}`}
                         </span>
-                        <span className="truncate">{si.objetoIcono} {si.objetoNombre}</span>
+                        <span className="truncate flex items-center gap-1.5">{getIconForString(si.objetoNombre, "w-3 h-3 shrink-0", si.objetoIcono)} {si.objetoNombre}</span>
                       </div>
                     ))}
                   </div>

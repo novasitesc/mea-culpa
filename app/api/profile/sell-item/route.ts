@@ -1,25 +1,30 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { modifyGold } from "@/lib/goldService";
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterId, bagIndex } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    if (!userId || !characterId || !Number.isInteger(bagIndex) || bagIndex < 0) {
+    const { characterId, bagIndex } = await request.json();
+
+    if (!characterId || !Number.isInteger(bagIndex) || bagIndex < 0) {
       return NextResponse.json(
         { error: "Missing or invalid required fields" },
         { status: 400 },
       );
     }
 
-    const db = createServerClient();
-
     const { data: personaje } = await db
       .from("personajes")
       .select("id")
       .eq("id", characterId)
-      .eq("usuario_id", userId)
+      .eq("usuario_id", user.id)
       .single();
 
     if (!personaje) {
@@ -91,7 +96,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const oro = await modifyGold(userId, saleGold, concepto);
+    const oro = await modifyGold(user.id, saleGold, concepto);
 
     return NextResponse.json({
       success: true,

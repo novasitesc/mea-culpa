@@ -7,6 +7,7 @@ import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
 import { categoryToLabel, type RouletteCategory } from "@/lib/roulette";
+import { getIconForString } from "@/lib/iconMapper";
 
 const CATEGORIES: RouletteCategory[] = [
   "jackpot",
@@ -409,11 +410,11 @@ export function RuletaTab({
                     group.items.map((pool) => (
                       <div key={pool.id} className="rounded-lg border border-border/80 bg-background/60 p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate">
+                          <div className="font-medium text-foreground truncate flex items-center gap-1.5">
                             {pool.rewardType === "oro"
                               ? pool.label || `Oro x${pool.goldAmount ?? 0}`
-                              : `${pool.object?.icon ?? "📦"} ${pool.label || pool.object?.name || "Objeto"}`}
-                          </p>
+                              : <>{getIconForString(pool.object?.name ?? "📦", "w-4 h-4 shrink-0 text-[#D4AF37]", pool.object?.icon)} {pool.label || pool.object?.name || "Objeto"}</>}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {pool.rewardType === "oro"
                               ? `${pool.goldAmount?.toLocaleString("es-ES") ?? 0} oro`

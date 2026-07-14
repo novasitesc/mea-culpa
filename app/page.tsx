@@ -6,6 +6,7 @@ import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2, Eye, ExternalLink } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
+import { MobileQuickNav } from "./components/mobile-nav";
 import PrizeWheel from "./components/prize-wheel";
 import { useAuth } from "@/lib/useAuth";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
@@ -334,6 +335,9 @@ function HomePageContent({ forcedSection }: HomePageProps) {
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         {/* Header */}
         <Header />
+
+        {/* Acceso rápido (solo móvil) */}
+        <MobileQuickNav rouletteEnabled={isRouletteEnabled} />
 
         {/* Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4">

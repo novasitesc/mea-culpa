@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { getSupabase } from "@/lib/supabase";
 
 type PortraitPickerProps = {
   userId: string;
@@ -48,9 +49,16 @@ export default function PortraitPicker({
     setIsUpdating(true);
 
     try {
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
+
       const response = await fetch("/api/profile/update-portrait", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({
           userId,
           characterId,

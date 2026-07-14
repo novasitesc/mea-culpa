@@ -24,11 +24,21 @@ export async function ensureOwnedAliveCharacter(
     return { ok: false, status: 403, error: "Personaje no válido" };
   }
 
-  if (String((data as any).estado_vida ?? "vivo") === "muerto") {
+  const estado = String((data as any).estado_vida ?? "vivo");
+
+  if (estado === "muerto") {
     return {
       ok: false,
       status: 409,
       error: "Este personaje está muerto y no puede realizar acciones",
+    };
+  }
+
+  if (estado === "eliminado" || estado === "enterrado") {
+    return {
+      ok: false,
+      status: 410,
+      error: "Este personaje fue eliminado permanentemente",
     };
   }
 
