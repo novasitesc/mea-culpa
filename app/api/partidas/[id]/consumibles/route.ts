@@ -165,25 +165,43 @@ export async function POST(
   const cantidadActual = Number((row as any).cantidad ?? 1);
   const restante = Math.max(0, cantidadActual - 1);
 
+  // El filtro por cantidad actual hace la operación atómica: si otra petición
+  // simultánea ya consumió una unidad, esta no afecta filas y se rechaza.
   if (restante === 0) {
-    const { error: deleteError } = await db
+    const { data: deleted, error: deleteError } = await db
       .from("bolsa_objetos")
       .delete()
       .eq("id", bagRowId)
-      .eq("personaje_id", acceso.personajeId);
+      .eq("personaje_id", acceso.personajeId)
+      .eq("cantidad", cantidadActual)
+      .select("id");
 
     if (deleteError) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
+    if (!deleted || deleted.length === 0) {
+      return NextResponse.json(
+        { error: "El objeto ya fue usado" },
+        { status: 409 },
+      );
+    }
   } else {
-    const { error: updateError } = await db
+    const { data: updated, error: updateError } = await db
       .from("bolsa_objetos")
       .update({ cantidad: restante })
       .eq("id", bagRowId)
-      .eq("personaje_id", acceso.personajeId);
+      .eq("personaje_id", acceso.personajeId)
+      .eq("cantidad", cantidadActual)
+      .select("id");
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    if (!updated || updated.length === 0) {
+      return NextResponse.json(
+        { error: "El objeto ya fue usado" },
+        { status: 409 },
+      );
     }
   }
 

@@ -50,6 +50,7 @@ export type EventoPartidaIniciada = {
 
 export type EventoConsumibleUsado = {
   tipo: "consumible_usado";
+  eventoId?: string;
   personajeId: number;
   personajeNombre: string;
   objeto: { id: number; nombre: string; icono: string };

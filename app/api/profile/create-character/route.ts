@@ -9,53 +9,58 @@ import {
   validateSpells,
   type SpellEntry,
 } from "@/lib/spells";
+import {
+  ABILITY_KEYS,
+  recommendedStatsForClass,
+  validatePointBuy,
+  validateRolledStats,
+  validateStandardArray,
+  toDbStats,
+  type StatMethod,
+  type StatsBlock,
+} from "@/lib/statAllocation";
+import { verifyRollToken } from "@/lib/statRollToken";
 
-// Generar stats basados en la clase primaria
-function generateStatsForClass(className: string) {
-  const base = {
-    fuerza: 10,
-    destreza: 10,
-    constitucion: 10,
-    inteligencia: 10,
-    sabiduria: 10,
-    carisma: 10,
-  };
-  switch (className.toLowerCase()) {
-    case "barbarian":
-    case "bárbaro":
-    case "fighter":
-    case "guerrero":
-      return { ...base, fuerza: 16, constitucion: 14, destreza: 12 };
-    case "paladin":
-    case "paladín":
-      return { ...base, fuerza: 16, carisma: 14, constitucion: 12 };
-    case "ranger":
-    case "explorador":
-    case "monk":
-    case "monje":
-      return { ...base, destreza: 16, sabiduria: 14, constitucion: 12 };
-    case "rogue":
-    case "pícaro":
-      return { ...base, destreza: 16, carisma: 14, inteligencia: 12 };
-    case "bard":
-    case "bardo":
-      return { ...base, carisma: 16, destreza: 14, constitucion: 12 };
-    case "cleric":
-    case "clérigo":
-      return { ...base, sabiduria: 16, constitucion: 14, fuerza: 12 };
-    case "druid":
-    case "druida":
-      return { ...base, sabiduria: 16, constitucion: 14, destreza: 12 };
-    case "sorcerer":
-    case "hechicero":
-    case "warlock":
-    case "brujo":
-      return { ...base, carisma: 16, constitucion: 14, destreza: 12 };
-    case "wizard":
-    case "mago":
-      return { ...base, inteligencia: 16, constitucion: 14, destreza: 12 };
+// Resuelve las stats base según el método elegido (D&D 5e 2014).
+// Devuelve las stats en formato de columnas de BD, o un error 400.
+function resolveBaseStats(
+  userId: string,
+  primaryClass: string,
+  characterData: {
+    statMethod?: StatMethod;
+    stats?: unknown;
+    rollToken?: unknown;
+  },
+): { stats: ReturnType<typeof toDbStats> } | { error: string } {
+  const method = characterData.statMethod ?? "recommended";
+
+  switch (method) {
+    case "recommended":
+      return { stats: toDbStats(recommendedStatsForClass(primaryClass)) };
+
+    case "pointbuy": {
+      const result = validatePointBuy(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
+    case "standard": {
+      const result = validateStandardArray(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
+    case "roll": {
+      const result = validateRolledStats(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      const totals = ABILITY_KEYS.map((key) => (result.stats as StatsBlock)[key]);
+      const tokenCheck = verifyRollToken(userId, totals, characterData.rollToken);
+      if (!tokenCheck.ok) return { error: tokenCheck.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
     default:
-      return base;
+      return { error: "Método de asignación de estadísticas inválido." };
   }
 }
 
@@ -170,9 +175,13 @@ export async function POST(request: Request) {
     let nextSlot = 1;
     while (usedSlots.has(nextSlot) && nextSlot <= maxCharacterSlots) nextSlot++;
 
-    // Generar stats basados en la clase primaria
+    // Resolver stats base según el método elegido (validación server-side)
     const primaryClass = multiclass[0].className;
-    const stats = generateStatsForClass(primaryClass);
+    const statsResult = resolveBaseStats(userId, primaryClass, characterData);
+    if ("error" in statsResult) {
+      return NextResponse.json({ error: statsResult.error }, { status: 400 });
+    }
+    const stats = statsResult.stats;
 
     // Calcular capacidad de bolsa en base a fuerza
     const capacidadBolsa = calculateBagSlots(stats.fuerza);

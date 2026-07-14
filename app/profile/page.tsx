@@ -12,8 +12,11 @@ import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CharacterGrid from "./components/character-grid";
 import PartidasHistorial from "./components/partidas-historial";
+import CreateCharacterModal, {
+  type CreateCharacterPayload,
+} from "./components/create-character-modal";
 import { type SpellEntry } from "@/lib/spells";
-import { Coins, Lock, FileText } from "lucide-react";
+import { Coins, Lock } from "lucide-react";
 
 type Player = {
   name: string;
@@ -149,18 +152,6 @@ export default function ProfilePage() {
   const [selectedDeadCharacterId, setSelectedDeadCharacterId] = useState<number | null>(null);
   const [isRevivingCharacter, setIsRevivingCharacter] = useState(false);
   const [reviveMessage, setReviveMessage] = useState<string | null>(null);
-  const [newCharacter, setNewCharacter] = useState<{
-    name: string;
-    race: string;
-    multiclass: ClassEntry[];
-    alignment: string;
-  }>({
-    name: "",
-    race: "",
-    multiclass: [{ className: "", level: 1 }],
-    alignment: "",
-  });
-
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteStep, setDeleteStep] = useState<"confirm" | "transfer">("confirm");
@@ -301,13 +292,15 @@ export default function ProfilePage() {
     }
   };
 
-  const createCharacter = async () => {
-    if (!user || !profile) return;
+  const createCharacter = async (
+    characterData: CreateCharacterPayload,
+  ): Promise<boolean> => {
+    if (!user || !profile) return false;
 
     setIsCreating(true);
     try {
       const payload = {
-        ...newCharacter,
+        ...characterData,
         knownSpells: [],
       };
 
@@ -339,18 +332,13 @@ export default function ProfilePage() {
         ],
       });
 
-      setNewCharacter({
-        name: "",
-        race: "",
-        multiclass: [{ className: "", level: 1 }],
-        alignment: "",
-      });
       setShowCreateModal(false);
       showProfileAlert(
         "Personaje creado",
         "¡Personaje creado exitosamente!",
         "success",
       );
+      return true;
     } catch (error) {
       console.error("Error creating character:", error);
       const errorMessage =
@@ -360,6 +348,7 @@ export default function ProfilePage() {
         `Error al crear el personaje: ${errorMessage}`,
         "error",
       );
+      return false;
     } finally {
       setIsCreating(false);
     }
@@ -956,199 +945,13 @@ export default function ProfilePage() {
       </div>
 
       {/* Modal de Crear Personaje */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/60 p-4 overflow-y-auto"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShowCreateModal(false);
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.94, opacity: 0, y: 15 }}
-              animate={{
-                scale: 1,
-                opacity: 1,
-                y: 0,
-                transition: { type: "spring", damping: 26, stiffness: 320 },
-              }}
-              exit={{
-                scale: 0.94,
-                opacity: 0,
-                y: 15,
-                transition: { duration: 0.18, ease: "easeInOut" },
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-background rounded-xl border border-gold-dim shadow-2xl p-6 w-full max-w-2xl relative my-auto"
-            >
-              <button
-                className="absolute top-4 right-4 text-2xl text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded hover:bg-secondary"
-                onClick={() => setShowCreateModal(false)}
-              >
-                ×
-              </button>
-              <h2 className="text-2xl font-bold mb-6 text-[#D4AF37] uppercase tracking-wider">
-                Crear Nuevo Personaje
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Nombre del Personaje
-                  </label>
-                  <input
-                    type="text"
-                    value={newCharacter.name}
-                    onChange={(e) =>
-                      setNewCharacter({ ...newCharacter, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                    placeholder="Ej: Aragorn"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-2">
-                      Raza
-                    </label>
-                    <input
-                      type="text"
-                      value={newCharacter.race}
-                      onChange={(e) =>
-                        setNewCharacter({ ...newCharacter, race: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded border border-border bg-secondary/30 text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                      placeholder="Ej: Elfo, Humano, Semiorco..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-2">
-                      Alineamiento
-                    </label>
-                    <select
-                      value={newCharacter.alignment}
-                      onChange={(e) =>
-                        setNewCharacter({
-                          ...newCharacter,
-                          alignment: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                    >
-                      <option value="">Selecciona un alineamiento</option>
-                      <option value="Legal Bueno">Legal Bueno</option>
-                      <option value="Legal Neutral">Legal Neutral</option>
-                      <option value="Legal Malo">Legal Malo</option>
-                      <option value="Neutral Bueno">Neutral Bueno</option>
-                      <option value="Neutral">Neutral</option>
-                      <option value="Neutral Malo">Neutral Malo</option>
-                      <option value="Caótico Bueno">Caótico Bueno</option>
-                      <option value="Caótico Neutral">Caótico Neutral</option>
-                      <option value="Caótico Malo">Caótico Malo</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Selección de Clase Inicial (Multiclase deshabilitado en Nv.1) */}
-                <div>
-                  <div className="flex items-center mb-2">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Clase Inicial (Nivel 1)
-                    </label>
-                  </div>
-                  <div className="space-y-2">
-                    {newCharacter.multiclass.map((entry, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <select
-                          value={entry.className}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setNewCharacter((prev) => ({
-                              ...prev,
-                              multiclass: prev.multiclass.map((c, i) =>
-                                i === idx ? { ...c, className: val } : c,
-                              ),
-                            }));
-                          }}
-                          className="flex-1 px-3 py-2 rounded border border-border bg-[#1a1a1a] text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4AF37] [&>option]:bg-[#1a1a1a] [&>option]:text-foreground"
-                        >
-                          <option value="">Selecciona una clase</option>
-                          {[
-                            { value: "Bárbaro", label: "Bárbaro" },
-                            { value: "Bardo", label: "Bardo" },
-                            { value: "Clérigo", label: "Clérigo" },
-                            { value: "Druida", label: "Druida" },
-                            { value: "Guerrero", label: "Guerrero" },
-                            { value: "Monje", label: "Monje" },
-                            { value: "Paladín", label: "Paladín" },
-                            { value: "Explorador", label: "Explorador" },
-                            { value: "Pícaro", label: "Pícaro" },
-                            { value: "Hechicero", label: "Hechicero" },
-                            { value: "Brujo", label: "Brujo" },
-                            { value: "Mago", label: "Mago" },
-                          ]
-                            .filter(
-                              (cls) =>
-                                cls.value === entry.className ||
-                                !newCharacter.multiclass.some(
-                                  (c, i) =>
-                                    i !== idx && c.className === cls.value,
-                                ),
-                            )
-                            .map((cls) => (
-                              <option key={cls.value} value={cls.value}>
-                                {cls.label}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-
-
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-4">
-                    <FileText className="w-3.5 h-3.5 inline-block -mt-0.5 mr-1" /> Nota: Los atributos y equipo inicial se generarán
-                    automáticamente según la clase seleccionada.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setShowCreateModal(false);
-                        setNewCharacter({
-                          name: "",
-                          race: "",
-                          multiclass: [{ className: "", level: 1 }],
-                          alignment: "",
-                        });
-                      }}
-                      disabled={isCreating}
-                      className="flex-1 px-4 py-2 rounded border border-border bg-secondary text-foreground font-semibold hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={createCharacter}
-                      disabled={isCreating}
-                      className="flex-1 px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isCreating ? "Creando..." : "Crear Personaje"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CreateCharacterModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={createCharacter}
+        isCreating={isCreating}
+        authToken={token}
+      />
 
       {/* Modal Confirmar Eliminar Personaje */}
       <AnimatePresence>
