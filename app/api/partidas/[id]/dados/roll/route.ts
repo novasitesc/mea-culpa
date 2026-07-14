@@ -42,7 +42,7 @@ export async function POST(
 
   const { data: participante } = await db
     .from("partida_participantes")
-    .select("id, usuario_id")
+    .select("id, usuario_id, personaje:personaje_id ( nombre )")
     .eq("partida_id", partidaId)
     .eq("personaje_id", personajeId)
     .maybeSingle();
@@ -52,6 +52,7 @@ export async function POST(
   }
 
   const targetUserId = (participante as any).usuario_id as string;
+  const personajeNombre: string = (participante as any).personaje?.nombre ?? "";
 
   const { data: recompensa, error: recompensaError } = await db
     .from("dados_recompensas")
@@ -199,6 +200,27 @@ export async function POST(
       lutResultados.push({ cara: primaryCara, tipo: "nada" });
     }
 
+    // Persistir cada tirada como evento individual
+    for (const r of lutResultados) {
+      const subObj = r.tipo === "item" ? r.objeto : r.tipo === "subtabla" ? r.subRoll?.objeto : undefined;
+      const subOro = r.tipo === "oro" ? (r.oroDetalle?.cantidadOro ?? undefined) : r.tipo === "subtabla" ? r.subRoll?.cantidadOro : undefined;
+      await db.from("partidas_eventos").insert({
+        partida_id: partidaId,
+        tipo: "dado_tirado",
+        personaje_id: personajeId,
+        personaje_nombre: personajeNombre,
+        usuario_id: targetUserId,
+        tipo_dado: "d20",
+        recompensa_nombre: (recompensa as any).nombre,
+        tipo_resultado: r.tipo,
+        objeto_id: subObj ? String(subObj.id) : null,
+        objeto_nombre: subObj?.nombre ?? null,
+        objeto_icono: subObj?.icono ?? null,
+        cantidad_oro: subOro ?? null,
+        metadata: r,
+      });
+    }
+
     const first = lutResultados[0];
     return NextResponse.json({
       resultados: [first?.cara ?? 0],
@@ -248,6 +270,22 @@ export async function POST(
   } else if (tipoResultado === "oro" && cantidadOro && cantidadOro > 0) {
     await awardGold(cantidadOro);
   }
+
+  await db.from("partidas_eventos").insert({
+    partida_id: partidaId,
+    tipo: "dado_tirado",
+    personaje_id: personajeId,
+    personaje_nombre: personajeNombre,
+    usuario_id: targetUserId,
+    tipo_dado: tipoDado,
+    recompensa_nombre: (recompensa as any).nombre,
+    tipo_resultado: tipoResultado,
+    objeto_id: objetoData ? String(objetoData.id) : null,
+    objeto_nombre: objetoData?.nombre ?? null,
+    objeto_icono: objetoData?.icono ?? null,
+    cantidad_oro: tipoResultado === "oro" ? cantidadOro : null,
+    metadata: { resultados },
+  });
 
   return NextResponse.json({
     resultados,

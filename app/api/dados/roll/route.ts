@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   // Obtener caras LUT por separado (falla silenciosamente si la tabla no existe aún)
   const { data: lutCarasRaw } = await db
     .from("dados_lut_caras")
-    .select("id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, subtabla_id")
+    .select("id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, cantidad_min, cantidad_max, subtabla_id")
     .eq("recompensa_id", recompensaId);
 
   const costoTotal = recompensa.costo_oro * cantidad;
@@ -74,6 +74,8 @@ export async function POST(request: Request) {
       tipo_dado_oro: string | null;
       multiplicador_oro: number;
       objeto_id: number | null;
+      cantidad_min: number | null;
+      cantidad_max: number | null;
       subtabla_id: number | null;
     }>;
 
@@ -105,10 +107,15 @@ export async function POST(request: Request) {
           .eq("id", caraConfig.objeto_id)
           .maybeSingle();
 
+        const cantMin = caraConfig.cantidad_min ?? 1;
+        const cantMax = caraConfig.cantidad_max ?? 1;
+        const cantidadObjeto = cantMin + Math.floor(Math.random() * (Math.max(0, cantMax - cantMin) + 1));
+
         lutResultados.push({
           cara: primaryCara,
           tipo: "item",
           objeto: obj ? { id: obj.id, nombre: obj.nombre, icono: obj.icono } : undefined,
+          cantidadObjeto,
         });
 
         await db.from("dados_historial").insert({
@@ -117,7 +124,7 @@ export async function POST(request: Request) {
           resultados_dados: [primaryCara],
           tipo_resultado: "item",
           objeto_id: caraConfig.objeto_id,
-          cantidad_objeto: 1,
+          cantidad_objeto: cantidadObjeto,
           cantidad_oro: null,
           costo_pagado: recompensa.costo_oro,
         });
@@ -163,7 +170,7 @@ export async function POST(request: Request) {
         // Obtener sub-tabla
         const { data: subtabla } = await db
           .from("dados_recompensas")
-          .select("id, nombre, dados_subtabla_caras(numero_cara, tipo, objeto_id, oro_min, oro_max)")
+          .select("id, nombre, dados_subtabla_caras(numero_cara, tipo, objeto_id, cantidad_min, cantidad_max, oro_min, oro_max)")
           .eq("id", caraConfig.subtabla_id)
           .maybeSingle();
 
@@ -172,6 +179,8 @@ export async function POST(request: Request) {
           numero_cara: number;
           tipo: string;
           objeto_id: number | null;
+          cantidad_min: number | null;
+          cantidad_max: number | null;
           oro_min: number;
           oro_max: number;
         }>;
@@ -187,6 +196,13 @@ export async function POST(request: Request) {
             .eq("id", subObjetoId)
             .maybeSingle();
           if (obj) subObjeto = { id: obj.id, nombre: obj.nombre, icono: obj.icono };
+        }
+
+        let subCantidadObjeto: number | undefined;
+        if (subTipo === "item" && subObjetoId) {
+          const cantMin = subCaraConfig?.cantidad_min ?? 1;
+          const cantMax = subCaraConfig?.cantidad_max ?? 1;
+          subCantidadObjeto = cantMin + Math.floor(Math.random() * (Math.max(0, cantMax - cantMin) + 1));
         }
 
         let subCantidadOro: number | undefined;
@@ -208,6 +224,7 @@ export async function POST(request: Request) {
             subtablaId: caraConfig.subtabla_id,
             cara: subCara,
             objeto: subObjeto,
+            cantidadObjeto: subCantidadObjeto,
             cantidadOro: subCantidadOro,
           },
         });
@@ -218,7 +235,7 @@ export async function POST(request: Request) {
           resultados_dados: [primaryCara, subCara],
           tipo_resultado: subTipo === "oro" ? "oro" : "subtabla",
           objeto_id: subObjetoId,
-          cantidad_objeto: subObjetoId ? 1 : null,
+          cantidad_objeto: subObjetoId ? (subCantidadObjeto ?? 1) : null,
           cantidad_oro: subCantidadOro ?? null,
           costo_pagado: recompensa.costo_oro,
         });

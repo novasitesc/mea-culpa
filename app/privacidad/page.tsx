@@ -6,14 +6,14 @@ export default function PoliticaDePrivacidad() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 lg:p-12 relative">
       <div className="max-w-4xl mx-auto relative z-10">
-        <Link href="/">
+        <Link href="/login">
           <Button variant="ghost" className="mb-6 hover:bg-gold/10 hover:text-gold text-muted-foreground transition-colors">
             <ChevronLeft className="w-4 h-4 mr-2" />
             Volver al Inicio
           </Button>
         </Link>
         
-        <div className="bg-card border-2 border-[#8B4513] shadow-[inset_0_0_20px_rgba(0,0,0,0.5),_0_0_10px_rgba(139,69,19,0.2)] rounded-lg p-6 md:p-10">
+        <div className="bg-card border-2 border-[#8B4513] shadow-[inset_0_0_20px_rgba(0,0,0,0.5),0_0_10px_rgba(139,69,19,0.2)] rounded-lg p-6 md:p-10">
           <h1 className="text-3xl md:text-4xl font-serif text-gold mb-8 text-center border-b border-gold/20 pb-6">
             Política de Privacidad
           </h1>
