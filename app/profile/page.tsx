@@ -907,48 +907,8 @@ export default function ProfilePage() {
             onAlert={showProfileAlert}
           />
 
-          {/* Equipment Modal — rendered outside the grid to avoid z-index issues */}
-          {openBagModal !== null && currentCharacter && (
-            <EquipmentModal
-              userId={user?.id ?? ""}
-              character={currentCharacter}
-              characters={characters}
-              onClose={() => setOpenBagModal(null)}
-              onRefreshProfile={loadProfile}
-              onSave={async (updatedCharacter, updatedBagItems) => {
-                const nextCharacter = updatedCharacter as Character;
-                const nextBagItems = updatedBagItems as Item[];
-
-                setCurrentCharacter(nextCharacter);
-                setBagItems(nextBagItems);
-                await saveBagChanges(
-                  openBagModal,
-                  nextCharacter,
-                  nextBagItems,
-                );
-              }}
-              onGoldUpdate={(newGold) => {
-                setProfile((prev) => {
-                  if (!prev) return prev;
-                  return {
-                    ...prev,
-                    player: {
-                      ...prev.player,
-                      oro: newGold,
-                    },
-                  };
-                });
-
-                window.dispatchEvent(
-                  new CustomEvent("auth:refresh", {
-                    detail: { oro: newGold },
-                  }),
-                );
-              }}
-            />
-          )}
-
           <PartidasHistorial token={token} />
+
           <AnimatePresence>
             {openBagModal !== null && currentCharacter && (
               <EquipmentModal
@@ -964,11 +924,7 @@ export default function ProfilePage() {
 
                   setCurrentCharacter(nextCharacter);
                   setBagItems(nextBagItems);
-                  await saveBagChanges(
-                    openBagModal,
-                    nextCharacter,
-                    nextBagItems,
-                  );
+                  await saveBagChanges(openBagModal, nextCharacter, nextBagItems);
                 }}
                 onGoldUpdate={(newGold) => {
                   setProfile((prev) => {
