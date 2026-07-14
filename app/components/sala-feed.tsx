@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
@@ -91,6 +91,25 @@ function renderEvento(ev: SalaEvento, i: number) {
             <span className="text-gold font-semibold">+{cantidadOro.toLocaleString("es-ES")} oro</span>
           ) : null}
           <span className="text-foreground/40 ml-1">→ {personajeNombre}</span>
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "consumible_usado") {
+    const { objeto, personajeNombre, restante } = ev;
+    return (
+      <div key={i} className="flex items-center gap-2 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-300">
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-purple-900/20 border border-purple-700/40 rounded text-purple-400"><FlaskConical className="w-4 h-4" /></span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{personajeNombre}</span>
+          <span className="text-foreground/40"> tiró </span>
+          <span className="text-purple-400 font-semibold inline-flex items-center gap-1.5">
+            {getIconForString(objeto.nombre, "w-3.5 h-3.5 shrink-0", objeto.icono)} {objeto.nombre}
+          </span>
+          {restante > 0 && (
+            <span className="text-foreground/30 ml-1">(quedan ×{restante})</span>
+          )}
         </p>
       </div>
     );

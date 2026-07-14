@@ -564,8 +564,8 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
 
       {/* Modal de cierre */}
       {closeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="text-lg font-bold text-gold">Cerrar partida: {partida.titulo}</h2>
               <button

@@ -37,7 +37,7 @@ type Alert = {
 };
 
 export default function GlobalSleepModal() {
-  const { isAuthenticated, token, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
   const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
   const [resolvingSleep, setResolvingSleep] = useState(false);
@@ -49,14 +49,30 @@ export default function GlobalSleepModal() {
     setAlert({ id: Date.now(), title, message, variant });
   };
 
+  // getSession() renueva el access token automáticamente si expiró, lo que
+  // evita disparar peticiones con un token vencido (401) tras restaurar la
+  // sesión o cuando el token caduca entre ticks del polling.
+  const getFreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
+      return session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token || isFetching.current) return;
+    if (!isAuthenticated || isFetching.current) return;
 
     isFetching.current = true;
     setLoadingSleepStatus(true);
     try {
+      const freshToken = await getFreshToken();
+      if (!freshToken) return;
       const res = await fetch("/api/profile/sleep-options", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${freshToken}` },
       });
       if (!res.ok) return;
       const data = (await res.json()) as SleepStatusResponse;
@@ -67,14 +83,14 @@ export default function GlobalSleepModal() {
       setLoadingSleepStatus(false);
       setTimeout(() => { isFetching.current = false; }, 1000);
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, getFreshToken]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated) return;
     loadSleepStatus();
     const id = window.setInterval(loadSleepStatus, 60_000);
     return () => window.clearInterval(id);
-  }, [isAuthenticated, token, loadSleepStatus]);
+  }, [isAuthenticated, loadSleepStatus]);
 
   // Suscripción Realtime: detecta el INSERT en descansos_pendientes al instante
   useEffect(() => {
@@ -105,13 +121,16 @@ export default function GlobalSleepModal() {
     action: "pay" | "decline",
     optionId?: string,
   ) => {
-    if (!token) return;
     setResolvingSleep(true);
     try {
+      const freshToken = await getFreshToken();
+      if (!freshToken) {
+        throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+      }
       const res = await fetch("/api/profile/sleep-options", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${freshToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ pendingId, action, optionId: optionId ?? null }),
@@ -164,8 +183,8 @@ export default function GlobalSleepModal() {
         />
       )}
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-[#B8860B]">
               Descanso Obligatorio
@@ -227,8 +246,8 @@ export default function GlobalSleepModal() {
         </div>
 
         {showConfirm && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70">
-            <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 animate-in fade-in duration-200">
+            <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
               <h3 className="text-lg font-semibold text-red-300">Confirmar</h3>
               <p className="text-sm text-red-100/90 leading-relaxed">
                 El personaje acumulará un punto de cansancio. ¿Estás seguro?

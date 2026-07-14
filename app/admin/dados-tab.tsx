@@ -6,6 +6,7 @@ import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { Select } from "@/components/ui/select";
 import ConfirmActionModal from "@/components/ui/confirm-action-modal";
+import { modalOverlayCls, modalPanelCls, MODAL_EXIT_MS } from "@/lib/useModalTransition";
 import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";
 import type { DiceType, RewardType, LutCaraTipo } from "@/lib/types/dados";
 import DiceVisual from "@/app/components/dice-visual";
@@ -153,6 +154,7 @@ export function DadosTab({ token }: { token: string | null }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
+  const [editClosing, setEditClosing] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<RecompensaFull | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -254,8 +256,13 @@ export function DadosTab({ token }: { token: string | null }) {
   }
 
   function closeEdit() {
-    setEditingId(null);
-    setErrorMsg(null);
+    if (editClosing) return;
+    setEditClosing(true);
+    window.setTimeout(() => {
+      setEditingId(null);
+      setErrorMsg(null);
+      setEditClosing(false);
+    }, MODAL_EXIT_MS);
   }
 
   function updateSublistaRow(idx: number, objetoId: number | null) {
@@ -465,8 +472,8 @@ export function DadosTab({ token }: { token: string | null }) {
 
       {/* Modal de edición */}
       {editingId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <div className={`bg-card border border-gold-dim/60 rounded-lg w-full ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto shadow-2xl`}>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4 ${modalOverlayCls(editClosing)}`}>
+          <div className={`bg-card border border-gold-dim/60 rounded-lg w-full ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto shadow-2xl ${modalPanelCls(editClosing)}`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
               <h3 className="font-serif text-gold text-base">
                 {editingId === "new" ? "Nueva recompensa" : "Editar recompensa"}

@@ -1855,9 +1855,9 @@ export default function EquipmentModal({
       </motion.div>
 
       {showSellConfirm && selectedBagItem && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5"
+            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200"
             style={{ background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)" }}
           >
             <h3 className="text-sm tracking-[0.18em] uppercase text-[#D4AF37] mb-3">
@@ -1892,9 +1892,9 @@ export default function EquipmentModal({
       )}
 
       {showMoveModal && selectedBagItem && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5"
+            className="w-full max-w-md rounded-xl border border-[#8B7355] p-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200"
             style={{ background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)" }}
           >
             <h3 className="text-sm tracking-[0.18em] uppercase text-[#D4AF37] mb-3 font-serif">

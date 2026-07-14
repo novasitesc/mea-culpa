@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 
 type ConfirmActionModalProps = {
   open: boolean;
@@ -23,25 +24,29 @@ export default function ConfirmActionModal({
   onConfirm,
   onCancel,
 }: ConfirmActionModalProps) {
+  const { closing, closeWith } = useModalTransition();
+
   if (!open) return null;
+
+  const handleCancel = () => closeWith(onCancel);
 
   return (
     <div className="fixed inset-0 z-90 flex items-center justify-center p-4">
       <button
         type="button"
         aria-label="Cerrar confirmacion"
-        onClick={isLoading ? undefined : onCancel}
-        className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"
+        onClick={isLoading ? undefined : handleCancel}
+        className={`absolute inset-0 bg-black/70 backdrop-blur-[1px] ${modalOverlayCls(closing)}`}
       />
 
-      <div className="relative w-full max-w-md rounded-xl border border-gold/30 bg-card p-5 shadow-2xl medieval-border">
+      <div className={`relative w-full max-w-md rounded-xl border border-gold/30 bg-card p-5 shadow-2xl medieval-border ${modalPanelCls(closing)}`}>
         <h4 className="text-lg font-bold text-gold">{title}</h4>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
 
         <div className="mt-5 flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isLoading}
             className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground transition-colors hover:border-gold-dim disabled:opacity-60"
           >

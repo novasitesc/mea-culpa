@@ -48,6 +48,14 @@ export type EventoPartidaIniciada = {
   tipo: "partida_iniciada";
 };
 
+export type EventoConsumibleUsado = {
+  tipo: "consumible_usado";
+  personajeId: number;
+  personajeNombre: string;
+  objeto: { id: number; nombre: string; icono: string };
+  restante: number;
+};
+
 export type EventoDesmembramiento = {
   tipo: "desmembramiento";
   personajeId: number;
@@ -62,4 +70,5 @@ export type SalaEvento =
   | EventoAsignacionManual
   | EventoPartidaCerrada
   | EventoPartidaIniciada
+  | EventoConsumibleUsado
   | EventoDesmembramiento;
