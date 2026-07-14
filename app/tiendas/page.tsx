@@ -761,40 +761,6 @@ export default function TiendasPage() {
                     }
 
                     return (
-                      <div className="flex flex-col items-center justify-center gap-6 py-20">
-                        <img
-                          src="/incognito.png"
-                          alt="Acceso denegado"
-                          className="w-24 h-24 object-contain opacity-80"
-                        />
-                        <div className="text-center max-w-sm">
-                          <h2 className="text-2xl font-bold text-gold mb-2">
-                            Acceso restringido
-                          </h2>
-                          <p className="text-muted-foreground text-sm mb-4">
-                            No tienes el nivel suficiente para acceder a{" "}
-                            {activeShop.name}.
-                          </p>
-                          <p className="text-gold font-bold text-lg">
-                            Nivel requerido: {activeShop.minLevel}
-                          </p>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            Tu nivel actual: {user?.level || "No definido"}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => setActiveShop(null)}
-                          className="mt-4"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          Volver a tiendas
-                        </Button>
-                      </div>
-                    );
-                  }
-
-                  return (
                       <>
                         {/* Cabecera de la tienda */}
                         <Card className="mb-6 border-gold-dim medieval-border">
@@ -907,7 +873,8 @@ export default function TiendasPage() {
                         </div>
                       </>
                     );
-                  })()}
+                  })()
+                )}
               </div>
             )}
           </div>

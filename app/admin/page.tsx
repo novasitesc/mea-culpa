@@ -1653,9 +1653,23 @@ function UsersTab({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/users", { headers });
-    if (res.ok) setUsers(await res.json());
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/users", { headers });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: string } | null)?.error ?? "No se pudo cargar la lista de usuarios",
+        );
+      }
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      onToast(
+        err instanceof Error ? err.message : "No se pudo cargar la lista de usuarios",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -1674,10 +1688,10 @@ function UsersTab({
   const filtered = users.filter((u) => {
     const search = searchTerm.toLowerCase();
     return (
-      u.name.toLowerCase().includes(search) ||
-      u.email.toLowerCase().includes(search) ||
-      u.role.toLowerCase().includes(search) ||
-      u.rolSistema.toLowerCase().includes(search)
+      (u.name ?? "").toLowerCase().includes(search) ||
+      (u.email ?? "").toLowerCase().includes(search) ||
+      (u.role ?? "").toLowerCase().includes(search) ||
+      (u.rolSistema ?? "").toLowerCase().includes(search)
     );
   });
 
