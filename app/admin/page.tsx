@@ -26,6 +26,8 @@ import {
   Crown,
   MapPin,
   Sparkles,
+  ShieldPlus,
+  ShieldOff,
 } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
@@ -38,6 +40,8 @@ import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
+import AscensionModal from "./ascension-modal";
+import RevocationModal from "./revocation-modal";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -1625,9 +1629,11 @@ function PartidasHistoryTab({
 function UsersTab({
   token,
   onToast,
+  isSuperAdmin,
 }: {
   token: string;
   onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
 }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1635,6 +1641,8 @@ function UsersTab({
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
   const [editCharacterTarget, setEditCharacterTarget] = useState<AdminUser | null>(null);
+  const [promoteTarget, setPromoteTarget] = useState<AdminUser | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -1796,6 +1804,24 @@ function UsersTab({
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {isSuperAdmin && !u.isAdmin && (
+                          <button
+                            onClick={() => setPromoteTarget(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/40 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
+                            title="Nombrar administrador"
+                          >
+                            <ShieldPlus className="w-4 h-4" />
+                          </button>
+                        )}
+                        {isSuperAdmin && u.isAdmin && u.rolSistema !== "super_admin" && (
+                          <button
+                            onClick={() => setRevokeTarget(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-blood/50 hover:bg-blood/10 text-muted-foreground hover:text-blood transition-colors"
+                            title="Revocar administrador"
+                          >
+                            <ShieldOff className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setGoldTarget(u)}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-yellow-500/30 hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-500 transition-colors"
@@ -1965,6 +1991,38 @@ function UsersTab({
               const e = await res.json();
               onToast(e.error ?? "Error al eliminar", "error");
             }
+          }}
+        />
+      )}
+
+      {/* Ritual de Ascensión — promover a administrador (solo super_admin) */}
+      {promoteTarget && (
+        <AscensionModal
+          user={promoteTarget}
+          token={token}
+          onClose={() => setPromoteTarget(null)}
+          onPromoted={(updated) => {
+            const u = updated as AdminUser;
+            setUsers((prev) =>
+              prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
+            );
+            onToast(`${promoteTarget.name} ahora es administrador`, "success");
+          }}
+        />
+      )}
+
+      {/* Ritual de Destitución — revocar administrador (solo super_admin) */}
+      {revokeTarget && (
+        <RevocationModal
+          user={revokeTarget}
+          token={token}
+          onClose={() => setRevokeTarget(null)}
+          onRevoked={(updated) => {
+            const u = updated as AdminUser;
+            setUsers((prev) =>
+              prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
+            );
+            onToast(`${revokeTarget.name} ya no es administrador`, "success");
           }}
         />
       )}
@@ -4579,7 +4637,7 @@ export default function AdminPage() {
           {/* Contenido de pestaña */}
           <div className="p-6">
             {activeTab === "usuarios" && (
-              <UsersTab token={token} onToast={showToast} />
+              <UsersTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "tiendas" && (
               <ShopsTab token={token} onToast={showToast} />
