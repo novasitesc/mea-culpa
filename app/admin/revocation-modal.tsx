@@ -354,7 +354,7 @@ export default function RevocationModal({
                 Le despojarás del título de{" "}
                 <span className="text-blood/90 font-semibold">Administrador</span> y
                 de todos sus poderes en el Consejo. Volverá a ser un ciudadano común
-                del reino.
+                de MeaCulpa.
               </p>
               <p className="mt-1 text-[11px] text-foreground/35">{user.email}</p>
 
@@ -457,8 +457,7 @@ export default function RevocationModal({
               <p className="mt-2 text-sm text-foreground/70">
                 <span className="text-parchment font-semibold">{user.name}</span>{" "}
                 vuelve a ser un{" "}
-                <span className="text-foreground/80">ciudadano común</span> del
-                reino.
+                <span className="text-foreground/80">ciudadano común</span> de MeaCulpa.
               </p>
               <button
                 onClick={handleClose}

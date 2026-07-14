@@ -333,10 +333,15 @@ export async function POST(request: Request) {
       character: {
         id: charId,
         name: name.trim(),
+        nivel20Url: null,
         multiclass,
         race: race.trim(),
         alignment,
         portrait: "/characters/profileplaceholder.webp",
+        lifeStatus: "vivo",
+        deadAt: null,
+        revivedAt: null,
+        puntoCansancio: 0,
         knownSpells: validatedSpells,
         stats: {
           str: stats.fuerza,

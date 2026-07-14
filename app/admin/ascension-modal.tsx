@@ -339,8 +339,9 @@ export default function AscensionModal({
               <p className="mt-2 text-sm text-foreground/60 leading-relaxed max-w-xs">
                 Le conferirás el título de{" "}
                 <span className="text-gold/90 font-semibold">Administrador</span>,
-                con acceso a los poderes del Consejo. Este acto quedará grabado en
-                los anales del reino.
+                otorgándole acceso a las funciones de gestión del sistema y la
+                capacidad de supervisar a otros usuarios. Asegúrate de que esta
+                persona sea digna de tal honor.
               </p>
               <p className="mt-1 text-[11px] text-foreground/35">{user.email}</p>
 
