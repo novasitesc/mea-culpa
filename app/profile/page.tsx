@@ -331,7 +331,12 @@ export default function ProfilePage() {
 
       setProfile({
         ...profile,
-        characters: [...profile.characters, data.character],
+        // Un personaje recién creado siempre nace vivo; el spread conserva el
+        // valor del servidor si viene incluido.
+        characters: [
+          ...profile.characters,
+          { lifeStatus: "vivo", ...data.character },
+        ],
       });
 
       setNewCharacter({

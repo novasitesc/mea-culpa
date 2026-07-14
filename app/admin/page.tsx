@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
+  ArrowRightLeft,
   Dice6,
   Skull,
   Copy,
@@ -25,8 +26,11 @@ import {
   Crown,
   MapPin,
   Sparkles,
+  ShieldPlus,
+  ShieldOff,
 } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
+import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
 import FantasyAlert from "@/components/ui/fantasy-alert";
@@ -36,6 +40,8 @@ import { Select } from "@/components/ui/select";
 import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
+import AscensionModal from "./ascension-modal";
+import RevocationModal from "./revocation-modal";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -193,27 +199,6 @@ type PartidaHistoryParticipant = {
   nivel20Url: string | null;
 };
 
-type PartidaEvento = {
-  id: string;
-  tipo: string;
-  personajeId: number | null;
-  personajeNombre: string | null;
-  usuarioId: string | null;
-  tipoDado: string | null;
-  recompensaNombre: string | null;
-  tipoResultado: string | null;
-  objetoId: string | null;
-  objetoNombre: string | null;
-  objetoIcono: string | null;
-  cantidad: number | null;
-  cantidadOro: number | null;
-  miembro: string | null;
-  miembroLabel: string | null;
-  desmembrado: boolean | null;
-  metadata: unknown;
-  creadoEn: string;
-};
-
 type PartidaHistoryEntry = {
   id: string;
   title: string;
@@ -233,15 +218,17 @@ type PartidaHistoryEntry = {
   createdBy: string | null;
   participants: PartidaHistoryParticipant[];
   items: PartidaHistoryItem[];
-  eventos: PartidaEvento[];
 };
 
 type Tab =
   | "usuarios"
   | "tiendas"
   | "objetos"
-  | "economia"
+  | "transacciones"
   | "partidas"
+  | "partidas-activas"
+  | "historial-partidas"
+  | "impuestos"
   | "ruleta"
   | "dados"
   | "muertes";
@@ -314,13 +301,16 @@ function Modal({
   maxWidth?: string;
   children: React.ReactNode;
 }) {
+  const { closing, closeWith } = useModalTransition();
+  const handleClose = () => closeWith(onClose);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col`}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm ${modalOverlayCls(closing)}`}>
+      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col ${modalPanelCls(closing)}`}>
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-bold text-gold">{title}</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
@@ -351,7 +341,11 @@ function ConfirmActionModal({
   config: ConfirmModalConfig | null;
   onClose: () => void;
 }) {
+  const { closing, closeWith } = useModalTransition();
+
   if (!config || !config.isOpen) return null;
+
+  const handleClose = () => closeWith(onClose);
 
   const getVariantStyles = () => {
     if (config.variant === "danger") {
@@ -384,8 +378,8 @@ function ConfirmActionModal({
   const styles = getVariantStyles();
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className={`bg-card border-2 ${styles.border} rounded-xl w-full max-w-md overflow-hidden flex flex-col relative`}>
+    <div className={`fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${modalOverlayCls(closing)}`}>
+      <div className={`bg-card border-2 ${styles.border} rounded-xl w-full max-w-md overflow-hidden flex flex-col relative ${modalPanelCls(closing)}`}>
         {/* Resplandor superior místico */}
         <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.accentLine} opacity-80`} />
 
@@ -397,7 +391,7 @@ function ConfirmActionModal({
             <h3 className="text-lg font-serif font-bold tracking-wide text-foreground">{config.title}</h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
@@ -411,7 +405,7 @@ function ConfirmActionModal({
         <div className="flex items-center justify-end gap-3 p-4 bg-secondary/40 border-t border-border">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors border border-border/60"
           >
             {config.cancelText ?? "Cancelar"}
@@ -420,7 +414,7 @@ function ConfirmActionModal({
             type="button"
             onClick={() => {
               config.onConfirm();
-              onClose();
+              closeWith(onClose);
             }}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${styles.btnConfirm}`}
           >
@@ -1468,111 +1462,6 @@ function ActivePartidasTab({
 
 // ─── Historial de Partidas ───────────────────────────────────────────────────
 
-function formatDuration(startIso: string, endIso: string): string {
-  const diff = Math.max(0, new Date(endIso).getTime() - new Date(startIso).getTime());
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-
-function EventoRow({ ev }: { ev: PartidaEvento }) {
-  if (ev.tipo === "partida_iniciada") {
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-green-400/80">▶ Partida iniciada</span>
-      </div>
-    );
-  }
-  if (ev.tipo === "partida_cerrada") {
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-red-400/80">🏁 Partida cerrada</span>
-      </div>
-    );
-  }
-  if (ev.tipo === "desmembramiento") {
-    const accion = ev.desmembrado ? "perdió" : "recuperó";
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-orange-400/90">
-          ⚔️ <span className="text-foreground/80">{ev.personajeNombre}</span> {accion} {ev.miembroLabel ?? ev.miembro}
-        </span>
-      </div>
-    );
-  }
-  if (ev.tipo === "dado_tirado") {
-    const dado = ev.tipoDado ? ev.tipoDado.toUpperCase() : "dado";
-    let resultado = "";
-    if (ev.tipoResultado === "item" && ev.objetoNombre) {
-      resultado = `→ ${ev.objetoIcono ?? "📦"} ${ev.objetoNombre}${ev.cantidad && ev.cantidad > 1 ? ` x${ev.cantidad}` : ""}`;
-    } else if (ev.tipoResultado === "oro" && ev.cantidadOro) {
-      resultado = `→ 🪙 ${ev.cantidadOro} oro`;
-    } else if (ev.tipoResultado === "nada") {
-      resultado = "→ nada";
-    } else if (ev.tipoResultado === "subtabla") {
-      const sub = (ev.metadata as any)?.subRoll;
-      if (sub?.objeto) resultado = `→ ${sub.objeto.icono ?? "📦"} ${sub.objeto.nombre} (subtabla)`;
-      else if (sub?.cantidadOro) resultado = `→ 🪙 ${sub.cantidadOro} oro (subtabla)`;
-      else resultado = "→ subtabla";
-    }
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-blue-300/90">
-          🎲 <span className="text-foreground/80">{ev.personajeNombre}</span> tiró {dado}
-          {ev.recompensaNombre ? <span className="text-muted-foreground"> en {ev.recompensaNombre}</span> : null}
-          {resultado ? <span className="text-foreground/70"> {resultado}</span> : null}
-        </span>
-      </div>
-    );
-  }
-  if (ev.tipo === "asignacion_manual") {
-    let detalle = "";
-    if (ev.tipoResultado === "item" && ev.objetoNombre) {
-      detalle = `${ev.objetoIcono ?? "📦"} ${ev.objetoNombre}${ev.cantidad && ev.cantidad > 1 ? ` x${ev.cantidad}` : ""}`;
-    } else if (ev.tipoResultado === "oro" && ev.cantidadOro) {
-      detalle = `🪙 ${ev.cantidadOro} oro`;
-    }
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-purple-300/90">
-          📦 Admin asignó <span className="text-foreground/80">{detalle}</span> a <span className="text-foreground/80">{ev.personajeNombre}</span>
-        </span>
-      </div>
-    );
-  }
-  if (ev.tipo === "consumible_usado") {
-    return (
-      <div className="flex items-start gap-3 py-1.5">
-        <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0 pt-0.5 font-mono">{formatTime(ev.creadoEn)}</span>
-        <span className="text-[10px] text-emerald-400/90">
-          🧪 <span className="text-foreground/80">{ev.personajeNombre}</span> usó {ev.objetoIcono ?? ""} {ev.objetoNombre}
-        </span>
-      </div>
-    );
-  }
-  return null;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { label: string; cls: string }> = {
-    abierta:      { label: "Abierta",      cls: "bg-blue-900/40 text-blue-300 border-blue-700/40" },
-    en_progreso:  { label: "En progreso",  cls: "bg-yellow-900/40 text-yellow-300 border-yellow-700/40" },
-    finalizada:   { label: "Finalizada",   cls: "bg-green-900/40 text-green-300 border-green-700/40" },
-  };
-  const { label, cls } = cfg[status] ?? { label: status, cls: "bg-secondary text-muted-foreground border-border" };
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cls}`}>{label}</span>;
-}
-
 function PartidasHistoryTab({
   token,
   onToast,
@@ -1583,14 +1472,6 @@ function PartidasHistoryTab({
   const [history, setHistory] = useState<PartidaHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<Record<string, "participantes" | "eventos" | "items" | null>>({});
-
-  function toggleSection(partidaId: string, section: "participantes" | "eventos" | "items") {
-    setExpandedSection((prev) => ({
-      ...prev,
-      [partidaId]: prev[partidaId] === section ? null : section,
-    }));
-  }
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -1612,7 +1493,9 @@ function PartidasHistoryTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Registro completo de partidas</p>
+        <p className="text-sm text-muted-foreground">
+          Registro de partidas creadas
+        </p>
         <button
           type="button"
           onClick={loadHistory}
@@ -1633,59 +1516,21 @@ function PartidasHistoryTab({
       ) : (
         <div className="flex flex-col gap-3">
           {history.map((entry) => {
-            const totalGoldDelta = entry.participants.reduce((sum, p) => sum + (p.gold ?? 0), 0);
-            const totalItemCount = entry.items.reduce((sum, i) => sum + i.qty, 0);
-            const deadCount = entry.participants.filter((p) => p.dead).length;
+            const totalGold = entry.participants.reduce(
+              (sum, p) => sum + (p.gold ?? 0),
+              0,
+            );
             const isOpen = expandedId === entry.id;
-            const activeSection = expandedSection[entry.id] ?? null;
-
-            const startLabel = entry.startTime
-              ? new Date(entry.startTime).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-              : new Date(entry.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-
-            const duration = entry.startTime && entry.finalizedAt
-              ? formatDuration(entry.startTime, entry.finalizedAt)
-              : null;
-
-            // Aggregate items from eventos (more granular than transacciones_objetos)
-            const itemsFromEventos = new Map<string, { nombre: string; icono: string; qty: number }>();
-            for (const ev of entry.eventos ?? []) {
-              if ((ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") && ev.objetoNombre) {
-                const key = ev.objetoId ?? ev.objetoNombre;
-                const cur = itemsFromEventos.get(key);
-                const qty = ev.cantidad ?? 1;
-                itemsFromEventos.set(key, cur
-                  ? { ...cur, qty: cur.qty + qty }
-                  : { nombre: ev.objetoNombre, icono: ev.objetoIcono ?? "📦", qty });
-              }
-              // Items from subtabla metadata
-              if (ev.tipo === "dado_tirado" && ev.tipoResultado === "subtabla") {
-                const sub = (ev.metadata as any)?.subRoll;
-                if (sub?.objeto) {
-                  const key = String(sub.objeto.id);
-                  const cur = itemsFromEventos.get(key);
-                  itemsFromEventos.set(key, cur
-                    ? { ...cur, qty: cur.qty + 1 }
-                    : { nombre: sub.objeto.nombre, icono: sub.objeto.icono ?? "📦", qty: 1 });
-                }
-              }
-            }
-            const aggregatedItems = Array.from(itemsFromEventos.entries()).map(([k, v]) => ({ key: k, ...v }));
-            // Fall back to transacciones_objetos if no eventos yet
-            const displayItems = aggregatedItems.length > 0 ? aggregatedItems : entry.items.map((it) => ({
-              key: String(it.objectId),
-              nombre: it.objectName,
-              icono: it.objectIcon,
-              qty: it.qty,
-            }));
 
             return (
-              <div key={entry.id} className="border border-border rounded-xl bg-secondary/10 overflow-hidden">
-                {/* Header */}
+              <div
+                key={entry.id}
+                className="border border-border rounded-xl p-4 bg-secondary/10"
+              >
                 <button
                   type="button"
                   onClick={() => setExpandedId(isOpen ? null : entry.id)}
-                  className="w-full flex items-start justify-between gap-3 text-left p-4 hover:bg-secondary/20 transition-colors"
+                  className="w-full flex items-center justify-between gap-3 text-left"
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -1696,110 +1541,78 @@ function PartidasHistoryTab({
                       {entry.createdBy ? ` · ${entry.createdBy}` : ""}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
-                    <span>{entry.participants.length} jugadores{deadCount > 0 ? ` · ${deadCount} 💀` : ""}</span>
-                    {totalGoldDelta > 0 && <span className="text-gold">+{totalGoldDelta} oro</span>}
-                    {totalItemCount > 0 && <span>{totalItemCount} ítems</span>}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span>{entry.participants.length} jugadores</span>
+                    <span className="text-gold">+{totalGold} oro</span>
                   </div>
                 </button>
 
-                {/* Expanded sections */}
                 {isOpen && (
-                  <div className="border-t border-border">
-                    {/* Section tabs */}
-                    <div className="flex border-b border-border">
-                      {(["participantes", "eventos", "items"] as const).map((sec) => {
-                        const labels: Record<string, string> = {
-                          participantes: `Participantes (${entry.participants.length})`,
-                          eventos: `Log de eventos (${(entry.eventos ?? []).length})`,
-                          items: `Ítems (${displayItems.length})`,
-                        };
-                        return (
-                          <button
-                            key={sec}
-                            type="button"
-                            onClick={() => toggleSection(entry.id, sec)}
-                            className={`px-4 py-2 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${
-                              activeSection === sec
-                                ? "bg-secondary/40 text-foreground"
-                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-                            }`}
-                          >
-                            {labels[sec]}
-                          </button>
-                        );
-                      })}
+                  <div className="mt-4 flex flex-col gap-4">
+                    {entry.comment && (
+                      <p className="text-xs text-muted-foreground">
+                        {entry.comment}
+                      </p>
+                    )}
+
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-secondary/50 border-b border-border">
+                          <tr>
+                            <th className="px-2 py-2 text-left">Personaje</th>
+                            <th className="px-2 py-2 text-left">Usuario</th>
+                            <th className="px-2 py-2 text-center">Oro</th>
+                            <th className="px-2 py-2 text-left">Estado</th>
+                            <th className="px-2 py-2 text-left">Comentario</th>
+                            <th className="px-2 py-2 text-left">Nivel20</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {entry.participants.map((p) => (
+                            <tr key={p.id} className="border-b border-border last:border-0">
+                              <td className="px-2 py-2 text-foreground">
+                                {p.characterName}
+                              </td>
+                              <td className="px-2 py-2 text-muted-foreground">
+                                {p.userName}
+                              </td>
+                              <td className="px-2 py-2 text-center text-gold">
+                                {p.gold}
+                              </td>
+                              <td className="px-2 py-2 text-muted-foreground">
+                                {p.dead ? "Muerto" : "Vivo"}
+                              </td>
+                              <td className="px-2 py-2 text-muted-foreground">
+                                {p.comment || "-"}
+                              </td>
+                              <td className="px-2 py-2">
+                                <Nivel20Link url={p.nivel20Url} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
-                    {/* Participantes */}
-                    {activeSection === "participantes" && (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead className="bg-secondary/30 border-b border-border">
-                            <tr>
-                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Personaje</th>
-                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Jugador</th>
-                              <th className="px-3 py-2 text-center text-muted-foreground font-medium">Oro final</th>
-                              <th className="px-3 py-2 text-center text-muted-foreground font-medium">Estado</th>
-                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Comentario</th>
-                              <th className="px-3 py-2 text-left text-muted-foreground font-medium">Nivel20</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {entry.participants.map((p) => (
-                              <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/10">
-                                <td className="px-3 py-2 text-foreground font-medium">{p.characterName}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{p.userName}</td>
-                                <td className="px-3 py-2 text-center text-gold font-medium">{p.gold > 0 ? `+${p.gold}` : "—"}</td>
-                                <td className="px-3 py-2 text-center">
-                                  {p.dead
-                                    ? <span className="text-red-400">💀 Muerto</span>
-                                    : <span className="text-green-400/80">Vivo</span>}
-                                </td>
-                                <td className="px-3 py-2 text-muted-foreground">{p.comment || "—"}</td>
-                                <td className="px-3 py-2"><Nivel20Link url={p.nivel20Url} /></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* Log de eventos */}
-                    {activeSection === "eventos" && (
-                      <div className="p-4">
-                        {(entry.eventos ?? []).length === 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            No hay eventos registrados. Los eventos se guardan a partir de ahora (partidas nuevas).
-                          </p>
-                        ) : (
-                          <div className="divide-y divide-border/30">
-                            {(entry.eventos ?? []).map((ev) => (
-                              <EventoRow key={ev.id} ev={ev} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Ítems */}
-                    {activeSection === "items" && (
-                      <div className="p-4">
-                        {displayItems.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Sin ítems registrados.</p>
-                        ) : (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {displayItems.map((item) => (
-                              <div key={item.key} className="flex items-center gap-2 text-xs text-foreground/80 bg-secondary/20 rounded-lg px-3 py-2 border border-border/50">
-                                <span>{item.icono}</span>
-                                <span className="truncate">{item.nombre}</span>
-                                {item.qty > 1 && <span className="ml-auto text-muted-foreground shrink-0">x{item.qty}</span>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-semibold text-foreground mb-2">
+                        Objetos entregados
+                      </p>
+                      {entry.items.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Sin objetos registrados
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {entry.items.map((item, idx) => (
+                            <div key={`${item.objectId}-${idx}`} className="text-xs text-muted-foreground">
+                              <span className="mr-2">{item.objectIcon}</span>
+                              {item.objectName} x{item.qty}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1816,9 +1629,11 @@ function PartidasHistoryTab({
 function UsersTab({
   token,
   onToast,
+  isSuperAdmin,
 }: {
   token: string;
   onToast: (msg: string, type: "success" | "error") => void;
+  isSuperAdmin: boolean;
 }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1826,6 +1641,8 @@ function UsersTab({
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [goldTarget, setGoldTarget] = useState<AdminUser | null>(null);
   const [editCharacterTarget, setEditCharacterTarget] = useState<AdminUser | null>(null);
+  const [promoteTarget, setPromoteTarget] = useState<AdminUser | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<AdminUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof AdminUser>("createdAt");
@@ -1846,33 +1663,13 @@ function UsersTab({
     load();
   }, [load]);
 
-  const handleSort = (field: keyof AdminUser) => {
-    if (sortField === field) setSortAsc((a) => !a);
-    else {
-      setSortField(field);
-      setSortAsc(true);
-    }
-  };
-
   const sorted = [...users].sort((a, b) => {
     const va = a[sortField] ?? "";
     const vb = b[sortField] ?? "";
     return sortAsc
-      ? String(va).localeCompare(String(vb))
-      : String(vb).localeCompare(String(va));
+      ? String(va).localeCompare(String(vb), "es", { numeric: true })
+      : String(vb).localeCompare(String(va), "es", { numeric: true });
   });
-
-  const SortIcon = ({ field }: { field: keyof AdminUser }) => {
-    if (sortField !== field) return null;
-    return sortAsc ? (
-      <ChevronUp className="w-3 h-3 inline ml-1" />
-    ) : (
-      <ChevronDown className="w-3 h-3 inline ml-1" />
-    );
-  };
-
-  const thCls =
-    "px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
 
   const filtered = users.filter((u) => {
     const search = searchTerm.toLowerCase();
@@ -1883,6 +1680,18 @@ function UsersTab({
       u.rolSistema.toLowerCase().includes(search)
     );
   });
+
+  const visible = sorted.filter((u) => filtered.includes(u));
+
+  const sortOptions: Array<{ field: keyof AdminUser; label: string }> = [
+    { field: "name", label: "Nombre" },
+    { field: "email", label: "Email" },
+    { field: "role", label: "Gremio" },
+    { field: "level", label: "Nivel" },
+    { field: "gold", label: "Oro" },
+    { field: "isAdmin", label: "Admin" },
+    { field: "createdAt", label: "Registro" },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -1900,121 +1709,170 @@ function UsersTab({
         />
       </div>
 
+      {/* Orden */}
+      {!loading && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-sans shrink-0">
+            Ordenar
+          </span>
+          <select
+            value={sortField as string}
+            onChange={(e) => {
+              setSortField(e.target.value as keyof AdminUser);
+              setSortAsc(true);
+            }}
+            className="flex-1 max-w-[180px] px-2.5 py-1.5 rounded border border-border bg-secondary/30 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+          >
+            {sortOptions.map((o) => (
+              <option key={o.field as string} value={o.field as string}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setSortAsc((a) => !a)}
+            title={sortAsc ? "Ascendente" : "Descendente"}
+            className="w-8 h-8 flex items-center justify-center rounded border border-border bg-secondary/30 text-muted-foreground hover:text-gold hover:border-gold/40 transition-colors"
+          >
+            {sortAsc ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
       {/* Tabla */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 border-b border-border">
-              <tr>
-                <th className={thCls} onClick={() => handleSort("name")}>
-                  Nombre <SortIcon field="name" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("email")}>
-                  Email <SortIcon field="email" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("role")}>
-                  Gremio <SortIcon field="role" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("level")}>
-                  Nivel <SortIcon field="level" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("gold")}>
-                  Oro <SortIcon field="gold" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("isAdmin")}>
-                  Admin <SortIcon field="isAdmin" />
-                </th>
-                <th className={thCls} onClick={() => handleSort("createdAt")}>
-                  Registro <SortIcon field="createdAt" />
-                </th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Nivel20
-                </th>
-                <th className="px-3 py-2.5 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
-                    No se encontraron usuarios que coincidan con "{searchTerm}"
-                  </td>
-                </tr>
-              ) : (
-                sorted.filter((u) => filtered.includes(u)).map((u, i) => (
-                <tr
-                  key={u.id}
-                  className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors ${
-                    i % 2 === 0 ? "" : "bg-secondary/10"
-                  }`}
-                >
-                  <td className="px-3 py-3 font-medium text-foreground">
-                    {u.name}
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground">{u.email}</td>
-                  <td className="px-3 py-3">
-                    <span className="px-2 py-0.5 bg-secondary rounded text-xs text-foreground">
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center text-foreground">
-                    <span title={getAccountLevelTitle(u.level)}>
-                      {normalizeAccountLevel(u.level)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center text-gold font-medium">
-                    {u.gold}
-                  </td>
-                  <td className="px-3 py-3 text-center whitespace-nowrap">
-                    {u.rolSistema === "super_admin" ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#5d7dcf]/60 bg-[#1a2648] text-[#c8d9ff] text-[11px] font-semibold whitespace-nowrap shadow-[0_0_10px_rgba(93,125,207,0.2)]">
-                        <Crown className="w-3 h-3" /> super_admin
-                      </span>
-                    ) : u.isAdmin ? (
-                      <span className="inline-flex items-center px-2 py-0.5 bg-gold/20 text-gold rounded text-[11px] font-semibold whitespace-nowrap">
-                        Admin
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 bg-secondary text-muted-foreground rounded text-[11px] whitespace-nowrap">
-                        Usuario
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">
-                    {formatDate(u.createdAt)}
-                  </td>
-                  <td className="px-3 py-3">
-                    <Nivel20Link url={u.nivel20Url} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <button
-                        onClick={() => setGoldTarget(u)}
-                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-yellow-500 transition-colors"
-                        title="Gestionar Oro"
+        <div>
+          {visible.length === 0 ? (
+            <div className="rounded-lg border border-border px-3 py-8 text-center text-muted-foreground text-sm">
+              No se encontraron usuarios que coincidan con "{searchTerm}"
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {visible.map((u, i) => {
+                const avatarCls =
+                  u.rolSistema === "super_admin"
+                    ? "bg-[#1a2648] text-[#c8d9ff] border-[#5d7dcf]/60 shadow-[0_0_12px_rgba(93,125,207,0.25)]"
+                    : u.isAdmin
+                      ? "bg-gold/15 text-gold border-gold/40"
+                      : "bg-secondary text-muted-foreground border-border";
+                return (
+                  <article
+                    key={u.id}
+                    className="group relative overflow-hidden rounded-xl border border-border bg-card hover:border-gold/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    style={{ animationDelay: `${Math.min(i * 45, 400)}ms` }}
+                  >
+                    {/* Acento superior según rol */}
+                    <div
+                      className={`absolute inset-x-0 top-0 h-0.5 ${
+                        u.rolSistema === "super_admin"
+                          ? "bg-gradient-to-r from-transparent via-[#5d7dcf] to-transparent"
+                          : u.isAdmin
+                            ? "bg-gradient-to-r from-transparent via-gold/70 to-transparent"
+                            : "bg-transparent"
+                      }`}
+                    />
+
+                    {/* Identidad + acciones */}
+                    <div className="flex items-start gap-3 p-4 pb-3">
+                      <span
+                        className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-full border font-serif text-base font-bold ${avatarCls}`}
                       >
-                        <Coins className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setEditTarget(u)}
-                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                        {u.name.trim().charAt(0).toUpperCase() || "?"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-foreground text-sm truncate">
+                            {u.name}
+                          </p>
+                          {u.rolSistema === "super_admin" ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#5d7dcf]/60 bg-[#1a2648] text-[#c8d9ff] text-[10px] font-semibold">
+                              <Crown className="w-3 h-3" /> super_admin
+                            </span>
+                          ) : u.isAdmin ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-gold/20 text-gold rounded text-[10px] font-semibold">
+                              Admin
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate" title={u.email}>
+                          {u.email}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isSuperAdmin && !u.isAdmin && (
+                          <button
+                            onClick={() => setPromoteTarget(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/40 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
+                            title="Nombrar administrador"
+                          >
+                            <ShieldPlus className="w-4 h-4" />
+                          </button>
+                        )}
+                        {isSuperAdmin && u.isAdmin && u.rolSistema !== "super_admin" && (
+                          <button
+                            onClick={() => setRevokeTarget(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-blood/50 hover:bg-blood/10 text-muted-foreground hover:text-blood transition-colors"
+                            title="Revocar administrador"
+                          >
+                            <ShieldOff className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setGoldTarget(u)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-yellow-500/30 hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-500 transition-colors"
+                          title="Gestionar Oro"
+                        >
+                          <Coins className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditTarget(u)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/30 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))
-              )}
-            </tbody>
-          </table>
+
+                    {/* Métricas */}
+                    <div className="grid grid-cols-3 divide-x divide-border/60 border-t border-border/60 bg-secondary/20">
+                      <div className="px-2 py-2 text-center min-w-0">
+                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Gremio</p>
+                        <p className="text-xs text-foreground truncate mt-0.5" title={u.role}>
+                          {u.role}
+                        </p>
+                      </div>
+                      <div className="px-2 py-2 text-center">
+                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Nivel</p>
+                        <p className="text-xs text-foreground mt-0.5" title={getAccountLevelTitle(u.level)}>
+                          {normalizeAccountLevel(u.level)}
+                        </p>
+                      </div>
+                      <div className="px-2 py-2 text-center">
+                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Oro</p>
+                        <p className="text-xs text-gold font-semibold mt-0.5">
+                          {Number(u.gold).toLocaleString("es-ES")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Registro + Nivel20 */}
+                    <div className="flex items-center justify-between gap-2 px-4 py-2 border-t border-border/60">
+                      <span className="text-[11px] text-muted-foreground">
+                        Registro: {formatDate(u.createdAt)}
+                      </span>
+                      <Nivel20Link url={u.nivel20Url} />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -2133,6 +1991,38 @@ function UsersTab({
               const e = await res.json();
               onToast(e.error ?? "Error al eliminar", "error");
             }
+          }}
+        />
+      )}
+
+      {/* Ritual de Ascensión — promover a administrador (solo super_admin) */}
+      {promoteTarget && (
+        <AscensionModal
+          user={promoteTarget}
+          token={token}
+          onClose={() => setPromoteTarget(null)}
+          onPromoted={(updated) => {
+            const u = updated as AdminUser;
+            setUsers((prev) =>
+              prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
+            );
+            onToast(`${promoteTarget.name} ahora es administrador`, "success");
+          }}
+        />
+      )}
+
+      {/* Ritual de Destitución — revocar administrador (solo super_admin) */}
+      {revokeTarget && (
+        <RevocationModal
+          user={revokeTarget}
+          token={token}
+          onClose={() => setRevokeTarget(null)}
+          onRevoked={(updated) => {
+            const u = updated as AdminUser;
+            setUsers((prev) =>
+              prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
+            );
+            onToast(`${revokeTarget.name} ya no es administrador`, "success");
           }}
         />
       )}
@@ -2434,7 +2324,6 @@ function CharactersFormModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingChar, setEditingChar] = useState<number | null>(null);
-  const [reviveTarget, setReviveTarget] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     raza: string;
     clases: Array<{ nombre_clase: string; nivel: number }>;
@@ -2518,7 +2407,7 @@ function CharactersFormModal({
       const res = await fetch("/api/profile/admin-revive", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId: reviveTarget }),
+        body: JSON.stringify({ characterId }),
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
@@ -2531,11 +2420,10 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
-    } catch {
+    } catch (error) {
       onToast("Error al revivir", "error");
     } finally {
       setSaving(false);
-      setReviveTarget(null);
     }
   };
 
@@ -2849,7 +2737,9 @@ function CharactersFormModal({
           </button>
         </div>
       </div>
-      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+      {confirmConfig?.isOpen && (
+        <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+      )}
     </Modal>
   );
 }
@@ -3070,6 +2960,69 @@ function ShopsTab({
 
 // ─── Formulario de tienda ─────────────────────────────────────────────────────
 
+// Iconos por defecto para tiendas. El valor guardado es el emoji clave que
+// `getIconForString` traduce a su componente de Lucide/Gi al renderizar, así
+// que la vista previa aquí usa exactamente el mismo icono que verá el jugador.
+const SHOP_ICON_OPTIONS: { icon: string; label: string }[] = [
+  { icon: "🏪", label: "Tienda" },
+  { icon: "🏠", label: "Posada" },
+  { icon: "⚔️", label: "Armería" },
+  { icon: "🛡️", label: "Escudos" },
+  { icon: "🗡️", label: "Dagas" },
+  { icon: "🪓", label: "Hachas" },
+  { icon: "🔨", label: "Herrería" },
+  { icon: "🏹", label: "Arquería" },
+  { icon: "👕", label: "Armaduras" },
+  { icon: "🧥", label: "Sastrería" },
+  { icon: "👢", label: "Botas" },
+  { icon: "💍", label: "Joyería" },
+  { icon: "📿", label: "Amuletos" },
+  { icon: "💎", label: "Gemas" },
+  { icon: "👑", label: "Realeza" },
+  { icon: "🍺", label: "Taberna" },
+  { icon: "🧪", label: "Alquimia" },
+  { icon: "🔮", label: "Arcano" },
+  { icon: "📜", label: "Pergaminos" },
+  { icon: "📖", label: "Biblioteca" },
+  { icon: "🌿", label: "Herbolario" },
+  { icon: "🔥", label: "Fuego" },
+  { icon: "✨", label: "Mágico" },
+  { icon: "🎲", label: "Azar" },
+];
+
+function ShopIconPicker({
+  value,
+  onSelect,
+}: {
+  value: string;
+  onSelect: (icon: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-8 gap-2 sm:grid-cols-12">
+      {SHOP_ICON_OPTIONS.map(({ icon, label }) => {
+        const selected = value === icon;
+        return (
+          <button
+            key={icon}
+            type="button"
+            onClick={() => onSelect(icon)}
+            title={label}
+            aria-label={label}
+            aria-pressed={selected}
+            className={`group relative flex aspect-square items-center justify-center rounded-lg border transition-all duration-150 ${
+              selected
+                ? "border-gold bg-gold/15 text-gold ring-2 ring-gold/40 shadow-[0_0_14px_rgba(212,175,55,0.3)] scale-105"
+                : "border-border bg-background/40 text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-gold hover:scale-105"
+            }`}
+          >
+            {getIconForString(icon, "w-5 h-5")}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ShopFormModal({
   title,
   initial,
@@ -3106,16 +3059,10 @@ function ShopFormModal({
   return (
     <Modal title={title} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="grid grid-cols-[auto_1fr] gap-4 items-end">
-          <FormField label="Icono">
-            <input
-              className={`${inputCls} w-16 text-center text-xl`}
-              value={form.icon}
-              onChange={(e) => set("icon", e.target.value)}
-              placeholder="🏪"
-              maxLength={4}
-            />
-          </FormField>
+        <div className="flex items-end gap-4">
+          <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10 text-gold shadow-inner">
+            {getIconForString(form.icon || "🏪", "w-8 h-8")}
+          </div>
           <FormField label="Nombre de la tienda">
             <input
               className={inputCls}
@@ -3126,6 +3073,9 @@ function ShopFormModal({
             />
           </FormField>
         </div>
+        <FormField label="Icono de la tienda">
+          <ShopIconPicker value={form.icon} onSelect={(icon) => set("icon", icon)} />
+        </FormField>
         <FormField label="Descripción">
           <textarea
             className={`${inputCls} resize-none`}
@@ -4565,7 +4515,9 @@ function DeadCharactersTab({
           </div>
         </div>
       )}
-      <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+      {confirmConfig?.isOpen && (
+        <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+      )}
     </div>
   );
 }
@@ -4703,12 +4655,22 @@ export default function AdminPage() {
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
-    { id: "economia", label: "Economía", icon: Coins },
+    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
     { id: "ruleta", label: "Ruleta", icon: Dice6 },
     { id: "dados", label: "Dados", icon: Dice6 },
     { id: "muertes", label: "Personajes Muertos", icon: Skull },
-    { id: "partidas", label: "Partidas", icon: Shield },
+    { id: "partidas", label: "Publicar Partida", icon: Shield },
+    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
+    { id: "historial-partidas", label: "Historial", icon: Shield },
   ];
+
+  if (isSuperAdmin) {
+    tabs.splice(4, 0, {
+      id: "impuestos",
+      label: "Cobrar Impuestos",
+      icon: Coins,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -4767,7 +4729,7 @@ export default function AdminPage() {
           {/* Contenido de pestaña */}
           <div className="p-6">
             {activeTab === "usuarios" && (
-              <UsersTab token={token} onToast={showToast} />
+              <UsersTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
             )}
             {activeTab === "tiendas" && (
               <ShopsTab token={token} onToast={showToast} />
@@ -4775,8 +4737,8 @@ export default function AdminPage() {
             {activeTab === "objetos" && (
               <ObjectsTab token={token} onToast={showToast} />
             )}
-            {activeTab === "economia" && (
-              <EconomiaGroupTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+            {activeTab === "transacciones" && (
+              <TransactionsTab token={token} onToast={showToast} />
             )}
             {activeTab === "ruleta" && (
               <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
@@ -4784,11 +4746,20 @@ export default function AdminPage() {
             {activeTab === "dados" && (
               <DadosTab token={token} />
             )}
+            {isSuperAdmin && activeTab === "impuestos" && (
+              <TaxesTab token={token} onToast={showToast} />
+            )}
             {activeTab === "muertes" && (
               <DeadCharactersTab token={token} onToast={showToast} />
             )}
             {activeTab === "partidas" && (
-              <PartidasGroupTab token={token} onToast={showToast} />
+              <PartidasTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "partidas-activas" && (
+              <ActivePartidasTab token={token} onToast={showToast} />
+            )}
+            {activeTab === "historial-partidas" && (
+              <PartidasHistoryTab token={token} onToast={showToast} />
             )}
           </div>
         </div>

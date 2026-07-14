@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CooldownBanner } from "@/app/components/cooldown-timer";
 import { useAuth } from "@/lib/useAuth";
 import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
@@ -274,7 +275,7 @@ function VerDetallesContent() {
                       ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
                       : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
                   }`}>
-                    {game.isFull ? "Llena" : game.inCooldown ? "En progreso" : "Abierta"}
+                    {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
                   </span>
                 </div>
               </div>
@@ -335,6 +336,14 @@ function VerDetallesContent() {
                 </div>
               )}
 
+              {/* Cooldown activo: contador hasta poder unirse de nuevo */}
+              {game.inCooldown && game.cooldownSecondsRemaining > 0 && !isAlreadyJoined && (
+                <CooldownBanner
+                  secondsRemaining={game.cooldownSecondsRemaining}
+                  onExpire={() => void loadDetails()}
+                />
+              )}
+
               {/* Personaje y Botón */}
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex-1">
@@ -393,6 +402,7 @@ function VerDetallesContent() {
                   onClick={game.joinedCharacterIds?.length ? leaveGame : joinGame}
                   disabled={
                     (!game.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
+                    (!game.joinedCharacterIds?.length && game.inCooldown) ||
                     joining ||
                     leaving ||
                     game.isFull
@@ -405,6 +415,8 @@ function VerDetallesContent() {
                     ? "Salir"
                     : game.isFull
                     ? "Llena"
+                    : game.inCooldown
+                    ? "En descanso"
                     : "Unirse"}
                 </button>
               </div>

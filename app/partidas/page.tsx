@@ -6,6 +6,7 @@ import { Clock, Loader2, Shield, Dices } from "lucide-react";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { CooldownBanner, CooldownChip } from "@/app/components/cooldown-timer";
 import { useAuth } from "@/lib/useAuth";
 import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
@@ -171,9 +172,20 @@ export default function PartidasPage() {
           body: JSON.stringify({ partidaId: gameId, characterId }),
         });
 
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          cooldownEndsAt?: string;
+        };
         if (!res.ok) {
-          throw new Error(data.error ?? "No se pudo unir a la partida");
+          let message = data.error ?? "No se pudo unir a la partida";
+          if (data.cooldownEndsAt) {
+            const remainingSeconds =
+              (new Date(data.cooldownEndsAt).getTime() - Date.now()) / 1000;
+            if (remainingSeconds > 0) {
+              message += `. Tiempo restante: ${formatCooldown(remainingSeconds)}`;
+            }
+          }
+          throw new Error(message);
         }
 
         showAlert("Inscripcion completada", "Te uniste correctamente a la partida.", "success");
@@ -188,7 +200,7 @@ export default function PartidasPage() {
         setJoiningGameId(null);
       }
     },
-    [token, selectedCharacterByGame, loadOpenGames, showAlert],
+    [token, selectedCharacterByGame, loadOpenGames, showAlert, formatCooldown],
   );
 
   const loadGameDetail = useCallback(
@@ -312,6 +324,19 @@ export default function PartidasPage() {
     [characters],
   );
 
+  const cooldownGame = useMemo(
+    () => openGames.find((game) => game.inCooldown && game.cooldownSecondsRemaining > 0) ?? null,
+    [openGames],
+  );
+
+  const handleCooldownExpire = useCallback(() => {
+    void loadOpenGames().then((freshGames) => {
+      setSelectedGameDetail((current) =>
+        current ? freshGames.find((g) => g.id === current.id) ?? current : current,
+      );
+    });
+  }, [loadOpenGames]);
+
   const selectedCharacterData = useMemo(
     () => characters.find((character) => String(character.id) === selectedCharacter),
     [characters, selectedCharacter],
@@ -396,7 +421,7 @@ export default function PartidasPage() {
                               ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
                               : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
                           }`}>
-                          {selectedGameDetail.isFull ? "Llena" : selectedGameDetail.inCooldown ? "En progreso" : "Abierta"}
+                          {selectedGameDetail.isFull ? "Llena" : selectedGameDetail.inCooldown ? "Cooldown" : "Abierta"}
                         </span>
                       </div>
                     </div>
@@ -462,7 +487,17 @@ export default function PartidasPage() {
                         </a>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="flex flex-col gap-3 pt-2">
+                        {selectedGameDetail.inCooldown &&
+                          selectedGameDetail.cooldownSecondsRemaining > 0 &&
+                          !selectedGameDetail.joinedCharacterIds?.length && (
+                            <CooldownBanner
+                              secondsRemaining={selectedGameDetail.cooldownSecondsRemaining}
+                              onExpire={handleCooldownExpire}
+                            />
+                          )}
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div className="flex-1">
                           <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">Selecciona personaje</p>
                           <select
@@ -526,6 +561,7 @@ export default function PartidasPage() {
                             onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
                             disabled={
                               (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
+                              (!selectedGameDetail.joinedCharacterIds?.length && selectedGameDetail.inCooldown) ||
                               joiningDetail ||
                               leavingDetail ||
                               selectedGameDetail.isFull
@@ -538,9 +574,12 @@ export default function PartidasPage() {
                                 ? "Salir"
                                 : selectedGameDetail.isFull
                                   ? "Llena"
-                                  : "Unirse"}
+                                  : selectedGameDetail.inCooldown
+                                    ? "En descanso"
+                                    : "Unirse"}
                           </button>
                         )}
+                        </div>
                       </div>
                     )}
 
@@ -571,6 +610,13 @@ export default function PartidasPage() {
                     {loadingOpenGames ? "Cargando..." : "Actualizar"}
                   </button>
                 </div>
+
+                {cooldownGame && (
+                  <CooldownBanner
+                    secondsRemaining={cooldownGame.cooldownSecondsRemaining}
+                    onExpire={handleCooldownExpire}
+                  />
+                )}
 
                 {loadingOpenGames || loadingCharacters ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -619,16 +665,20 @@ export default function PartidasPage() {
                                 {tierLabel}
                               </span>
 
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${game.isFull
-                                    ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
-                                    : game.inCooldown
-                                      ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
-                                      : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
-                                  }`}
-                              >
-                                {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
-                              </span>
+                              {!game.isFull && game.inCooldown && game.cooldownSecondsRemaining > 0 ? (
+                                <CooldownChip secondsRemaining={game.cooldownSecondsRemaining} />
+                              ) : (
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${game.isFull
+                                      ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
+                                      : game.inCooldown
+                                        ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
+                                        : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
+                                    }`}
+                                >
+                                  {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
+                                </span>
+                              )}
                             </div>
 
                             <div className="grid gap-2 text-sm text-muted-foreground">

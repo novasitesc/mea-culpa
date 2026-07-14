@@ -90,6 +90,9 @@ export default function SalaPage() {
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
         setEventos((prev) => [...prev, payload]);
       })
+      .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
+        setEventos((prev) => [...prev, payload]);
+      })
       .on("broadcast", { event: "partida_cerrada" }, () => {
         try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
         if (esAdminRef.current) {
@@ -268,6 +271,7 @@ export default function SalaPage() {
                     participantes={participantes}
                     eventos={eventos}
                     token={token}
+                    usuarioId={user?.id ?? null}
                     onEvent={handleEvent}
                   />
                 )}
@@ -279,8 +283,8 @@ export default function SalaPage() {
 
       {/* Modal: Partida finalizada (jugadores) */}
       {showFinalModal && partida && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
             <div className="p-5 border-b border-border">
               <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-1">Fin de la aventura</p>
               <h2 className="text-lg font-bold text-gold flex items-center gap-2"><Swords className="w-5 h-5 text-gold" /> {partida.titulo}</h2>

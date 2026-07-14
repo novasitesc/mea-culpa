@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
       nivel20_url
     `
     )
-    .eq("usuario_id", userId);
+    .eq("usuario_id", userId)
+    .not("estado_vida", "in", '("enterrado","eliminado")');
 
   if (personajesError) {
     return NextResponse.json({ error: personajesError.message }, { status: 500 });

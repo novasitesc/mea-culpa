@@ -24,6 +24,7 @@ function mapEventoRow(row: any): SalaEvento | null {
         nombre: row.objeto_nombre ?? "",
         icono:  row.objeto_icono  ?? "",
       },
+      restante:        Number(row.cantidad ?? 0),
     };
     case "asignacion_manual": return {
       tipo: "asignacion_manual",
