@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
@@ -14,7 +14,7 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
-import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 
 type Props = {
   partida: SalaPartida;
@@ -75,6 +75,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     participantes[0]?.personajeId ?? null,
   );
   const [caidasLoading, setCaidasLoading] = useState<1 | -1 | null>(null);
+  const [cansancioLoading, setCansancioLoading] = useState<1 | -1 | null>(null);
 
   // Descanso largo (resetear caídas) state
   const [restModalOpen, setRestModalOpen] = useState(false);
@@ -82,7 +83,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
   const participantesActivos = participantes.filter((p) => !p.muerto && !p.derrotado);
-  const participantesConCaidas = participantesActivos.filter((p) => p.caidas > 0);
+  const participantesQueDescansan = participantesActivos.filter((p) => p.caidas > 0 || p.cansancio > 0);
   // D&D 5e 2014: un solo descanso largo por día de aventura → uno por expedición.
   const yaDescansaron = eventos.some((ev) => ev.tipo === "descanso_largo");
 
@@ -306,9 +307,40 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
         caidas: Number(data.caidas ?? 0),
         delta,
         derrotado: Boolean(data.derrotado),
+        ...(data.puntosCansancio !== undefined ? { cansancio: Number(data.puntosCansancio) } : {}),
       });
     } finally {
       setCaidasLoading(null);
+    }
+  }
+
+  // ── Cansancio handler ──────────────────────────────────────────────────────
+
+  async function handleCansancio(personajeId: number, delta: 1 | -1) {
+    const participante = participantes.find((p) => p.personajeId === personajeId);
+    if (!participante) return;
+    setCansancioLoading(delta);
+    try {
+      const res = await fetch("/api/admin/personajes/cansancio", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ personajeId, delta, partidaId: partida.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo actualizar el cansancio" });
+        return;
+      }
+      const data = await res.json();
+      onEvent({
+        tipo: "cansancio",
+        personajeId,
+        personajeNombre: participante.nombre,
+        cansancio: Number(data.cansancio ?? 0),
+        delta,
+      });
+    } finally {
+      setCansancioLoading(null);
     }
   }
 
@@ -504,7 +536,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
             >
               <span className="inline-flex items-center gap-1.5">
                 <HeartCrack className="w-3 h-3" />
-                Caídas
+                Caídas y cansancio
               </span>
               {caidasOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
@@ -569,6 +601,47 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                         A la {MAX_CAIDAS}.ª caída pierde la expedición, se retira al Nexo y carga
                         +{CANSANCIO_POR_DERROTA} punto de cansancio. Solo un descanso largo restaura las caídas.
                       </p>
+
+                      <div
+                        className="flex items-center justify-between gap-2 rounded border border-amber-900/30 bg-black/20 px-3 py-2.5"
+                        title={EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, sel.cansancio)]}
+                      >
+                        <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-foreground/50 font-sans">
+                          <Zap className={`w-3 h-3 ${sel.cansancio >= MAX_CANSANCIO - 2 ? "text-red-500" : "text-amber-400/80"}`} />
+                          Cansancio
+                        </span>
+                        <span className={`text-xs font-semibold font-sans ${sel.cansancio >= MAX_CANSANCIO - 2 ? "text-red-400" : "text-amber-300/90"}`}>
+                          {sel.cansancio}/{MAX_CANSANCIO}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCansancio(sel.personajeId, -1)}
+                          disabled={cansancioLoading !== null || sel.cansancio <= 0}
+                          className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-border text-[11px] font-sans text-foreground/60 hover:border-emerald-500/50 hover:text-emerald-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {cansancioLoading === -1 ? <Loader2 className="w-3 h-3 animate-spin" /> : <Minus className="w-3 h-3" />}
+                          Aliviar cansancio
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCansancio(sel.personajeId, 1)}
+                          disabled={cansancioLoading !== null || sel.cansancio >= MAX_CANSANCIO}
+                          className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-amber-500/50 bg-amber-900/20 text-[11px] font-sans text-amber-300 hover:bg-amber-900/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {cansancioLoading === 1 ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                          Añadir cansancio
+                        </button>
+                      </div>
+
+                      {sel.cansancio > 0 && (
+                        <p className="text-[10px] text-foreground/40 font-sans leading-relaxed">
+                          Nivel {sel.cansancio}: {EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, sel.cansancio)]}.
+                          Satura en {MAX_CANSANCIO} sin matar; la muerte solo llega al rehusar el descanso.
+                        </p>
+                      )}
                     </div>
                   );
                 })()}
@@ -935,21 +1008,29 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                 expedición y no se ven afectados. Solo puede haber un descanso largo por expedición.
               </p>
 
-              {participantesConCaidas.length > 0 ? (
+              {participantesQueDescansan.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {participantesConCaidas.map((p) => (
+                  {participantesQueDescansan.map((p) => (
                     <div
                       key={p.personajeId}
                       className="flex items-center justify-between gap-2 rounded border border-emerald-900/30 bg-black/20 px-3 py-2"
                     >
                       <p className="text-sm font-semibold text-foreground truncate">{p.nombre}</p>
-                      <CaidasTracker caidas={p.caidas} size="sm" animated={false} />
+                      <div className="flex items-center gap-3 shrink-0">
+                        {p.cansancio > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs font-sans text-amber-300/90">
+                            <Zap className="w-3 h-3 text-amber-400/80" />
+                            {p.cansancio}/{MAX_CANSANCIO}
+                          </span>
+                        )}
+                        {p.caidas > 0 && <CaidasTracker caidas={p.caidas} size="sm" animated={false} />}
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-foreground/40 italic font-sans">
-                  Nadie acumula caídas; el descanso igualmente alivia el cansancio del grupo.
+                  Nadie acumula caídas ni cansancio; el grupo descansa igualmente.
                 </p>
               )}
             </div>

@@ -11,6 +11,8 @@ export type SalaParticipante = {
   extremidades: Record<string, boolean> | null;
   /** Caídas acumuladas (0-3); solo un descanso largo las restaura. */
   caidas: number;
+  /** Niveles de agotamiento (0-6); un descanso largo reduce 1. */
+  cansancio: number;
 };
 
 export type SalaPartida = {
@@ -80,6 +82,18 @@ export type EventoCaida = {
   delta: number;
   /** true cuando la 3.ª caída derrota al personaje y lo retira al Nexo. */
   derrotado: boolean;
+  /** Total de cansancio tras el evento (la derrota suma 1; revertirla lo devuelve). */
+  cansancio?: number;
+};
+
+export type EventoCansancio = {
+  tipo: "cansancio";
+  personajeId: number;
+  personajeNombre: string;
+  /** Total de cansancio tras el evento (0-6). */
+  cansancio: number;
+  /** +1 impuesto por el DM, -1 aliviado. */
+  delta: number;
 };
 
 export type EventoDescansoLargo = {
@@ -101,4 +115,5 @@ export type SalaEvento =
   | EventoConsumibleUsado
   | EventoDesmembramiento
   | EventoCaida
+  | EventoCansancio
   | EventoDescansoLargo;

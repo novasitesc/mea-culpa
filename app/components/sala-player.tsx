@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FlaskConical, Skull, Moon } from "lucide-react";
+import { FlaskConical, Skull, Moon, Zap } from "lucide-react";
+import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SalaFeed from "@/app/components/sala-feed";
 import ConsumableModal from "@/app/components/consumable-modal";
 import CaidasTracker from "@/app/components/caidas-tracker";
@@ -63,6 +64,19 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
         {me && (
           <div className="rounded-full px-3 py-1 bg-black/30 border border-red-900/40 flex items-center">
             <CaidasTracker caidas={me.caidas} size="sm" showLabel />
+          </div>
+        )}
+        {me && me.cansancio > 0 && (
+          <div
+            className={`rounded-full px-3 py-1 bg-black/30 border flex items-center gap-1.5 text-[11px] font-sans transition-all animate-in fade-in duration-300 ${
+              me.cansancio >= MAX_CANSANCIO - 2
+                ? "border-red-900/60 text-red-400"
+                : "border-amber-900/40 text-amber-300/90"
+            }`}
+            title={EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, me.cansancio)]}
+          >
+            <Zap className="w-3 h-3" />
+            Cansancio {me.cansancio}/{MAX_CANSANCIO}
           </div>
         )}
         {canUseConsumables && (

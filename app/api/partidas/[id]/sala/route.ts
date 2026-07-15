@@ -22,6 +22,16 @@ function mapEventoRow(row: any): SalaEvento | null {
       caidas:          Number(row.cantidad ?? 0),
       delta:           Number((row.metadata as any)?.delta ?? 1),
       derrotado:       Boolean((row.metadata as any)?.derrotado ?? false),
+      ...((row.metadata as any)?.cansancio !== undefined
+        ? { cansancio: Number((row.metadata as any).cansancio) }
+        : {}),
+    };
+    case "cansancio": return {
+      tipo: "cansancio",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      cansancio:       Number(row.cantidad ?? 0),
+      delta:           Number((row.metadata as any)?.delta ?? 1),
     };
     case "descanso_largo": return {
       tipo: "descanso_largo",
@@ -134,7 +144,7 @@ export async function GET(
 
   const { data: participantes } = await db
     .from("partida_participantes")
-    .select("id, personaje_id, usuario_id, muerto, derrotado, personaje:personaje_id(nombre, extremidades, caidas)")
+    .select("id, personaje_id, usuario_id, muerto, derrotado, personaje:personaje_id(nombre, extremidades, caidas, puntos_cansancio)")
     .eq("partida_id", partidaId);
 
   const { data: eventosRows } = await db
@@ -164,6 +174,7 @@ export async function GET(
       nombre: p.personaje?.nombre ?? "Personaje",
       extremidades: (p.personaje as any)?.extremidades ?? null,
       caidas: Number((p.personaje as any)?.caidas ?? 0),
+      cansancio: Number((p.personaje as any)?.puntos_cansancio ?? 0),
     })),
     eventos,
   });

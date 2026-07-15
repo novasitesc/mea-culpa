@@ -121,7 +121,24 @@ export default function SalaPage() {
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
-                ? { ...p, caidas: payload.caidas, derrotado: payload.derrotado }
+                ? {
+                  ...p,
+                  caidas: payload.caidas,
+                  derrotado: payload.derrotado,
+                  cansancio: payload.cansancio ?? p.cansancio,
+                }
+                : p,
+            ),
+          );
+        }
+      })
+      .on("broadcast", { event: "cansancio" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "cansancio") {
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? { ...p, cansancio: payload.cansancio }
                 : p,
             ),
           );
@@ -132,7 +149,11 @@ export default function SalaPage() {
         if (payload.tipo === "descanso_largo") {
           const ids = new Set(payload.personajes.map((p) => p.personajeId));
           setParticipantes((prev) =>
-            prev.map((p) => (ids.has(p.personajeId) ? { ...p, caidas: 0 } : p)),
+            prev.map((p) =>
+              ids.has(p.personajeId)
+                ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
+                : p,
+            ),
           );
         }
       })
@@ -193,8 +214,23 @@ export default function SalaPage() {
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
-            ? { ...p, caidas: ev.caidas, derrotado: ev.derrotado }
+            ? {
+              ...p,
+              caidas: ev.caidas,
+              derrotado: ev.derrotado,
+              cansancio: ev.cansancio ?? p.cansancio,
+            }
             : p,
+        ),
+      );
+      return;
+    }
+
+    if (ev.tipo === "cansancio") {
+      appendEvento(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId ? { ...p, cansancio: ev.cansancio } : p,
         ),
       );
       return;
@@ -204,7 +240,11 @@ export default function SalaPage() {
       appendEvento(ev);
       const ids = new Set(ev.personajes.map((p) => p.personajeId));
       setParticipantes((prev) =>
-        prev.map((p) => (ids.has(p.personajeId) ? { ...p, caidas: 0 } : p)),
+        prev.map((p) =>
+          ids.has(p.personajeId)
+            ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
+            : p,
+        ),
       );
       return;
     }

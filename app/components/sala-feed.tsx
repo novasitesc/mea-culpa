@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon } from "lucide-react";
-import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap } from "lucide-react";
+import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
 import { getIconForString } from "@/lib/iconMapper";
 
@@ -160,6 +160,43 @@ function renderEvento(ev: SalaEvento, i: number) {
             <>
               <span className="text-foreground/40"> ha caído en combate </span>
               <span className="text-red-400 font-semibold">({ev.caidas}/{MAX_CAIDAS})</span>
+            </>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "cansancio") {
+    const alivio = ev.delta < 0;
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-amber-900/30 last:border-0 animate-in fade-in duration-300"
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            alivio
+              ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400"
+              : "bg-amber-900/20 border-amber-700/40 text-amber-400"
+          }`}
+        >
+          <Zap className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          {alivio ? (
+            <>
+              <span className="text-foreground/40"> alivia su cansancio </span>
+              <span className="text-emerald-400 font-semibold">({ev.cansancio}/{MAX_CANSANCIO})</span>
+            </>
+          ) : (
+            <>
+              <span className="text-foreground/40"> acumula un punto de cansancio </span>
+              <span className="text-amber-400 font-semibold">({ev.cansancio}/{MAX_CANSANCIO})</span>
+              {ev.cansancio > 0 && (
+                <span className="text-foreground/30 italic"> — {EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, ev.cansancio)]}</span>
+              )}
             </>
           )}
         </p>
