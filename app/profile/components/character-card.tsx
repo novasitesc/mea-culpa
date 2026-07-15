@@ -29,6 +29,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { EquipmentPreview } from "../bolsa/bolsa";
+import CaidasTracker from "@/app/components/caidas-tracker";
+import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
@@ -125,6 +127,8 @@ export type Character = {
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
+  /** Caídas acumuladas en expedición (0-3); se restauran con un descanso largo. */
+  caidas: number;
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -366,10 +370,21 @@ export default function CharacterCard({
             </>
           )}
           <span className="text-[#8B7355]">·</span>
-          <span className="inline-flex items-center gap-1">
-            <Zap className="w-3 h-3 text-[#8B7355]" />
-            Cansancio: {character.puntoCansancio}
+          <span
+            className={`inline-flex items-center gap-1 ${
+              character.puntoCansancio >= MAX_CANSANCIO - 2 ? "text-red-400" : ""
+            }`}
+            title={EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, Math.max(0, character.puntoCansancio))]}
+          >
+            <Zap className={`w-3 h-3 ${character.puntoCansancio >= MAX_CANSANCIO - 2 ? "text-red-500" : "text-[#8B7355]"}`} />
+            Cansancio: {character.puntoCansancio}/{MAX_CANSANCIO}
           </span>
+          {character.caidas > 0 && (
+            <>
+              <span className="text-[#8B7355]">·</span>
+              <CaidasTracker caidas={character.caidas} size="sm" showLabel animated={false} />
+            </>
+          )}
         </div>
 
         {/* ─── Expandable Detail Panel ─── */}

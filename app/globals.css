@@ -861,3 +861,137 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 @media (prefers-reduced-motion: reduce) {
   .rev-ash, .rev-shudder, .rev-pulse-glow { animation: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Caídas en expedición (contador estilo salvaciones de muerte)
+   Prefijo: cd-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Ignición de una marca de caída: la calavera brota con un destello sangriento */
+@keyframes cd-skull-ignite {
+  0%   { transform: scale(0.2) rotate(-25deg); opacity: 0; filter: brightness(3); }
+  55%  { transform: scale(1.35) rotate(6deg); opacity: 1; filter: brightness(1.8); }
+  75%  { transform: scale(0.9) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+.cd-skull-ignite { animation: cd-skull-ignite 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+
+/* Latido de sangre del último sello marcado */
+@keyframes cd-blood-throb {
+  0%, 100% { box-shadow: 0 0 5px 1px rgba(185, 28, 28, 0.35), inset 0 0 4px rgba(185, 28, 28, 0.25); }
+  50%      { box-shadow: 0 0 13px 4px rgba(220, 38, 38, 0.6), inset 0 0 8px rgba(220, 38, 38, 0.45); }
+}
+.cd-token-throb { animation: cd-blood-throb 2.4s ease-in-out infinite; }
+
+/* Al completar 3 caídas: latido más rápido y oscuro, el sello está condenado */
+@keyframes cd-doom-throb {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(150, 15, 15, 0.55), inset 0 0 6px rgba(150, 15, 15, 0.4); filter: saturate(1); }
+  50%      { box-shadow: 0 0 20px 7px rgba(230, 40, 30, 0.75), inset 0 0 12px rgba(230, 40, 30, 0.55); filter: saturate(1.4); }
+}
+.cd-token-doom { animation: cd-doom-throb 1.1s ease-in-out infinite; }
+
+/* Runa vacía que parpadea tenue, esperando su marca */
+@keyframes cd-rune-flicker {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.65; }
+}
+.cd-rune-flicker { animation: cd-rune-flicker 3.2s ease-in-out infinite; }
+
+/* ── Overlay dramático de caída / derrota ── */
+@keyframes cd-vignette-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+.cd-vignette-in { animation: cd-vignette-in 0.45s ease-out both; }
+
+@keyframes cd-overlay-skull {
+  0%   { transform: scale(0.35) translateY(12px); opacity: 0; filter: drop-shadow(0 0 0 rgba(220, 38, 38, 0)); }
+  40%  { transform: scale(1.18) translateY(0); opacity: 1; filter: drop-shadow(0 0 28px rgba(220, 38, 38, 0.85)); }
+  60%  { transform: scale(0.96); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(220, 38, 38, 0.55)); }
+}
+.cd-overlay-skull { animation: cd-overlay-skull 0.9s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+
+@keyframes cd-overlay-title {
+  0%   { opacity: 0; transform: translateY(16px); letter-spacing: 0.45em; filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); letter-spacing: 0.18em; filter: blur(0); }
+}
+.cd-overlay-title { animation: cd-overlay-title 0.7s ease-out 0.25s both; }
+
+@keyframes cd-overlay-sub {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.cd-overlay-sub { animation: cd-overlay-sub 0.6s ease-out 0.55s both; }
+
+/* Sacudida sísmica al ser derrotado */
+@keyframes cd-defeat-quake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-3px, 2px) rotate(-0.4deg); }
+  30% { transform: translate(3px, -2px) rotate(0.4deg); }
+  45% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px) rotate(0.3deg); }
+  75% { transform: translate(-1px, 1px); }
+}
+.cd-defeat-quake { animation: cd-defeat-quake 0.55s ease-in-out 0.15s 2; }
+
+/* Ascuas que suben desde el borde inferior */
+@keyframes cd-ember-rise {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10%  { opacity: 0.95; }
+  100% { transform: translateY(-52vh) translateX(var(--cd-drift, 0px)) scale(0.2); opacity: 0; }
+}
+.cd-ember { animation: cd-ember-rise var(--cd-duration, 3s) ease-out var(--cd-delay, 0s) infinite; }
+
+@keyframes cd-overlay-out {
+  to { opacity: 0; }
+}
+.cd-overlay-out { animation: cd-overlay-out 0.4s ease-in both; }
+
+/* Descanso largo: respiración serena del sello lunar que restaura las caídas */
+@keyframes cd-rest-glow {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(16, 185, 129, 0.25); }
+  50%      { box-shadow: 0 0 13px 4px rgba(16, 185, 129, 0.5); }
+}
+.cd-rest-glow { animation: cd-rest-glow 2.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-skull-ignite, .cd-token-throb, .cd-token-doom, .cd-rune-flicker,
+  .cd-overlay-skull, .cd-overlay-title, .cd-overlay-sub,
+  .cd-defeat-quake, .cd-ember, .cd-vignette-in, .cd-overlay-out,
+  .cd-fall-explode, .cd-fall-wobble, .cd-rest-glow {
+    animation: none !important;
+    opacity: 1;
+  }
+  /* La onda expansiva es puramente decorativa: sin animación se oculta */
+  .cd-shockwave {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
+/* Entrada explosiva del icono de caída: destello sobreescalado que encaja de golpe */
+@keyframes cd-explode-in {
+  0%   { transform: scale(3.2); opacity: 0; filter: brightness(4) blur(8px); }
+  35%  { transform: scale(0.82); opacity: 1; filter: brightness(1.9) blur(0); }
+  55%  { transform: scale(1.18); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.cd-fall-explode { animation: cd-explode-in 0.6s cubic-bezier(0.2, 1.1, 0.3, 1) both; }
+
+/* Onda expansiva del impacto */
+@keyframes cd-shockwave {
+  0%   { transform: scale(0.35); opacity: 0.9; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.cd-shockwave { animation: cd-shockwave 0.75s ease-out 0.1s both; }
+
+/* Tambaleo de izquierda a derecha tras el impacto */
+@keyframes cd-wobble {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  15%      { transform: rotate(-14deg) translateX(-5px); }
+  35%      { transform: rotate(11deg) translateX(4px); }
+  55%      { transform: rotate(-8deg) translateX(-3px); }
+  75%      { transform: rotate(5deg) translateX(2px); }
+}
+.cd-fall-wobble { animation: cd-wobble 1.6s ease-in-out 0.55s infinite; }

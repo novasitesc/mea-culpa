@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap } from "lucide-react";
+import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import HuesoRoto from "@/app/components/hueso-roto";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
@@ -111,6 +113,120 @@ function renderEvento(ev: SalaEvento, i: number) {
             <span className="text-foreground/30 ml-1">(quedan ×{restante})</span>
           )}
         </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "caida") {
+    const recuperacion = ev.delta < 0;
+    return (
+      <div
+        key={i}
+        className={`flex items-center gap-2 py-2 border-b last:border-0 animate-in fade-in duration-300 ${
+          ev.derrotado ? "border-red-900/40" : "border-rose-900/30"
+        }`}
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            recuperacion
+              ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400"
+              : ev.derrotado
+                ? "bg-red-950/40 border-red-700/60 text-red-500 cd-token-doom"
+                : "bg-red-900/20 border-red-900/50 text-red-400"
+          }`}
+        >
+          {recuperacion ? (
+            <HeartPulse className="w-4 h-4" />
+          ) : ev.derrotado ? (
+            <Skull className="w-4 h-4" />
+          ) : (
+            <HuesoRoto className="w-4 h-4" />
+          )}
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          {recuperacion ? (
+            <>
+              <span className="text-foreground/40"> se recupera de una caída </span>
+              <span className="text-emerald-400 font-semibold">({ev.caidas}/{MAX_CAIDAS})</span>
+            </>
+          ) : ev.derrotado ? (
+            <>
+              <span className="text-foreground/40"> ha sido </span>
+              <span className="text-red-400 font-bold uppercase">derrotado</span>
+              <span className="text-foreground/40"> — se retira al Nexo con +{CANSANCIO_POR_DERROTA} cansancio</span>
+            </>
+          ) : (
+            <>
+              <span className="text-foreground/40"> ha caído en combate </span>
+              <span className="text-red-400 font-semibold">({ev.caidas}/{MAX_CAIDAS})</span>
+            </>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "cansancio") {
+    const alivio = ev.delta < 0;
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-amber-900/30 last:border-0 animate-in fade-in duration-300"
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            alivio
+              ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400"
+              : "bg-amber-900/20 border-amber-700/40 text-amber-400"
+          }`}
+        >
+          <Zap className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          {alivio ? (
+            <>
+              <span className="text-foreground/40"> alivia su cansancio </span>
+              <span className="text-emerald-400 font-semibold">({ev.cansancio}/{MAX_CANSANCIO})</span>
+            </>
+          ) : (
+            <>
+              <span className="text-foreground/40"> acumula un punto de cansancio </span>
+              <span className="text-amber-400 font-semibold">({ev.cansancio}/{MAX_CANSANCIO})</span>
+              {ev.cansancio > 0 && (
+                <span className="text-foreground/30 italic"> — {EFECTOS_CANSANCIO[Math.min(MAX_CANSANCIO, ev.cansancio)]}</span>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "descanso_largo") {
+    return (
+      <div key={i} className="py-2 border-b border-emerald-900/30 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500">
+        <div className="rounded-lg border border-emerald-800/40 bg-gradient-to-r from-emerald-950/40 via-black/30 to-emerald-950/40 px-3 py-2.5 flex items-center gap-2.5">
+          <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-emerald-900/30 border border-emerald-700/50 text-emerald-300 cd-rest-glow">
+            <Moon className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-sans text-emerald-300 font-semibold uppercase tracking-widest">
+              Descanso largo
+            </p>
+            {ev.personajes.length > 0 ? (
+              <p className="text-[11px] text-foreground/50 font-sans">
+                <span className="text-foreground/70">{ev.personajes.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-emerald-400 font-semibold"> — caídas restauradas y −1 de cansancio</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-foreground/40 italic font-sans">
+                El grupo descansa; nadie necesitaba recuperarse.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

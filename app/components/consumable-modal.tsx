@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { FlaskConical, Loader2, X, Sparkles } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
@@ -29,6 +29,7 @@ export default function ConsumableModal({ partidaId, token, onClose, onUsed }: P
   const [error, setError] = useState<string | null>(null);
   const [consumibles, setConsumibles] = useState<Consumible[]>([]);
   const [usingRowId, setUsingRowId] = useState<number | null>(null);
+  const inFlightRef = useRef(false);
   const [justUsed, setJustUsed] = useState<{ nombre: string; icono: string } | null>(null);
   const { closing, closeWith } = useModalTransition();
   const handleClose = useCallback(() => closeWith(onClose), [closeWith, onClose]);
@@ -68,7 +69,8 @@ export default function ConsumableModal({ partidaId, token, onClose, onUsed }: P
   }, [handleClose]);
 
   async function handleUse(item: Consumible) {
-    if (!token || usingRowId != null) return;
+    if (!token || inFlightRef.current) return;
+    inFlightRef.current = true;
     setUsingRowId(item.bagRowId);
     setError(null);
     try {
@@ -97,6 +99,7 @@ export default function ConsumableModal({ partidaId, token, onClose, onUsed }: P
 
       onUsed({
         tipo: "consumible_usado",
+        eventoId: crypto.randomUUID(),
         personajeId: data.personajeId,
         personajeNombre: data.personajeNombre,
         objeto: data.objeto,
@@ -109,6 +112,7 @@ export default function ConsumableModal({ partidaId, token, onClose, onUsed }: P
     } catch {
       setError("Error de conexión");
     } finally {
+      inFlightRef.current = false;
       setUsingRowId(null);
     }
   }

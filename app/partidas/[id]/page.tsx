@@ -31,6 +31,17 @@ export default function SalaPage() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
 
+  // Añade un evento evitando duplicados (mismo eventoId ya presente en el feed)
+  const appendEvento = useCallback((ev: SalaEvento) => {
+    setEventos((prev) => {
+      const id = (ev as { eventoId?: string }).eventoId;
+      if (id && prev.some((e) => (e as { eventoId?: string }).eventoId === id)) {
+        return prev;
+      }
+      return [...prev, ev];
+    });
+  }, []);
+
   const loadSala = useCallback(async () => {
     if (!token || !partidaId) return;
     setLoadingData(true);
@@ -85,13 +96,13 @@ export default function SalaPage() {
 
     channel
       .on("broadcast", { event: "dado_tirado" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
       })
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
       })
       .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
       })
       .on("broadcast", { event: "partida_cerrada" }, () => {
         try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
@@ -104,11 +115,50 @@ export default function SalaPage() {
       .on("broadcast", { event: "partida_iniciada" }, () => {
         void loadSala();
       })
-      .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+      .on("broadcast", { event: "caida" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "caida") {
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? {
+                  ...p,
+                  caidas: payload.caidas,
+                  derrotado: payload.derrotado,
+                  cansancio: payload.cansancio ?? p.cansancio,
+                }
+                : p,
+            ),
+          );
+        }
+      })
+      .on("broadcast", { event: "cansancio" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "cansancio") {
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? { ...p, cansancio: payload.cansancio }
+                : p,
+            ),
+          );
+        }
+      })
+      .on("broadcast", { event: "descanso_largo" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "descanso_largo") {
+          const ids = new Set(payload.personajes.map((p) => p.personajeId));
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              ids.has(p.personajeId)
+                ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
+                : p,
+            ),
+          );
+        }
       })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
         if (payload.tipo === "desmembramiento") {
           setParticipantes((prev) =>
             prev.map((p) =>
@@ -135,7 +185,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated]);
+  }, [partidaId, isAuthenticated, appendEvento]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -159,8 +209,48 @@ export default function SalaPage() {
       return;
     }
 
+    if (ev.tipo === "caida") {
+      appendEvento(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId
+            ? {
+              ...p,
+              caidas: ev.caidas,
+              derrotado: ev.derrotado,
+              cansancio: ev.cansancio ?? p.cansancio,
+            }
+            : p,
+        ),
+      );
+      return;
+    }
+
+    if (ev.tipo === "cansancio") {
+      appendEvento(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId ? { ...p, cansancio: ev.cansancio } : p,
+        ),
+      );
+      return;
+    }
+
+    if (ev.tipo === "descanso_largo") {
+      appendEvento(ev);
+      const ids = new Set(ev.personajes.map((p) => p.personajeId));
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          ids.has(p.personajeId)
+            ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
+            : p,
+        ),
+      );
+      return;
+    }
+
     if (ev.tipo === "desmembramiento") {
-      setEventos((prev) => [...prev, ev]);
+      appendEvento(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
@@ -176,7 +266,7 @@ export default function SalaPage() {
       return;
     }
 
-    setEventos((prev) => [...prev, ev]);
+    appendEvento(ev);
   }
 
   // Compute player's own personajeId for the final modal
