@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon } from "lucide-react";
 import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import HuesoRoto from "@/app/components/hueso-roto";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
@@ -134,7 +135,13 @@ function renderEvento(ev: SalaEvento, i: number) {
                 : "bg-red-900/20 border-red-900/50 text-red-400"
           }`}
         >
-          {recuperacion ? <HeartPulse className="w-4 h-4" /> : <Skull className="w-4 h-4" />}
+          {recuperacion ? (
+            <HeartPulse className="w-4 h-4" />
+          ) : ev.derrotado ? (
+            <Skull className="w-4 h-4" />
+          ) : (
+            <HuesoRoto className="w-4 h-4" />
+          )}
         </span>
         <p className="text-xs font-sans">
           <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
@@ -156,6 +163,33 @@ function renderEvento(ev: SalaEvento, i: number) {
             </>
           )}
         </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "descanso_largo") {
+    return (
+      <div key={i} className="py-2 border-b border-emerald-900/30 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500">
+        <div className="rounded-lg border border-emerald-800/40 bg-gradient-to-r from-emerald-950/40 via-black/30 to-emerald-950/40 px-3 py-2.5 flex items-center gap-2.5">
+          <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-emerald-900/30 border border-emerald-700/50 text-emerald-300 cd-rest-glow">
+            <Moon className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-sans text-emerald-300 font-semibold uppercase tracking-widest">
+              Descanso largo
+            </p>
+            {ev.personajes.length > 0 ? (
+              <p className="text-[11px] text-foreground/50 font-sans">
+                <span className="text-foreground/70">{ev.personajes.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-emerald-400 font-semibold"> — caídas restauradas y −1 de cansancio</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-foreground/40 italic font-sans">
+                El grupo descansa; nadie necesitaba recuperarse.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

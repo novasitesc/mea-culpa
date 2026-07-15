@@ -23,6 +23,15 @@ function mapEventoRow(row: any): SalaEvento | null {
       delta:           Number((row.metadata as any)?.delta ?? 1),
       derrotado:       Boolean((row.metadata as any)?.derrotado ?? false),
     };
+    case "descanso_largo": return {
+      tipo: "descanso_largo",
+      personajes: ((row.metadata as any)?.personajes ?? []).map((p: any) => ({
+        personajeId:    Number(p.personajeId),
+        nombre:         p.nombre ?? "Personaje",
+        caidasPrevias:  Number(p.caidasPrevias ?? 0),
+        cansancioPrevio: Number(p.cansancioPrevio ?? 0),
+      })),
+    };
     case "consumible_usado": return {
       tipo: "consumible_usado",
       personajeId:     row.personaje_id,

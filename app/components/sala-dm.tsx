@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
@@ -76,7 +76,15 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   );
   const [caidasLoading, setCaidasLoading] = useState<1 | -1 | null>(null);
 
+  // Descanso largo (resetear caídas) state
+  const [restModalOpen, setRestModalOpen] = useState(false);
+  const [resting, setResting] = useState(false);
+
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
+  const participantesActivos = participantes.filter((p) => !p.muerto && !p.derrotado);
+  const participantesConCaidas = participantesActivos.filter((p) => p.caidas > 0);
+  // D&D 5e 2014: un solo descanso largo por día de aventura → uno por expedición.
+  const yaDescansaron = eventos.some((ev) => ev.tipo === "descanso_largo");
 
   const loadObjects = useCallback(async () => {
     if (objects.length > 0) return;
@@ -301,6 +309,30 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       });
     } finally {
       setCaidasLoading(null);
+    }
+  }
+
+  // ── Descanso largo handler ─────────────────────────────────────────────────
+
+  async function handleDescansoLargo() {
+    setResting(true);
+    try {
+      const res = await fetch("/api/admin/personajes/caidas", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ partidaId: partida.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo realizar el descanso largo" });
+        return;
+      }
+      const data = await res.json();
+      setRestModalOpen(false);
+      onEvent({ tipo: "descanso_largo", personajes: data.personajes ?? [] });
+      setAlert({ variant: "success", message: "Descanso largo realizado: caídas restauradas." });
+    } finally {
+      setResting(false);
     }
   }
 
@@ -540,6 +572,23 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                     </div>
                   );
                 })()}
+
+                <div className="border-t border-red-900/20 pt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setRestModalOpen(true)}
+                    disabled={yaDescansaron || participantesActivos.length === 0}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded border border-emerald-500/40 bg-emerald-900/15 text-[11px] font-sans text-emerald-300 hover:bg-emerald-900/35 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Moon className="w-3 h-3" />
+                    Descanso largo · Resetear caídas
+                  </button>
+                  {yaDescansaron && (
+                    <p className="text-[10px] text-foreground/30 italic font-sans mt-1.5 text-center">
+                      Ya se realizó un descanso largo en esta expedición.
+                    </p>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -857,6 +906,70 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               >
                 {closingGame && <Loader2 className="w-4 h-4 animate-spin" />}
                 {closingGame ? "Cerrando..." : "Cerrar y guardar recompensas"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de descanso largo */}
+      {restModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <h2 className="text-lg font-bold text-emerald-300 flex items-center gap-2">
+                <Moon className="w-5 h-5" /> Descanso largo
+              </h2>
+              <button
+                onClick={() => setRestModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto min-h-0 flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                El grupo acampa y recupera fuerzas: las caídas se restauran a 0 y cada personaje
+                activo reduce 1 nivel de cansancio. Los muertos o derrotados ya abandonaron la
+                expedición y no se ven afectados. Solo puede haber un descanso largo por expedición.
+              </p>
+
+              {participantesConCaidas.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {participantesConCaidas.map((p) => (
+                    <div
+                      key={p.personajeId}
+                      className="flex items-center justify-between gap-2 rounded border border-emerald-900/30 bg-black/20 px-3 py-2"
+                    >
+                      <p className="text-sm font-semibold text-foreground truncate">{p.nombre}</p>
+                      <CaidasTracker caidas={p.caidas} size="sm" animated={false} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-foreground/40 italic font-sans">
+                  Nadie acumula caídas; el descanso igualmente alivia el cansancio del grupo.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border p-5">
+              <button
+                type="button"
+                onClick={() => setRestModalOpen(false)}
+                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDescansoLargo}
+                disabled={resting}
+                className="px-4 py-2 rounded bg-emerald-700/80 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2"
+              >
+                {resting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {resting ? "Descansando..." : "Realizar descanso largo"}
               </button>
             </div>
           </div>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Moon } from "lucide-react";
+import { Moon, Skull } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CaidasTracker from "@/app/components/caidas-tracker";
+import { MAX_CANSANCIO } from "@/lib/caidas";
 
 type SleepOption = {
   id: string;
@@ -20,6 +21,7 @@ type SleepPendingCharacter = {
   characterId: number;
   characterName: string;
   characterCaidas: number;
+  characterCansancio: number;
   partidaId: string | null;
   partidaTitle: string;
   requiredAt: string | null;
@@ -118,6 +120,8 @@ export default function GlobalSleepModal() {
   }, [isAuthenticated, user?.id, loadSleepStatus]);
 
   const pendingCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
+  // Al nivel 6 de agotamiento el personaje muere (D&D 5e 2014): un punto más lo mata.
+  const riesgoMuerte = (pendingCharacter?.characterCansancio ?? 0) >= MAX_CANSANCIO - 1;
 
   const resolveSleepDecision = async (
     pendingId: string,
@@ -147,9 +151,9 @@ export default function GlobalSleepModal() {
       }
 
       showAlert(
-        data.dead ? "Cansancio acumulado" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
+        data.dead ? "Muerte por agotamiento" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
         message,
-        data.dead ? "warning" : data.eliminated ? "error" : "success",
+        data.dead || data.eliminated ? "error" : "success",
       );
 
       setShowConfirm(false);
@@ -197,8 +201,11 @@ export default function GlobalSleepModal() {
             </h2>
             <p className="text-sm text-muted-foreground mt-2">
               La partida &quot;{pendingCharacter.partidaTitle}&quot; finalizó. Si no pagas el
-              descanso, el personaje acumulará un punto de cansancio
-              {pendingCharacter.characterCaidas > 0 ? " y conservará sus caídas" : ""}.
+              descanso, el personaje{" "}
+              {riesgoMuerte
+                ? "morirá de agotamiento"
+                : `acumulará un punto de cansancio${pendingCharacter.characterCaidas > 0 ? " y conservará sus caídas" : ""}`}
+              .
             </p>
           </div>
 
@@ -208,6 +215,24 @@ export default function GlobalSleepModal() {
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Moon className="w-3.5 h-3.5 text-[#D4AF37]" />
                 El descanso largo restaurará sus caídas.
+              </p>
+            </div>
+          )}
+
+          {pendingCharacter.characterCansancio > 0 && (
+            <div
+              className={`rounded border p-3 flex items-center gap-2.5 ${
+                riesgoMuerte
+                  ? "border-red-700/70 bg-red-950/40 animate-in fade-in duration-300"
+                  : "border-border/70 bg-secondary/20"
+              }`}
+            >
+              {riesgoMuerte && <Skull className="w-5 h-5 text-red-500 shrink-0 cd-token-doom rounded-full" />}
+              <p className={`text-xs ${riesgoMuerte ? "text-red-200" : "text-muted-foreground"}`}>
+                Cansancio: {pendingCharacter.characterCansancio}/{MAX_CANSANCIO}.{" "}
+                {riesgoMuerte
+                  ? "Un punto más de agotamiento lo matará. Si no descansa, morirá."
+                  : "El descanso largo reducirá 1 nivel de cansancio."}
               </p>
             </div>
           )}
@@ -254,7 +279,7 @@ export default function GlobalSleepModal() {
               disabled={resolvingSleep || loadingSleepStatus}
               className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
             >
-              No pagar (acumular punto de cansancio)
+              {riesgoMuerte ? "No pagar (morir de agotamiento)" : "No pagar (acumular punto de cansancio)"}
             </button>
           </div>
         </div>
@@ -264,11 +289,20 @@ export default function GlobalSleepModal() {
             <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
               <h3 className="text-lg font-semibold text-red-300">Confirmar</h3>
               <p className="text-sm text-red-100/90 leading-relaxed">
-                El personaje acumulará un punto de cansancio
-                {pendingCharacter.characterCaidas > 0
-                  ? ` y conservará sus ${pendingCharacter.characterCaidas} caída${pendingCharacter.characterCaidas === 1 ? "" : "s"} hasta un descanso largo`
-                  : ""}
-                . ¿Estás seguro?
+                {riesgoMuerte ? (
+                  <>
+                    El personaje alcanzará {MAX_CANSANCIO} niveles de agotamiento y{" "}
+                    <span className="font-bold text-red-300 uppercase">morirá</span>. ¿Estás seguro?
+                  </>
+                ) : (
+                  <>
+                    El personaje acumulará un punto de cansancio
+                    {pendingCharacter.characterCaidas > 0
+                      ? ` y conservará sus ${pendingCharacter.characterCaidas} caída${pendingCharacter.characterCaidas === 1 ? "" : "s"} hasta un descanso largo`
+                      : ""}
+                    . ¿Estás seguro?
+                  </>
+                )}
               </p>
               <div className="flex gap-3">
                 <button

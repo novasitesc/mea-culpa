@@ -82,6 +82,17 @@ export type EventoCaida = {
   derrotado: boolean;
 };
 
+export type EventoDescansoLargo = {
+  tipo: "descanso_largo";
+  /** Personajes beneficiados: caídas restauradas a 0 y −1 nivel de cansancio. */
+  personajes: Array<{
+    personajeId: number;
+    nombre: string;
+    caidasPrevias: number;
+    cansancioPrevio: number;
+  }>;
+};
+
 export type SalaEvento =
   | EventoDadoTirado
   | EventoAsignacionManual
@@ -89,4 +100,5 @@ export type SalaEvento =
   | EventoPartidaIniciada
   | EventoConsumibleUsado
   | EventoDesmembramiento
-  | EventoCaida;
+  | EventoCaida
+  | EventoDescansoLargo;

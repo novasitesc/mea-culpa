@@ -15,6 +15,8 @@ type Props = {
   caidas: number;
   size?: Size;
   showLabel?: boolean;
+  /** false = versión estática sin parpadeos ni latidos (ej. en el perfil). */
+  animated?: boolean;
   className?: string;
 };
 
@@ -22,7 +24,7 @@ type Props = {
  * Sellos de caída: tres runas que se van encendiendo con calaveras de sangre.
  * A las 3 marcas el personaje pierde la expedición (regresa al Nexo).
  */
-export default function CaidasTracker({ caidas, size = "md", showLabel = false, className = "" }: Props) {
+export default function CaidasTracker({ caidas, size = "md", showLabel = false, animated = true, className = "" }: Props) {
   const s = SIZES[size];
   const value = Math.max(0, Math.min(MAX_CAIDAS, caidas));
   const doomed = value >= MAX_CAIDAS;
@@ -49,12 +51,12 @@ export default function CaidasTracker({ caidas, size = "md", showLabel = false, 
               filled
                 ? "border-red-800/80 bg-gradient-to-b from-red-950/80 to-black/80"
                 : "border-gold-dim/40 bg-black/40"
-            } ${isLast ? (doomed ? "cd-token-doom" : "cd-token-throb") : ""}`}
+            } ${animated && isLast ? (doomed ? "cd-token-doom" : "cd-token-throb") : ""}`}
           >
             {filled ? (
-              <Skull className={`${s.icon} text-red-400 cd-skull-ignite`} />
+              <Skull className={`${s.icon} text-red-400 ${animated ? "cd-skull-ignite" : ""}`} />
             ) : (
-              <span className={`${s.rune} rounded-full border border-gold-dim/30 cd-rune-flicker`} />
+              <span className={`${s.rune} rounded-full border border-gold-dim/30 ${animated ? "cd-rune-flicker" : ""}`} />
             )}
           </span>
         );

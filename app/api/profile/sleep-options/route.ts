@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { SLEEP_OPTIONS } from "@/lib/sleepOptions";
+import { MAX_CANSANCIO } from "@/lib/caidas";
+import { markCharacterDead } from "@/lib/characterLife";
 
 async function getUserIdFromRequest(request: Request): Promise<string | null> {
   const authHeader = request.headers.get("Authorization");
@@ -18,11 +20,14 @@ async function getUserIdFromRequest(request: Request): Promise<string | null> {
   return user.id;
 }
 
+// Suma 1 nivel de agotamiento (tope 6). Al 6.º nivel el personaje muere
+// de agotamiento, como dicta D&D 5e 2014.
 async function addFatigue(
   db: ReturnType<typeof createServerClient>,
   userId: string,
   characterId: number,
-) {
+  partidaId: string | null,
+): Promise<{ newCansancio: number; died: boolean }> {
   const { data: char, error: fetchError } = await db
     .from("personajes")
     .select("puntos_cansancio")
@@ -33,14 +38,28 @@ async function addFatigue(
   if (fetchError) throw new Error(fetchError.message);
 
   const current = Number((char as any)?.puntos_cansancio ?? 0);
+  const newCansancio = Math.min(MAX_CANSANCIO, current + 1);
+  const died = newCansancio >= MAX_CANSANCIO;
 
   const { error: updateError } = await db
     .from("personajes")
-    .update({ puntos_cansancio: current + 1 })
+    .update({ puntos_cansancio: newCansancio })
     .eq("id", characterId)
     .eq("usuario_id", userId);
 
   if (updateError) throw new Error(updateError.message);
+
+  if (died) {
+    const result = await markCharacterDead({
+      db,
+      userId,
+      characterId,
+      reason: "agotamiento_extremo",
+      partidaId,
+      metadata: { puntosCansancio: newCansancio },
+    });
+    if (!result.ok) throw new Error(result.error ?? "No se pudo registrar la muerte");
+  }
 
   const { error: removePendingError } = await db
     .from("descansos_pendientes")
@@ -49,6 +68,8 @@ async function addFatigue(
     .eq("usuario_id", userId);
 
   if (removePendingError) throw new Error(removePendingError.message);
+
+  return { newCansancio, died };
 }
 
 export async function GET(request: Request) {
@@ -70,7 +91,7 @@ export async function GET(request: Request) {
             personaje_id,
             partida_id,
             creado_en,
-            personaje:personaje_id ( nombre, caidas ),
+            personaje:personaje_id ( nombre, caidas, puntos_cansancio ),
             partida:partida_id ( titulo, finalizada_en )
           `,
         )
@@ -94,6 +115,7 @@ export async function GET(request: Request) {
       characterId: Number(row.personaje_id),
       characterName: row.personaje?.nombre ?? "Sin nombre",
       characterCaidas: Number(row.personaje?.caidas ?? 0),
+      characterCansancio: Number(row.personaje?.puntos_cansancio ?? 0),
       partidaId: row.partida_id ?? null,
       partidaTitle: row.partida?.titulo ?? "Partida finalizada",
       requiredAt: row.creado_en ?? null,
@@ -127,7 +149,7 @@ export async function POST(request: Request) {
 
   const { data: pendingRow, error: pendingError } = await db
     .from("descansos_pendientes")
-    .select("id, usuario_id, personaje_id, partida_id, personaje:personaje_id ( nombre )")
+    .select("id, usuario_id, personaje_id, partida_id, personaje:personaje_id ( nombre, puntos_cansancio )")
     .eq("id", pendingId)
     .maybeSingle();
 
@@ -144,8 +166,9 @@ export async function POST(request: Request) {
   const partidaId = ((pendingRow as any).partida_id as string | null) ?? null;
 
   if (action === "decline") {
+    let fatigue: { newCansancio: number; died: boolean };
     try {
-      await addFatigue(db, userId, characterId);
+      fatigue = await addFatigue(db, userId, characterId, partidaId);
     } catch (error) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "No se pudo registrar el cansancio" },
@@ -155,8 +178,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       eliminated: false,
-      dead: false,
-      message: `${characterName} acumula un punto de cansancio por no descansar.`,
+      dead: fatigue.died,
+      message: fatigue.died
+        ? `${characterName} alcanza ${MAX_CANSANCIO} niveles de agotamiento y muere de cansancio extremo.`
+        : `${characterName} acumula un punto de cansancio por no descansar (${fatigue.newCansancio}/${MAX_CANSANCIO}).`,
     });
   }
 
@@ -177,8 +202,9 @@ export async function POST(request: Request) {
 
   const currentGold = Number((profile as any)?.oro ?? 0);
   if (currentGold < selectedOption.cost) {
+    let fatigue: { newCansancio: number; died: boolean };
     try {
-      await addFatigue(db, userId, characterId);
+      fatigue = await addFatigue(db, userId, characterId, partidaId);
     } catch (error) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "No se pudo registrar el cansancio" },
@@ -188,8 +214,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       eliminated: false,
-      dead: false,
-      message: `${characterName} no tenía oro suficiente para descansar y acumula un punto de cansancio.`,
+      dead: fatigue.died,
+      message: fatigue.died
+        ? `${characterName} no pudo pagar el descanso, alcanza ${MAX_CANSANCIO} niveles de agotamiento y muere.`
+        : `${characterName} no tenía oro suficiente para descansar y acumula un punto de cansancio (${fatigue.newCansancio}/${MAX_CANSANCIO}).`,
     });
   }
 
@@ -205,14 +233,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: paymentError.message }, { status: 500 });
   }
 
-  // Descanso largo: restaura las caídas acumuladas durante la expedición.
+  // Descanso largo: restaura las caídas acumuladas durante la expedición y,
+  // como en D&D 5e 2014, reduce 1 nivel de agotamiento.
+  const currentCansancio = Number((pendingRow as any).personaje?.puntos_cansancio ?? 0);
+  const newCansancio = Math.max(0, currentCansancio - 1);
   const [{ error: removePendingError }, { error: homeError }, { error: caidasError }] =
     await Promise.all([
       db.from("descansos_pendientes").delete().eq("id", pendingId),
       db.from("perfiles").update({ hogar: selectedOption.homeLabel }).eq("id", userId),
       db
         .from("personajes")
-        .update({ caidas: 0 })
+        .update({ caidas: 0, puntos_cansancio: newCansancio })
         .eq("id", characterId)
         .eq("usuario_id", userId),
     ]);
@@ -233,6 +264,8 @@ export async function POST(request: Request) {
     success: true,
     eliminated: false,
     newGold: Number(newGold ?? currentGold - selectedOption.cost),
-    message: `${characterName} descanso en ${selectedOption.name} por ${selectedOption.cost} de oro.`,
+    message:
+      `${characterName} descanso en ${selectedOption.name} por ${selectedOption.cost} de oro.` +
+      (newCansancio < currentCansancio ? ` Recupera fuerzas (cansancio ${newCansancio}/${MAX_CANSANCIO}).` : ""),
   });
 }

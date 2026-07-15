@@ -948,11 +948,50 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 }
 .cd-overlay-out { animation: cd-overlay-out 0.4s ease-in both; }
 
+/* Descanso largo: respiración serena del sello lunar que restaura las caídas */
+@keyframes cd-rest-glow {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(16, 185, 129, 0.25); }
+  50%      { box-shadow: 0 0 13px 4px rgba(16, 185, 129, 0.5); }
+}
+.cd-rest-glow { animation: cd-rest-glow 2.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .cd-skull-ignite, .cd-token-throb, .cd-token-doom, .cd-rune-flicker,
   .cd-overlay-skull, .cd-overlay-title, .cd-overlay-sub,
-  .cd-defeat-quake, .cd-ember, .cd-vignette-in, .cd-overlay-out {
+  .cd-defeat-quake, .cd-ember, .cd-vignette-in, .cd-overlay-out,
+  .cd-fall-explode, .cd-fall-wobble, .cd-rest-glow {
     animation: none !important;
     opacity: 1;
   }
+  /* La onda expansiva es puramente decorativa: sin animación se oculta */
+  .cd-shockwave {
+    animation: none !important;
+    opacity: 0;
+  }
 }
+
+/* Entrada explosiva del icono de caída: destello sobreescalado que encaja de golpe */
+@keyframes cd-explode-in {
+  0%   { transform: scale(3.2); opacity: 0; filter: brightness(4) blur(8px); }
+  35%  { transform: scale(0.82); opacity: 1; filter: brightness(1.9) blur(0); }
+  55%  { transform: scale(1.18); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.cd-fall-explode { animation: cd-explode-in 0.6s cubic-bezier(0.2, 1.1, 0.3, 1) both; }
+
+/* Onda expansiva del impacto */
+@keyframes cd-shockwave {
+  0%   { transform: scale(0.35); opacity: 0.9; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.cd-shockwave { animation: cd-shockwave 0.75s ease-out 0.1s both; }
+
+/* Tambaleo de izquierda a derecha tras el impacto */
+@keyframes cd-wobble {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  15%      { transform: rotate(-14deg) translateX(-5px); }
+  35%      { transform: rotate(11deg) translateX(4px); }
+  55%      { transform: rotate(-8deg) translateX(-3px); }
+  75%      { transform: rotate(5deg) translateX(2px); }
+}
+.cd-fall-wobble { animation: cd-wobble 1.6s ease-in-out 0.55s infinite; }

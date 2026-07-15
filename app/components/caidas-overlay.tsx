@@ -5,6 +5,7 @@ import { Skull, Moon } from "lucide-react";
 import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import type { EventoCaida } from "@/lib/types/sala";
 import CaidasTracker from "@/app/components/caidas-tracker";
+import HuesoRoto from "@/app/components/hueso-roto";
 
 type Props = {
   evento: EventoCaida;
@@ -86,9 +87,21 @@ export default function CaidasOverlay({ evento, onDone }: Props) {
       ))}
 
       <div className={`relative flex flex-col items-center gap-4 sm:gap-5 px-6 text-center ${defeat ? "cd-defeat-quake" : ""}`}>
-        <Skull
-          className={`cd-overlay-skull text-red-500 ${defeat ? "w-24 h-24 sm:w-32 sm:h-32" : "w-16 h-16 sm:w-20 sm:h-20"}`}
-        />
+        {defeat ? (
+          <Skull className="cd-overlay-skull text-red-500 w-24 h-24 sm:w-32 sm:h-32" />
+        ) : (
+          <span className="relative inline-flex items-center justify-center">
+            <span className="cd-shockwave absolute inset-0 rounded-full border-2 border-red-500/70 pointer-events-none" />
+            <span className="cd-fall-explode inline-block">
+              <span
+                className="cd-fall-wobble inline-block"
+                style={{ filter: "drop-shadow(0 0 16px rgba(220, 38, 38, 0.65))" }}
+              >
+                <HuesoRoto className="w-16 h-16 sm:w-20 sm:h-20 text-red-400" />
+              </span>
+            </span>
+          </span>
+        )}
 
         <h2
           className="cd-overlay-title font-serif uppercase text-red-400"
