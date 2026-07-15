@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Moon } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import CaidasTracker from "@/app/components/caidas-tracker";
 
 type SleepOption = {
   id: string;
@@ -17,6 +19,7 @@ type SleepPendingCharacter = {
   pendingId: string;
   characterId: number;
   characterName: string;
+  characterCaidas: number;
   partidaId: string | null;
   partidaTitle: string;
   requiredAt: string | null;
@@ -194,9 +197,20 @@ export default function GlobalSleepModal() {
             </h2>
             <p className="text-sm text-muted-foreground mt-2">
               La partida &quot;{pendingCharacter.partidaTitle}&quot; finalizó. Si no pagas el
-              descanso, el personaje acumulará un punto de cansancio.
+              descanso, el personaje acumulará un punto de cansancio
+              {pendingCharacter.characterCaidas > 0 ? " y conservará sus caídas" : ""}.
             </p>
           </div>
+
+          {pendingCharacter.characterCaidas > 0 && (
+            <div className="rounded border border-red-900/50 bg-red-950/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+              <CaidasTracker caidas={pendingCharacter.characterCaidas} size="md" showLabel />
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-[#D4AF37]" />
+                El descanso largo restaurará sus caídas.
+              </p>
+            </div>
+          )}
 
           <div className="rounded border border-border/70 bg-secondary/20 p-3 text-sm text-muted-foreground">
             Oro disponible:{" "}
@@ -250,7 +264,11 @@ export default function GlobalSleepModal() {
             <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
               <h3 className="text-lg font-semibold text-red-300">Confirmar</h3>
               <p className="text-sm text-red-100/90 leading-relaxed">
-                El personaje acumulará un punto de cansancio. ¿Estás seguro?
+                El personaje acumulará un punto de cansancio
+                {pendingCharacter.characterCaidas > 0
+                  ? ` y conservará sus ${pendingCharacter.characterCaidas} caída${pendingCharacter.characterCaidas === 1 ? "" : "s"} hasta un descanso largo`
+                  : ""}
+                . ¿Estás seguro?
               </p>
               <div className="flex gap-3">
                 <button

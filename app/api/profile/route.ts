@@ -303,6 +303,7 @@ export async function GET(request: Request) {
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
       puntoCansancio: Number(p.puntos_cansancio ?? 0),
+      caidas: Number(p.caidas ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),

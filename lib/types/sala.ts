@@ -5,8 +5,12 @@ export type SalaParticipante = {
   personajeId: number;
   usuarioId: string;
   muerto: boolean;
+  /** Perdió la expedición al acumular 3 caídas: se retira al Nexo sin morir. */
+  derrotado: boolean;
   nombre: string;
   extremidades: Record<string, boolean> | null;
+  /** Caídas acumuladas (0-3); solo un descanso largo las restaura. */
+  caidas: number;
 };
 
 export type SalaPartida = {
@@ -66,10 +70,23 @@ export type EventoDesmembramiento = {
   desmembrado: boolean;
 };
 
+export type EventoCaida = {
+  tipo: "caida";
+  personajeId: number;
+  personajeNombre: string;
+  /** Total de caídas tras el evento (0-3). */
+  caidas: number;
+  /** +1 caída marcada, -1 caída retirada por el DM. */
+  delta: number;
+  /** true cuando la 3.ª caída derrota al personaje y lo retira al Nexo. */
+  derrotado: boolean;
+};
+
 export type SalaEvento =
   | EventoDadoTirado
   | EventoAsignacionManual
   | EventoPartidaCerrada
   | EventoPartidaIniciada
   | EventoConsumibleUsado
-  | EventoDesmembramiento;
+  | EventoDesmembramiento
+  | EventoCaida;

@@ -351,6 +351,7 @@ export async function POST(request: Request) {
         deadAt: null,
         revivedAt: null,
         puntoCansancio: 0,
+        caidas: 0,
         knownSpells: validatedSpells,
         stats: {
           str: stats.fuerza,

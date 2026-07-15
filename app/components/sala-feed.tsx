@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse } from "lucide-react";
+import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
@@ -109,6 +110,50 @@ function renderEvento(ev: SalaEvento, i: number) {
           </span>
           {restante > 0 && (
             <span className="text-foreground/30 ml-1">(quedan ×{restante})</span>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "caida") {
+    const recuperacion = ev.delta < 0;
+    return (
+      <div
+        key={i}
+        className={`flex items-center gap-2 py-2 border-b last:border-0 animate-in fade-in duration-300 ${
+          ev.derrotado ? "border-red-900/40" : "border-rose-900/30"
+        }`}
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            recuperacion
+              ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400"
+              : ev.derrotado
+                ? "bg-red-950/40 border-red-700/60 text-red-500 cd-token-doom"
+                : "bg-red-900/20 border-red-900/50 text-red-400"
+          }`}
+        >
+          {recuperacion ? <HeartPulse className="w-4 h-4" /> : <Skull className="w-4 h-4" />}
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          {recuperacion ? (
+            <>
+              <span className="text-foreground/40"> se recupera de una caída </span>
+              <span className="text-emerald-400 font-semibold">({ev.caidas}/{MAX_CAIDAS})</span>
+            </>
+          ) : ev.derrotado ? (
+            <>
+              <span className="text-foreground/40"> ha sido </span>
+              <span className="text-red-400 font-bold uppercase">derrotado</span>
+              <span className="text-foreground/40"> — se retira al Nexo con +{CANSANCIO_POR_DERROTA} cansancio</span>
+            </>
+          ) : (
+            <>
+              <span className="text-foreground/40"> ha caído en combate </span>
+              <span className="text-red-400 font-semibold">({ev.caidas}/{MAX_CAIDAS})</span>
+            </>
           )}
         </p>
       </div>

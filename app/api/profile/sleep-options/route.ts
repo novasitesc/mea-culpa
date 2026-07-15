@@ -70,7 +70,7 @@ export async function GET(request: Request) {
             personaje_id,
             partida_id,
             creado_en,
-            personaje:personaje_id ( nombre ),
+            personaje:personaje_id ( nombre, caidas ),
             partida:partida_id ( titulo, finalizada_en )
           `,
         )
@@ -93,6 +93,7 @@ export async function GET(request: Request) {
       pendingId: String(row.id),
       characterId: Number(row.personaje_id),
       characterName: row.personaje?.nombre ?? "Sin nombre",
+      characterCaidas: Number(row.personaje?.caidas ?? 0),
       partidaId: row.partida_id ?? null,
       partidaTitle: row.partida?.titulo ?? "Partida finalizada",
       requiredAt: row.creado_en ?? null,
@@ -204,10 +205,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: paymentError.message }, { status: 500 });
   }
 
-  const [{ error: removePendingError }, { error: homeError }] = await Promise.all([
-    db.from("descansos_pendientes").delete().eq("id", pendingId),
-    db.from("perfiles").update({ hogar: selectedOption.homeLabel }).eq("id", userId),
-  ]);
+  // Descanso largo: restaura las caídas acumuladas durante la expedición.
+  const [{ error: removePendingError }, { error: homeError }, { error: caidasError }] =
+    await Promise.all([
+      db.from("descansos_pendientes").delete().eq("id", pendingId),
+      db.from("perfiles").update({ hogar: selectedOption.homeLabel }).eq("id", userId),
+      db
+        .from("personajes")
+        .update({ caidas: 0 })
+        .eq("id", characterId)
+        .eq("usuario_id", userId),
+    ]);
+
+  if (caidasError) {
+    return NextResponse.json({ error: caidasError.message }, { status: 500 });
+  }
 
   if (removePendingError) {
     return NextResponse.json({ error: removePendingError.message }, { status: 500 });

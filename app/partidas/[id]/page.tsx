@@ -115,6 +115,18 @@ export default function SalaPage() {
       .on("broadcast", { event: "partida_iniciada" }, () => {
         void loadSala();
       })
+      .on("broadcast", { event: "caida" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "caida") {
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? { ...p, caidas: payload.caidas, derrotado: payload.derrotado }
+                : p,
+            ),
+          );
+        }
+      })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "desmembramiento") {
@@ -164,6 +176,18 @@ export default function SalaPage() {
 
     if (ev.tipo === "partida_iniciada") {
       void loadSala();
+      return;
+    }
+
+    if (ev.tipo === "caida") {
+      appendEvento(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId
+            ? { ...p, caidas: ev.caidas, derrotado: ev.derrotado }
+            : p,
+        ),
+      );
       return;
     }
 

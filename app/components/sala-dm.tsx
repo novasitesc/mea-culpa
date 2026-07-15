@@ -2,17 +2,19 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
 import NotasWidget from "@/app/components/notas-widget";
+import CaidasTracker from "@/app/components/caidas-tracker";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
+import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 
 type Props = {
   partida: SalaPartida;
@@ -66,6 +68,13 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     return init;
   });
   const [dismembering, setDismembering] = useState<string | null>(null);
+
+  // Caídas panel state
+  const [caidasOpen, setCaidasOpen] = useState(false);
+  const [caidasPersonajeId, setCaidasPersonajeId] = useState<number | null>(
+    participantes[0]?.personajeId ?? null,
+  );
+  const [caidasLoading, setCaidasLoading] = useState<1 | -1 | null>(null);
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
 
@@ -264,6 +273,37 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     }
   }
 
+  // ── Caídas handler ─────────────────────────────────────────────────────────
+
+  async function handleCaida(personajeId: number, delta: 1 | -1) {
+    const participante = participantes.find((p) => p.personajeId === personajeId);
+    if (!participante) return;
+    setCaidasLoading(delta);
+    try {
+      const res = await fetch("/api/admin/personajes/caidas", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ personajeId, delta, partidaId: partida.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo actualizar las caídas" });
+        return;
+      }
+      const data = await res.json();
+      onEvent({
+        tipo: "caida",
+        personajeId,
+        personajeNombre: participante.nombre,
+        caidas: Number(data.caidas ?? 0),
+        delta,
+        derrotado: Boolean(data.derrotado),
+      });
+    } finally {
+      setCaidasLoading(null);
+    }
+  }
+
   // ── Close modal helpers ────────────────────────────────────────────────────
 
   function openCloseModal() {
@@ -379,8 +419,8 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               <button
                 key={p.personajeId}
                 onClick={() => setSelectedPersonajeId(p.personajeId)}
-                disabled={p.muerto}
-                className={`px-3 py-1.5 rounded-full border text-xs font-sans transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                disabled={p.muerto || p.derrotado}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-sans transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                   selectedPersonajeId === p.personajeId
                     ? "border-gold bg-gold/10 text-gold"
                     : "border-gold-dim/40 text-foreground/60 hover:border-gold-dim/70"
@@ -388,6 +428,10 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               >
                 {p.nombre}
                 {p.muerto && " †"}
+                {!p.muerto && p.derrotado && <Skull className="w-3 h-3 text-red-500" />}
+                {!p.muerto && !p.derrotado && p.caidas > 0 && (
+                  <CaidasTracker caidas={p.caidas} size="sm" />
+                )}
               </button>
             ))}
           </div>
@@ -417,6 +461,89 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
 
         {/* Notas del DM */}
         <NotasWidget token={token} />
+
+        {/* Panel de caídas — solo cuando en_progreso */}
+        {partida.estado === "en_progreso" && (
+          <div className="rounded-lg border border-red-900/40 bg-card p-3 space-y-3">
+            <button
+              type="button"
+              onClick={() => setCaidasOpen((v) => !v)}
+              className="w-full flex items-center justify-between text-[10px] uppercase tracking-widest text-red-400/70 font-sans"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <HeartCrack className="w-3 h-3" />
+                Caídas
+              </span>
+              {caidasOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {caidasOpen && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {participantes.map((p) => (
+                    <button
+                      key={p.personajeId}
+                      onClick={() => setCaidasPersonajeId(p.personajeId)}
+                      disabled={p.muerto}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-sans transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                        caidasPersonajeId === p.personajeId
+                          ? "border-red-500 bg-red-900/20 text-red-300"
+                          : "border-gold-dim/40 text-foreground/60 hover:border-red-500/50"
+                      }`}
+                    >
+                      {p.nombre}
+                      {p.muerto && " †"}
+                      {!p.muerto && p.derrotado && <Skull className="w-3 h-3 text-red-500" />}
+                    </button>
+                  ))}
+                </div>
+
+                {caidasPersonajeId != null && (() => {
+                  const sel = participantes.find((p) => p.personajeId === caidasPersonajeId);
+                  if (!sel) return null;
+                  return (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2 rounded border border-red-900/30 bg-black/20 px-3 py-2.5">
+                        <CaidasTracker caidas={sel.caidas} size="md" showLabel />
+                        {sel.derrotado && (
+                          <span className="text-[10px] uppercase tracking-widest text-red-400 font-sans inline-flex items-center gap-1">
+                            <Skull className="w-3 h-3" /> Derrotado
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCaida(sel.personajeId, -1)}
+                          disabled={caidasLoading !== null || sel.caidas <= 0}
+                          className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-border text-[11px] font-sans text-foreground/60 hover:border-emerald-500/50 hover:text-emerald-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {caidasLoading === -1 ? <Loader2 className="w-3 h-3 animate-spin" /> : <Minus className="w-3 h-3" />}
+                          Quitar caída
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCaida(sel.personajeId, 1)}
+                          disabled={caidasLoading !== null || sel.caidas >= MAX_CAIDAS}
+                          className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-red-500/50 bg-red-900/20 text-[11px] font-sans text-red-300 hover:bg-red-900/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {caidasLoading === 1 ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                          Marcar caída
+                        </button>
+                      </div>
+
+                      <p className="text-[10px] text-foreground/40 font-sans leading-relaxed">
+                        A la {MAX_CAIDAS}.ª caída pierde la expedición, se retira al Nexo y carga
+                        +{CANSANCIO_POR_DERROTA} punto de cansancio. Solo un descanso largo restaura las caídas.
+                      </p>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Panel de desmembramiento — solo cuando en_progreso */}
         {partida.estado === "en_progreso" && (
@@ -590,7 +717,15 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                   const r = closeRewards[p.personajeId] ?? { gold: 0, levelUps: 0, items: [] };
                   return (
                     <div key={p.personajeId} className="border border-border rounded-lg p-4 bg-secondary/10 flex flex-col gap-3">
-                      <p className="text-sm font-semibold text-foreground">{p.nombre}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{p.nombre}</p>
+                        {p.derrotado && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-red-500/40 bg-red-900/20 text-[10px] uppercase tracking-widest text-red-400 font-sans">
+                            <Skull className="w-3 h-3" /> Derrotado
+                          </span>
+                        )}
+                        {!p.derrotado && p.caidas > 0 && <CaidasTracker caidas={p.caidas} size="sm" />}
+                      </div>
 
                       {/* Resumen de sesión (read-only) */}
                       {(() => {

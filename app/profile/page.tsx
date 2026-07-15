@@ -112,6 +112,7 @@ type Character = {
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
+  caidas: number;
 };
 
 type ProfileResponse = {

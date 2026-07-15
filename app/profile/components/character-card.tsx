@@ -29,6 +29,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { EquipmentPreview } from "../bolsa/bolsa";
+import CaidasTracker from "@/app/components/caidas-tracker";
 import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
@@ -125,6 +126,8 @@ export type Character = {
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
+  /** Caídas acumuladas en expedición (0-3); se restauran con un descanso largo. */
+  caidas: number;
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -370,6 +373,12 @@ export default function CharacterCard({
             <Zap className="w-3 h-3 text-[#8B7355]" />
             Cansancio: {character.puntoCansancio}
           </span>
+          {character.caidas > 0 && (
+            <>
+              <span className="text-[#8B7355]">·</span>
+              <CaidasTracker caidas={character.caidas} size="sm" showLabel />
+            </>
+          )}
         </div>
 
         {/* ─── Expandable Detail Panel ─── */}
