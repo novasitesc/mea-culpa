@@ -1,7 +1,7 @@
 // Motor puro de resolución de tiradas. Sin I/O: config completa + RNG → outcomes.
 // Quien llama aplica los efectos (ver apply.ts) y mapea a RollResult.
 import { diceMax } from "../types/dados";
-import type { DiceType, LutCaraTipo, RewardType } from "../types/dados";
+import type { DiceType, LutCaraResult, LutCaraTipo, RewardType, RollResult } from "../types/dados";
 
 /** Como Math.random: devuelve un número en [0, 1). */
 export type Rng = () => number;
@@ -132,4 +132,92 @@ function resolveLutTirada(
 
   // Cara con config incompleta (item sin objeto, subtabla sin id): igual que hoy, nada.
   return { kind: "nada", cara };
+}
+
+// ── Mapper único DiceOutcome[] → RollResult (puro; los objetos llegan ya cargados) ──
+
+export type ObjetoInfo = { id: number; nombre: string; icono: string };
+
+/** IDs de objeto referidos por los outcomes, incluidos los premios anidados de subtabla. */
+export function collectObjetoIds(outcomes: DiceOutcome[]): number[] {
+  const ids = new Set<number>();
+  const walk = (o: DiceOutcome) => {
+    if (o.kind === "item") ids.add(o.objetoId);
+    else if (o.kind === "subtabla") walk(o.premio);
+  };
+  outcomes.forEach(walk);
+  return [...ids];
+}
+
+export function toRollResult(
+  config: RewardConfig,
+  outcomes: DiceOutcome[],
+  objetos: Map<number, ObjetoInfo>,
+  cantidad: number,
+): RollResult {
+  if (config.tipo === "lut") {
+    const lutResultados = outcomes.map((o) => outcomeToLutResult(config, o, objetos));
+    const first = lutResultados[0];
+    return {
+      // Todas las caras primarias (antes solo la 1ª): la UI puede animar N dados.
+      resultados: outcomes.map((o) => o.cara),
+      tipoResultado: first?.tipo ?? "nada",
+      objeto: first?.objeto,
+      cantidadOro: first?.oroDetalle?.cantidadOro,
+      lutResultados,
+      cantidad,
+    };
+  }
+
+  const o = outcomes[0];
+  if (o.kind === "oro") {
+    return { resultados: o.caras ?? [o.cara], tipoResultado: "oro", cantidadOro: o.cantidad };
+  }
+  return {
+    resultados: [o.cara],
+    tipoResultado: "item",
+    objeto: o.kind === "item" ? objetos.get(o.objetoId) : undefined,
+  };
+}
+
+function outcomeToLutResult(
+  config: RewardConfig,
+  o: DiceOutcome,
+  objetos: Map<number, ObjetoInfo>,
+): LutCaraResult {
+  switch (o.kind) {
+    case "nada":
+      return { cara: o.cara, tipo: "nada" };
+    case "item":
+      return { cara: o.cara, tipo: "item", objeto: objetos.get(o.objetoId), cantidadObjeto: o.cantidad };
+    case "oro": {
+      const c = config.lutCaras.find((x) => x.numeroCara === o.cara);
+      return {
+        cara: o.cara,
+        tipo: "oro",
+        oroDetalle: {
+          formula: `${c?.oroMin ?? 0}–${c?.oroMax ?? 0}`,
+          dados: [o.cantidad],
+          total: o.cantidad,
+          multiplicador: 1,
+          cantidadOro: o.cantidad,
+        },
+      };
+    }
+    case "subtabla": {
+      const p = o.premio;
+      return {
+        cara: o.cara,
+        tipo: "subtabla",
+        subRoll: {
+          subtablaNombre: config.subtablas[o.subtablaId]?.nombre ?? "Sub-tabla",
+          subtablaId: o.subtablaId,
+          cara: o.subCara,
+          objeto: p.kind === "item" ? (objetos.get(p.objetoId) ?? null) : null,
+          cantidadObjeto: p.kind === "item" ? p.cantidad : undefined,
+          cantidadOro: p.kind === "oro" ? p.cantidad : undefined,
+        },
+      };
+    }
+  }
 }
