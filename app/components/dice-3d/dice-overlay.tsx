@@ -1,8 +1,9 @@
 "use client";
 
-// Overlay a pantalla completa: el dado cae desde arriba, aterriza y revela el
-// premio. La animación es SIEMPRE una reproducción del resultado del servidor.
-import { useCallback, useEffect, useMemo, useState } from "react";
+// Overlay a pantalla completa: el dado entra lanzado, rueda por la mesa y
+// revela el premio. La animación es SIEMPRE una reproducción del resultado
+// del servidor.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Volume2, VolumeX, RotateCcw } from "lucide-react";
@@ -120,13 +121,15 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
   );
   const { oro, items, kind } = useMemo(() => resumen(result), [result]);
 
+  // Efectos fuera del updater de setState: React puede re-ejecutar updaters
+  // durante el render y onFinished() haría setState en otro componente.
+  const revealedRef = useRef(false);
   const reveal = useCallback(() => {
-    setPhase((prev) => {
-      if (prev === "revealed") return prev;
-      playReveal(kind);
-      onFinished();
-      return "revealed";
-    });
+    if (revealedRef.current) return;
+    revealedRef.current = true;
+    playReveal(kind);
+    onFinished();
+    setPhase("revealed");
   }, [kind, onFinished]);
 
   // Carga de fuentes/texturas; sin animación se revela de inmediato.
@@ -201,12 +204,7 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
       aria-modal="true"
       aria-label={`Tirada de dados: ${data.recompensaNombre}`}
     >
-      {/* Fondo */}
-      <div className="absolute inset-0 bg-background/85 backdrop-blur-sm" />
-      <div
-        className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 70% 55% at 50% 78%, rgba(212,175,55,0.10), transparent 70%)" }}
-      />
+      {/* Sin fondo: la tirada y el panel de premio viven sobre la página. */}
 
       {/* Controles */}
       <button

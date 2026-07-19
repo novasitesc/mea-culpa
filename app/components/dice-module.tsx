@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { Coins, Package, List, Loader2, ChevronDown, ChevronUp, Dices, UserRound } from "lucide-react";
 import DiceVisual from "./dice-visual";
@@ -154,6 +155,15 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, per
   }, [token, pendingKey, rollUrl]);
 
   const selectedReward = recompensas.find((r) => r.id === selectedId) ?? null;
+
+  // Precalienta el chunk 3D, la fuente y las texturas del dado seleccionado:
+  // al pulsar Tirar solo queda esperar al servidor.
+  const tipoSel = selectedReward?.tipoDado;
+  useEffect(() => {
+    if (!tipoSel) return;
+    void import("./dice-3d/dice-overlay");
+    void import("./dice-3d/dice-materials").then((m) => m.preloadDiceAssets(tipoSel));
+  }, [tipoSel]);
 
   function selectReward(id: number) {
     setSelectedId(id);
@@ -546,7 +556,17 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, per
         </div>
       )}
 
-      {/* Overlay de caída: el dado cae, aterriza y revela el premio del servidor */}
+      {/* Escudo inmediato al pulsar Tirar: bloquea la interacción y da
+          feedback mientras responde el servidor, sin oscurecer la página. */}
+      {rollingState === "rolling" &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            {!overlay && <Loader2 className="w-6 h-6 text-gold animate-spin" />}
+          </div>,
+          document.body,
+        )}
+
+      {/* Overlay de tirada: el dado entra lanzado, rueda y revela el premio del servidor */}
       {overlay && (
         <DiceOverlay
           data={overlay}

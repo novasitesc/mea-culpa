@@ -38,7 +38,7 @@ export function playThud(intensity = 1): void {
 
   const osc = audio.createOscillator();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(105, t);
+  osc.frequency.setValueAtTime(95 + Math.random() * 25, t);
   osc.frequency.exponentialRampToValueAtTime(42, t + 0.11);
   const gain = audio.createGain();
   gain.gain.setValueAtTime(0.4 * intensity, t);
@@ -60,6 +60,27 @@ export function playThud(intensity = 1): void {
   const nGain = audio.createGain();
   nGain.gain.value = 0.22 * intensity;
   noise.connect(filter).connect(nGain).connect(audio.destination);
+  noise.start(t);
+}
+
+/** Clic seco del dado tumbando sobre la mesa (uno por cuarto de vuelta). */
+export function playTick(intensity = 1): void {
+  const audio = ac();
+  if (!audio) return;
+  const t = audio.currentTime;
+  const len = Math.floor(audio.sampleRate * 0.02);
+  const buf = audio.createBuffer(1, len, audio.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+  const noise = audio.createBufferSource();
+  noise.buffer = buf;
+  const filter = audio.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 1600 + Math.random() * 900;
+  filter.Q.value = 1.2;
+  const g = audio.createGain();
+  g.gain.value = 0.09 * intensity;
+  noise.connect(filter).connect(g).connect(audio.destination);
   noise.start(t);
 }
 
