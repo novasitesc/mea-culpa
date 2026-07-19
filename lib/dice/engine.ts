@@ -180,7 +180,7 @@ export function toRollResult(
   };
 }
 
-function outcomeToLutResult(
+export function outcomeToLutResult(
   config: RewardConfig,
   o: DiceOutcome,
   objetos: Map<number, ObjetoInfo>,

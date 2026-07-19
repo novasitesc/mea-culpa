@@ -2,7 +2,9 @@
 // la resolución (engine.ts), es quién paga y cómo se entrega/registra.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { modifyGold } from "../goldService";
-import type { DiceOutcome, RewardConfig } from "./engine";
+import { asignarItem } from "../asignarItem";
+import { outcomeToLutResult } from "./engine";
+import type { DiceOutcome, ObjetoInfo, RewardConfig } from "./engine";
 
 export type DiceAwarder = {
   /** Cobra el costo total por adelantado; lanza "Oro insuficiente" si no alcanza. */
@@ -47,6 +49,69 @@ export function personalAwarder(
       if (rows.length > 0) {
         const { error } = await db.from("dados_historial").insert(rows);
         if (error) console.error("[dados/apply] historial insert error:", error);
+      }
+    },
+  };
+}
+
+export type PartidaAwarderOpts = {
+  db: SupabaseClient;
+  config: RewardConfig;
+  objetos: Map<number, ObjetoInfo>;
+  partidaId: string;
+  personajeId: number;
+  personajeNombre: string;
+  targetUserId: string;
+  adminId: string;
+};
+
+/** Tirada en partida: el DM no paga; oro vía RPC con admin, ítems a la bolsa
+ *  real del personaje (respetando cantidad), log en partidas_eventos. */
+export function partidaAwarder(opts: PartidaAwarderOpts): DiceAwarder {
+  const { db, config, objetos, partidaId, personajeId, personajeNombre, targetUserId, adminId } = opts;
+  return {
+    async chargeGold() {
+      // Nadie paga en la sala (hideCost).
+    },
+    async awardGold(cantidad) {
+      await db.rpc("modificar_oro", {
+        p_usuario_id: targetUserId,
+        p_delta: cantidad,
+        p_concepto: `partida_sala:${partidaId}`,
+        p_referencia: partidaId,
+        p_admin_id: adminId,
+      });
+    },
+    async awardItem(objetoId, cantidad) {
+      await asignarItem({ db, partidaId, personajeId, usuarioId: targetUserId, adminId, objetoId, cantidad });
+    },
+    async logAll(outcomes) {
+      const rows = outcomes.map((o) => {
+        const efectivo = o.kind === "subtabla" ? o.premio : o;
+        const objeto = efectivo.kind === "item" ? objetos.get(efectivo.objetoId) : undefined;
+        return {
+          partida_id: partidaId,
+          tipo: "dado_tirado",
+          personaje_id: personajeId,
+          personaje_nombre: personajeNombre,
+          usuario_id: targetUserId,
+          tipo_dado: config.tipo === "lut" ? "d20" : config.tipoDado,
+          recompensa_nombre: config.nombre,
+          tipo_resultado: o.kind,
+          objeto_id: objeto ? String(objeto.id) : null,
+          objeto_nombre: objeto?.nombre ?? null,
+          objeto_icono: objeto?.icono ?? null,
+          cantidad: efectivo.kind === "item" ? efectivo.cantidad : null,
+          cantidad_oro: efectivo.kind === "oro" ? efectivo.cantidad : null,
+          metadata:
+            config.tipo === "lut"
+              ? outcomeToLutResult(config, o, objetos)
+              : { resultados: o.kind === "oro" ? (o.caras ?? [o.cara]) : [o.cara] },
+        };
+      });
+      if (rows.length > 0) {
+        const { error } = await db.from("partidas_eventos").insert(rows);
+        if (error) console.error("[dados/apply] partidas_eventos insert error:", error);
       }
     },
   };
