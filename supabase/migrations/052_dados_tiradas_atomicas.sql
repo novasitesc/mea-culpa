@@ -25,10 +25,15 @@ CREATE INDEX idx_dados_tiradas_usuario ON dados_tiradas(usuario_id, created_at D
 -- RLS sin policies: solo service role lee/escribe (la API filtra por dueño).
 ALTER TABLE dados_tiradas ENABLE ROW LEVEL SECURITY;
 
--- Permitir 'dado' como origen en el log de objetos
+-- Permitir 'dado' como origen en el log de objetos.
+-- Lista = unión de todo lo que escribe el código: 026 añadió 'comercio',
+-- 028 añadió 'gremio', lib/asignarItem.ts escribe 'partida_sala'.
+-- NOT VALID: solo valida filas nuevas, por si los datos históricos traen
+-- algún valor fuera de esta lista (el esquema real ya divergió antes).
 ALTER TABLE transacciones_objetos DROP CONSTRAINT IF EXISTS transacciones_objetos_origen_check;
 ALTER TABLE transacciones_objetos ADD CONSTRAINT transacciones_objetos_origen_check
-  CHECK (origen IN ('tienda', 'admin', 'drop', 'quest', 'comercio', 'dado'));
+  CHECK (origen IN ('tienda', 'admin', 'drop', 'quest', 'comercio', 'gremio', 'partida_sala', 'dado'))
+  NOT VALID;
 
 -- Entrega a la bolsa (misma semántica que lib/asignarItem.ts: consumibles apilan,
 -- no-consumibles 1 slot por unidad hasta llenar; devuelve lo realmente entregado).
