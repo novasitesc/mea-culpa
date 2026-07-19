@@ -74,9 +74,8 @@ type RecompensaFull = {
     id: number;
     numeroCara: number;
     tipo: LutCaraTipo;
-    cantidadDados: number | null;
-    tipoDadoOro: DiceType | null;
-    multiplicadorOro: number;
+    oroMin: number;
+    oroMax: number;
     objetoId: number | null;
     cantidadMin: number;
     cantidadMax: number;
@@ -100,15 +99,6 @@ const TIPO_LABEL: Record<RewardType, string> = {
   oro_dados: "Oro por dados",
   lut: "LUT — D20 por caras",
   subtabla: "Sub-tabla D20",
-};
-
-const DICE_LABEL: Record<DiceType, string> = {
-  d4: "D4 (1-4)",
-  d6: "D6 (1-6)",
-  d8: "D8 (1-8)",
-  d10: "D10 (1-10)",
-  d12: "D12 (1-12)",
-  d20: "D20 (1-20)",
 };
 
 const DICE_FACES: Record<DiceType, number> = {
@@ -225,8 +215,8 @@ export function DadosTab({ token }: { token: string | null }) {
       return {
         numeroCara: saved.numeroCara,
         tipo: saved.tipo,
-        oroMin: String(saved.cantidadDados ?? 10),
-        oroMax: String(saved.multiplicadorOro ?? 50),
+        oroMin: String(saved.oroMin ?? 10),
+        oroMax: String(saved.oroMax ?? 50),
         objetoId: saved.objetoId,
         cantidadMin: String(saved.cantidadMin ?? 1),
         cantidadMax: String(saved.cantidadMax ?? 1),

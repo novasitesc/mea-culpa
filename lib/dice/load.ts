@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { ObjetoInfo, RewardConfig } from "./engine";
+import type { LutCara, SublistaItem, SubtablaCara } from "../types/dados";
 
 // Validación compartida por las dos rutas de roll (antes duplicada).
 // cantidad inválida cae a 1 (misma tolerancia que el código anterior).
@@ -17,8 +18,8 @@ export const rollBodySchema = z.object({
 type LutCaraRow = {
   numero_cara: number;
   tipo: string;
-  cantidad_dados: number | null;
-  multiplicador_oro: number | null;
+  oro_min: number | null;
+  oro_max: number | null;
   objeto_id: number | null;
   cantidad_min: number | null;
   cantidad_max: number | null;
@@ -45,7 +46,7 @@ export async function loadRewardConfig(
     .select(
       `id, nombre, tipo, tipo_dado, costo_oro, objeto_id, cantidad_dados, multiplicador_oro,
        dados_sublista_items(objeto_id, valor_min, valor_max),
-       dados_lut_caras!recompensa_id(numero_cara, tipo, cantidad_dados, multiplicador_oro, objeto_id, cantidad_min, cantidad_max, subtabla_id)`,
+       dados_lut_caras!recompensa_id(numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, subtabla_id)`,
     )
     .eq("id", recompensaId)
     .eq("activo", true)
@@ -104,10 +105,8 @@ export async function loadRewardConfig(
     lutCaras: lutRows.map((c) => ({
       numeroCara: c.numero_cara,
       tipo: c.tipo as RewardConfig["lutCaras"][number]["tipo"],
-      // ⚠ columnas legacy: cantidad_dados/multiplicador_oro guardan oro_min/oro_max
-      // en caras tipo 'oro' (se renombran en la migración de saneamiento).
-      oroMin: c.cantidad_dados ?? 0,
-      oroMax: c.multiplicador_oro ?? 0,
+      oroMin: c.oro_min ?? 0,
+      oroMax: c.oro_max ?? 0,
       objetoId: c.objeto_id,
       cantidadMin: c.cantidad_min ?? 1,
       cantidadMax: c.cantidad_max ?? 1,
@@ -115,6 +114,72 @@ export async function loadRewardConfig(
     })),
     subtablas,
   };
+}
+
+// ── Mapeos snake→camel compartidos por /api/dados/config y /api/dados/admin ──
+
+const embedded = (v: unknown) => (Array.isArray(v) ? v[0] : v) as { id?: number; nombre?: string; icono?: string } | null;
+
+export function mapLutCaraRows(rows: any[]): LutCara[] {
+  return rows
+    .map((c: any): LutCara => {
+      const obj = embedded(c.objeto);
+      const sub = embedded(c.subtabla);
+      return {
+        id: c.id,
+        recompensaId: c.recompensa_id,
+        numeroCara: c.numero_cara,
+        tipo: c.tipo,
+        oroMin: c.oro_min ?? 0,
+        oroMax: c.oro_max ?? 0,
+        objetoId: c.objeto_id ?? null,
+        objetoNombre: obj?.nombre ?? null,
+        objetoIcono: obj?.icono ?? null,
+        cantidadMin: c.cantidad_min ?? 1,
+        cantidadMax: c.cantidad_max ?? 1,
+        subtablaId: c.subtabla_id ?? null,
+        subtablaNombre: sub?.nombre ?? null,
+      };
+    })
+    .sort((a, b) => a.numeroCara - b.numeroCara);
+}
+
+export function mapSubtablaCaraRows(rows: any[]): SubtablaCara[] {
+  return rows
+    .map((c: any): SubtablaCara => {
+      const obj = embedded(c.objeto);
+      return {
+        id: c.id,
+        recompensaId: c.recompensa_id,
+        numeroCara: c.numero_cara,
+        tipo: c.tipo ?? "nada",
+        objetoId: c.objeto_id ?? null,
+        objetoNombre: obj?.nombre ?? null,
+        objetoIcono: obj?.icono ?? null,
+        cantidadMin: c.cantidad_min ?? 1,
+        cantidadMax: c.cantidad_max ?? 1,
+        oroMin: c.oro_min ?? 0,
+        oroMax: c.oro_max ?? 0,
+      };
+    })
+    .sort((a, b) => a.numeroCara - b.numeroCara);
+}
+
+export function mapSublistaRows(rows: any[]): SublistaItem[] {
+  return rows
+    .map((si: any): SublistaItem => {
+      const obj = embedded(si.objeto);
+      return {
+        id: si.id,
+        objetoId: si.objeto_id,
+        objetoNombre: obj?.nombre ?? "",
+        objetoIcono: obj?.icono ?? "",
+        valorMin: si.valor_min,
+        valorMax: si.valor_max,
+        orden: si.orden,
+      };
+    })
+    .sort((a, b) => a.orden - b.orden);
 }
 
 /** Nombre/icono de los objetos premiados, en una sola query. */

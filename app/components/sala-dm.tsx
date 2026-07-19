@@ -515,6 +515,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
             rollApiUrl={rollApiUrl}
             extraBody={extraBody}
             hideCost
+            personajeNombre={selectedParticipante?.nombre}
             onRollComplete={handleRollComplete}
           />
         ) : (

@@ -28,9 +28,8 @@ export type LutCara = {
   recompensaId: number
   numeroCara: number
   tipo: LutCaraTipo
-  cantidadDados: number | null
-  tipoDadoOro: DiceType | null
-  multiplicadorOro: number
+  oroMin: number
+  oroMax: number
   objetoId: number | null
   objetoNombre: string | null
   objetoIcono: string | null

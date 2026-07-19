@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";
+import { mapLutCaraRows, mapSubtablaCaraRows, mapSublistaRows } from "@/lib/dice/load";
 import type { DiceType, RewardType } from "@/lib/types/dados";
 
 function normalizeDiceType(v: unknown): DiceType | null {
@@ -9,52 +10,6 @@ function normalizeDiceType(v: unknown): DiceType | null {
 
 function normalizeRewardType(v: unknown): RewardType | null {
   return typeof v === "string" && REWARD_TYPES.includes(v as RewardType) ? (v as RewardType) : null;
-}
-
-function mapLutCaras(rows: any[]) {
-  return rows
-    .map((c: any) => {
-      const obj = Array.isArray(c.objeto) ? c.objeto[0] : c.objeto;
-      const sub = Array.isArray(c.subtabla) ? c.subtabla[0] : c.subtabla;
-      return {
-        id: c.id,
-        recompensaId: c.recompensa_id,
-        numeroCara: c.numero_cara,
-        tipo: c.tipo,
-        cantidadDados: c.cantidad_dados ?? null,
-        tipoDadoOro: c.tipo_dado_oro ?? null,
-        multiplicadorOro: c.multiplicador_oro ?? 1,
-        objetoId: c.objeto_id ?? null,
-        objetoNombre: obj?.nombre ?? null,
-        objetoIcono: obj?.icono ?? null,
-        cantidadMin: c.cantidad_min ?? 1,
-        cantidadMax: c.cantidad_max ?? 1,
-        subtablaId: c.subtabla_id ?? null,
-        subtablaNombre: sub?.nombre ?? null,
-      };
-    })
-    .sort((a: any, b: any) => a.numeroCara - b.numeroCara);
-}
-
-function mapSubtablaCaras(rows: any[]) {
-  return rows
-    .map((c: any) => {
-      const obj = Array.isArray(c.objeto) ? c.objeto[0] : c.objeto;
-      return {
-        id: c.id,
-        recompensaId: c.recompensa_id,
-        numeroCara: c.numero_cara,
-        tipo: c.tipo ?? "nada",
-        objetoId: c.objeto_id ?? null,
-        objetoNombre: obj?.nombre ?? null,
-        objetoIcono: obj?.icono ?? null,
-        cantidadMin: c.cantidad_min ?? 1,
-        cantidadMax: c.cantidad_max ?? 1,
-        oroMin: c.oro_min ?? 0,
-        oroMax: c.oro_max ?? 0,
-      };
-    })
-    .sort((a: any, b: any) => a.numeroCara - b.numeroCara);
 }
 
 export async function GET(request: Request) {
@@ -77,10 +32,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Queries separadas para LUT/subtabla — fallan silenciosamente si las tablas no existen aún
   const { data: lutCarasData } = await session.db
     .from("dados_lut_caras")
-    .select(`id, recompensa_id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, cantidad_min, cantidad_max, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`);
+    .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`);
 
   const { data: subtablaCarasData } = await session.db
     .from("dados_subtabla_caras")
@@ -102,23 +56,9 @@ export async function GET(request: Request) {
 
   const mapped = (data ?? []).map((r: any) => {
     const objetoRow = Array.isArray(r.objeto) ? r.objeto[0] : r.objeto;
-    const sublistaItems = (r.dados_sublista_items ?? [])
-      .map((si: any) => {
-        const siObj = Array.isArray(si.objeto) ? si.objeto[0] : si.objeto;
-        return {
-          id: si.id,
-          objetoId: si.objeto_id,
-          objetoNombre: siObj?.nombre ?? "",
-          objetoIcono: siObj?.icono ?? "",
-          valorMin: si.valor_min,
-          valorMax: si.valor_max,
-          orden: si.orden,
-        };
-      })
-      .sort((a: any, b: any) => a.orden - b.orden);
-
-    const lutCaras = mapLutCaras(lutMap.get(r.id) ?? []);
-    const subtablaCaras = mapSubtablaCaras(subtablaMap.get(r.id) ?? []);
+    const sublistaItems = mapSublistaRows(r.dados_sublista_items ?? []);
+    const lutCaras = mapLutCaraRows(lutMap.get(r.id) ?? []);
+    const subtablaCaras = mapSubtablaCaraRows(subtablaMap.get(r.id) ?? []);
 
     return {
       id: r.id,
@@ -246,9 +186,8 @@ export async function POST(request: Request) {
         recompensa_id: data.id,
         numero_cara: Number(c.numeroCara),
         tipo: c.tipo,
-        cantidad_dados: c.tipo === "oro" ? (Number(c.oroMin) || 0) : null,
-        tipo_dado_oro: null,
-        multiplicador_oro: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
+        oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : null,
+        oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
         objeto_id: c.tipo === "item" ? (Number(c.objetoId) || null) : null,
         cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
         cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
@@ -370,9 +309,8 @@ export async function PUT(request: Request) {
         recompensa_id: Math.floor(id),
         numero_cara: Number(c.numeroCara),
         tipo: c.tipo,
-        cantidad_dados: c.tipo === "oro" ? (Number(c.oroMin) || 0) : null,
-        tipo_dado_oro: null,
-        multiplicador_oro: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
+        oro_min: c.tipo === "oro" ? (Number(c.oroMin) || 0) : null,
+        oro_max: c.tipo === "oro" ? (Number(c.oroMax) || 0) : 1,
         objeto_id: c.tipo === "item" ? (Number(c.objetoId) || null) : null,
         cantidad_min: c.tipo === "item" ? (Number(c.cantidadMin) || 1) : 1,
         cantidad_max: c.tipo === "item" ? (Number(c.cantidadMax) || 1) : 1,
