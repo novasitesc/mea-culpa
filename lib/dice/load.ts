@@ -10,6 +10,8 @@ export const rollBodySchema = z.object({
   recompensa_id: z.number().int().positive(),
   cantidad: z.number().int().min(1).max(10).catch(1),
   personaje_id: z.number().int().positive().optional(),
+  // Idempotencia: el cliente genera un UUID por tirada; sin él, el servidor crea uno.
+  roll_id: z.string().uuid().optional(),
 });
 
 type LutCaraRow = {

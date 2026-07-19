@@ -1,126 +1,114 @@
 // Aplicadores de efectos: la diferencia entre tirada personal y de partida no es
-// la resolución (engine.ts), es quién paga y cómo se entrega/registra.
+// la resolución (engine.ts), es quién paga, cómo se entrega y dónde se registra.
+// Ambos delegan en la RPC dados_ejecutar_tirada: cobro + premios + registro en
+// UNA transacción, idempotente por roll_id (reenviar devuelve lo ya persistido).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { modifyGold } from "../goldService";
-import { asignarItem } from "../asignarItem";
 import { outcomeToLutResult } from "./engine";
 import type { DiceOutcome, ObjetoInfo, RewardConfig } from "./engine";
+import type { RollResult } from "../types/dados";
+
+export type Entrega = { objetoId: number; solicitada: number; entregada: number };
+
+export type TiradaEjecutada = {
+  replayed: boolean;
+  resultado: RollResult;
+  entregas: Entrega[];
+};
 
 export type DiceAwarder = {
-  /** Cobra el costo total por adelantado; lanza "Oro insuficiente" si no alcanza. */
-  chargeGold(total: number): Promise<void>;
-  awardGold(cantidad: number): Promise<void>;
-  awardItem(objetoId: number, cantidad: number): Promise<void>;
-  /** Registro en batch: dados_historial o partidas_eventos según contexto. */
-  logAll(outcomes: DiceOutcome[]): Promise<void>;
+  /** Aplica la tirada completa de forma atómica; con roll_id repetido no re-cobra ni re-premia. */
+  execute(rollId: string, outcomes: DiceOutcome[]): Promise<TiradaEjecutada>;
 };
 
-/** Recorre los outcomes (incluidos premios anidados de subtabla) aplicando efectos y log. */
-export async function applyOutcomes(outcomes: DiceOutcome[], awarder: DiceAwarder): Promise<void> {
+type Efecto =
+  | { tipo: "oro"; cantidad: number }
+  | { tipo: "item"; objetoId: number; cantidad: number };
+
+/** Premios efectivos a aplicar (el premio anidado de subtabla es el que cuenta). */
+function flattenEfectos(outcomes: DiceOutcome[]): Efecto[] {
+  const efectos: Efecto[] = [];
   for (const o of outcomes) {
-    const efectivo = o.kind === "subtabla" ? o.premio : o;
-    if (efectivo.kind === "oro" && efectivo.cantidad > 0) {
-      await awarder.awardGold(efectivo.cantidad);
-    } else if (efectivo.kind === "item") {
-      await awarder.awardItem(efectivo.objetoId, efectivo.cantidad);
-    }
+    const e = o.kind === "subtabla" ? o.premio : o;
+    if (e.kind === "oro" && e.cantidad > 0) efectos.push({ tipo: "oro", cantidad: e.cantidad });
+    else if (e.kind === "item") efectos.push({ tipo: "item", objetoId: e.objetoId, cantidad: e.cantidad });
   }
-  await awarder.logAll(outcomes);
+  return efectos;
 }
 
-/** Tirada personal: oro real del usuario, log en dados_historial (batch). */
+async function ejecutarRPC(db: SupabaseClient, params: Record<string, unknown>): Promise<TiradaEjecutada> {
+  const { data, error } = await db.rpc("dados_ejecutar_tirada", params);
+  if (error) throw new Error(error.message);
+  const r = data as { replayed: boolean; resultado: RollResult; entregas: Entrega[] | null };
+  return { replayed: !!r.replayed, resultado: r.resultado, entregas: r.entregas ?? [] };
+}
+
+/** Tirada personal: el usuario paga y recibe; log en dados_historial. */
 export function personalAwarder(
   db: SupabaseClient,
-  userId: string,
-  config: RewardConfig,
+  opts: {
+    userId: string;
+    personajeId: number | null; // null → los ítems no se entregan (la UI lo señala)
+    config: RewardConfig;
+    cantidad: number;
+    resultado: RollResult;
+  },
 ): DiceAwarder {
+  const { userId, personajeId, config, cantidad, resultado } = opts;
   return {
-    async chargeGold(total) {
-      if (total > 0) await modifyGold(userId, -total, "dado_costo");
-    },
-    async awardGold(cantidad) {
-      await modifyGold(userId, cantidad, "dado_recompensa_oro");
-    },
-    async awardItem() {
-      // La entrega real a la bolsa llega con la RPC transaccional (dados_ejecutar_tirada).
-    },
-    async logAll(outcomes) {
-      const rows = outcomes.map((o) => historialRow(userId, config, o));
-      if (rows.length > 0) {
-        const { error } = await db.from("dados_historial").insert(rows);
-        if (error) console.error("[dados/apply] historial insert error:", error);
-      }
-    },
+    execute: (rollId, outcomes) =>
+      ejecutarRPC(db, {
+        p_roll_id: rollId,
+        p_contexto: "personal",
+        p_usuario_id: userId,
+        p_personaje_id: personajeId,
+        p_recompensa_id: config.id,
+        p_cantidad: cantidad,
+        p_costo_total: config.costoOro * (config.tipo === "lut" ? cantidad : 1),
+        p_efectos: flattenEfectos(outcomes),
+        p_resultado: resultado,
+        p_logs: outcomes.map((o) => historialRow(config, o)),
+      }),
   };
 }
 
-export type PartidaAwarderOpts = {
-  db: SupabaseClient;
-  config: RewardConfig;
-  objetos: Map<number, ObjetoInfo>;
-  partidaId: string;
-  personajeId: number;
-  personajeNombre: string;
-  targetUserId: string;
-  adminId: string;
-};
-
-/** Tirada en partida: el DM no paga; oro vía RPC con admin, ítems a la bolsa
- *  real del personaje (respetando cantidad), log en partidas_eventos. */
-export function partidaAwarder(opts: PartidaAwarderOpts): DiceAwarder {
-  const { db, config, objetos, partidaId, personajeId, personajeNombre, targetUserId, adminId } = opts;
+/** Tirada en partida: el DM no paga; oro y bolsa del personaje participante,
+ *  log en partidas_eventos (una fila por tirada, como el feed espera). */
+export function partidaAwarder(
+  db: SupabaseClient,
+  opts: {
+    config: RewardConfig;
+    objetos: Map<number, ObjetoInfo>;
+    partidaId: string;
+    personajeId: number;
+    personajeNombre: string;
+    targetUserId: string;
+    adminId: string;
+    cantidad: number;
+    resultado: RollResult;
+  },
+): DiceAwarder {
+  const { config, objetos, partidaId, personajeId, personajeNombre, targetUserId, adminId, cantidad, resultado } = opts;
   return {
-    async chargeGold() {
-      // Nadie paga en la sala (hideCost).
-    },
-    async awardGold(cantidad) {
-      await db.rpc("modificar_oro", {
+    execute: (rollId, outcomes) =>
+      ejecutarRPC(db, {
+        p_roll_id: rollId,
+        p_contexto: "partida",
         p_usuario_id: targetUserId,
-        p_delta: cantidad,
-        p_concepto: `partida_sala:${partidaId}`,
-        p_referencia: partidaId,
+        p_personaje_id: personajeId,
+        p_recompensa_id: config.id,
+        p_cantidad: cantidad,
+        p_costo_total: 0,
+        p_efectos: flattenEfectos(outcomes),
+        p_resultado: resultado,
+        p_logs: outcomes.map((o) => eventoRow(config, o, objetos, personajeNombre)),
+        p_partida_id: partidaId,
         p_admin_id: adminId,
-      });
-    },
-    async awardItem(objetoId, cantidad) {
-      await asignarItem({ db, partidaId, personajeId, usuarioId: targetUserId, adminId, objetoId, cantidad });
-    },
-    async logAll(outcomes) {
-      const rows = outcomes.map((o) => {
-        const efectivo = o.kind === "subtabla" ? o.premio : o;
-        const objeto = efectivo.kind === "item" ? objetos.get(efectivo.objetoId) : undefined;
-        return {
-          partida_id: partidaId,
-          tipo: "dado_tirado",
-          personaje_id: personajeId,
-          personaje_nombre: personajeNombre,
-          usuario_id: targetUserId,
-          tipo_dado: config.tipo === "lut" ? "d20" : config.tipoDado,
-          recompensa_nombre: config.nombre,
-          tipo_resultado: o.kind,
-          objeto_id: objeto ? String(objeto.id) : null,
-          objeto_nombre: objeto?.nombre ?? null,
-          objeto_icono: objeto?.icono ?? null,
-          cantidad: efectivo.kind === "item" ? efectivo.cantidad : null,
-          cantidad_oro: efectivo.kind === "oro" ? efectivo.cantidad : null,
-          metadata:
-            config.tipo === "lut"
-              ? outcomeToLutResult(config, o, objetos)
-              : { resultados: o.kind === "oro" ? (o.caras ?? [o.cara]) : [o.cara] },
-        };
-      });
-      if (rows.length > 0) {
-        const { error } = await db.from("partidas_eventos").insert(rows);
-        if (error) console.error("[dados/apply] partidas_eventos insert error:", error);
-      }
-    },
+      }),
   };
 }
 
-function historialRow(userId: string, config: RewardConfig, o: DiceOutcome) {
+function historialRow(config: RewardConfig, o: DiceOutcome) {
   const base = {
-    usuario_id: userId,
-    recompensa_id: config.id,
     costo_pagado: config.costoOro,
     objeto_id: null as number | null,
     cantidad_objeto: null as number | null,
@@ -156,4 +144,29 @@ function historialRow(userId: string, config: RewardConfig, o: DiceOutcome) {
       };
     }
   }
+}
+
+function eventoRow(
+  config: RewardConfig,
+  o: DiceOutcome,
+  objetos: Map<number, ObjetoInfo>,
+  personajeNombre: string,
+) {
+  const efectivo = o.kind === "subtabla" ? o.premio : o;
+  const objeto = efectivo.kind === "item" ? objetos.get(efectivo.objetoId) : undefined;
+  return {
+    personaje_nombre: personajeNombre,
+    tipo_dado: config.tipo === "lut" ? "d20" : config.tipoDado,
+    recompensa_nombre: config.nombre,
+    tipo_resultado: o.kind,
+    objeto_id: objeto ? String(objeto.id) : null,
+    objeto_nombre: objeto?.nombre ?? null,
+    objeto_icono: objeto?.icono ?? null,
+    cantidad: efectivo.kind === "item" ? efectivo.cantidad : null,
+    cantidad_oro: efectivo.kind === "oro" ? efectivo.cantidad : null,
+    metadata:
+      config.tipo === "lut"
+        ? outcomeToLutResult(config, o, objetos)
+        : { resultados: o.kind === "oro" ? (o.caras ?? [o.cara]) : [o.cara] },
+  };
 }

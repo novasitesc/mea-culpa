@@ -100,4 +100,8 @@ export type RollResult = {
   cantidadOro?: number
   lutResultados?: LutCaraResult[]
   cantidad?: number
+  // Extensiones aditivas (tiradas idempotentes):
+  rollId?: string
+  entregas?: Array<{ objetoId: number; solicitada: number; entregada: number }>
+  replayed?: boolean
 }
