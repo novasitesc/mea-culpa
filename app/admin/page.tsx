@@ -4651,7 +4651,7 @@ export default function AdminPage() {
 
   const isSuperAdmin = user.rolSistema === "super_admin";
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "usuarios", label: "Usuarios", icon: Users },
     { id: "tiendas", label: "Tiendas", icon: Store },
     { id: "objetos", label: "Objetos", icon: Box },
