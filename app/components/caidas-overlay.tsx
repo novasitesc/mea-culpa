@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Skull, Moon } from "lucide-react";
 import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { playCaidaSfx, playDerrotaSfx } from "@/lib/sfx";
 import type { EventoCaida } from "@/lib/types/sala";
 import CaidasTracker from "@/app/components/caidas-tracker";
 import HuesoRoto from "@/app/components/hueso-roto";
@@ -22,6 +23,8 @@ export default function CaidasOverlay({ evento, onDone }: Props) {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    if (defeat) playDerrotaSfx();
+    else playCaidaSfx();
     const visibleMs = defeat ? 5600 : 2700;
     const t1 = window.setTimeout(() => setLeaving(true), visibleMs);
     const t2 = window.setTimeout(onDone, visibleMs + 400);

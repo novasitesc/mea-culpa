@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { FlaskConical, Skull, Moon, Zap } from "lucide-react";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SalaFeed from "@/app/components/sala-feed";
 import ConsumableModal from "@/app/components/consumable-modal";
 import CaidasTracker from "@/app/components/caidas-tracker";
-import CaidasOverlay from "@/app/components/caidas-overlay";
-import type { SalaPartida, SalaParticipante, SalaEvento, EventoCaida } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 
 type Props = {
   partida: SalaPartida;
@@ -22,34 +21,12 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
   const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][partida.tier] ?? partida.tier;
 
   const [consumablesOpen, setConsumablesOpen] = useState(false);
-  const [overlayEvento, setOverlayEvento] = useState<EventoCaida | null>(null);
-  const prevEventosLen = useRef<number | null>(null);
 
   const me = usuarioId
     ? participantes.find((p) => p.usuarioId === usuarioId) ?? null
     : null;
   const canUseConsumables =
     partida.estado === "en_progreso" && me != null && !me.muerto && !me.derrotado;
-
-  // Dispara el aviso dramático solo con caídas nuevas del propio personaje
-  // (el historial cargado al entrar a la sala no debe reabrir el overlay).
-  useEffect(() => {
-    if (prevEventosLen.current === null) {
-      prevEventosLen.current = eventos.length;
-      return;
-    }
-    if (eventos.length > prevEventosLen.current && me) {
-      const nuevos = eventos.slice(prevEventosLen.current);
-      const propia = [...nuevos]
-        .reverse()
-        .find(
-          (ev): ev is EventoCaida =>
-            ev.tipo === "caida" && ev.personajeId === me.personajeId && ev.delta > 0,
-        );
-      if (propia) setOverlayEvento(propia);
-    }
-    prevEventosLen.current = eventos.length;
-  }, [eventos, me]);
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -153,11 +130,6 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
           onClose={() => setConsumablesOpen(false)}
           onUsed={onEvent}
         />
-      )}
-
-      {/* Aviso dramático de caída / derrota */}
-      {overlayEvento && (
-        <CaidasOverlay evento={overlayEvento} onDone={() => setOverlayEvento(null)} />
       )}
     </div>
   );

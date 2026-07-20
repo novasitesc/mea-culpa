@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, ArrowLeft, Swords, Home } from "lucide-react";
-import { getIconForString } from "@/lib/iconMapper";
+import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
@@ -13,6 +12,9 @@ import SalaPlayer from "@/app/components/sala-player";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import DescansoOverlay from "@/app/components/descanso-overlay";
+import CaidasOverlay from "@/app/components/caidas-overlay";
+import DesmembramientoOverlay from "@/app/components/desmembramiento-overlay";
+import PartidaFinalOverlay from "@/app/components/partida-final-overlay";
 import type {
   SalaPartida,
   SalaParticipante,
@@ -20,6 +22,8 @@ import type {
   EventoDadoTirado,
   EventoDescansoLargo,
   EventoDescansoCorto,
+  EventoCaida,
+  EventoDesmembramiento,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
@@ -64,6 +68,10 @@ export default function SalaPage() {
   const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData } | null>(null);
   // Descanso pendiente de escenificar (fogata a pantalla completa)
   const [restEvent, setRestEvent] = useState<EventoDescansoLargo | EventoDescansoCorto | null>(null);
+  // Overlays dramáticos que ve toda la sala; key remonta si llega otro evento
+  // mientras el anterior sigue abierto.
+  const [caidaFx, setCaidaFx] = useState<{ key: number; ev: EventoCaida } | null>(null);
+  const [desmFx, setDesmFx] = useState<{ key: number; ev: EventoDesmembramiento } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
@@ -97,6 +105,16 @@ export default function SalaPage() {
       }
       return [...prev, ev];
     });
+  }, []);
+
+  // Escenifica la caída o el desmembramiento para toda la sala (jugadores y DM);
+  // solo los eventos que empeoran (marcar caída, perder miembro) montan el overlay.
+  const triggerCaidaFx = useCallback((ev: EventoCaida) => {
+    if (ev.delta > 0) setCaidaFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+  }, []);
+
+  const triggerDesmFx = useCallback((ev: EventoDesmembramiento) => {
+    if (ev.desmembrado) setDesmFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
   }, []);
 
   const loadSala = useCallback(async () => {
@@ -180,6 +198,7 @@ export default function SalaPage() {
       .on("broadcast", { event: "caida" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "caida") {
+          triggerCaidaFx(payload);
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
@@ -223,6 +242,7 @@ export default function SalaPage() {
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "desmembramiento") {
+          triggerDesmFx(payload);
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
@@ -248,7 +268,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal]);
+  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, triggerCaidaFx, triggerDesmFx]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -274,6 +294,7 @@ export default function SalaPage() {
 
     if (ev.tipo === "caida") {
       appendEvento(ev);
+      triggerCaidaFx(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
@@ -308,6 +329,7 @@ export default function SalaPage() {
 
     if (ev.tipo === "desmembramiento") {
       appendEvento(ev);
+      triggerDesmFx(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
@@ -452,101 +474,24 @@ export default function SalaPage() {
         />
       )}
 
-      {/* Modal: Partida finalizada (jugadores) */}
+      {/* Caída / derrota escenificada para toda la sala */}
+      {caidaFx && (
+        <CaidasOverlay key={caidaFx.key} evento={caidaFx.ev} onDone={() => setCaidaFx(null)} />
+      )}
+
+      {/* Desmembramiento escenificado para toda la sala */}
+      {desmFx && (
+        <DesmembramientoOverlay key={desmFx.key} evento={desmFx.ev} onDone={() => setDesmFx(null)} />
+      )}
+
+      {/* Cierre ceremonial: Partida finalizada (jugadores) */}
       {showFinalModal && partida && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
-            <div className="p-5 border-b border-border">
-              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-1">Fin de la aventura</p>
-              <h2 className="text-lg font-bold text-gold flex items-center gap-2"><Swords className="w-5 h-5 text-gold" /> {partida.titulo}</h2>
-              <p className="text-sm text-foreground/50 font-sans mt-1">La partida ha finalizado.</p>
-            </div>
-
-            <div className="p-5 flex flex-col gap-3 overflow-y-auto max-h-[50vh]">
-              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
-                Lo que recibiste en la sesión
-              </p>
-              {mySessionItems.length === 0 ? (
-                <p className="text-sm text-foreground/30 italic font-sans">Sin asignaciones registradas.</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {mySessionItems.map((ev, i) => {
-                    if (ev.tipo === "dado_tirado") {
-                      if (ev.lutResultados && ev.lutResultados.length > 0) {
-                        const items = ev.lutResultados.filter(
-                          (r: any) => r.tipo === "item" || (r.tipo === "subtabla" && r.subRoll?.objeto),
-                        );
-                        const oro = ev.lutResultados
-                          .filter((r: any) => r.tipo === "oro")
-                          .reduce((acc: number, r: any) => acc + (r.oroDetalle?.cantidadOro ?? 0), 0) +
-                          ev.lutResultados
-                            .filter((r: any) => r.tipo === "subtabla" && r.subRoll?.cantidadOro)
-                            .reduce((acc: number, r: any) => acc + (r.subRoll?.cantidadOro ?? 0), 0);
-                        return (
-                          <div key={i} className="flex flex-wrap gap-2 py-1 border-b border-border/30 last:border-0">
-                            {items.map((r: any, j: number) => {
-                              const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
-                              return obj ? (
-                                <span key={j} className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
-                                  {getIconForString(obj.nombre, "w-4 h-4 shrink-0", obj.icono)} {obj.nombre}
-                                </span>
-                              ) : null;
-                            })}
-                            {oro > 0 && (
-                              <span className="text-sm text-gold font-semibold">+{oro.toLocaleString("es-ES")} oro</span>
-                            )}
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
-                          {ev.tipoResultado === "item" && ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">{getIconForString(ev.objeto.nombre, "w-4 h-4 shrink-0", ev.objeto.icono)} {ev.objeto.nombre}</span>
-                          ) : ev.tipoResultado === "oro" && ev.cantidadOro ? (
-                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
-                          ) : (
-                            <span className="text-sm text-foreground/30 italic">Sin recompensa</span>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (ev.tipo === "asignacion_manual") {
-                      return (
-                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
-                          {ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold flex items-center gap-1.5">
-                              {getIconForString(ev.objeto.nombre, "w-4 h-4 shrink-0", ev.objeto.icono)} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
-                            </span>
-                          ) : ev.cantidadOro ? (
-                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
-                          ) : null}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2 p-5 border-t border-border">
-              <button
-                type="button"
-                onClick={() => router.push("/partidas")}
-                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm font-sans"
-              >
-                Ir a partidas
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/profile")}
-                className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
-              >
-                <span className="flex items-center justify-center gap-1.5"><Home className="w-4 h-4" /> Pagar posada</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <PartidaFinalOverlay
+          titulo={partida.titulo}
+          eventos={mySessionItems}
+          onIrPartidas={() => router.push("/partidas")}
+          onPagarPosada={() => router.push("/profile")}
+        />
       )}
     </div>
   );

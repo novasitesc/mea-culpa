@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Coins,
-  ArrowRightLeft,
   Dice6,
   Skull,
   Copy,
@@ -28,7 +27,17 @@ import {
   Sparkles,
   ShieldPlus,
   ShieldOff,
+  ArrowLeft,
+  Swords,
+  Scale,
+  Landmark,
+  Receipt,
+  Search,
+  HeartPulse,
+  History,
+  TrendingDown,
 } from "lucide-react";
+import { playUiOpenSfx, playUiHoverSfx, playUiBackSfx, playSuccessSfx, playErrorSfx } from "@/lib/sfx";
 import { getIconForString } from "@/lib/iconMapper";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 import { useAuth } from "@/lib/useAuth";
@@ -42,6 +51,7 @@ import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
 import AscensionModal from "./ascension-modal";
 import RevocationModal from "./revocation-modal";
+import { AdmHero, AdmHeading, AdmStat, AdmPills, type AdmPillTab } from "./section-ui";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -224,11 +234,8 @@ type Tab =
   | "usuarios"
   | "tiendas"
   | "objetos"
-  | "transacciones"
+  | "economia"
   | "partidas"
-  | "partidas-activas"
-  | "historial-partidas"
-  | "impuestos"
   | "ruleta"
   | "dados"
   | "muertes";
@@ -591,9 +598,17 @@ function TransactionsTab({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Filtros */}
-      <form onSubmit={handleFilterSubmit} className="bg-secondary/20 p-4 rounded-lg border border-border grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+      <form
+        onSubmit={handleFilterSubmit}
+        className="adm-panel grid grid-cols-1 items-end gap-4 rounded-xl p-4 md:grid-cols-3 xl:grid-cols-6"
+        style={{ ["--adm-accent" as string]: ECONOMIA_ACCENT }}
+      >
+        <div className="relative col-span-full flex items-center gap-2.5">
+          <Search className="h-4 w-4" style={{ color: ECONOMIA_ACCENT }} />
+          <span className="font-serif text-sm text-foreground">Filtrar transacciones del reino</span>
+        </div>
         <FormField label="Usuario">
           <input 
             type="text" 
@@ -682,9 +697,9 @@ function TransactionsTab({
           <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/50 border-b border-border">
+        <div className="adm-panel overflow-x-auto rounded-xl" style={{ ["--adm-accent" as string]: ECONOMIA_ACCENT }}>
+          <table className="relative w-full text-sm">
+            <thead className="border-b border-border bg-secondary/40">
               <tr>
                 <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Fecha
@@ -710,9 +725,10 @@ function TransactionsTab({
               {transactions.map((t, i) => (
                 <tr
                   key={t.id}
-                  className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors ${
+                  className={`adm-row-in border-b border-border last:border-0 transition-colors hover:bg-[#22d3ee]/5 ${
                     i % 2 === 0 ? "" : "bg-secondary/10"
                   }`}
+                  style={{ ["--adm-delay" as string]: `${Math.min(i, 12) * 0.03}s` }}
                 >
                   <td className="px-3 py-3 text-muted-foreground text-xs whitespace-nowrap">
                     {formatDateTime(t.creado_en)}
@@ -1763,8 +1779,13 @@ function UsersTab({
                 return (
                   <article
                     key={u.id}
-                    className="group relative overflow-hidden rounded-xl border border-border bg-card hover:border-gold/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
-                    style={{ animationDelay: `${Math.min(i * 45, 400)}ms` }}
+                    onMouseEnter={playUiHoverSfx}
+                    className="adm-card group relative overflow-hidden rounded-xl border border-border bg-card animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    style={{
+                      animationDelay: `${Math.min(i * 45, 400)}ms`,
+                      ["--adm-accent" as string]:
+                        u.rolSistema === "super_admin" ? "#5d7dcf" : u.isAdmin ? "#d4af37" : "#60a5fa",
+                    }}
                   >
                     {/* Acento superior según rol */}
                     <div
@@ -1806,7 +1827,7 @@ function UsersTab({
                       <div className="flex items-center gap-1 shrink-0">
                         {isSuperAdmin && !u.isAdmin && (
                           <button
-                            onClick={() => setPromoteTarget(u)}
+                            onClick={() => { playUiOpenSfx(); setPromoteTarget(u); }}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/40 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
                             title="Nombrar administrador"
                           >
@@ -1815,7 +1836,7 @@ function UsersTab({
                         )}
                         {isSuperAdmin && u.isAdmin && u.rolSistema !== "super_admin" && (
                           <button
-                            onClick={() => setRevokeTarget(u)}
+                            onClick={() => { playUiOpenSfx(); setRevokeTarget(u); }}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-blood/50 hover:bg-blood/10 text-muted-foreground hover:text-blood transition-colors"
                             title="Revocar administrador"
                           >
@@ -1823,14 +1844,14 @@ function UsersTab({
                           </button>
                         )}
                         <button
-                          onClick={() => setGoldTarget(u)}
+                          onClick={() => { playUiOpenSfx(); setGoldTarget(u); }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-yellow-500/30 hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-500 transition-colors"
                           title="Gestionar Oro"
                         >
                           <Coins className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setEditTarget(u)}
+                          onClick={() => { playUiOpenSfx(); setEditTarget(u); }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/30 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
                           title="Editar"
                         >
@@ -2784,8 +2805,8 @@ function ShopsTab({
           {shops.length !== 1 ? "s" : ""}
         </p>
         <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
+          onClick={() => { playUiOpenSfx(); setShowCreate(true); }}
+          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
           Nueva tienda
@@ -2798,10 +2819,15 @@ function ShopsTab({
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {shops.map((shop) => (
+          {shops.map((shop, i) => (
             <div
               key={shop.id}
-              className="bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-gold/40 transition-colors"
+              onMouseEnter={playUiHoverSfx}
+              className="adm-card adm-card-in bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3"
+              style={{
+                ["--adm-accent" as string]: "#34d399",
+                ["--adm-delay" as string]: `${Math.min(i * 0.05, 0.4)}s`,
+              }}
             >
               {/* Cabecera de tarjeta */}
               <div className="flex items-start justify-between gap-2">
@@ -2818,21 +2844,21 @@ function ShopsTab({
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button
-                    onClick={() => setItemsTarget(shop)}
+                    onClick={() => { playUiOpenSfx(); setItemsTarget(shop); }}
                     className="h-7 px-3 flex items-center justify-center rounded bg-gold/20 text-gold hover:bg-gold hover:text-background transition-colors text-xs font-bold shadow-sm"
                     title="Gestionar objetos"
                   >
                     Items
                   </button>
                   <button
-                    onClick={() => setEditTarget(shop)}
+                    onClick={() => { playUiOpenSfx(); setEditTarget(shop); }}
                     className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
                     title="Editar"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => setDeleteTarget(shop)}
+                    onClick={() => { playUiOpenSfx(); setDeleteTarget(shop); }}
                     className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
                     title="Eliminar"
                   >
@@ -4081,9 +4107,17 @@ function TaxesTab({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-secondary/20 p-4 rounded-lg border border-border flex flex-col gap-4">
-        <h3 className="text-lg font-semibold text-gold">Cobrar Impuestos Globales</h3>
+    <div className="flex flex-col gap-5">
+      <div
+        className="adm-panel flex flex-col gap-4 rounded-xl p-4"
+        style={{ ["--adm-accent" as string]: ECONOMIA_ACCENT }}
+      >
+        <AdmHeading
+          accent={ECONOMIA_ACCENT}
+          icon={Landmark}
+          title="Cobrar Impuestos Globales"
+          subtitle="El diezmo del reino, cobrado a cada cuenta."
+        />
         <p className="text-sm text-muted-foreground">
           Se cobrará el mismo monto a todas las cuentas de jugadores y admins. Si una cuenta no
           alcanza, se cobra todo su oro disponible y muere su personaje vivo de mayor nivel total.
@@ -4132,35 +4166,24 @@ function TaxesTab({
       </div>
 
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="rounded-lg border border-border bg-secondary/15 p-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Cuentas</p>
-            <p className="text-lg font-semibold text-foreground">{summary.totalAccounts}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-secondary/15 p-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Oro cobrado</p>
-            <p className="text-lg font-semibold text-gold">{summary.totalCharged}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-secondary/15 p-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Faltante total</p>
-            <p className="text-lg font-semibold text-orange-300">{summary.totalShortfall}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-secondary/15 p-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">
-              {resultMode === "preview" ? "Muertes proyectadas" : "Muertes aplicadas"}
-            </p>
-            <p className="text-lg font-semibold text-destructive">
-              {resultMode === "preview"
-                ? summary.deathsProjectedCount
-                : summary.deathsAppliedCount}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <AdmStat label="Cuentas" value={summary.totalAccounts} accent={ECONOMIA_ACCENT} icon={Users} delay={0} />
+          <AdmStat label="Oro cobrado" value={summary.totalCharged} accent="#d4af37" tone="var(--gold)" icon={Coins} delay={0.05} />
+          <AdmStat label="Faltante total" value={summary.totalShortfall} accent="#fb923c" tone="#fdba74" icon={TrendingDown} delay={0.1} />
+          <AdmStat
+            label={resultMode === "preview" ? "Muertes proyectadas" : "Muertes aplicadas"}
+            value={resultMode === "preview" ? summary.deathsProjectedCount : summary.deathsAppliedCount}
+            accent="#f87171"
+            tone="var(--destructive)"
+            icon={Skull}
+            delay={0.15}
+          />
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-secondary/50 border-b border-border">
+      <div className="adm-panel overflow-x-auto rounded-xl" style={{ ["--adm-accent" as string]: ECONOMIA_ACCENT }}>
+        <table className="relative w-full text-sm">
+          <thead className="border-b border-border bg-secondary/40">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
               <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase">Oro antes</th>
@@ -4175,7 +4198,8 @@ function TaxesTab({
             {rows.map((row, idx) => (
               <tr
                 key={`${row.userId}-${idx}`}
-                className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+                className={`adm-row-in border-b border-border last:border-0 transition-colors hover:bg-[#22d3ee]/5 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+                style={{ ["--adm-delay" as string]: `${Math.min(idx, 12) * 0.03}s` }}
               >
                 <td className="px-3 py-3 font-medium text-foreground">{row.userName}</td>
                 <td className="px-3 py-3 text-center text-muted-foreground">{row.goldBefore}</td>
@@ -4215,6 +4239,8 @@ function TaxesTab({
     </div>
   );
 }
+
+const MUERTES_ACCENT = "#f87171";
 
 function DeadCharactersTab({
   token,
@@ -4343,47 +4369,42 @@ function DeadCharactersTab({
   }, [historyRows, searchTerm]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <AdmHero
+        accent={MUERTES_ACCENT}
+        icon={Skull}
+        title="El Salón de los Caídos"
+        subtitle="Los personajes que perecieron y sus rituales de retorno al mundo de los vivos."
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setView("actuales")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              view === "actuales"
-                ? "bg-gold/20 border-gold/50 text-gold"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Muertos actuales
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setHistoryPage(1);
-              setView("historial");
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              view === "historial"
-                ? "bg-gold/20 border-gold/50 text-gold"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Historial completo
-          </button>
-        </div>
+        <AdmPills
+          tabs={[
+            { id: "actuales", label: "Muertos actuales", icon: Skull },
+            { id: "historial", label: "Historial completo", icon: History },
+          ]}
+          active={view}
+          onChange={(next) => {
+            if (next === "historial") setHistoryPage(1);
+            setView(next);
+          }}
+          accent={MUERTES_ACCENT}
+        />
 
         <div className="flex gap-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar personaje o jugador"
-            className="w-64 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar personaje o jugador"
+              className="w-64 rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-[#f87171]/40"
+            />
+          </div>
           <button
             type="button"
             onClick={view === "actuales" ? loadCurrentDead : loadHistory}
-            className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
+            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
           >
             Actualizar
           </button>
@@ -4391,14 +4412,14 @@ function DeadCharactersTab({
       </div>
 
       {view === "actuales" && (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="adm-panel overflow-x-auto rounded-xl" style={{ ["--adm-accent" as string]: MUERTES_ACCENT }}>
           {loadingDead ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/50 border-b border-border">
+            <table className="relative w-full text-sm">
+              <thead className="border-b border-border bg-secondary/40">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Jugador</th>
@@ -4410,8 +4431,17 @@ function DeadCharactersTab({
               </thead>
               <tbody>
                 {filteredDeadRows.map((row, idx) => (
-                  <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
-                    <td className="px-3 py-3 font-medium text-foreground">{row.name}</td>
+                  <tr
+                    key={row.id}
+                    className={`adm-row-in border-b border-border last:border-0 transition-colors hover:bg-[#f87171]/5 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+                    style={{ ["--adm-delay" as string]: `${Math.min(idx, 12) * 0.03}s` }}
+                  >
+                    <td className="px-3 py-3">
+                      <span className="flex items-center gap-2 font-medium text-foreground">
+                        <Skull className="h-3.5 w-3.5 shrink-0 text-[#f87171]/70" />
+                        {row.name}
+                      </span>
+                    </td>
                     <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
                     <td className="px-3 py-3 text-center text-muted-foreground">{row.slot}</td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.deadAt)}</td>
@@ -4420,10 +4450,14 @@ function DeadCharactersTab({
                       <button
                         onClick={() => reviveDeadCharacter(row.id, row.name)}
                         disabled={reviving === row.id}
-                        className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60 flex items-center gap-1 mx-auto"
+                        className="mx-auto flex items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-700/25 px-3 py-1.5 text-xs font-semibold text-emerald-300 shadow transition-all hover:bg-emerald-600/35 active:scale-95 disabled:opacity-60"
                         title="Revivir sin cobrar oro"
                       >
-                        {reviving === row.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                        {reviving === row.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <HeartPulse className="h-3.5 w-3.5" />
+                        )}
                         Revivir
                       </button>
                     </td>
@@ -4444,14 +4478,14 @@ function DeadCharactersTab({
 
       {view === "historial" && (
         <div className="flex flex-col gap-3">
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="adm-panel overflow-x-auto rounded-xl" style={{ ["--adm-accent" as string]: MUERTES_ACCENT }}>
             {loadingHistory ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-gold" />
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-secondary/50 border-b border-border">
+              <table className="relative w-full text-sm">
+                <thead className="border-b border-border bg-secondary/40">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Fecha evento</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Personaje</th>
@@ -4464,7 +4498,11 @@ function DeadCharactersTab({
                 </thead>
                 <tbody>
                   {filteredHistoryRows.map((row, idx) => (
-                    <tr key={row.id} className={`border-b border-border last:border-0 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                    <tr
+                      key={row.id}
+                      className={`adm-row-in border-b border-border last:border-0 transition-colors hover:bg-[#f87171]/5 ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}
+                      style={{ ["--adm-delay" as string]: `${Math.min(idx, 12) * 0.03}s` }}
+                    >
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.createdAt)}</td>
                       <td className="px-3 py-3 font-medium text-foreground">{row.characterName}</td>
                       <td className="px-3 py-3 text-muted-foreground">{row.userName}</td>
@@ -4528,29 +4566,21 @@ function GroupSubTabs<T extends string>({
   tabs,
   active,
   onChange,
+  accent = "#d4af37",
 }: {
-  tabs: { id: T; label: string }[];
+  tabs: AdmPillTab<T>[];
   active: T;
   onChange: (id: T) => void;
+  accent?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onChange(tab.id)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-            active === tab.id
-              ? "border-gold/60 bg-gold/10 text-gold"
-              : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:bg-secondary"
-          }`}
-        >
-          {tab.label}
-        </button>
-      ))}
+    <div className="mb-6">
+      <AdmPills tabs={tabs} active={active} onChange={onChange} accent={accent} />
     </div>
   );
 }
+
+const ECONOMIA_ACCENT = "#22d3ee";
 
 function EconomiaGroupTab({
   token,
@@ -4564,16 +4594,16 @@ function EconomiaGroupTab({
   type EconomiaSubTab = "transacciones" | "impuestos";
   const [subTab, setSubTab] = useState<EconomiaSubTab>("transacciones");
 
-  const subTabs: { id: EconomiaSubTab; label: string }[] = [
-    { id: "transacciones", label: "Transacciones" },
+  const subTabs: AdmPillTab<EconomiaSubTab>[] = [
+    { id: "transacciones", label: "Transacciones", icon: Receipt },
     ...(isSuperAdmin
-      ? [{ id: "impuestos" as const, label: "Impuestos" }]
+      ? [{ id: "impuestos" as const, label: "Impuestos", icon: Scale }]
       : []),
   ];
 
   return (
     <div>
-      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} accent={ECONOMIA_ACCENT} />
       {subTab === "transacciones" && (
         <TransactionsTab token={token} onToast={onToast} />
       )}
@@ -4619,7 +4649,8 @@ function PartidasGroupTab({
 export default function AdminPage() {
   const router = useRouter();
   const { user, isLoading, token } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("usuarios");
+  // null = salón de mando (home con tarjetas)
+  const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -4634,6 +4665,8 @@ export default function AdminPage() {
 
   const showToast = useCallback(
     (message: string, type: "success" | "error") => {
+      if (type === "success") playSuccessSfx();
+      else playErrorSfx();
       setToast({ message, type });
       setTimeout(() => setToast(null), 3500);
     },
@@ -4651,26 +4684,40 @@ export default function AdminPage() {
 
   const isSuperAdmin = user.rolSistema === "super_admin";
 
-  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: "usuarios", label: "Usuarios", icon: Users },
-    { id: "tiendas", label: "Tiendas", icon: Store },
-    { id: "objetos", label: "Objetos", icon: Box },
-    { id: "transacciones", label: "Transacciones", icon: ArrowRightLeft },
-    { id: "ruleta", label: "Ruleta", icon: Dice6 },
-    { id: "dados", label: "Dados", icon: Dice6 },
-    { id: "muertes", label: "Personajes Muertos", icon: Skull },
-    { id: "partidas", label: "Publicar Partida", icon: Shield },
-    { id: "partidas-activas", label: "Partidas Activas", icon: Shield },
-    { id: "historial-partidas", label: "Historial", icon: Shield },
+  const tabs: {
+    id: Tab;
+    label: string;
+    desc: string;
+    accent: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { id: "usuarios", label: "Usuarios", desc: "Perfiles, roles, oro y personajes del reino", accent: "#60a5fa", icon: Users },
+    { id: "partidas", label: "Partidas", desc: "Crear expediciones, salas activas e historial", accent: "#fb923c", icon: Swords },
+    { id: "tiendas", label: "Tiendas", desc: "Catálogo e inventario de los mercaderes", accent: "#34d399", icon: Store },
+    { id: "objetos", label: "Objetos", desc: "La forja: crear y editar todos los objetos", accent: "#fbbf24", icon: Box },
+    {
+      id: "economia",
+      label: "Economía",
+      desc: isSuperAdmin ? "Transacciones de oro e impuestos del reino" : "Transacciones de oro del reino",
+      accent: "#22d3ee",
+      icon: Coins,
+    },
+    { id: "ruleta", label: "Ruleta", desc: "Premios y configuración de la rueda del destino", accent: "#c084fc", icon: Dices },
+    { id: "dados", label: "Dados", desc: "Dados del DM y tablas de botín", accent: "#d4af37", icon: Dice6 },
+    { id: "muertes", label: "Personajes Muertos", desc: "Los caídos y sus rituales de retorno", accent: "#f87171", icon: Skull },
   ];
 
-  if (isSuperAdmin) {
-    tabs.splice(4, 0, {
-      id: "impuestos",
-      label: "Cobrar Impuestos",
-      icon: Coins,
-    });
-  }
+  const activeCard = tabs.find((t) => t.id === activeTab) ?? null;
+
+  const openTab = (id: Tab) => {
+    playUiOpenSfx();
+    setActiveTab(id);
+  };
+
+  const goHome = () => {
+    playUiBackSfx();
+    setActiveTab(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -4704,64 +4751,106 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Contenedor principal con tabs */}
+        {/* Contenedor principal: salón de mando o sección abierta */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          {/* Tabs */}
-          <div className="border-b border-border overflow-x-auto overflow-y-hidden admin-tabs-scroll">
-            <div className="flex min-w-max">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 -mb-0.5 ${
-                    activeTab === tab.id
-                      ? "border-gold text-gold"
-                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              ))}
+          {activeCard === null ? (
+            <div className="p-6">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-4">
+                Salón de mando — elige tu destino
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {tabs.map((tab, i) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => openTab(tab.id)}
+                    onMouseEnter={playUiHoverSfx}
+                    className="adm-card adm-card-in group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-secondary/40 to-black/40 p-5 text-left cursor-pointer"
+                    style={{
+                      ["--adm-accent" as string]: tab.accent,
+                      ["--adm-delay" as string]: `${i * 0.06}s`,
+                    }}
+                  >
+                    {/* Halo del color de la sección */}
+                    <span
+                      className="absolute -top-10 -right-10 w-36 h-36 rounded-full opacity-15 group-hover:opacity-35 transition-opacity duration-300 pointer-events-none"
+                      style={{ background: `radial-gradient(circle, ${tab.accent}, transparent 70%)` }}
+                    />
+                    <span
+                      className="adm-icon-float relative inline-flex w-14 h-14 items-center justify-center rounded-xl border mb-3"
+                      style={{
+                        borderColor: `${tab.accent}55`,
+                        background: `${tab.accent}1a`,
+                        color: tab.accent,
+                        ["--adm-delay" as string]: `${i * 0.35}s`,
+                      }}
+                    >
+                      <tab.icon className="w-7 h-7" />
+                    </span>
+                    <span className="block font-serif text-lg text-foreground group-hover:text-gold transition-colors duration-300">
+                      {tab.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground font-sans mt-1 leading-relaxed">
+                      {tab.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Cabecera de la sección con retorno al salón */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+                <button
+                  type="button"
+                  onClick={goHome}
+                  onMouseEnter={playUiHoverSfx}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-xs font-sans text-muted-foreground hover:text-gold hover:border-gold/40 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Salón de mando
+                </button>
+                <span
+                  className="inline-flex w-8 h-8 items-center justify-center rounded-lg border"
+                  style={{
+                    borderColor: `${activeCard.accent}55`,
+                    background: `${activeCard.accent}1a`,
+                    color: activeCard.accent,
+                  }}
+                >
+                  <activeCard.icon className="w-4 h-4" />
+                </span>
+                <h2 className="font-serif text-lg text-foreground">{activeCard.label}</h2>
+              </div>
 
-          {/* Contenido de pestaña */}
-          <div className="p-6">
-            {activeTab === "usuarios" && (
-              <UsersTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
-            )}
-            {activeTab === "tiendas" && (
-              <ShopsTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "objetos" && (
-              <ObjectsTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "transacciones" && (
-              <TransactionsTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "ruleta" && (
-              <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
-            )}
-            {activeTab === "dados" && (
-              <DadosTab token={token} />
-            )}
-            {isSuperAdmin && activeTab === "impuestos" && (
-              <TaxesTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "muertes" && (
-              <DeadCharactersTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "partidas" && (
-              <PartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "partidas-activas" && (
-              <ActivePartidasTab token={token} onToast={showToast} />
-            )}
-            {activeTab === "historial-partidas" && (
-              <PartidasHistoryTab token={token} onToast={showToast} />
-            )}
-          </div>
+              <div key={activeCard.id} className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {activeTab === "usuarios" && (
+                  <UsersTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+                )}
+                {activeTab === "tiendas" && (
+                  <ShopsTab token={token} onToast={showToast} />
+                )}
+                {activeTab === "objetos" && (
+                  <ObjectsTab token={token} onToast={showToast} />
+                )}
+                {activeTab === "economia" && (
+                  <EconomiaGroupTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+                )}
+                {activeTab === "ruleta" && (
+                  <RuletaTab token={token} onToast={showToast} isSuperAdmin={isSuperAdmin} />
+                )}
+                {activeTab === "dados" && (
+                  <DadosTab token={token} />
+                )}
+                {activeTab === "muertes" && (
+                  <DeadCharactersTab token={token} onToast={showToast} />
+                )}
+                {activeTab === "partidas" && (
+                  <PartidasGroupTab token={token} onToast={showToast} />
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Toast */}

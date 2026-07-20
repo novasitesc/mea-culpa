@@ -1042,3 +1042,298 @@ input[type="number"]::-webkit-outer-spin-button:hover {
   75%      { transform: rotate(5deg) translateX(2px); }
 }
 .cd-fall-wobble { animation: cd-wobble 1.6s ease-in-out 0.55s infinite; }
+
+/* ══════════════════════════════════════════════════════════════
+   Feed en vivo: entradas dramáticas por tipo de evento
+   Prefijo: sf-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Entrada con sacudida para caídas y desmembramientos */
+@keyframes sf-shake-in {
+  0%   { opacity: 0; transform: translateX(-14px); }
+  35%  { opacity: 1; transform: translateX(5px); }
+  55%  { transform: translateX(-4px); }
+  75%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+.sf-shake-in { animation: sf-shake-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+/* Fogonazo rojo que se desvanece tras la entrada de un evento cruento */
+@keyframes sf-flash-red {
+  0%   { background-color: rgba(185, 28, 28, 0.28); }
+  100% { background-color: transparent; }
+}
+.sf-flash-red { animation: sf-flash-red 1.4s ease-out both; }
+
+/* Resplandor púrpura para consumibles usados */
+@keyframes sf-flash-purple {
+  0%   { background-color: rgba(147, 51, 234, 0.22); }
+  100% { background-color: transparent; }
+}
+.sf-flash-purple { animation: sf-flash-purple 1.4s ease-out both; }
+
+/* El frasco brota, se agita y brilla al beberse */
+@keyframes sf-flask-pop {
+  0%   { transform: scale(0.3) rotate(-30deg); opacity: 0; filter: brightness(2.5); }
+  45%  { transform: scale(1.3) rotate(10deg); opacity: 1; }
+  65%  { transform: scale(0.92) rotate(-6deg); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+.sf-flask-pop { animation: sf-flask-pop 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+
+/* Chispas mágicas que ascienden desde el frasco */
+@keyframes sf-spark {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(var(--sf-drift, 6px), -18px) scale(0.2); opacity: 0; }
+}
+.sf-spark { animation: sf-spark 1s ease-out var(--sf-delay, 0s) both; }
+
+/* ══════════════════════════════════════════════════════════════
+   Overlay de desmembramiento (tajo a pantalla completa)
+   Prefijo: dm-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Tajo diagonal que cruza la pantalla */
+@keyframes dm-slash {
+  0%   { transform: rotate(-24deg) scaleX(0); opacity: 0; }
+  30%  { transform: rotate(-24deg) scaleX(1.1); opacity: 1; }
+  60%  { opacity: 0.9; }
+  100% { transform: rotate(-24deg) scaleX(1.1); opacity: 0; }
+}
+.dm-slash {
+  animation: dm-slash 0.9s cubic-bezier(0.1, 0.9, 0.2, 1) both;
+  transform-origin: left center;
+}
+
+/* Gotas de sangre que caen tras el corte */
+@keyframes dm-blood-fall {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  15%  { opacity: 0.95; }
+  100% { transform: translateY(48vh) translateX(var(--dm-drift, 0px)); opacity: 0; }
+}
+.dm-blood { animation: dm-blood-fall var(--dm-duration, 2s) ease-in var(--dm-delay, 0s) infinite; }
+
+/* El icono del hacha entra girando con el corte */
+@keyframes dm-axe-in {
+  0%   { transform: rotate(-140deg) scale(0.3) translateY(-30px); opacity: 0; }
+  45%  { transform: rotate(15deg) scale(1.25) translateY(0); opacity: 1; }
+  65%  { transform: rotate(-8deg) scale(0.95); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.dm-axe-in { animation: dm-axe-in 0.7s cubic-bezier(0.2, 1.2, 0.4, 1) both; }
+
+/* ══════════════════════════════════════════════════════════════
+   Pantalla ceremonial de fin de partida
+   Prefijo: pf-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Trofeo que entra con volteo 3D y destello dorado */
+@keyframes pf-trophy-in {
+  0%   { transform: perspective(700px) rotateY(200deg) scale(0.3); opacity: 0; filter: brightness(3); }
+  55%  { transform: perspective(700px) rotateY(-18deg) scale(1.15); opacity: 1; }
+  75%  { transform: perspective(700px) rotateY(8deg) scale(0.96); }
+  100% { transform: perspective(700px) rotateY(0deg) scale(1); filter: brightness(1); }
+}
+.pf-trophy-in { animation: pf-trophy-in 1.1s cubic-bezier(0.2, 1.1, 0.35, 1) both; }
+
+/* Latido dorado permanente del trofeo */
+@keyframes pf-trophy-glow {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.45)); }
+  50%      { filter: drop-shadow(0 0 30px rgba(212, 175, 55, 0.85)); }
+}
+.pf-trophy-glow { animation: pf-trophy-glow 2.2s ease-in-out 1.1s infinite; }
+
+/* Cada pieza del botín se revela con un giro 3D desde abajo */
+@keyframes pf-loot-in {
+  0%   { transform: perspective(500px) rotateX(-70deg) translateY(14px); opacity: 0; }
+  60%  { transform: perspective(500px) rotateX(12deg) translateY(0); opacity: 1; }
+  100% { transform: perspective(500px) rotateX(0deg); }
+}
+.pf-loot-in { animation: pf-loot-in 0.55s cubic-bezier(0.2, 1.2, 0.4, 1) both; }
+
+/* Brillo que barre el título dorado */
+@keyframes pf-shine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.pf-shine {
+  background: linear-gradient(100deg, #d4af37 40%, #fff7d6 50%, #d4af37 60%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: pf-shine 2.8s linear 1.2s infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Panel admin: tarjetas del salón de mando
+   Prefijo: adm-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Entrada escalonada de las tarjetas */
+@keyframes adm-card-in {
+  0%   { opacity: 0; transform: translateY(18px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.adm-card-in { animation: adm-card-in 0.5s cubic-bezier(0.2, 1, 0.4, 1) var(--adm-delay, 0s) both; }
+
+/* Flotación suave del icono en reposo */
+@keyframes adm-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+.adm-icon-float { animation: adm-icon-float 3.2s ease-in-out var(--adm-delay, 0s) infinite; }
+
+/* Tarjeta interactiva: elevación con resplandor del color de la sección */
+.adm-card {
+  transition: transform 0.25s cubic-bezier(0.2, 1, 0.4, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.adm-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: color-mix(in srgb, var(--adm-accent, #d4af37) 60%, transparent);
+  box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--adm-accent, #d4af37) 35%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--adm-accent, #d4af37) 25%, transparent);
+}
+.adm-card:active { transform: translateY(-1px) scale(0.99); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-shake-in, .sf-flash-red, .sf-flash-purple, .sf-flask-pop, .sf-spark,
+  .dm-slash, .dm-blood, .dm-axe-in,
+  .pf-trophy-in, .pf-trophy-glow, .pf-loot-in, .pf-shine,
+  .adm-card-in, .adm-icon-float {
+    animation: none !important;
+    opacity: 1;
+  }
+  .adm-card, .adm-card:hover, .adm-card:active { transform: none; transition: none; }
+  /* El tajo y las chispas son puramente decorativos: sin animación se ocultan */
+  .dm-slash, .sf-spark { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Panel admin: módulos internos (economía, ruleta, dados, muertes)
+   Contenedores temáticos por color de acento (--adm-accent), con
+   texturas de grano, halos y realces. Prefijo: adm-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Contenedor temático base — el color lo fija la variable --adm-accent */
+.adm-panel {
+  position: relative;
+  border-width: 1px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--adm-accent, #d4af37) 24%, var(--border));
+  background:
+    radial-gradient(130% 130% at 100% 0%,
+      color-mix(in srgb, var(--adm-accent, #d4af37) 12%, transparent), transparent 55%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--secondary) 60%, transparent) 0%,
+      rgba(0, 0, 0, 0.34) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 30px -20px color-mix(in srgb, var(--adm-accent, #d4af37) 55%, transparent);
+}
+
+/* Grano tenue sobre paneles (no bloquea el puntero) */
+.adm-panel::after,
+.adm-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='an'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23an)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+}
+
+/* Halo de acento en la esquina de los paneles hero */
+.adm-hero-halo {
+  position: absolute;
+  top: -35%;
+  right: -6%;
+  width: 280px;
+  height: 280px;
+  border-radius: 9999px;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--adm-accent, #d4af37) 45%, transparent), transparent 70%);
+  opacity: 0.22;
+  pointer-events: none;
+  filter: blur(6px);
+}
+
+/* Barra de acento superior */
+.adm-accent-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--adm-accent, #d4af37), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Realce diagonal del stat tile */
+.adm-stat-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(120% 120% at 0% 0%,
+    color-mix(in srgb, var(--adm-accent, #d4af37) 18%, transparent), transparent 60%);
+}
+
+/* Modal renovado temático */
+.adm-modal {
+  background: var(--card);
+  border-width: 1px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--adm-accent, #d4af37) 42%, var(--border));
+  box-shadow:
+    0 30px 90px -30px rgba(0, 0, 0, 0.85),
+    0 0 0 1px color-mix(in srgb, var(--adm-accent, #d4af37) 18%, transparent),
+    0 0 60px -22px color-mix(in srgb, var(--adm-accent, #d4af37) 45%, transparent);
+}
+
+.adm-modal-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--adm-accent, #d4af37), transparent);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.adm-modal-head {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--adm-accent, #d4af37) 11%, transparent), transparent);
+}
+
+/* Giro decorativo lento (rueda de la ruleta) */
+@keyframes adm-spin {
+  to { transform: rotate(360deg); }
+}
+.adm-spin-slow { animation: adm-spin 18s linear infinite; }
+
+/* Aparición escalonada de filas de listas/tablas */
+@keyframes adm-row-in {
+  0%   { opacity: 0; transform: translateY(7px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.adm-row-in { animation: adm-row-in 0.42s cubic-bezier(0.2, 1, 0.4, 1) var(--adm-delay, 0s) both; }
+
+/* Pulso suave de un realce de acento */
+@keyframes adm-accent-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+.adm-accent-pulse { animation: adm-accent-pulse 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-spin-slow, .adm-row-in, .adm-accent-pulse {
+    animation: none !important;
+    opacity: 1;
+  }
+}

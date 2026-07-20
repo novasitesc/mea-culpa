@@ -1,13 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, Plus, RotateCw, Shield, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Dices,
+  Gift,
+  Loader2,
+  Plus,
+  Power,
+  RotateCw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
 import { categoryToLabel, type RouletteCategory } from "@/lib/roulette";
 import { getIconForString } from "@/lib/iconMapper";
+import { AdmHero, AdmPanel, AdmHeading } from "./section-ui";
+
+const ACCENT = "#c084fc";
 
 const CATEGORIES: RouletteCategory[] = [
   "jackpot",
@@ -17,6 +30,16 @@ const CATEGORIES: RouletteCategory[] = [
   "mediano",
   "pequeno",
 ];
+
+// Colores de rareza por categoría (estética de botín de RPG)
+const CATEGORY_ACCENT: Record<RouletteCategory, string> = {
+  jackpot: "#f5c542",
+  muy_grande: "#c084fc",
+  grande: "#60a5fa",
+  mediano: "#34d399",
+  pequeno: "#fbbf24",
+  nada: "#8a8172",
+};
 
 const CONFIGURABLE_CATEGORIES: RouletteCategory[] = CATEGORIES.filter(
   (category) => category !== "nada",
@@ -254,213 +277,258 @@ export function RuletaTab({
     await load();
   };
 
+  const totalPrizes = pools.length;
+  const activePrizes = pools.filter((p) => p.active).length;
+
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gold/30 bg-card/90 p-4 shadow-lg medieval-border">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-gold flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Configuración de ruleta
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Habilita la ruleta y administra las pools reales por categoría.
-            </p>
-          </div>
+      {/* Hero: estado de la ruleta con rueda decorativa girando */}
+      <AdmHero
+        accent={ACCENT}
+        icon={Dices}
+        title="La Rueda del Destino"
+        subtitle="Habilita la ruleta y forja las pools de premios reales por categoría."
+        right={
           <button
             onClick={handleToggle}
             disabled={!isSuperAdmin}
-            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
               config?.habilitada
-                ? "bg-green-900/30 border-green-700 text-green-200"
-                : "bg-destructive/20 border-destructive/40 text-destructive"
-            } ${!isSuperAdmin ? "opacity-50 cursor-not-allowed" : ""}`}
+                ? "border-emerald-600/60 bg-emerald-700/20 text-emerald-300"
+                : "border-destructive/50 bg-destructive/15 text-destructive"
+            } ${!isSuperAdmin ? "cursor-not-allowed opacity-50" : ""}`}
           >
+            <Power className="h-4 w-4" />
             {config?.habilitada ? "Ruleta activa" : "Ruleta apagada"}
           </button>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/50 px-3 py-1.5 text-xs text-muted-foreground">
+            <span className="relative inline-flex h-4 w-4">
+              <span
+                className="adm-spin-slow absolute inset-0 rounded-full border-2 border-dashed"
+                style={{ borderColor: `${ACCENT}88` }}
+              />
+            </span>
+            {totalPrizes} premios en las pools
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-700/10 px-3 py-1.5 text-xs text-emerald-300">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {activePrizes} activos
+          </span>
         </div>
-      </div>
+      </AdmHero>
 
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={handleCreate} className="rounded-xl border border-border bg-card p-4 space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">Nuevo premio</h3>
-            <p className="text-xs text-muted-foreground">Crea entradas para la pool de una categoría.</p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Categoría</span>
-              <Select value={form.category} onChange={(e) => setForm((current) => ({ ...current, category: e.target.value as RouletteCategory }))}>
-                {CONFIGURABLE_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {categoryToLabel(category)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-
-            <label className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Tipo</span>
-              <Select value={form.rewardType} onChange={(e) => setForm((current) => ({ ...current, rewardType: e.target.value as "oro" | "objeto" }))}>
-                <option value="oro">Oro</option>
-                <option value="objeto">Objeto</option>
-              </Select>
-            </label>
-          </div>
-
-          <label className="space-y-1 text-sm block">
-            <span className="text-muted-foreground">Etiqueta opcional</span>
-            <input
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              value={form.label}
-              onChange={(e) => setForm((current) => ({ ...current, label: e.target.value }))}
-              placeholder="Ej: Cofre legendario"
+        {/* Formulario de nuevo premio */}
+        <form onSubmit={handleCreate}>
+          <AdmPanel accent={ACCENT} className="space-y-4">
+            <AdmHeading
+              accent={ACCENT}
+              icon={Plus}
+              title="Nuevo premio"
+              subtitle="Crea entradas para la pool de una categoría."
             />
-          </label>
 
-          {form.rewardType === "oro" ? (
-            <label className="space-y-1 text-sm block">
-              <span className="text-muted-foreground">Monto de oro</span>
-              <GoldAmountInput
-                value={Number(form.goldAmount) || 0}
-                onChangeValue={(value) => setForm((current) => ({ ...current, goldAmount: String(value ?? 0) }))}
-                placeholder="Cantidad de oro"
-              />
-            </label>
-          ) : (
-            <label className="space-y-1 text-sm block">
-              <span className="text-muted-foreground">Objeto</span>
-              <ObjectSelector
-                items={objectOptions}
-                value={form.objectId}
-                onChange={(value) => setForm((current) => ({ ...current, objectId: value }))}
-                searchable
-                searchPlaceholder="Buscar objeto para la pool..."
-                emptyLabel="No hay objetos configurados"
-              />
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <input
-                  type="number"
-                  min={1}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  value={form.objectQuantity}
-                  onChange={(e) => setForm((current) => ({ ...current, objectQuantity: e.target.value }))}
-                  placeholder="Cantidad"
-                />
-                <div className="w-full" />
-              </div>
-            </label>
-          )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm">
+                <span className="text-muted-foreground">Categoría</span>
+                <Select value={form.category} onChange={(e) => setForm((current) => ({ ...current, category: e.target.value as RouletteCategory }))}>
+                  {CONFIGURABLE_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {categoryToLabel(category)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
 
-          {form.rewardType === "oro" ? (
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                type="button"
-                onClick={() => setForm((current) => ({ ...current, active: !current.active }))}
-                className={`rounded-lg border px-3 py-2 text-sm ${form.active ? "border-green-700 bg-green-950/30 text-green-200" : "border-border bg-secondary text-muted-foreground"}`}
-              >
-                {form.active ? "Activa" : "Inactiva"}
-              </button>
+              <label className="space-y-1 text-sm">
+                <span className="text-muted-foreground">Tipo</span>
+                <Select value={form.rewardType} onChange={(e) => setForm((current) => ({ ...current, rewardType: e.target.value as "oro" | "objeto" }))}>
+                  <option value="oro">Oro</option>
+                  <option value="objeto">Objeto</option>
+                </Select>
+              </label>
             </div>
-          ) : (
+
+            <label className="block space-y-1 text-sm">
+              <span className="text-muted-foreground">Etiqueta opcional</span>
+              <input
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#c084fc]/40"
+                value={form.label}
+                onChange={(e) => setForm((current) => ({ ...current, label: e.target.value }))}
+                placeholder="Ej: Cofre legendario"
+              />
+            </label>
+
+            {form.rewardType === "oro" ? (
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground">Monto de oro</span>
+                <GoldAmountInput
+                  value={Number(form.goldAmount) || 0}
+                  onChangeValue={(value) => setForm((current) => ({ ...current, goldAmount: String(value ?? 0) }))}
+                  placeholder="Cantidad de oro"
+                />
+              </label>
+            ) : (
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground">Objeto</span>
+                <ObjectSelector
+                  items={objectOptions}
+                  value={form.objectId}
+                  onChange={(value) => setForm((current) => ({ ...current, objectId: value }))}
+                  searchable
+                  searchPlaceholder="Buscar objeto para la pool..."
+                  emptyLabel="No hay objetos configurados"
+                />
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#c084fc]/40"
+                    value={form.objectQuantity}
+                    onChange={(e) => setForm((current) => ({ ...current, objectQuantity: e.target.value }))}
+                    placeholder="Cantidad"
+                  />
+                  <div className="w-full" />
+                </div>
+              </label>
+            )}
+
             <button
               type="button"
               onClick={() => setForm((current) => ({ ...current, active: !current.active }))}
-              className={`rounded-lg border px-3 py-2 text-sm ${form.active ? "border-green-700 bg-green-950/30 text-green-200" : "border-border bg-secondary text-muted-foreground"}`}
+              className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                form.active
+                  ? "border-emerald-700 bg-emerald-950/30 text-emerald-200"
+                  : "border-border bg-secondary text-muted-foreground"
+              }`}
             >
-              {form.active ? "Activa" : "Inactiva"}
+              {form.active ? "Se creará activa" : "Se creará inactiva"}
             </button>
-          )}
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-lg bg-gold px-4 py-2 text-background font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Agregar premio
-          </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-semibold text-background transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: ACCENT, boxShadow: `0 8px 24px -10px ${ACCENT}` }}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Agregar premio
+            </button>
+          </AdmPanel>
         </form>
 
+        {/* Pools por categoría */}
         <div className="space-y-4">
           {loading ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <AdmPanel accent={ACCENT} className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
               Cargando pools...
-            </div>
+            </AdmPanel>
           ) : (
-            groupByCategory(pools).map((group) => (
-              <section key={group.category} className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="font-semibold text-gold">{group.label}</h4>
-                    <p className="text-xs text-muted-foreground">{group.items.length} premios configurados</p>
-                  </div>
-                  <button onClick={() => void load()} className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    Recargar
-                  </button>
-                </div>
+            groupByCategory(pools).map((group) => {
+              const catAccent = CATEGORY_ACCENT[group.category];
+              return (
+                <AdmPanel key={group.category} accent={catAccent} className="space-y-3">
+                  <AdmHeading
+                    accent={catAccent}
+                    icon={Gift}
+                    title={group.label}
+                    subtitle={`${group.items.length} premios configurados`}
+                    right={
+                      <button
+                        onClick={() => void load()}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        Recargar
+                      </button>
+                    }
+                  />
 
-                <div className="space-y-2">
-                  {group.items.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Sin premios todavía.</p>
-                  ) : (
-                    group.items.map((pool) => (
-                      <div key={pool.id} className="rounded-lg border border-border/80 bg-background/60 p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0">
-                          <div className="font-medium text-foreground truncate flex items-center gap-1.5">
-                            {pool.rewardType === "oro"
-                              ? pool.label || `Oro x${pool.goldAmount ?? 0}`
-                              : <>{getIconForString(pool.object?.name ?? "📦", "w-4 h-4 shrink-0 text-[#D4AF37]", pool.object?.icon)} {pool.label || pool.object?.name || "Objeto"}</>}
+                  <div className="space-y-2">
+                    {group.items.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-border/60 py-4 text-center text-sm text-muted-foreground">
+                        Sin premios todavía.
+                      </p>
+                    ) : (
+                      group.items.map((pool, idx) => (
+                        <div
+                          key={pool.id}
+                          className="adm-row-in flex flex-col gap-2 rounded-lg border border-border/70 bg-background/50 p-3 transition-colors hover:border-border md:flex-row md:items-center md:justify-between"
+                          style={{ ["--adm-delay" as string]: `${idx * 0.04}s` }}
+                        >
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span
+                              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+                              style={{ borderColor: `${catAccent}55`, background: `${catAccent}1a`, color: catAccent }}
+                            >
+                              {pool.rewardType === "oro" ? (
+                                <Sparkles className="h-4 w-4" />
+                              ) : (
+                                getIconForString(pool.object?.name ?? "📦", "w-4 h-4", pool.object?.icon)
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-foreground">
+                                {pool.rewardType === "oro"
+                                  ? pool.label || `Oro x${pool.goldAmount ?? 0}`
+                                  : pool.label || pool.object?.name || "Objeto"}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {pool.rewardType === "oro"
+                                  ? `${pool.goldAmount?.toLocaleString("es-ES") ?? 0} oro`
+                                  : `${pool.objectQuantity} unidad${pool.objectQuantity === 1 ? "" : "es"}`}
+                                {" · "}
+                                <span className={pool.active ? "text-emerald-400" : "text-muted-foreground/70"}>
+                                  {pool.active ? "Activa" : "Inactiva"}
+                                </span>
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {pool.rewardType === "oro"
-                              ? `${pool.goldAmount?.toLocaleString("es-ES") ?? 0} oro`
-                              : `${pool.objectQuantity} unidad${pool.objectQuantity === 1 ? "" : "es"}`}
-                            {" · "}
-                            Estado: {pool.active ? "Activa" : "Inactiva"}
-                          </p>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleToggleActive(pool.id, pool.active)}
+                              disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-60 ${
+                                pool.active
+                                  ? "border-amber-600/40 bg-amber-900/20 text-amber-300 hover:bg-amber-900/30"
+                                  : "border-emerald-700 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/30"
+                              }`}
+                            >
+                              {actionId === `toggle:${pool.id}` ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : pool.active ? (
+                                <Power className="h-4 w-4" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              {pool.active ? "Desactivar" : "Activar"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePrize(pool.id, pool.label || (pool.rewardType === "oro" ? `Oro x${pool.goldAmount ?? 0}` : pool.object?.name || "Objeto"))}
+                              disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
+                              className="inline-flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/15 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/25 disabled:opacity-60"
+                            >
+                              {actionId === `delete:${pool.id}` ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              Borrar
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void handleToggleActive(pool.id, pool.active)}
-                          disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
-                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${
-                            pool.active
-                              ? "border-destructive/40 bg-destructive/10 text-destructive"
-                              : "border-green-700 bg-green-950/30 text-green-300"
-                          }`}
-                        >
-                          {actionId === `toggle:${pool.id}` ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : pool.active ? (
-                            <Trash2 className="w-4 h-4" />
-                          ) : (
-                            <CheckCircle2 className="w-4 h-4" />
-                          )}
-                          {pool.active ? "Desactivar" : "Activar"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePrize(pool.id, pool.label || (pool.rewardType === "oro" ? `Oro x${pool.goldAmount ?? 0}` : pool.object?.name || "Objeto"))}
-                          disabled={actionId === `toggle:${pool.id}` || actionId === `delete:${pool.id}`}
-                          className="inline-flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/20 px-3 py-2 text-sm text-destructive disabled:opacity-60"
-                        >
-                          {actionId === `delete:${pool.id}` ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                          Borrar
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
-            ))
+                      ))
+                    )}
+                  </div>
+                </AdmPanel>
+              );
+            })
           )}
         </div>
       </div>
@@ -468,7 +536,7 @@ export function RuletaTab({
       <ConfirmActionModal
         open={Boolean(deleteTarget)}
         title="Eliminar premio"
-        description={`¿Seguro que quieres borrar \"${deleteTarget?.label ?? "este premio"}\" de la pool? Esta acción no se puede deshacer.`}
+        description={`¿Seguro que quieres borrar "${deleteTarget?.label ?? "este premio"}" de la pool? Esta acción no se puede deshacer.`}
         confirmText="Sí, borrar"
         cancelText="Cancelar"
         isLoading={Boolean(deleteTarget && actionId === `delete:${deleteTarget.id}`)}
