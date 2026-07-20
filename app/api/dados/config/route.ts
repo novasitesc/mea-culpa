@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabaseServer";
-import { getUserFromRequest } from "@/lib/apiAuth";
+import { requireAdmin } from "@/lib/adminAuth";
 import { mapLutCaraRows, mapSubtablaCaraRows, mapSublistaRows } from "@/lib/dice/load";
 
+// Config del tirador: solo admins/DMs (sala DM y probador del panel admin).
 export async function GET(request: Request) {
-  const db = createServerClient();
-  const { user, error: authError } = await getUserFromRequest(db, request);
-  if (authError || !user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+  const { session } = result;
+  const db = session.db;
 
   const { data: recompensas, error } = await db
     .from("dados_recompensas")
@@ -34,7 +33,7 @@ export async function GET(request: Request) {
         .from("dados_subtabla_caras")
         .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, objeto:objeto_id(id, nombre, icono)`),
       // Personajes vivos del usuario: destino de los ítems en la tirada personal.
-      db.from("personajes").select("id, nombre, muerto").eq("usuario_id", user.id).order("id"),
+      db.from("personajes").select("id, nombre, muerto").eq("usuario_id", session.userId).order("id"),
     ]);
 
   const lutMap = new Map<number, any[]>();

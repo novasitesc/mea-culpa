@@ -33,6 +33,8 @@ export type EventoDadoTirado = {
   objeto?: { id: number; nombre: string; icono: string };
   cantidadOro?: number;
   lutResultados?: LutCaraResult[];
+  /** Detalle de entrega por ítem (para reproducir el overlay en espectadores). */
+  entregas?: Array<{ objetoId: number; solicitada: number; entregada: number }>;
   personajeNombre: string;
   personajeId: number;
 };

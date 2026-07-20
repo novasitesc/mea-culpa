@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Loader2, ArrowLeft, Swords, Home } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import Link from "next/link";
@@ -11,8 +12,31 @@ import SalaDM from "@/app/components/sala-dm";
 import SalaPlayer from "@/app/components/sala-player";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
-import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento, EventoDadoTirado } from "@/lib/types/sala";
+import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
+import type { DiceType } from "@/lib/types/dados";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+
+// Solo carga three/fiber cuando hay una tirada ajena que reproducir.
+const DiceOverlay = dynamic(() => import("@/app/components/dice-3d/dice-overlay"), { ssr: false });
+
+// La tirada del DM llega por broadcast: los espectadores reproducen la misma
+// animación con el resultado ya comprometido en el servidor.
+function overlayFromEvento(ev: EventoDadoTirado): DiceOverlayData {
+  return {
+    tipoDado: ev.tipoDado as DiceType,
+    recompensaNombre: ev.recompensaNombre,
+    personajeNombre: ev.personajeNombre,
+    result: {
+      resultados: ev.resultados,
+      tipoResultado: ev.tipoResultado as DiceOverlayData["result"]["tipoResultado"],
+      objeto: ev.objeto,
+      cantidadOro: ev.cantidadOro,
+      lutResultados: ev.lutResultados,
+      entregas: ev.entregas,
+    },
+  };
+}
 
 export default function SalaPage() {
   const params = useParams();
@@ -27,6 +51,9 @@ export default function SalaPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [showFinalModal, setShowFinalModal] = useState(false);
+  // Tirada de otro cliente pendiente de reproducir; key fuerza remontar el
+  // overlay si llega otra tirada mientras la anterior sigue abierta.
+  const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
@@ -97,6 +124,11 @@ export default function SalaPage() {
     channel
       .on("broadcast", { event: "dado_tirado" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
+        // El emisor no recibe su propio broadcast: todo dado_tirado entrante
+        // es de otro cliente y se reproduce con la animación completa.
+        if (payload.tipo === "dado_tirado") {
+          setSpectatorRoll((prev) => ({ key: (prev?.key ?? 0) + 1, data: overlayFromEvento(payload) }));
+        }
       })
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
@@ -370,6 +402,16 @@ export default function SalaPage() {
           </section>
         </div>
       </div>
+
+      {/* Tirada del DM reproducida en espectadores */}
+      {spectatorRoll && (
+        <DiceOverlay
+          key={spectatorRoll.key}
+          data={spectatorRoll.data}
+          onFinished={() => {}}
+          onClose={() => setSpectatorRoll(null)}
+        />
+      )}
 
       {/* Modal: Partida finalizada (jugadores) */}
       {showFinalModal && partida && (

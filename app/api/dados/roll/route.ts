@@ -1,18 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabaseServer";
-import { getUserFromRequest } from "@/lib/apiAuth";
+import { requireAdmin } from "@/lib/adminAuth";
 import { resolveRoll, collectObjetoIds, toRollResult, DiceConfigError } from "@/lib/dice/engine";
 import { loadRewardConfig, loadObjetos, rollBodySchema } from "@/lib/dice/load";
 import { personalAwarder } from "@/lib/dice/apply";
 
+// Tirada personal: solo admins/DMs (probador del panel admin).
 export async function POST(request: Request) {
-  const db = createServerClient();
-  const { user, error: authError } = await getUserFromRequest(db, request);
-  if (authError || !user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+  const { session } = result;
+  const db = session.db;
 
   const parsed = rollBodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
       .from("personajes")
       .select("id, muerto")
       .eq("id", personaje_id)
-      .eq("usuario_id", user.id)
+      .eq("usuario_id", session.userId)
       .maybeSingle();
     if (!pj || (pj as { muerto: boolean }).muerto) {
       return NextResponse.json({ error: "Personaje no válido" }, { status: 400 });
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
     const resultado = toRollResult(config, outcomes, objetos, cantidad);
 
     const rollId = roll_id ?? randomUUID();
-    const awarder = personalAwarder(db, { userId: user.id, personajeId, config, cantidad, resultado });
+    const awarder = personalAwarder(db, { userId: session.userId, personajeId, config, cantidad, resultado });
     const ejec = await awarder.execute(rollId, outcomes);
 
     return NextResponse.json({ ...ejec.resultado, rollId, entregas: ejec.entregas, replayed: ejec.replayed });
@@ -66,11 +65,10 @@ export async function POST(request: Request) {
 
 // Recuperación tras refresh: devuelve la tirada ya comprometida para reproducirla.
 export async function GET(request: Request) {
-  const db = createServerClient();
-  const { user, error: authError } = await getUserFromRequest(db, request);
-  if (authError || !user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+  const { session } = result;
+  const db = session.db;
 
   const rollId = new URL(request.url).searchParams.get("rollId");
   if (!rollId || !z.string().uuid().safeParse(rollId).success) {
@@ -81,7 +79,7 @@ export async function GET(request: Request) {
     .from("dados_tiradas")
     .select("roll_id, resultado, entregas")
     .eq("roll_id", rollId)
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", session.userId)
     .eq("contexto", "personal")
     .maybeSingle();
 

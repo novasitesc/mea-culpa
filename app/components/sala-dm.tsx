@@ -133,6 +133,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       objeto: result.objeto,
       cantidadOro: result.cantidadOro,
       lutResultados: result.lutResultados,
+      entregas: result.entregas,
       personajeNombre: selectedParticipante.nombre,
       personajeId: selectedParticipante.personajeId,
     });
