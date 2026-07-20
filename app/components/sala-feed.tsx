@@ -204,7 +204,10 @@ function renderEvento(ev: SalaEvento, i: number) {
     );
   }
 
-  if (ev.tipo === "descanso_largo") {
+  if (ev.tipo === "descanso_largo" || ev.tipo === "descanso_corto") {
+    const corto = ev.tipo === "descanso_corto";
+    const conRacion = ev.personajes.filter((p) => !p.sinRacion);
+    const sinRacion = ev.personajes.filter((p) => p.sinRacion);
     return (
       <div key={i} className="py-2 border-b border-emerald-900/30 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500">
         <div className="rounded-lg border border-emerald-800/40 bg-gradient-to-r from-emerald-950/40 via-black/30 to-emerald-950/40 px-3 py-2.5 flex items-center gap-2.5">
@@ -213,14 +216,23 @@ function renderEvento(ev: SalaEvento, i: number) {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-sans text-emerald-300 font-semibold uppercase tracking-widest">
-              Descanso largo
+              {corto ? "Descanso corto" : "Descanso largo"}
             </p>
-            {ev.personajes.length > 0 ? (
+            {conRacion.length > 0 && (
               <p className="text-[11px] text-foreground/50 font-sans">
-                <span className="text-foreground/70">{ev.personajes.map((p) => p.nombre).join(", ")}</span>
-                <span className="text-emerald-400 font-semibold"> — caídas restauradas y −1 de cansancio</span>
+                <span className="text-foreground/70">{conRacion.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-emerald-400 font-semibold">
+                  {corto ? " — ración consumida, cura 1 caída" : " — caídas restauradas y −1 de cansancio"}
+                </span>
               </p>
-            ) : (
+            )}
+            {sinRacion.length > 0 && (
+              <p className="text-[11px] text-foreground/50 font-sans">
+                <span className="text-foreground/70">{sinRacion.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-red-400 font-semibold"> — sin ración: +1 de cansancio</span>
+              </p>
+            )}
+            {ev.personajes.length === 0 && (
               <p className="text-[11px] text-foreground/40 italic font-sans">
                 El grupo descansa; nadie necesitaba recuperarse.
               </p>

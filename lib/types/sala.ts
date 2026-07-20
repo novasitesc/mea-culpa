@@ -98,15 +98,28 @@ export type EventoCansancio = {
   delta: number;
 };
 
+export type DescansoPersonajeResultado = {
+  personajeId: number;
+  nombre: string;
+  caidasPrevias: number;
+  cansancioPrevio: number;
+  /** Estado tras el descanso (ausente en eventos antiguos persistidos). */
+  caidas?: number;
+  cansancio?: number;
+  /** Sin ración: no recibió beneficio y ganó +1 cansancio. */
+  sinRacion?: boolean;
+};
+
 export type EventoDescansoLargo = {
   tipo: "descanso_largo";
-  /** Personajes beneficiados: caídas restauradas a 0 y −1 nivel de cansancio. */
-  personajes: Array<{
-    personajeId: number;
-    nombre: string;
-    caidasPrevias: number;
-    cansancioPrevio: number;
-  }>;
+  /** Con ración: caídas restauradas a 0 y −1 nivel de cansancio. */
+  personajes: DescansoPersonajeResultado[];
+};
+
+export type EventoDescansoCorto = {
+  tipo: "descanso_corto";
+  /** Con ración: cura 1 caída. */
+  personajes: DescansoPersonajeResultado[];
 };
 
 export type SalaEvento =
@@ -118,4 +131,5 @@ export type SalaEvento =
   | EventoDesmembramiento
   | EventoCaida
   | EventoCansancio
-  | EventoDescansoLargo;
+  | EventoDescansoLargo
+  | EventoDescansoCorto;

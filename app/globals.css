@@ -955,6 +955,53 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 }
 .cd-rest-glow { animation: cd-rest-glow 2.6s ease-in-out infinite; }
 
+/* ══════════════════════════════════════════════════════════════
+   Descanso largo (campamento nocturno a pantalla completa)
+   Prefijo: ds-
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes ds-star-twinkle {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 0.9; }
+}
+.ds-star { animation: ds-star-twinkle var(--ds-duration, 2.8s) ease-in-out var(--ds-delay, 0s) infinite; }
+
+/* La llama ondea desde su base, como fogata de campamento */
+@keyframes ds-flame-flicker {
+  0%, 100% { transform: scale(1) rotate(-1.5deg); filter: brightness(1); }
+  25%      { transform: scale(1.08, 1.14) rotate(1deg); filter: brightness(1.25); }
+  50%      { transform: scale(0.94, 0.9) rotate(-1deg); filter: brightness(0.9); }
+  75%      { transform: scale(1.05, 1.1) rotate(1.5deg); filter: brightness(1.15); }
+}
+.ds-flame { animation: ds-flame-flicker 0.9s ease-in-out infinite; transform-origin: 50% 85%; display: inline-block; }
+
+@keyframes ds-fire-glow {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.8; transform: scale(1.15); }
+}
+.ds-fire-glow { animation: ds-fire-glow 1.8s ease-in-out infinite; }
+
+/* Zzz que flotan desde la fogata hacia el cielo */
+@keyframes ds-zzz-rise {
+  0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  20%  { opacity: 0.85; }
+  100% { transform: translate(14px, -46px) scale(1.15); opacity: 0; }
+}
+.ds-zzz { animation: ds-zzz-rise 2.6s ease-out var(--ds-delay, 0s) infinite; }
+
+@keyframes ds-moon-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.35)); }
+  50%      { filter: drop-shadow(0 0 16px rgba(212, 175, 55, 0.65)); }
+}
+.ds-moon { animation: ds-moon-glow 3.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-star, .ds-flame, .ds-fire-glow, .ds-zzz, .ds-moon {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cd-skull-ignite, .cd-token-throb, .cd-token-doom, .cd-rune-flicker,
   .cd-overlay-skull, .cd-overlay-title, .cd-overlay-sub,

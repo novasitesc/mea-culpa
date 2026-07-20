@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CaidasTracker from "@/app/components/caidas-tracker";
+import DescansoOverlay from "@/app/components/descanso-overlay";
 import { MAX_CANSANCIO } from "@/lib/caidas";
 
 type SleepOption = {
@@ -48,6 +49,11 @@ export default function GlobalSleepModal() {
   const [resolvingSleep, setResolvingSleep] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [alert, setAlert] = useState<Alert | null>(null);
+  // Escena de descanso tras pagar la posada (animación + sonido)
+  const [restScene, setRestScene] = useState<{
+    subtitulo: string;
+    personajes: Array<{ personajeId: number; nombre: string; caidasPrevias: number; cansancioPrevio: number }>;
+  } | null>(null);
   const isFetching = useRef(false);
 
   const showAlert = (title: string, message: string, variant: Alert["variant"]) => {
@@ -129,6 +135,9 @@ export default function GlobalSleepModal() {
     optionId?: string,
   ) => {
     setResolvingSleep(true);
+    // Snapshot antes de refrescar: loadSleepStatus vaciará pendingCharacters
+    const snapshot = pendingCharacter;
+    const optionName = sleepStatus?.options.find((o) => o.id === optionId)?.name ?? null;
     try {
       const freshToken = await getFreshToken();
       if (!freshToken) {
@@ -150,11 +159,27 @@ export default function GlobalSleepModal() {
         throw new Error(String(data.error ?? message));
       }
 
-      showAlert(
-        data.dead ? "Muerte por agotamiento" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
-        message,
-        data.dead || data.eliminated ? "error" : "success",
-      );
+      if (action === "pay" && data.success && snapshot) {
+        setRestScene({
+          subtitulo: optionName
+            ? `${snapshot.characterName} descansa en ${optionName} y recupera fuerzas`
+            : `${snapshot.characterName} descansa y recupera fuerzas`,
+          personajes: [
+            {
+              personajeId: snapshot.characterId,
+              nombre: snapshot.characterName,
+              caidasPrevias: snapshot.characterCaidas,
+              cansancioPrevio: snapshot.characterCansancio,
+            },
+          ],
+        });
+      } else {
+        showAlert(
+          data.dead ? "Muerte por agotamiento" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
+          message,
+          data.dead || data.eliminated ? "error" : "success",
+        );
+      }
 
       setShowConfirm(false);
 
@@ -175,20 +200,39 @@ export default function GlobalSleepModal() {
     }
   };
 
-  if (!pendingCharacter) return null;
+  const alertNode = alert && (
+    <FantasyAlert
+      key={alert.id}
+      open
+      title={alert.title}
+      message={alert.message}
+      variant={alert.variant}
+      onClose={() => setAlert(null)}
+    />
+  );
+
+  const restSceneNode = restScene && (
+    <DescansoOverlay
+      subtitulo={restScene.subtitulo}
+      personajes={restScene.personajes}
+      onDone={() => setRestScene(null)}
+    />
+  );
+
+  // Tras resolver el último descanso, la lista queda vacía: el alert o la
+  // escena de descanso deben seguir visibles aunque ya no haya modal.
+  if (!pendingCharacter || restScene) {
+    return (
+      <>
+        {alertNode}
+        {restSceneNode}
+      </>
+    );
+  }
 
   return (
     <>
-      {alert && (
-        <FantasyAlert
-          key={alert.id}
-          open
-          title={alert.title}
-          message={alert.message}
-          variant={alert.variant}
-          onClose={() => setAlert(null)}
-        />
-      )}
+      {alertNode}
 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">

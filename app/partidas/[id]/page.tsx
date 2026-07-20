@@ -12,7 +12,15 @@ import SalaDM from "@/app/components/sala-dm";
 import SalaPlayer from "@/app/components/sala-player";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
-import type { SalaPartida, SalaParticipante, SalaEvento, EventoDadoTirado } from "@/lib/types/sala";
+import DescansoOverlay from "@/app/components/descanso-overlay";
+import type {
+  SalaPartida,
+  SalaParticipante,
+  SalaEvento,
+  EventoDadoTirado,
+  EventoDescansoLargo,
+  EventoDescansoCorto,
+} from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -54,9 +62,31 @@ export default function SalaPage() {
   // Tirada de otro cliente pendiente de reproducir; key fuerza remontar el
   // overlay si llega otra tirada mientras la anterior sigue abierta.
   const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData } | null>(null);
+  // Descanso pendiente de escenificar (fogata a pantalla completa)
+  const [restEvent, setRestEvent] = useState<EventoDescansoLargo | EventoDescansoCorto | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
+
+  // Aplica los resultados de un descanso al estado local de participantes.
+  // Usa los valores por personaje del evento (cubre a los que no tenían
+  // ración); los eventos antiguos sin esos campos caen al comportamiento previo.
+  const aplicarDescansoLocal = useCallback((ev: EventoDescansoLargo | EventoDescansoCorto) => {
+    const porId = new Map(ev.personajes.map((p) => [p.personajeId, p]));
+    setParticipantes((prev) =>
+      prev.map((p) => {
+        const r = porId.get(p.personajeId);
+        if (!r) return p;
+        return {
+          ...p,
+          caidas: r.caidas ?? (ev.tipo === "descanso_largo" ? 0 : p.caidas),
+          cansancio:
+            r.cansancio ??
+            (ev.tipo === "descanso_largo" ? Math.max(0, p.cansancio - 1) : p.cansancio),
+        };
+      }),
+    );
+  }, []);
 
   // Añade un evento evitando duplicados (mismo eventoId ya presente en el feed)
   const appendEvento = useCallback((ev: SalaEvento) => {
@@ -179,14 +209,15 @@ export default function SalaPage() {
       .on("broadcast", { event: "descanso_largo" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "descanso_largo") {
-          const ids = new Set(payload.personajes.map((p) => p.personajeId));
-          setParticipantes((prev) =>
-            prev.map((p) =>
-              ids.has(p.personajeId)
-                ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
-                : p,
-            ),
-          );
+          setRestEvent(payload);
+          aplicarDescansoLocal(payload);
+        }
+      })
+      .on("broadcast", { event: "descanso_corto" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "descanso_corto") {
+          setRestEvent(payload);
+          aplicarDescansoLocal(payload);
         }
       })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
@@ -217,7 +248,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated, appendEvento]);
+  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -268,16 +299,10 @@ export default function SalaPage() {
       return;
     }
 
-    if (ev.tipo === "descanso_largo") {
+    if (ev.tipo === "descanso_largo" || ev.tipo === "descanso_corto") {
       appendEvento(ev);
-      const ids = new Set(ev.personajes.map((p) => p.personajeId));
-      setParticipantes((prev) =>
-        prev.map((p) =>
-          ids.has(p.personajeId)
-            ? { ...p, caidas: 0, cansancio: Math.max(0, p.cansancio - 1) }
-            : p,
-        ),
-      );
+      setRestEvent(ev);
+      aplicarDescansoLocal(ev);
       return;
     }
 
@@ -402,6 +427,20 @@ export default function SalaPage() {
           </section>
         </div>
       </div>
+
+      {/* Escena del descanso (jugadores y DM) */}
+      {restEvent && (
+        <DescansoOverlay
+          tipo={restEvent.tipo === "descanso_corto" ? "corto" : "largo"}
+          subtitulo={
+            restEvent.tipo === "descanso_corto"
+              ? "El grupo toma un respiro y comparte las raciones"
+              : "El grupo acampa y recupera fuerzas"
+          }
+          personajes={restEvent.personajes}
+          onDone={() => setRestEvent(null)}
+        />
+      )}
 
       {/* Tirada del DM reproducida en espectadores */}
       {spectatorRoll && (

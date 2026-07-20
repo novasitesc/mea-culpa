@@ -33,13 +33,17 @@ function mapEventoRow(row: any): SalaEvento | null {
       cansancio:       Number(row.cantidad ?? 0),
       delta:           Number((row.metadata as any)?.delta ?? 1),
     };
-    case "descanso_largo": return {
-      tipo: "descanso_largo",
+    case "descanso_largo":
+    case "descanso_corto": return {
+      tipo: row.tipo,
       personajes: ((row.metadata as any)?.personajes ?? []).map((p: any) => ({
         personajeId:    Number(p.personajeId),
         nombre:         p.nombre ?? "Personaje",
         caidasPrevias:  Number(p.caidasPrevias ?? 0),
         cansancioPrevio: Number(p.cansancioPrevio ?? 0),
+        ...(p.caidas !== undefined ? { caidas: Number(p.caidas) } : {}),
+        ...(p.cansancio !== undefined ? { cansancio: Number(p.cansancio) } : {}),
+        ...(p.sinRacion !== undefined ? { sinRacion: Boolean(p.sinRacion) } : {}),
       })),
     };
     case "consumible_usado": return {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { MAX_CAIDAS, MAX_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { aplicarDescanso, esRacion, esTiendaAcampar, type TipoDescanso } from "@/lib/descanso";
 
 export async function PATCH(request: Request) {
   const result = await requireAdmin(request);
@@ -99,16 +100,43 @@ export async function PATCH(request: Request) {
   });
 }
 
-// Descanso largo en expedición: restaura a 0 las caídas y reduce 1 nivel de
-// agotamiento a los participantes activos (los muertos y derrotados ya
-// abandonaron la partida). Como en D&D 5e 2014 solo cabe un descanso largo
-// por día de aventura, se permite uno por expedición.
+// Consume 1 unidad de una fila de bolsa. El filtro por cantidad actual hace
+// la operación atómica: si otra petición ya la gastó, no afecta filas.
+async function consumirUno(
+  db: any,
+  row: { id: number; cantidad: number },
+): Promise<boolean> {
+  const cantidad = Number(row.cantidad ?? 1);
+  if (cantidad <= 1) {
+    const { data } = await db
+      .from("bolsa_objetos")
+      .delete()
+      .eq("id", row.id)
+      .eq("cantidad", cantidad)
+      .select("id");
+    return (data ?? []).length > 0;
+  }
+  const { data } = await db
+    .from("bolsa_objetos")
+    .update({ cantidad: cantidad - 1 })
+    .eq("id", row.id)
+    .eq("cantidad", cantidad)
+    .select("id");
+  return (data ?? []).length > 0;
+}
+
+// Descanso en expedición (grupal, lo gestiona el DM). Ambos tipos consumen
+// 1 ración por personaje activo; sin ración no hay beneficio y se gana 1
+// punto de cansancio. El corto cura CAIDAS_CURADAS_DESCANSO_CORTO caídas.
+// El largo además requiere una tienda de acampar del grupo, restaura caídas
+// a 0 y reduce 1 nivel de agotamiento (D&D 5e 2014); como solo cabe un
+// descanso largo por día de aventura, se permite uno por expedición.
 export async function POST(request: Request) {
   const result = await requireAdmin(request);
   if ("error" in result) return result.error;
   const { session } = result;
 
-  let body: { partidaId?: unknown };
+  let body: { partidaId?: unknown; tipo?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -119,18 +147,21 @@ export async function POST(request: Request) {
   if (!partidaId) {
     return NextResponse.json({ error: "partidaId es requerido" }, { status: 400 });
   }
+  const tipo: TipoDescanso = body.tipo === "corto" ? "corto" : "largo";
 
-  const { count: descansosPrevios } = await session.db
-    .from("partidas_eventos")
-    .select("id", { count: "exact", head: true })
-    .eq("partida_id", partidaId)
-    .eq("tipo", "descanso_largo");
+  if (tipo === "largo") {
+    const { count: descansosPrevios } = await session.db
+      .from("partidas_eventos")
+      .select("id", { count: "exact", head: true })
+      .eq("partida_id", partidaId)
+      .eq("tipo", "descanso_largo");
 
-  if ((descansosPrevios ?? 0) > 0) {
-    return NextResponse.json(
-      { error: "Ya se realizó un descanso largo en esta expedición" },
-      { status: 409 },
-    );
+    if ((descansosPrevios ?? 0) > 0) {
+      return NextResponse.json(
+        { error: "Ya se realizó un descanso largo en esta expedición" },
+        { status: 409 },
+      );
+    }
   }
 
   const { data: participantes, error: fetchError } = await session.db
@@ -142,34 +173,92 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
   }
 
-  const personajes = (participantes ?? [])
-    .filter((p: any) => {
-      if (p.muerto || p.derrotado) return false;
-      return Number(p.personaje?.caidas ?? 0) > 0 || Number(p.personaje?.puntos_cansancio ?? 0) > 0;
-    })
+  const activos = (participantes ?? [])
+    .filter((p: any) => !p.muerto && !p.derrotado)
     .map((p: any) => ({
       personajeId: Number(p.personaje_id),
-      nombre: p.personaje?.nombre ?? "Personaje",
+      nombre: (p.personaje?.nombre ?? "Personaje") as string,
       caidasPrevias: Number(p.personaje?.caidas ?? 0),
       cansancioPrevio: Number(p.personaje?.puntos_cansancio ?? 0),
     }));
 
-  for (const p of personajes) {
+  if (activos.length === 0) {
+    return NextResponse.json(
+      { error: "No hay personajes activos para descansar" },
+      { status: 409 },
+    );
+  }
+
+  const { data: bagRows, error: bagError } = await session.db
+    .from("bolsa_objetos")
+    .select("id, personaje_id, cantidad, publicado_en_trade, objetos:objeto_id(nombre)")
+    .in("personaje_id", activos.map((p) => p.personajeId));
+
+  if (bagError) {
+    return NextResponse.json({ error: bagError.message }, { status: 500 });
+  }
+
+  const disponibles = (bagRows ?? []).filter(
+    (r: any) => !r.publicado_en_trade && Number(r.cantidad ?? 0) > 0,
+  );
+
+  const racionPorPersonaje = new Map<number, any>();
+  for (const r of disponibles) {
+    const pid = Number((r as any).personaje_id);
+    if (!racionPorPersonaje.has(pid) && esRacion((r as any).objetos?.nombre ?? "")) {
+      racionPorPersonaje.set(pid, r);
+    }
+  }
+
+  if (tipo === "largo") {
+    const tienda = disponibles.find((r: any) => esTiendaAcampar(r.objetos?.nombre ?? ""));
+    if (!tienda) {
+      return NextResponse.json(
+        { error: "El grupo necesita una tienda de acampar en alguna bolsa para el descanso largo" },
+        { status: 409 },
+      );
+    }
+    const consumida = await consumirUno(session.db, tienda as any);
+    if (!consumida) {
+      return NextResponse.json(
+        { error: "La tienda de acampar ya no está disponible" },
+        { status: 409 },
+      );
+    }
+  }
+
+  const personajes = [];
+  for (const p of activos) {
+    const racion = racionPorPersonaje.get(p.personajeId);
+    const tieneRacion = racion ? await consumirUno(session.db, racion) : false;
+    const nuevo = aplicarDescanso(
+      tipo,
+      { caidas: p.caidasPrevias, cansancio: p.cansancioPrevio },
+      tieneRacion,
+    );
+
     const { error: updateError } = await session.db
       .from("personajes")
-      .update({ caidas: 0, puntos_cansancio: Math.max(0, p.cansancioPrevio - 1) })
+      .update({ caidas: nuevo.caidas, puntos_cansancio: nuevo.cansancio })
       .eq("id", p.personajeId);
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+
+    personajes.push({
+      ...p,
+      caidas: nuevo.caidas,
+      cansancio: nuevo.cansancio,
+      sinRacion: !tieneRacion,
+    });
   }
 
   await session.db.from("partidas_eventos").insert({
     partida_id: partidaId,
-    tipo: "descanso_largo",
+    tipo: tipo === "corto" ? "descanso_corto" : "descanso_largo",
     metadata: { personajes },
   });
 
-  return NextResponse.json({ personajes });
+  return NextResponse.json({ tipo, personajes });
 }

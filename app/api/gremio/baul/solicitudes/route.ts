@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { personajeEnExpedicion } from "@/lib/partidasState";
 
 export async function POST(request: Request) {
   const db = createServerClient();
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
   const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, targetCharacterId);
   if (!lifeCheck.ok) {
     return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
+  }
+
+  if (await personajeEnExpedicion(db, targetCharacterId)) {
+    return NextResponse.json(
+      { error: "Ese personaje está en una expedición en curso y no puede recibir objetos" },
+      { status: 409 },
+    );
   }
 
   const { data, error: insertError } = await db

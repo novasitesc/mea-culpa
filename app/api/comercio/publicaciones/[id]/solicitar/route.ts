@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { modifyGold } from "@/lib/goldService";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { personajeEnExpedicion } from "@/lib/partidasState";
 
 export async function POST(
   request: Request,
@@ -39,6 +40,13 @@ export async function POST(
   const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, buyerCharacterId);
   if (!lifeCheck.ok) {
     return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
+  }
+
+  if (await personajeEnExpedicion(db, buyerCharacterId)) {
+    return NextResponse.json(
+      { error: "Ese personaje está en una expedición en curso y no puede recibir objetos" },
+      { status: 409 },
+    );
   }
 
   const { data: publication, error: publicationError } = await db

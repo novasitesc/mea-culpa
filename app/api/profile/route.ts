@@ -163,7 +163,7 @@ export async function GET(request: Request) {
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
-  let spellsByCharId: Record<string, SpellEntry[]> = {};
+  const spellsByCharId: Record<string, SpellEntry[]> = {};
   try {
     const { data: spellRows } = await db
       .from("personajes")
