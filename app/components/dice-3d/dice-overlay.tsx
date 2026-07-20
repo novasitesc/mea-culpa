@@ -120,6 +120,8 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
     [result.resultados, tipoDado],
   );
   const { oro, items, kind } = useMemo(() => resumen(result), [result]);
+  // Tinte del aura del panel: oro/mixto dorado, ítem esmeralda, nada gris.
+  const auraTint = kind === "item" ? "52,211,153" : kind === "nada" ? "120,120,120" : "212,175,55";
 
   // Efectos fuera del updater de setState: React puede re-ejecutar updaters
   // durante el render y onFinished() haría setState en otro componente.
@@ -264,56 +266,76 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
             exit={{ opacity: 0, y: 12 }}
             transition={{ type: "spring", stiffness: 320, damping: 26 }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="relative z-10 w-[92vw] max-w-sm max-h-[76vh] overflow-y-auto bg-card border border-gold-dim/60 rounded-lg p-4 space-y-3 medieval-border mt-[22vh]"
+            className="relative z-10 mt-[22vh] flex items-center justify-center"
           >
-            <div className="text-center space-y-1">
-              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
-                {data.recompensaNombre}
-              </p>
-              <div className="flex justify-center gap-1.5 flex-wrap">
-                {result.resultados.map((v, i) => (
-                  <span
-                    key={i}
-                    className="w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/40 text-gold text-xs font-bold font-serif"
-                  >
-                    {v}
-                  </span>
-                ))}
+            {/* Aura mágica tras el panel, teñida según el premio */}
+            <div
+              aria-hidden
+              className="reward-aura pointer-events-none absolute -inset-10 rounded-full blur-2xl"
+              style={{ background: `radial-gradient(circle, rgba(${auraTint},0.35), transparent 70%)` }}
+            />
+
+            <div className="reward-texture relative w-[92vw] max-w-sm max-h-[76vh] overflow-y-auto overflow-x-hidden bg-card border border-gold-dim/60 rounded-lg p-4 space-y-3 medieval-border">
+              {/* Barrido de brillo: una sola pasada al aparecer */}
+              <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
+                <div
+                  className="absolute inset-y-0 -left-1/3 w-1/3 bg-linear-to-r from-transparent via-gold/25 to-transparent"
+                  style={{ animation: "asc-shine-sweep 1s ease-out both" }}
+                />
               </div>
-            </div>
 
-            {result.lutResultados?.length ? (
-              <div className="space-y-1.5 border-t border-gold-dim/20 pt-2">
-                {result.lutResultados.map((r, i) => (
-                  <LutFila key={i} r={r} />
-                ))}
+              <div className="relative text-center space-y-1">
+                <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+                  {data.recompensaNombre}
+                </p>
+                <div className="flex justify-center gap-1.5 flex-wrap">
+                  {result.resultados.map((v, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ scale: 0, opacity: 0, rotate: -12 }}
+                      animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                      transition={{ delay: 0.15 + i * 0.06, type: "spring", stiffness: 420, damping: 18 }}
+                      className="w-7 h-7 flex items-center justify-center rounded bg-gold/10 border border-gold/40 text-gold text-xs font-bold font-serif"
+                    >
+                      {v}
+                    </motion.span>
+                  ))}
+                </div>
               </div>
-            ) : null}
 
-            <div className="text-center space-y-1.5 border-t border-gold-dim/20 pt-2.5">
-              {oro > 0 && (
-                <p className="text-gold font-serif font-bold text-lg" style={{ textShadow: "0 0 12px rgba(212,175,55,0.5)" }}>
-                  +{oro.toLocaleString("es-ES")} oro
-                </p>
-              )}
-              {items.map((it, i) => (
-                <p key={i} className="text-sm text-green-400 font-semibold flex items-center justify-center gap-1.5 flex-wrap">
-                  {getIconForString(it.objeto.nombre, "w-4 h-4 shrink-0", it.objeto.icono)} {it.objeto.nombre}
-                  {it.cantidad > 1 && <span className="text-foreground/50">×{it.cantidad}</span>}
-                  <span className="text-[11px] font-sans font-normal">{entregaNota(i, it.cantidad)}</span>
-                </p>
-              ))}
-              {oro === 0 && items.length === 0 && (
-                <p className="text-foreground/40 italic text-sm">Sin recompensa esta vez…</p>
-              )}
+              {result.lutResultados?.length ? (
+                <div className="relative space-y-1.5 border-t border-gold-dim/20 pt-2">
+                  {result.lutResultados.map((r, i) => (
+                    <LutFila key={i} r={r} />
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="relative text-center space-y-1.5 border-t border-gold-dim/20 pt-2.5">
+                {oro > 0 && (
+                  <p className="asc-reveal-pop text-gold font-serif font-bold text-lg" style={{ textShadow: "0 0 12px rgba(212,175,55,0.5)" }}>
+                    +{oro.toLocaleString("es-ES")} oro
+                  </p>
+                )}
+                {items.map((it, i) => (
+                  <p key={i} className="asc-reveal-pop text-sm text-green-400 font-semibold flex items-center justify-center gap-1.5 flex-wrap">
+                    {getIconForString(it.objeto.nombre, "w-4 h-4 shrink-0", it.objeto.icono)} {it.objeto.nombre}
+                    {it.cantidad > 1 && <span className="text-foreground/50">×{it.cantidad}</span>}
+                    <span className="text-[11px] font-sans font-normal">{entregaNota(i, it.cantidad)}</span>
+                  </p>
+                ))}
+                {oro === 0 && items.length === 0 && (
+                  <p className="text-foreground/40 italic text-sm">Sin recompensa esta vez…</p>
+                )}
+              </div>
+
+              <button
+                onClick={onClose}
+                className="relative w-full py-2 rounded bg-gold/10 border border-gold/40 text-sm text-gold font-sans font-semibold tracking-wide hover:bg-gold/20 transition-colors"
+              >
+                Continuar
+              </button>
             </div>
-
-            <button
-              onClick={onClose}
-              className="w-full py-2 rounded bg-gold/10 border border-gold/40 text-sm text-gold font-sans font-semibold tracking-wide hover:bg-gold/20 transition-colors"
-            >
-              Continuar
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

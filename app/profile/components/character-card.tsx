@@ -34,6 +34,7 @@ import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
+import { playCardHoverSfx } from "@/lib/sfx";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Re-use the types from the parent. They are not exported from page.tsx so we
@@ -253,6 +254,7 @@ export default function CharacterCard({
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
       <motion.article
         layout
+        onHoverStart={playCardHoverSfx}
         transition={{ layout: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } }}
         exit={{
           opacity: 0,

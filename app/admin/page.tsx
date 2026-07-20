@@ -25,6 +25,13 @@ import {
   Crown,
   MapPin,
   Sparkles,
+  Play,
+  RefreshCw,
+  CalendarClock,
+  Trophy,
+  Package,
+  UserRound,
+  DoorOpen,
   ShieldPlus,
   ShieldOff,
   ArrowLeft,
@@ -37,7 +44,7 @@ import {
   History,
   TrendingDown,
 } from "lucide-react";
-import { playUiOpenSfx, playUiHoverSfx, playUiBackSfx, playSuccessSfx, playErrorSfx } from "@/lib/sfx";
+import { playUiOpenSfx, playUiClickSfx, playUiHoverSfx, playUiBackSfx, playSuccessSfx, playErrorSfx } from "@/lib/sfx";
 import { getIconForString } from "@/lib/iconMapper";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 import { useAuth } from "@/lib/useAuth";
@@ -46,12 +53,14 @@ import FantasyAlert from "@/components/ui/fantasy-alert";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { Select } from "@/components/ui/select";
-import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-catalog";
+import { ITEM_RARITY_OPTIONS, ITEM_TYPE_OPTIONS, ITEM_RARITY_HEX, type ItemRarity } from "@/lib/item-catalog";
 import { RuletaTab } from "./ruleta-tab";
 import { DadosTab } from "./dados-tab";
+import ModalPortal from "@/components/ui/modal-portal";
+import AlmaOverlay, { type AlmaFx } from "@/app/components/alma-overlay";
 import AscensionModal from "./ascension-modal";
 import RevocationModal from "./revocation-modal";
-import { AdmHero, AdmHeading, AdmStat, AdmPills, type AdmPillTab } from "./section-ui";
+import { AdmHero, AdmHeading, AdmPanel, AdmStat, AdmPills, type AdmPillTab } from "./section-ui";
 import {
   MAX_ACCOUNT_LEVEL,
   MIN_ACCOUNT_LEVEL,
@@ -299,33 +308,92 @@ function Nivel20Link({ url }: { url: string | null }) {
 
 function Modal({
   title,
+  subtitle,
   onClose,
   maxWidth = "max-w-lg", // defaultw
+  accent = "#d4af37",
+  icon: Icon,
   children,
 }: {
   title: string;
+  subtitle?: string;
   onClose: () => void;
   maxWidth?: string;
+  /** Color de la sección: tiñe borde, halo y barra superior. */
+  accent?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
 }) {
   const { closing, closeWith } = useModalTransition();
   const handleClose = () => closeWith(onClose);
 
+  // Cerrar con Escape: el modal vive en <body>, así que no hay foco que herede.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeWith(onClose);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closeWith, onClose]);
+
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm ${modalOverlayCls(closing)}`}>
-      <div className={`bg-card border border-border rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col ${modalPanelCls(closing)}`}>
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-lg font-bold text-gold">{title}</h2>
-          <button
-            onClick={handleClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <ModalPortal>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${modalOverlayCls(closing)}`}
+      style={{
+        background: `radial-gradient(120% 100% at 50% 50%, ${accent}12, rgba(0,0,0,0.8) 65%)`,
+      }}
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div
+        className={`adm-modal relative flex w-full ${maxWidth} max-h-[90vh] flex-col overflow-hidden rounded-2xl ${modalPanelCls(closing)}`}
+        style={{ ["--adm-accent" as string]: accent }}
+      >
+        <span className="adm-modal-line" aria-hidden />
+        <div className="adm-modal-head relative flex shrink-0 flex-col gap-2.5 border-b border-border/60 px-5 pb-3.5 pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3.5">
+              {Icon ? (
+                <span className="adm-seal">
+                  <span className="adm-seal-ring" aria-hidden />
+                  <span className="adm-seal-core">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </span>
+              ) : null}
+              <div className="min-w-0">
+                <h2
+                  className="truncate font-serif text-lg tracking-wide text-foreground"
+                  style={{ textShadow: `0 0 18px ${accent}55` }}
+                >
+                  {title}
+                </h2>
+                {subtitle && (
+                  <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handleClose}
+              aria-label="Cerrar"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-black/20 text-muted-foreground transition-all duration-200 hover:rotate-90 hover:text-foreground active:scale-90"
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${accent}88`)}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {/* Filigrana decorativa bajo el encabezado */}
+          <div className="adm-filigree" aria-hidden>
+            <span className="adm-filigree-gem" />
+          </div>
         </div>
-        <div className="p-5 overflow-y-auto min-h-0">{children}</div>
+        <div className="adm-grain relative min-h-0 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -385,6 +453,7 @@ function ConfirmActionModal({
   const styles = getVariantStyles();
 
   return (
+    <ModalPortal>
     <div className={`fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${modalOverlayCls(closing)}`}>
       <div className={`bg-card border-2 ${styles.border} rounded-xl w-full max-w-md overflow-hidden flex flex-col relative ${modalPanelCls(closing)}`}>
         {/* Resplandor superior místico */}
@@ -430,6 +499,7 @@ function ConfirmActionModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -621,7 +691,7 @@ function TransactionsTab({
         <FormField label="Realizado Por">
           <input 
             type="text" 
-            placeholder="Admin o 'SISTEMA'..." 
+            placeholder="DM o 'SISTEMA'..." 
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
             value={fAdmin}
             onChange={e => setFAdmin(e.target.value)}
@@ -883,13 +953,42 @@ function PartidasTab({
     }
   };
 
+  const limpiar = () => {
+    setTitle("");
+    setComment("");
+    setPlayerLimit(6);
+    setFloor(1);
+    setStartTime("");
+    setTier(1);
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Publica una partida abierta. Los jugadores se inscriben hasta completar el cupo.
-      </p>
+      <AdmHero
+        accent={PARTIDAS_ACCENT}
+        icon={Swords}
+        title="Convocar expedición"
+        subtitle="Publica una partida abierta. Los jugadores se inscriben hasta completar el cupo."
+        right={
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-sans"
+            style={{ borderColor: `${PARTIDAS_ACCENT}44`, background: `${PARTIDAS_ACCENT}14`, color: PARTIDAS_ACCENT }}>
+            <MapPin className="h-3.5 w-3.5" />
+            Piso {floor} · Tier {tier}
+          </div>
+        }
+      />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 border border-border rounded-xl p-4 bg-secondary/10">
+      <form
+        onSubmit={handleSubmit}
+        className="adm-panel adm-row-in flex flex-col gap-6 rounded-xl p-5"
+        style={{ ["--adm-accent" as string]: PARTIDAS_ACCENT }}
+      >
+        <AdmHeading
+          accent={PARTIDAS_ACCENT}
+          icon={CalendarClock}
+          title="Datos de la expedición"
+          subtitle="Todo se puede ajustar antes de que empiece"
+        />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField label="Nombre de la partida">
             <input
@@ -954,28 +1053,22 @@ function PartidasTab({
           </FormField>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-border">
+        <div className="flex justify-end gap-3 pt-3 border-t border-border/60">
           <button
             type="button"
-            onClick={() => {
-              setTitle("");
-              setComment("");
-              setPlayerLimit(6);
-              setFloor(1);
-              setStartTime("");
-              setTier(1);
-            }}
-            className="px-4 py-2 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground transition-colors"
+            onClick={limpiar}
+            className="rounded-lg border border-border bg-secondary/50 px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-95"
           >
             Limpiar
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 bg-gold hover:bg-gold-dim text-background rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-background transition-all active:scale-95 disabled:opacity-60"
+            style={{ background: PARTIDAS_ACCENT, boxShadow: `0 10px 28px -12px ${PARTIDAS_ACCENT}` }}
           >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            Publicar partida
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {saving ? "Publicando…" : "Publicar partida"}
           </button>
         </div>
       </form>
@@ -1222,101 +1315,156 @@ function ActivePartidasTab({
     );
   }
 
-  if (games.length === 0) {
-    return (
-      <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-        No hay partidas activas.
-      </div>
-    );
-  }
+  const enProgreso = games.filter((g) => g.status === "en_progreso").length;
+  const jugadores = games.reduce((n, g) => n + g.participantCount, 0);
+
+  const refreshBtn = (
+    <button
+      type="button"
+      onClick={loadGames}
+      onMouseEnter={playUiHoverSfx}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-xs font-sans text-muted-foreground transition-all hover:border-[#fb923c]/50 hover:text-foreground active:scale-95"
+    >
+      <RefreshCw className="h-3.5 w-3.5" />
+      Actualizar
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Partidas activas (abiertas y en progreso)
-        </p>
-        <button
-          type="button"
-          onClick={loadGames}
-          className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
-        >
-          Actualizar
-        </button>
-      </div>
+      <AdmHero
+        accent={PARTIDAS_ACCENT}
+        icon={Swords}
+        title="Expediciones en curso"
+        subtitle="Abiertas a inscripción y partidas ya en marcha"
+        right={refreshBtn}
+      />
 
-      <div className="flex flex-col gap-3">
-        {games.map((entry) => (
-          <div
-            key={entry.id}
-            className="border border-border rounded-xl p-4 bg-secondary/10 flex flex-col gap-3"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {entry.participantCount}/{entry.maxPlayers} jugadores
-                  {entry.isFull
-                    ? " · Completa"
-                    : entry.status === "en_progreso"
-                      ? " · En progreso"
-                      : " · Abierta"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Min {entry.minPlayers} · Piso {entry.floor} · Tier {entry.tier}
-                  {entry.startTime
-                    ? ` · Inicio ${formatDateTime(entry.startTime)}`
-                    : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {entry.status === "abierta" && (
-                  <button
-                    type="button"
-                    onClick={() => startGame(entry.id)}
-                    disabled={startingId === entry.id}
-                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700/80 hover:bg-emerald-700 text-white disabled:opacity-60 flex items-center gap-2"
-                  >
-                    {startingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    ▶ Iniciar
-                  </button>
-                )}
-                {entry.status === "en_progreso" && (
-                  <a
-                    href={`/partidas/${entry.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 transition-colors flex items-center gap-1.5"
-                  >
-                    <Dices className="w-3.5 h-3.5" /> Ir a sala
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => openCloseModal(entry)}
-                  disabled={closingId === entry.id}
-                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-destructive/80 hover:bg-destructive text-white disabled:opacity-60 flex items-center gap-2"
-                >
-                  {closingId === entry.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Cerrar y asignar
-                </button>
-              </div>
-            </div>
-
-            {entry.participants.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                {entry.participants.map((p) => p.characterName).join(", ")}
-              </div>
-            )}
+      {games.length === 0 ? (
+        <AdmPanel accent={PARTIDAS_ACCENT} className="adm-row-in flex flex-col items-center gap-2 py-10 text-center">
+          <DoorOpen className="h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">No hay partidas activas.</p>
+          <p className="text-xs text-muted-foreground/70">Crea una desde &ldquo;Crear partida&rdquo;.</p>
+        </AdmPanel>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <AdmStat label="Activas" value={games.length} accent={PARTIDAS_ACCENT} icon={Swords} delay={0} />
+            <AdmStat label="En progreso" value={enProgreso} accent="#34d399" icon={Dices} tone="#34d399" delay={0.06} />
+            <AdmStat label="Jugadores" value={jugadores} accent="#60a5fa" icon={UserRound} delay={0.12} />
           </div>
-        ))}
-      </div>
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            {games.map((entry, i) => {
+              const live = entry.status === "en_progreso";
+              const tone = live ? "#34d399" : PARTIDAS_ACCENT;
+              const ocupacion = Math.round((entry.participantCount / entry.maxPlayers) * 100);
+              return (
+                <div
+                  key={entry.id}
+                  className="adm-panel adm-card adm-row-in relative flex flex-col gap-3 overflow-hidden rounded-xl p-4"
+                  style={{
+                    ["--adm-accent" as string]: tone,
+                    ["--adm-delay" as string]: `${Math.min(i * 0.05, 0.4)}s`,
+                  }}
+                >
+                  <div className="relative flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-serif text-base text-foreground">{entry.title}</p>
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest"
+                          style={{ borderColor: `${tone}55`, background: `${tone}18`, color: tone }}
+                        >
+                          {live && <span className="adm-accent-pulse inline-block h-1.5 w-1.5 rounded-full" style={{ background: tone }} />}
+                          {live ? "En progreso" : entry.isFull ? "Completa" : "Abierta"}
+                        </span>
+                      </div>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />Piso {entry.floor} · Tier {entry.tier}</span>
+                        <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />mín {entry.minPlayers}</span>
+                        {entry.startTime && (
+                          <span className="inline-flex items-center gap-1"><CalendarClock className="h-3 w-3" />{formatDateTime(entry.startTime)}</span>
+                        )}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-serif text-lg leading-none" style={{ color: tone }}>
+                      {entry.participantCount}
+                      <span className="text-sm text-muted-foreground">/{entry.maxPlayers}</span>
+                    </span>
+                  </div>
+
+                  {/* Ocupación del cupo */}
+                  <div className="relative h-1.5 overflow-hidden rounded-full bg-black/40">
+                    <span
+                      className="block h-full rounded-full transition-[width] duration-700 ease-out"
+                      style={{ width: `${ocupacion}%`, background: tone, boxShadow: `0 0 12px -2px ${tone}` }}
+                    />
+                  </div>
+
+                  {entry.participants.length > 0 && (
+                    <div className="relative flex flex-wrap gap-1.5">
+                      {entry.participants.map((p) => (
+                        <span
+                          key={p.id}
+                          className="rounded-md border border-border/60 bg-black/25 px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          {p.characterName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="relative flex flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-3">
+                    {entry.status === "abierta" && (
+                      <button
+                        type="button"
+                        onClick={() => startGame(entry.id)}
+                        disabled={startingId === entry.id}
+                        onMouseEnter={playUiHoverSfx}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/50 bg-emerald-600/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-600/25 active:scale-95 disabled:opacity-60"
+                      >
+                        {startingId === entry.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                        Iniciar
+                      </button>
+                    )}
+                    {live && (
+                      <a
+                        href={`/partidas/${entry.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onMouseEnter={playUiHoverSfx}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-semibold text-gold transition-all hover:bg-gold/20 active:scale-95"
+                      >
+                        <Dices className="h-3.5 w-3.5" /> Ir a sala
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { playUiOpenSfx(); void openCloseModal(entry); }}
+                      disabled={closingId === entry.id}
+                      onMouseEnter={playUiHoverSfx}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-700/50 bg-red-700/15 px-3 py-1.5 text-xs font-semibold text-red-300 transition-all hover:bg-red-700/25 active:scale-95 disabled:opacity-60"
+                    >
+                      {closingId === entry.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trophy className="h-3.5 w-3.5" />}
+                      Cerrar y asignar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {rewardTarget && (
         <Modal
           title={`Cerrar partida: ${rewardTarget.title}`}
+          subtitle="Reparte el botín antes de sellar la expedición"
           onClose={() => setRewardTarget(null)}
           maxWidth="max-w-4xl"
+          accent={PARTIDAS_ACCENT}
+          icon={Trophy}
         >
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
@@ -1339,19 +1487,16 @@ function ActivePartidasTab({
                   return (
                     <div
                       key={participant.id}
-                      className="border border-border rounded-lg p-4 bg-secondary/10 flex flex-col gap-3"
+                      className="adm-panel adm-row-in flex flex-col gap-3 rounded-xl p-4"
+                      style={{ ["--adm-accent" as string]: PARTIDAS_ACCENT }}
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {participant.characterName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{participant.userName}</p>
-                        {participant.nivel20Url && (
-                          <div className="mt-1">
-                            <Nivel20Link url={participant.nivel20Url} />
-                          </div>
-                        )}
-                      </div>
+                      <AdmHeading
+                        accent={PARTIDAS_ACCENT}
+                        icon={UserRound}
+                        title={participant.characterName}
+                        subtitle={participant.userName}
+                        right={participant.nivel20Url ? <Nivel20Link url={participant.nivel20Url} /> : undefined}
+                      />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormField label="Oro a asignar">
@@ -1387,13 +1532,15 @@ function ActivePartidasTab({
 
                       <div className="border-t border-border pt-3 flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-foreground">Objetos</p>
+                          <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                            <Package className="h-3.5 w-3.5" style={{ color: PARTIDAS_ACCENT }} /> Objetos
+                          </p>
                           <button
                             type="button"
                             onClick={() => addItemToReward(participant.characterId)}
-                            className="px-2 py-1 text-xs rounded border border-border hover:bg-muted"
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs transition-all hover:bg-muted active:scale-95"
                           >
-                            Agregar objeto
+                            <Plus className="h-3 w-3" /> Agregar objeto
                           </button>
                         </div>
 
@@ -1437,9 +1584,9 @@ function ActivePartidasTab({
                                 <button
                                   type="button"
                                   onClick={() => removeRewardItem(participant.characterId, item.id)}
-                                  className="px-3 py-2 text-xs rounded border border-border hover:bg-muted"
+                                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-800/50 px-3 py-2 text-xs text-red-300 transition-all hover:bg-red-900/25 active:scale-95"
                                 >
-                                  Quitar
+                                  <Trash2 className="h-3 w-3" /> Quitar
                                 </button>
                               </div>
                             ))}
@@ -1464,9 +1611,10 @@ function ActivePartidasTab({
                 type="button"
                 onClick={submitCloseWithRewards}
                 disabled={closingId === rewardTarget.id}
-                className="px-4 py-2 rounded bg-destructive/80 hover:bg-destructive text-white text-sm font-semibold disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg border border-red-700/50 bg-red-700/20 px-4 py-2 text-sm font-semibold text-red-200 transition-all hover:bg-red-700/30 active:scale-95 disabled:opacity-60"
               >
-                {closingId === rewardTarget.id ? "Cerrando..." : "Cerrar y guardar recompensas"}
+                {closingId === rewardTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
+                {closingId === rewardTarget.id ? "Cerrando…" : "Cerrar y guardar recompensas"}
               </button>
             </div>
           </div>
@@ -1506,32 +1654,48 @@ function PartidasHistoryTab({
     loadHistory();
   }, [loadHistory]);
 
+  const oroTotal = history.reduce(
+    (sum, e) => sum + e.participants.reduce((n, p) => n + (p.gold ?? 0), 0),
+    0,
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Registro de partidas creadas
-        </p>
-        <button
-          type="button"
-          onClick={loadHistory}
-          className="px-4 py-2 bg-secondary hover:bg-muted text-sm font-medium rounded-lg transition-colors border border-border"
-        >
-          Actualizar
-        </button>
-      </div>
+      <AdmHero
+        accent={PARTIDAS_ACCENT}
+        icon={History}
+        title="Crónica de expediciones"
+        subtitle="Registro de partidas creadas y su botín"
+        right={
+          <button
+            type="button"
+            onClick={loadHistory}
+            onMouseEnter={playUiHoverSfx}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-xs font-sans text-muted-foreground transition-all hover:border-[#fb923c]/50 hover:text-foreground active:scale-95"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Actualizar
+          </button>
+        }
+      />
 
       {historyLoading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2 className="w-5 h-5 animate-spin text-gold" />
         </div>
       ) : history.length === 0 ? (
-        <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-          No hay partidas registradas.
-        </div>
+        <AdmPanel accent={PARTIDAS_ACCENT} className="adm-row-in flex flex-col items-center gap-2 py-10 text-center">
+          <History className="h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">No hay partidas registradas.</p>
+        </AdmPanel>
       ) : (
+        <>
+        <div className="grid grid-cols-2 gap-3">
+          <AdmStat label="Partidas" value={history.length} accent={PARTIDAS_ACCENT} icon={History} delay={0} />
+          <AdmStat label="Oro repartido" value={oroTotal.toLocaleString("es-ES")} accent="#d4af37" icon={Coins} tone="#d4af37" delay={0.06} />
+        </div>
         <div className="flex flex-col gap-3">
-          {history.map((entry) => {
+          {history.map((entry, i) => {
             const totalGold = entry.participants.reduce(
               (sum, p) => sum + (p.gold ?? 0),
               0,
@@ -1541,30 +1705,45 @@ function PartidasHistoryTab({
             return (
               <div
                 key={entry.id}
-                className="border border-border rounded-xl p-4 bg-secondary/10"
+                className="adm-panel adm-row-in rounded-xl p-4"
+                style={{
+                  ["--adm-accent" as string]: PARTIDAS_ACCENT,
+                  ["--adm-delay" as string]: `${Math.min(i * 0.04, 0.35)}s`,
+                }}
               >
                 <button
                   type="button"
-                  onClick={() => setExpandedId(isOpen ? null : entry.id)}
-                  className="w-full flex items-center justify-between gap-3 text-left"
+                  onClick={() => { playUiClickSfx(); setExpandedId(isOpen ? null : entry.id); }}
+                  onMouseEnter={playUiHoverSfx}
+                  className="relative flex w-full cursor-pointer items-center justify-between gap-3 text-left"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {entry.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(entry.createdAt)}
-                      {entry.createdBy ? ` · ${entry.createdBy}` : ""}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ChevronDown
+                      className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300"
+                      style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-serif text-sm text-foreground">
+                        {entry.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateTime(entry.createdAt)}
+                        {entry.createdBy ? ` · ${entry.createdBy}` : ""}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{entry.participants.length} jugadores</span>
-                    <span className="text-gold">+{totalGold} oro</span>
+                  <div className="flex shrink-0 items-center gap-3 text-xs">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <UserRound className="h-3 w-3" />{entry.participants.length}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-gold">
+                      <Coins className="h-3 w-3" />+{totalGold.toLocaleString("es-ES")}
+                    </span>
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="mt-4 flex flex-col gap-4">
+                  <div className="mt-4 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     {entry.comment && (
                       <p className="text-xs text-muted-foreground">
                         {entry.comment}
@@ -1610,9 +1789,9 @@ function PartidasHistoryTab({
                       </table>
                     </div>
 
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs font-semibold text-foreground mb-2">
-                        Objetos entregados
+                    <div className="rounded-lg border border-border/70 bg-black/20 p-3">
+                      <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Package className="h-3.5 w-3.5" style={{ color: PARTIDAS_ACCENT }} /> Objetos entregados
                       </p>
                       {entry.items.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
@@ -1635,6 +1814,7 @@ function PartidasHistoryTab({
             );
           })}
         </div>
+        </>
       )}
     </div>
   );
@@ -1705,7 +1885,7 @@ function UsersTab({
     { field: "role", label: "Gremio" },
     { field: "level", label: "Nivel" },
     { field: "gold", label: "Oro" },
-    { field: "isAdmin", label: "Admin" },
+    { field: "isAdmin", label: "DM" },
     { field: "createdAt", label: "Registro" },
   ];
 
@@ -1816,7 +1996,7 @@ function UsersTab({
                             </span>
                           ) : u.isAdmin ? (
                             <span className="inline-flex items-center px-1.5 py-0.5 bg-gold/20 text-gold rounded text-[10px] font-semibold">
-                              Admin
+                              DM
                             </span>
                           ) : null}
                         </div>
@@ -1829,7 +2009,7 @@ function UsersTab({
                           <button
                             onClick={() => { playUiOpenSfx(); setPromoteTarget(u); }}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/40 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
-                            title="Nombrar administrador"
+                            title="Nombrar DM"
                           >
                             <ShieldPlus className="w-4 h-4" />
                           </button>
@@ -1838,7 +2018,7 @@ function UsersTab({
                           <button
                             onClick={() => { playUiOpenSfx(); setRevokeTarget(u); }}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-blood/50 hover:bg-blood/10 text-muted-foreground hover:text-blood transition-colors"
-                            title="Revocar administrador"
+                            title="Revocar DM"
                           >
                             <ShieldOff className="w-4 h-4" />
                           </button>
@@ -1851,7 +2031,7 @@ function UsersTab({
                           <Coins className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => { playUiOpenSfx(); setEditTarget(u); }}
+                          onClick={() => { playUiClickSfx(); setEditTarget(u); }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:border-gold/30 hover:bg-gold/10 text-muted-foreground hover:text-gold transition-colors"
                           title="Editar"
                         >
@@ -2027,7 +2207,7 @@ function UsersTab({
             setUsers((prev) =>
               prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
             );
-            onToast(`${promoteTarget.name} ahora es administrador`, "success");
+            onToast(`${promoteTarget.name} ahora es DM`, "success");
           }}
         />
       )}
@@ -2043,7 +2223,7 @@ function UsersTab({
             setUsers((prev) =>
               prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)),
             );
-            onToast(`${revokeTarget.name} ya no es administrador`, "success");
+            onToast(`${revokeTarget.name} ya no es DM`, "success");
           }}
         />
       )}
@@ -2104,7 +2284,13 @@ function UserFormModal({
   };
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal
+      title={title}
+      subtitle={isEdit ? "Perfil, gremio y nivel de cuenta" : "Alta manual de una cuenta"}
+      onClose={onClose}
+      accent="#60a5fa"
+      icon={UserRound}
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* En edición mostramos el email como campo informativo (solo lectura) */}
         {isEdit && (
@@ -2229,7 +2415,7 @@ function GoldFormModal({
   const [action, setAction] = useState<"add" | "remove">("add");
 
   return (
-    <Modal title={`Gestionar Oro: ${user.name}`} onClose={onClose}>
+    <Modal title={`Gestionar oro: ${user.name}`} subtitle="Añade o retira monedas del reino" onClose={onClose} accent="#d4af37" icon={Coins}>
       <div className="mb-4">
         <p className="text-sm text-muted-foreground">Oro actual: <span className="text-gold font-bold">{user.gold}</span></p>
       </div>
@@ -2421,8 +2607,10 @@ function CharactersFormModal({
   };
 
   const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
+  // Ceremonia a pantalla completa tras revivir o matar.
+  const [almaFx, setAlmaFx] = useState<AlmaFx | null>(null);
 
-  const executeRevive = async (characterId: number) => {
+  const executeRevive = async (characterId: number, nombre?: string) => {
     setSaving(true);
     try {
       const res = await fetch("/api/profile/admin-revive", {
@@ -2432,6 +2620,7 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast("Personaje revivido exitosamente", "success");
+        setAlmaFx({ tipo: "revivir", nombre: nombre ?? "El personaje" });
         setCharacters((prev) =>
           prev.map((c) =>
             c.id === characterId ? { ...c, estado_vida: "vivo", muerto_en: null } : c,
@@ -2455,7 +2644,7 @@ function CharactersFormModal({
       message: `¿Estás seguro de que deseas revivir a "${nombre ?? "este personaje"}" sin cobrarle oro? Regresará inmediatamente a la vida.`,
       confirmText: "Revivir personaje",
       variant: "success",
-      onConfirm: () => executeRevive(characterId),
+      onConfirm: () => executeRevive(characterId, nombre),
     });
   };
 
@@ -2469,6 +2658,7 @@ function CharactersFormModal({
       });
       if (res.ok) {
         onToast(`${nombre} marcado como muerto`, "success");
+        setAlmaFx({ tipo: "matar", nombre });
         setCharacters((prev) =>
           prev.map((c) =>
             c.id === characterId
@@ -2531,55 +2721,74 @@ function CharactersFormModal({
   };
 
   return (
-    <Modal title={`Personajes de ${user.name}`} onClose={onClose} maxWidth="max-w-4xl">
+    <>
+    {almaFx && <AlmaOverlay fx={almaFx} onDone={() => setAlmaFx(null)} />}
+    <Modal title={`Personajes de ${user.name}`} subtitle="Raza, clases y estadísticas" onClose={onClose} maxWidth="max-w-4xl" accent="#60a5fa" icon={Users}>
       <div className="space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-gold" />
           </div>
         ) : characters.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            Este usuario no tiene personajes
-          </p>
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <UserRound className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Este usuario no tiene personajes.</p>
+          </div>
         ) : (
           <>
-            {characters.map((character) => (
+            {characters.map((character, ci) => {
+              const muerto = character.estado_vida === "muerto";
+              const tone = muerto ? "#f87171" : "#60a5fa";
+              return (
               <div
                 key={character.id}
-                className="p-4 rounded border border-border bg-secondary/20 space-y-3"
+                className="adm-panel adm-row-in space-y-3 rounded-xl p-4"
+                style={{
+                  ["--adm-accent" as string]: tone,
+                  ["--adm-delay" as string]: `${Math.min(ci * 0.06, 0.3)}s`,
+                }}
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <div className="relative flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 font-serif text-base text-foreground">
+                    <span
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border"
+                      style={{ borderColor: `${tone}55`, background: `${tone}1a`, color: tone }}
+                    >
+                      {muerto ? <Skull className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
+                    </span>
                     {character.nombre}
-                    {character.estado_vida === "muerto" && (
-                      <span className="text-[10px] bg-red-900/50 text-red-300 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Muerto</span>
+                    {muerto && (
+                      <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300" style={{ background: "#f8717126" }}>
+                        Muerto
+                      </span>
                     )}
                   </h3>
                   <div className="flex items-center gap-2">
-                    {character.estado_vida === "muerto" && (
+                    {muerto && (
                       <button
-                        onClick={() => reviveCharacter(character.id)}
+                        onClick={() => reviveCharacter(character.id, character.nombre)}
                         disabled={saving}
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/50 bg-emerald-600/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-600/25 active:scale-95 disabled:opacity-60"
                         title="Revivir personaje"
                       >
-                        Revivir
+                        <HeartPulse className="h-3.5 w-3.5" /> Revivir
                       </button>
                     )}
-                    {character.estado_vida === "vivo" && editingChar !== character.id && (
+                    {!muerto && editingChar !== character.id && (
                       <button
                         onClick={() => killCharacter(character.id, character.nombre)}
                         disabled={saving}
-                        className="px-3 py-1.5 bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold rounded shadow transition-colors disabled:opacity-60"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-orange-600/50 bg-orange-600/15 px-3 py-1.5 text-xs font-semibold text-orange-300 transition-all hover:bg-orange-600/25 active:scale-95 disabled:opacity-60"
                         title="Matar personaje (queda visible, puede revivirse)"
                       >
-                        Matar
+                        <Skull className="h-3.5 w-3.5" /> Matar
                       </button>
                     )}
                     {editingChar !== character.id && (
                       <>
                         <button
                           onClick={() => {
+                            playUiClickSfx();
                             setEditingChar(character.id);
                             setEditForm({
                               raza: character.raza,
@@ -2595,16 +2804,16 @@ function CharactersFormModal({
                               nivel20Url: character.nivel20Url ?? "",
                             });
                           }}
-                          className="px-3 py-1.5 bg-gold hover:bg-gold-dim text-background text-xs rounded transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/15 px-3 py-1.5 text-xs font-semibold text-gold transition-all hover:bg-gold/25 active:scale-95"
                         >
-                          Editar
+                          <Pencil className="h-3.5 w-3.5" /> Editar
                         </button>
                         <button
                           onClick={() => deleteCharacter(character.id, character.nombre)}
                           disabled={saving}
-                          className="px-3 py-1.5 bg-destructive hover:bg-destructive/80 text-white text-xs rounded transition-colors disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-700/50 bg-red-700/15 px-3 py-1.5 text-xs font-semibold text-red-300 transition-all hover:bg-red-700/25 active:scale-95 disabled:opacity-60"
                         >
-                          Eliminar
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
                         </button>
                       </>
                     )}
@@ -2743,7 +2952,8 @@ function CharactersFormModal({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </>
         )}
 
@@ -2762,6 +2972,7 @@ function CharactersFormModal({
         <ConfirmActionModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
       )}
     </Modal>
+    </>
   );
 }
 
@@ -2796,70 +3007,99 @@ function ShopsTab({
     load();
   }, [load]);
 
+  const totalItems = shops.reduce((n, sh) => n + (sh.itemCount ?? 0), 0);
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Header de sección */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {shops.length} tienda{shops.length !== 1 ? "s" : ""} registrada
-          {shops.length !== 1 ? "s" : ""}
-        </p>
-        <button
-          onClick={() => { playUiOpenSfx(); setShowCreate(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva tienda
-        </button>
-      </div>
+      <AdmHero
+        accent={TIENDAS_ACCENT}
+        icon={Store}
+        title="Mercaderes del reino"
+        subtitle="Catálogo, precios e inventario de cada tienda"
+        right={
+          <button
+            onClick={() => { playUiOpenSfx(); setShowCreate(true); }}
+            onMouseEnter={playUiHoverSfx}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-background transition-all active:scale-95"
+            style={{ background: TIENDAS_ACCENT, boxShadow: `0 10px 28px -12px ${TIENDAS_ACCENT}` }}
+          >
+            <Plus className="h-4 w-4" />
+            Nueva tienda
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
+      ) : shops.length === 0 ? (
+        <AdmPanel accent={TIENDAS_ACCENT} className="adm-row-in flex flex-col items-center gap-2 py-10 text-center">
+          <Store className="h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">Todavía no hay tiendas.</p>
+        </AdmPanel>
       ) : (
+        <>
+        <div className="grid grid-cols-2 gap-3">
+          <AdmStat label="Tiendas" value={shops.length} accent={TIENDAS_ACCENT} icon={Store} delay={0} />
+          <AdmStat label="Artículos en venta" value={totalItems} accent="#d4af37" icon={Package} tone="#d4af37" delay={0.06} />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {shops.map((shop, i) => (
             <div
               key={shop.id}
               onMouseEnter={playUiHoverSfx}
-              className="adm-card adm-card-in bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3"
+              className="adm-panel adm-card adm-card-in group relative flex flex-col gap-3 overflow-hidden rounded-xl p-4"
               style={{
-                ["--adm-accent" as string]: "#34d399",
+                ["--adm-accent" as string]: TIENDAS_ACCENT,
                 ["--adm-delay" as string]: `${Math.min(i * 0.05, 0.4)}s`,
               }}
             >
+              <span
+                className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-10 transition-opacity duration-300 group-hover:opacity-30"
+                style={{ background: `radial-gradient(circle, ${TIENDAS_ACCENT}, transparent 70%)` }}
+              />
+
               {/* Cabecera de tarjeta */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(shop.name, "w-6 h-6", shop.icon)}</span>
-                  <div>
-                    <p className="font-semibold text-foreground text-sm leading-tight">
+              <div className="relative flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className="adm-icon-float inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
+                    style={{
+                      borderColor: `${TIENDAS_ACCENT}55`,
+                      background: `${TIENDAS_ACCENT}1a`,
+                      color: TIENDAS_ACCENT,
+                      ["--adm-delay" as string]: `${i * 0.3}s`,
+                    }}
+                  >
+                    {getIconForString(shop.name, "w-5 h-5", shop.icon)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-serif text-sm leading-tight text-foreground transition-colors group-hover:text-[#34d399]">
                       {shop.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {shop.keeper}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{shop.keeper}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex shrink-0 gap-1">
                   <button
                     onClick={() => { playUiOpenSfx(); setItemsTarget(shop); }}
-                    className="h-7 px-3 flex items-center justify-center rounded bg-gold/20 text-gold hover:bg-gold hover:text-background transition-colors text-xs font-bold shadow-sm"
+                    className="inline-flex h-7 items-center gap-1 rounded-lg border px-2.5 text-xs font-bold transition-all active:scale-95"
+                    style={{ borderColor: `${TIENDAS_ACCENT}55`, background: `${TIENDAS_ACCENT}1f`, color: TIENDAS_ACCENT }}
                     title="Gestionar objetos"
                   >
-                    Items
+                    <Package className="h-3 w-3" /> Items
                   </button>
                   <button
-                    onClick={() => { playUiOpenSfx(); setEditTarget(shop); }}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
+                    onClick={() => { playUiClickSfx(); setEditTarget(shop); }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-gold"
                     title="Editar"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => { playUiOpenSfx(); setDeleteTarget(shop); }}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                     title="Eliminar"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -2868,25 +3108,30 @@ function ShopsTab({
               </div>
 
               {/* Descripción */}
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              <p className="relative line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                 {shop.description}
               </p>
 
               {/* Footer de tarjeta */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gold/80" /> {shop.location}</span>
-                <div className="flex items-center gap-2">
+              <div className="relative mt-auto flex items-center justify-between border-t border-border/50 pt-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 truncate">
+                  <MapPin className="h-3 w-3" style={{ color: TIENDAS_ACCENT }} /> {shop.location}
+                </span>
+                <div className="flex shrink-0 items-center gap-2">
                   {shop.minLevel && (
-                    <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded">
+                    <span className="rounded px-1.5 py-0.5 text-gold" style={{ background: "#d4af3719" }}>
                       Nv. {shop.minLevel}+
                     </span>
                   )}
-                  <span>{shop.itemCount} items</span>
+                  <span className="rounded px-1.5 py-0.5" style={{ background: `${TIENDAS_ACCENT}15`, color: TIENDAS_ACCENT }}>
+                    {shop.itemCount} items
+                  </span>
                 </div>
               </div>
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Modal Editar */}
@@ -3083,7 +3328,7 @@ function ShopFormModal({
   };
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} subtitle="Datos del mercader" onClose={onClose} accent={TIENDAS_ACCENT} icon={Store}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex items-end gap-4">
           <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10 text-gold shadow-inner">
@@ -3211,7 +3456,7 @@ function ShopItemsModal({
   }, [load]);
 
   return (
-    <Modal title={`Objetos de tienda: ${shop.name}`} onClose={onClose}>
+    <Modal title={`Objetos de tienda: ${shop.name}`} subtitle="Precios e inventario del mercader" onClose={onClose} accent={TIENDAS_ACCENT} icon={Package}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
@@ -3606,22 +3851,40 @@ function ObjectsTab({
     });
   }, [objects, normalizedQuery]);
 
+  const rarityHex = (r: string) => ITEM_RARITY_HEX[r as ItemRarity] ?? OBJETOS_ACCENT;
+  const legendarios = objects.filter((o) => o.rarity === "legendario").length;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {filteredObjects.length} de {objects.length} objeto{objects.length !== 1 ? "s" : ""} en catálogo
-        </p>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-dim text-background text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo objeto
-        </button>
+      <AdmHero
+        accent={OBJETOS_ACCENT}
+        icon={Box}
+        title="La forja"
+        subtitle="Crea y edita todos los objetos del catálogo"
+        right={
+          <button
+            onClick={() => { playUiOpenSfx(); setShowCreate(true); }}
+            onMouseEnter={playUiHoverSfx}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-background transition-all active:scale-95"
+            style={{ background: OBJETOS_ACCENT, boxShadow: `0 10px 28px -12px ${OBJETOS_ACCENT}` }}
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo objeto
+          </button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <AdmStat label="En catálogo" value={objects.length} accent={OBJETOS_ACCENT} icon={Box} delay={0} />
+        <AdmStat label="Coincidencias" value={filteredObjects.length} accent="#60a5fa" icon={Search} delay={0.06} />
+        <AdmStat label="Legendarios" value={legendarios} accent="#d4af37" icon={Sparkles} tone="#d4af37" delay={0.12} />
       </div>
 
-      <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
+      <div
+        className="adm-panel flex items-center gap-2.5 rounded-xl px-3.5 py-2.5"
+        style={{ ["--adm-accent" as string]: OBJETOS_ACCENT }}
+      >
+        <Search className="h-4 w-4 shrink-0" style={{ color: OBJETOS_ACCENT }} />
         <input
           type="text"
           value={searchQuery}
@@ -3629,6 +3892,16 @@ function ObjectsTab({
           placeholder="Buscar por nombre, tipo, rareza, descripción o ID..."
           className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
         />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+            title="Limpiar búsqueda"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -3637,34 +3910,51 @@ function ObjectsTab({
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredObjects.map((obj) => (
+          {filteredObjects.map((obj, i) => {
+            const tone = rarityHex(obj.rarity);
+            return (
             <div
               key={obj.id}
-              className="bg-secondary/30 border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-gold/40 transition-colors"
+              onMouseEnter={playUiHoverSfx}
+              className="adm-panel adm-card adm-card-in group relative flex flex-col gap-3 overflow-hidden rounded-xl p-4"
+              style={{
+                ["--adm-accent" as string]: tone,
+                ["--adm-delay" as string]: `${Math.min(i * 0.035, 0.45)}s`,
+              }}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex items-center justify-center text-gold bg-gold/10 p-2 rounded-lg">{getIconForString(obj.name, "w-6 h-6", obj.icon)}</span>
-                  <div>
-                    <p className="font-semibold text-foreground text-sm leading-tight">
+              <span
+                className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-10 transition-opacity duration-300 group-hover:opacity-35"
+                style={{ background: `radial-gradient(circle, ${tone}, transparent 70%)` }}
+              />
+
+              <div className="relative flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-transform duration-300 group-hover:scale-110"
+                    style={{ borderColor: `${tone}55`, background: `${tone}1a`, color: tone }}
+                  >
+                    {getIconForString(obj.name, "w-5 h-5", obj.icon)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-serif text-sm leading-tight text-foreground">
                       {obj.name}
                     </p>
-                    <p className="text-xs text-muted-foreground capitalize">
+                    <p className="truncate text-xs capitalize text-muted-foreground">
                       {obj.itemType}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex shrink-0 gap-1 opacity-70 transition-opacity duration-200 group-hover:opacity-100">
                   <button
-                    onClick={() => setEditTarget(obj)}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-gold transition-colors"
+                    onClick={() => { playUiClickSfx(); setEditTarget(obj); }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-gold"
                     title="Editar"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => setDeleteTarget(obj)}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={() => { playUiOpenSfx(); setDeleteTarget(obj); }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                     title="Eliminar"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -3672,27 +3962,39 @@ function ObjectsTab({
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              <p className="relative line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                 {obj.description || "Sin descripción"}
               </p>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-2 border-t border-border/50">
+              <div className="relative mt-auto flex items-center justify-between border-t border-border/50 pt-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 bg-gold/10 text-gold rounded capitalize">
+                  <span
+                    className="rounded px-1.5 py-0.5 capitalize"
+                    style={{ background: `${tone}1f`, color: tone }}
+                  >
                     {obj.rarity}
                   </span>
-                  <span className="text-gold flex items-center gap-1">{obj.price.toLocaleString()} <Coins className="w-3.5 h-3.5" /></span>
+                  <span className="inline-flex items-center gap-1 text-gold">
+                    {obj.price.toLocaleString("es-ES")} <Coins className="h-3.5 w-3.5" />
+                  </span>
                 </div>
-                <span>{formatDate(obj.createdAt)}</span>
+                <span className="shrink-0">{formatDate(obj.createdAt)}</span>
               </div>
             </div>
-          ))}
+            );
+          })}
           {filteredObjects.length === 0 && (
-            <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
-              {normalizedQuery
-                ? `No se encontraron objetos para "${searchQuery}".`
-                : "No hay objetos cargados en el catálogo."}
-            </div>
+            <AdmPanel
+              accent={OBJETOS_ACCENT}
+              className="adm-row-in flex flex-col items-center gap-2 py-10 text-center sm:col-span-2 xl:col-span-3"
+            >
+              <Box className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                {normalizedQuery
+                  ? `No se encontraron objetos para "${searchQuery}".`
+                  : "No hay objetos cargados en el catálogo."}
+              </p>
+            </AdmPanel>
           )}
         </div>
       )}
@@ -3835,7 +4137,7 @@ function ObjectFormModal({
   };
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} subtitle="Ficha del objeto en el catálogo" onClose={onClose} accent={OBJETOS_ACCENT} icon={Box}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-[auto_1fr] gap-4 items-end">
           <FormField label="Icono">
@@ -4278,6 +4580,8 @@ function DeadCharactersTab({
   }, [token, onToast]);
 
   const [confirmConfig, setConfirmConfig] = useState<ConfirmModalConfig | null>(null);
+  // Ceremonia celestial a pantalla completa tras revivir.
+  const [almaFx, setAlmaFx] = useState<AlmaFx | null>(null);
 
   const executeReviveDead = async (characterId: number, name: string) => {
     setReviving(characterId);
@@ -4292,6 +4596,7 @@ function DeadCharactersTab({
       });
       if (res.ok) {
         onToast(`${name} revivido exitosamente`, "success");
+        setAlmaFx({ tipo: "revivir", nombre: name });
         // Actualización optimista: sacar de la lista de muertos actuales
         setDeadRows((prev) => prev.filter((r) => r.id !== characterId));
       } else {
@@ -4370,6 +4675,7 @@ function DeadCharactersTab({
 
   return (
     <div className="flex flex-col gap-5">
+      {almaFx && <AlmaOverlay fx={almaFx} onDone={() => setAlmaFx(null)} />}
       <AdmHero
         accent={MUERTES_ACCENT}
         icon={Skull}
@@ -4581,6 +4887,9 @@ function GroupSubTabs<T extends string>({
 }
 
 const ECONOMIA_ACCENT = "#22d3ee";
+const PARTIDAS_ACCENT = "#fb923c";
+const TIENDAS_ACCENT = "#34d399";
+const OBJETOS_ACCENT = "#fbbf24";
 
 function EconomiaGroupTab({
   token,
@@ -4624,15 +4933,15 @@ function PartidasGroupTab({
   type PartidasSubTab = "crear" | "activas" | "historial";
   const [subTab, setSubTab] = useState<PartidasSubTab>("crear");
 
-  const subTabs: { id: PartidasSubTab; label: string }[] = [
-    { id: "crear", label: "Crear partida" },
-    { id: "activas", label: "Partidas activas" },
-    { id: "historial", label: "Historial" },
+  const subTabs: AdmPillTab<PartidasSubTab>[] = [
+    { id: "crear", label: "Crear partida", icon: Plus },
+    { id: "activas", label: "Partidas activas", icon: Swords },
+    { id: "historial", label: "Historial", icon: History },
   ];
 
   return (
     <div>
-      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} />
+      <GroupSubTabs tabs={subTabs} active={subTab} onChange={setSubTab} accent={PARTIDAS_ACCENT} />
       {subTab === "crear" && <PartidasTab token={token} onToast={onToast} />}
       {subTab === "activas" && (
         <ActivePartidasTab token={token} onToast={onToast} />
@@ -4710,7 +5019,7 @@ export default function AdminPage() {
   const activeCard = tabs.find((t) => t.id === activeTab) ?? null;
 
   const openTab = (id: Tab) => {
-    playUiOpenSfx();
+    playUiClickSfx();
     setActiveTab(id);
   };
 
@@ -4740,7 +5049,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gold tracking-wide">
-                Panel de Administrador
+                Panel de DM
               </h1>
               <p className="text-sm text-muted-foreground">
                 Bienvenido,{" "}

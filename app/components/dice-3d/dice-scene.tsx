@@ -250,7 +250,7 @@ function DiceGroup(props: SceneProps) {
   );
 
   const needW = Math.max(...positions.map(([x]) => Math.abs(x))) * 2 + 2.2;
-  const scale = Math.min(1, (viewport.width * 0.92) / needW);
+  const scale = Math.min(1, (viewport.width * 0.92) / needW) * 0.8; // dado 20% más pequeño
 
   // Zona de aterrizaje aleatoria por tirada: se desplaza el grupo dentro del
   // hueco que deja libre en pantalla (fijado al montar; un resize no teleporta).

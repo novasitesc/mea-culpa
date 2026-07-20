@@ -1,5 +1,6 @@
 "use client";
 
+import ModalPortal from "@/components/ui/modal-portal";
 import React from "react";
 import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
@@ -46,6 +47,7 @@ export default function ConfirmActionModal({
   const Icon = icon ?? (isSuccess ? Sparkles : AlertTriangle);
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-90 flex items-center justify-center p-4">
       <button
         type="button"
@@ -103,5 +105,6 @@ export default function ConfirmActionModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

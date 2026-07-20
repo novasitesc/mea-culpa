@@ -147,6 +147,27 @@
     0 0 60px rgba(255, 140, 30, 0.08);
 }
 
+/* Modal de premio del dado: grano de pergamino + aura mágica pulsante */
+.reward-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.reward-aura {
+  animation: magical-glow 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-aura {
+    animation: none;
+  }
+}
+
 /* Scroll horizontal del tabbar del admin en paleta oscura */
 .admin-tabs-scroll {
   scrollbar-width: thin;
@@ -1283,16 +1304,56 @@ input[type="number"]::-webkit-outer-spin-button:hover {
     color-mix(in srgb, var(--adm-accent, #d4af37) 18%, transparent), transparent 60%);
 }
 
-/* Modal renovado temático */
+/* ══════════════════════════════════════════════════════════════
+   Modal arcano: ventana de grimorio con marco, sello y filigrana.
+   Prefijo: adm-modal-  ·  reutilizado por el shell, dados y confirmar.
+   ══════════════════════════════════════════════════════════════ */
 .adm-modal {
-  background: var(--card);
-  border-width: 1px;
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--adm-accent, #d4af37) 42%, var(--border));
+  /* Pergamino oscuro teñido por el acento de la sección */
+  background:
+    radial-gradient(120% 80% at 50% -10%,
+      color-mix(in srgb, var(--adm-accent, #d4af37) 16%, transparent), transparent 60%),
+    radial-gradient(140% 120% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%),
+    var(--card);
+  border: 1px solid color-mix(in srgb, var(--adm-accent, #d4af37) 46%, var(--border));
   box-shadow:
     0 30px 90px -30px rgba(0, 0, 0, 0.85),
+    0 0 0 1px color-mix(in srgb, var(--adm-accent, #d4af37) 20%, transparent),
+    0 0 70px -20px color-mix(in srgb, var(--adm-accent, #d4af37) 55%, transparent);
+  animation: adm-modal-glow 4.5s ease-in-out infinite;
+}
+
+@keyframes adm-modal-glow {
+  0%, 100% { box-shadow:
+    0 30px 90px -30px rgba(0, 0, 0, 0.85),
     0 0 0 1px color-mix(in srgb, var(--adm-accent, #d4af37) 18%, transparent),
-    0 0 60px -22px color-mix(in srgb, var(--adm-accent, #d4af37) 45%, transparent);
+    0 0 55px -24px color-mix(in srgb, var(--adm-accent, #d4af37) 45%, transparent); }
+  50% { box-shadow:
+    0 30px 90px -30px rgba(0, 0, 0, 0.85),
+    0 0 0 1px color-mix(in srgb, var(--adm-accent, #d4af37) 30%, transparent),
+    0 0 90px -16px color-mix(in srgb, var(--adm-accent, #d4af37) 65%, transparent); }
+}
+
+/* Marco de esquinas estilo menú de RPG (4 escuadras del color de acento) */
+.adm-modal::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.75;
+  --c: color-mix(in srgb, var(--adm-accent, #d4af37) 85%, transparent);
+  background:
+    linear-gradient(var(--c), var(--c)) 0 0 / 22px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 0 / 1.5px 22px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 22px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 1.5px 22px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 22px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 1.5px 22px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 22px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 1.5px 22px no-repeat;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--adm-accent, #d4af37) 60%, transparent));
 }
 
 .adm-modal-line {
@@ -1301,14 +1362,83 @@ input[type="number"]::-webkit-outer-spin-button:hover {
   left: 0;
   right: 0;
   height: 3px;
+  overflow: hidden;
   background: linear-gradient(90deg, transparent, var(--adm-accent, #d4af37), transparent);
-  opacity: 0.85;
+  opacity: 0.9;
   pointer-events: none;
+  z-index: 3;
+}
+
+/* Destello que recorre la barra superior */
+.adm-modal-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: translateX(-100%);
+  animation: adm-line-sweep 3.8s ease-in-out infinite;
+}
+@keyframes adm-line-sweep {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(220%); }
 }
 
 .adm-modal-head {
   background: linear-gradient(180deg,
-    color-mix(in srgb, var(--adm-accent, #d4af37) 11%, transparent), transparent);
+    color-mix(in srgb, var(--adm-accent, #d4af37) 14%, transparent), transparent);
+}
+
+/* Sello arcano del encabezado: anillo rúnico girando + núcleo que respira */
+.adm-seal { position: relative; display: inline-flex; }
+.adm-seal-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 9999px;
+  border: 1.5px dashed color-mix(in srgb, var(--adm-accent, #d4af37) 60%, transparent);
+  animation: asc-rune-spin 16s linear infinite;
+  pointer-events: none;
+}
+.adm-seal-core {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.6rem;
+  width: 2.6rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--adm-accent, #d4af37) 55%, transparent);
+  background: radial-gradient(circle at 32% 26%,
+    color-mix(in srgb, var(--adm-accent, #d4af37) 38%, transparent),
+    color-mix(in srgb, var(--adm-accent, #d4af37) 12%, transparent));
+  color: var(--adm-accent, #d4af37);
+  animation: adm-seal-breathe 3.2s ease-in-out infinite;
+}
+@keyframes adm-seal-breathe {
+  0%, 100% { box-shadow: 0 0 14px -6px var(--adm-accent, #d4af37), inset 0 0 10px -6px var(--adm-accent, #d4af37); }
+  50%      { box-shadow: 0 0 26px -3px var(--adm-accent, #d4af37), inset 0 0 16px -4px var(--adm-accent, #d4af37); }
+}
+
+/* Filigrana: línea con una gema en el centro */
+.adm-filigree { display: flex; align-items: center; gap: 0.6rem; }
+.adm-filigree::before, .adm-filigree::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent,
+    color-mix(in srgb, var(--adm-accent, #d4af37) 55%, transparent), transparent);
+}
+.adm-filigree-gem {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: var(--adm-accent, #d4af37);
+  box-shadow: 0 0 9px var(--adm-accent, #d4af37);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-modal, .adm-modal-line::after, .adm-seal-ring, .adm-seal-core {
+    animation: none !important;
+  }
 }
 
 /* Giro decorativo lento (rueda de la ruleta) */
@@ -1333,6 +1463,126 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .adm-spin-slow, .adm-row-in, .adm-accent-pulse {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Overlay de estado del personaje: agotamiento y recuperación
+   Prefijo: est-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Agotamiento: el icono se desploma y respira pesado */
+@keyframes est-drain {
+  0%   { transform: translateY(-26px) scale(1.25) rotate(-8deg); opacity: 0; }
+  45%  { transform: translateY(6px) scale(0.94) rotate(4deg); opacity: 1; }
+  70%  { transform: translateY(0) scale(1.02) rotate(-2deg); }
+  100% { transform: translateY(0) scale(1) rotate(0deg); }
+}
+.est-drain { animation: est-drain 0.85s cubic-bezier(0.3, 1.2, 0.4, 1) both; }
+
+@keyframes est-weary-breath {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.35)); }
+  50%      { transform: translateY(3px); filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.6)); }
+}
+.est-weary-breath { animation: est-weary-breath 2.1s ease-in-out 0.85s infinite; }
+
+/* Motas de ceniza que caen: contrapunto de las ascuas que suben */
+@keyframes est-mote-fall {
+  0%   { transform: translateY(-8vh) translateX(0) scale(1); opacity: 0; }
+  12%  { opacity: 0.85; }
+  100% { transform: translateY(60vh) translateX(var(--est-drift, 0px)) scale(0.35); opacity: 0; }
+}
+.est-mote { animation: est-mote-fall var(--est-duration, 4s) linear var(--est-delay, 0s) infinite; }
+
+/* Recuperación: pulso de vida que se expande */
+@keyframes est-heal-ring {
+  0%   { transform: scale(0.5); opacity: 0.85; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.est-heal-ring { animation: est-heal-ring 1.5s ease-out var(--est-delay, 0s) infinite; }
+
+@keyframes est-heal-pop {
+  0%   { transform: scale(0.4); opacity: 0; filter: drop-shadow(0 0 0 rgba(16, 185, 129, 0)); }
+  55%  { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 26px rgba(16, 185, 129, 0.8)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(16, 185, 129, 0.5)); }
+}
+.est-heal-pop { animation: est-heal-pop 0.8s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+
+@keyframes est-heal-beat {
+  0%, 100% { transform: scale(1); }
+  20%      { transform: scale(1.14); }
+  40%      { transform: scale(1); }
+  60%      { transform: scale(1.08); }
+}
+.est-heal-beat { animation: est-heal-beat 1.6s ease-in-out 0.8s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .est-drain, .est-weary-breath, .est-mote,
+  .est-heal-ring, .est-heal-pop, .est-heal-beat {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Ritual del alma: resurrección celestial y sentencia mortal
+   Prefijo: alm-
+   ══════════════════════════════════════════════════════════════ */
+
+/* Rayos divinos que giran despacio tras el icono */
+@keyframes alm-rays-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.alm-rays { animation: alm-rays-spin 26s linear infinite; }
+
+/* Halo central: aparece y luego respira */
+@keyframes alm-halo-in {
+  0%   { transform: scale(0.4); opacity: 0; }
+  45%  { opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0.9; }
+}
+.alm-halo-in { animation: alm-halo-in 1.2s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+@keyframes alm-halo-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.09); opacity: 1; }
+}
+.alm-halo-breathe { animation: alm-halo-breathe 3.2s ease-in-out 1.2s infinite; }
+
+/* Motas de luz que ascienden (almas que suben) */
+@keyframes alm-rise {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translateY(-62vh) translateX(var(--alm-drift, 0px)) scale(0.25); opacity: 0; }
+}
+.alm-rise { animation: alm-rise var(--alm-dur, 4s) ease-out var(--alm-delay, 0s) infinite; }
+
+/* Icono central: emerge con destello y luego palpita */
+@keyframes alm-icon-in {
+  0%   { transform: scale(0.3) translateY(24px); opacity: 0; filter: drop-shadow(0 0 0 rgba(255, 240, 180, 0)); }
+  55%  { transform: scale(1.16) translateY(0); opacity: 1; filter: drop-shadow(0 0 32px rgba(255, 240, 180, 0.95)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 18px rgba(255, 235, 160, 0.7)); }
+}
+.alm-icon-in { animation: alm-icon-in 1s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+
+/* Anillos de luz que se expanden */
+@keyframes alm-ring-expand {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.alm-ring { animation: alm-ring-expand 1.9s ease-out var(--alm-delay, 0s) infinite; }
+
+/* Grietas de la sentencia mortal: destello rojo que se abre */
+@keyframes alm-crack-in {
+  0%   { opacity: 0; transform: scale(1.15); }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0.4; transform: scale(1); }
+}
+.alm-crack-in { animation: alm-crack-in 0.8s ease-out 0.1s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .alm-rays, .alm-halo-in, .alm-halo-breathe, .alm-rise,
+  .alm-icon-in, .alm-ring, .alm-crack-in {
     animation: none !important;
     opacity: 1;
   }

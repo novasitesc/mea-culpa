@@ -828,7 +828,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       </div>
 
       {/* Panel derecho: Feed */}
-      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-3 min-h-[300px] lg:min-h-0 overflow-hidden">
+      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-3 min-h-[300px] max-h-[65vh] lg:min-h-0 overflow-hidden">
         <SalaFeed eventos={eventos} />
       </div>
 

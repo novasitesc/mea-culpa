@@ -1,5 +1,6 @@
 "use client";
 
+import ModalPortal from "@/components/ui/modal-portal";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, Trash2, Pencil, Loader2, Check, X, Dices, Dice6, GripVertical } from "lucide-react";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
@@ -489,6 +490,7 @@ export function DadosTab({ token }: { token: string | null }) {
 
       {/* Modal de edición */}
       {editingId !== null && (
+        <ModalPortal>
         <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 ${modalOverlayCls(editClosing)}`}>
           <div
             className={`adm-modal relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} ${modalPanelCls(editClosing)}`}
@@ -894,6 +896,7 @@ export function DadosTab({ token }: { token: string | null }) {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Sección de prueba — visible si hay recompensas activas */}

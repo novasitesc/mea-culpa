@@ -1,5 +1,6 @@
 "use client";
 
+import ModalPortal from "@/components/ui/modal-portal";
 import { useCallback, useEffect, useMemo } from "react";
 import { Crown, X, Sparkles, Loader2, ShieldAlert, ScrollText } from "lucide-react";
 import {
@@ -8,6 +9,15 @@ import {
   modalPanelCls,
 } from "@/lib/useModalTransition";
 import { useSealRitual, type RitualPhase } from "./use-seal-ritual";
+import {
+  startSealCharge,
+  updateSealCharge,
+  releaseSealCharge,
+  stopSealCharge,
+  playSealCompleteSfx,
+  playSealShakeSfx,
+  playDecreeSfx,
+} from "@/lib/sfx";
 
 export type AscensionTarget = {
   id: string;
@@ -194,6 +204,36 @@ export default function AscensionModal({
     closeWith(onClose);
   };
 
+  // ── Sonido del sello sincronizado con la carga ──
+  // Presionar arranca el zumbido ascendente; soltar antes de completar lo hace
+  // descender; al completarse suena el cuño y el decreto se anuncia en 'success'.
+  const handleSealDown = () => {
+    startCharge();
+    startSealCharge("ascension");
+  };
+  const handleSealRelease = () => {
+    const wasCharging = chargingRef.current;
+    cancelCharge();
+    if (wasCharging) releaseSealCharge();
+  };
+
+  useEffect(() => {
+    if (phase === "idle") updateSealCharge(charge);
+  }, [charge, phase]);
+
+  useEffect(() => {
+    if (phase === "sealing") {
+      stopSealCharge();
+      playSealCompleteSfx();
+      playSealShakeSfx(); // retumbo que acompaña la sacudida del modal
+    } else if (phase === "success") {
+      playDecreeSfx();
+    }
+  }, [phase]);
+
+  // Cortar el zumbido si el modal se desmonta a mitad de carga.
+  useEffect(() => () => stopSealCharge(), []);
+
   // Escape para cerrar (salvo durante el sellado)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -234,6 +274,7 @@ export default function AscensionModal({
   const isSealing = phase === "sealing";
 
   return (
+    <ModalPortal>
     <div
       className={`fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${modalOverlayCls(
         closing,
@@ -338,7 +379,7 @@ export default function AscensionModal({
               </h3>
               <p className="mt-2 text-sm text-foreground/60 leading-relaxed max-w-xs">
                 Le conferirás el título de{" "}
-                <span className="text-gold/90 font-semibold">Administrador</span>,
+                <span className="text-gold/90 font-semibold">DM</span>,
                 otorgándole acceso a las funciones de gestión del sistema y la
                 capacidad de supervisar a otros usuarios. Asegúrate de que esta
                 persona sea digna de tal honor.
@@ -353,15 +394,15 @@ export default function AscensionModal({
                   try {
                     e.currentTarget.setPointerCapture(e.pointerId);
                   } catch {}
-                  startCharge();
+                  handleSealDown();
                 }}
-                onPointerUp={cancelCharge}
-                onPointerCancel={cancelCharge}
+                onPointerUp={handleSealRelease}
+                onPointerCancel={handleSealRelease}
                 onClick={(e) => {
                   if (e.detail === 0) beginSealing();
                 }}
                 className="group relative mt-6 w-full overflow-hidden rounded-xl border-2 border-gold/50 bg-gradient-to-b from-gold/20 to-gold/5 px-5 py-3.5 font-serif text-gold transition-colors hover:border-gold hover:from-gold/30 focus:outline-none focus:ring-2 focus:ring-gold/50"
-                aria-label={`Mantén pulsado para nombrar administrador a ${user.name}`}
+                aria-label={`Mantén pulsado para nombrar DM a ${user.name}`}
               >
                 {/* Relleno de carga */}
                 <span
@@ -448,7 +489,7 @@ export default function AscensionModal({
               <p className="mt-2 text-sm text-foreground/70">
                 <span className="text-parchment font-semibold">{user.name}</span>{" "}
                 ahora forma parte de la{" "}
-                <span className="text-gold">Orden de Administradores</span>.
+                <span className="text-gold">Orden de los DM</span>.
               </p>
               <button
                 onClick={handleClose}
@@ -487,5 +528,6 @@ export default function AscensionModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

@@ -272,7 +272,7 @@ export default function MobileNav() {
                             }`}
                           >
                             <Shield className="w-5 h-5 shrink-0" />
-                            <span>Panel de Administrador</span>
+                            <span>Panel de DM</span>
                             <span className="ml-auto rounded bg-gold px-1.5 py-0.5 text-[9px] font-bold leading-none text-background">
                               ADM
                             </span>

@@ -288,7 +288,8 @@ export default function SalaFeed({ eventos }: Props) {
   const prevLen = useRef<number | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // "nearest": desplaza solo el contenedor del feed, nunca la página entera.
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [eventos.length]);
 
   // Burbujeo del frasco solo con consumibles nuevos, no con el historial

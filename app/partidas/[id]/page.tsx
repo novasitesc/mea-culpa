@@ -15,6 +15,7 @@ import DescansoOverlay from "@/app/components/descanso-overlay";
 import CaidasOverlay from "@/app/components/caidas-overlay";
 import DesmembramientoOverlay from "@/app/components/desmembramiento-overlay";
 import PartidaFinalOverlay from "@/app/components/partida-final-overlay";
+import EstadoOverlay, { type EstadoFx } from "@/app/components/estado-overlay";
 import type {
   SalaPartida,
   SalaParticipante,
@@ -23,6 +24,7 @@ import type {
   EventoDescansoLargo,
   EventoDescansoCorto,
   EventoCaida,
+  EventoCansancio,
   EventoDesmembramiento,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
@@ -72,9 +74,12 @@ export default function SalaPage() {
   // mientras el anterior sigue abierto.
   const [caidaFx, setCaidaFx] = useState<{ key: number; ev: EventoCaida } | null>(null);
   const [desmFx, setDesmFx] = useState<{ key: number; ev: EventoDesmembramiento } | null>(null);
+  // Agotamiento y recuperación: solo los ve el jugador afectado.
+  const [estadoFx, setEstadoFx] = useState<{ key: number; fx: EstadoFx } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
+  const miPersonajeIdRef = useRef<number | null>(null);
 
   // Aplica los resultados de un descanso al estado local de participantes.
   // Usa los valores por personaje del evento (cubre a los que no tenían
@@ -117,6 +122,19 @@ export default function SalaPage() {
     if (ev.desmembrado) setDesmFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
   }, []);
 
+  // Agotamiento (+1 cansancio) y recuperación (−1 caída): a diferencia de las
+  // caídas, solo se escenifican para el dueño del personaje afectado.
+  const triggerEstadoFx = useCallback((ev: EventoCaida | EventoCansancio) => {
+    if (ev.personajeId !== miPersonajeIdRef.current) return;
+    const fx: EstadoFx | null =
+      ev.tipo === "cansancio" && ev.delta > 0
+        ? { tipo: "cansancio", personajeNombre: ev.personajeNombre, cansancio: ev.cansancio }
+        : ev.tipo === "caida" && ev.delta < 0
+          ? { tipo: "recuperacion", personajeNombre: ev.personajeNombre, caidas: ev.caidas }
+          : null;
+    if (fx) setEstadoFx((p) => ({ key: (p?.key ?? 0) + 1, fx }));
+  }, []);
+
   const loadSala = useCallback(async () => {
     if (!token || !partidaId) return;
     setLoadingData(true);
@@ -152,6 +170,13 @@ export default function SalaPage() {
   }, [isAuthenticated, token, loadSala]);
 
   useEffect(() => { esAdminRef.current = esAdmin; }, [esAdmin]);
+
+  useEffect(() => {
+    miPersonajeIdRef.current =
+      !esAdmin && user
+        ? participantes.find((p) => p.usuarioId === user.id)?.personajeId ?? null
+        : null;
+  }, [esAdmin, user, participantes]);
 
   // Persist feed to localStorage whenever eventos changes
   useEffect(() => {
@@ -199,6 +224,7 @@ export default function SalaPage() {
         appendEvento(payload);
         if (payload.tipo === "caida") {
           triggerCaidaFx(payload);
+          triggerEstadoFx(payload);
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
@@ -216,6 +242,7 @@ export default function SalaPage() {
       .on("broadcast", { event: "cansancio" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "cansancio") {
+          triggerEstadoFx(payload);
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
@@ -268,7 +295,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, triggerCaidaFx, triggerDesmFx]);
+  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, triggerCaidaFx, triggerDesmFx, triggerEstadoFx]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -295,6 +322,7 @@ export default function SalaPage() {
     if (ev.tipo === "caida") {
       appendEvento(ev);
       triggerCaidaFx(ev);
+      triggerEstadoFx(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
@@ -312,6 +340,7 @@ export default function SalaPage() {
 
     if (ev.tipo === "cansancio") {
       appendEvento(ev);
+      triggerEstadoFx(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId ? { ...p, cansancio: ev.cansancio } : p,
@@ -477,6 +506,11 @@ export default function SalaPage() {
       {/* Caída / derrota escenificada para toda la sala */}
       {caidaFx && (
         <CaidasOverlay key={caidaFx.key} evento={caidaFx.ev} onDone={() => setCaidaFx(null)} />
+      )}
+
+      {/* Agotamiento / recuperación: solo para el jugador afectado */}
+      {estadoFx && (
+        <EstadoOverlay key={estadoFx.key} fx={estadoFx.fx} onDone={() => setEstadoFx(null)} />
       )}
 
       {/* Desmembramiento escenificado para toda la sala */}

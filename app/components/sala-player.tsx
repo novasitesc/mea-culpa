@@ -109,7 +109,7 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
       )}
 
       {/* Feed en vivo — ocupa todo el espacio restante */}
-      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-4 min-h-[300px] overflow-hidden">
+      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-4 min-h-[300px] max-h-[65vh] overflow-hidden">
         {partida.estado === "abierta" ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
             <div className="w-10 h-10 rounded-full border-2 border-gold-dim/30 flex items-center justify-center">

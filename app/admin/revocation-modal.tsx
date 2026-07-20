@@ -1,5 +1,6 @@
 "use client";
 
+import ModalPortal from "@/components/ui/modal-portal";
 import { useCallback, useEffect, useMemo } from "react";
 import { X, Flame, Loader2, ShieldAlert, ScrollText, ShieldOff } from "lucide-react";
 import {
@@ -8,6 +9,14 @@ import {
   modalPanelCls,
 } from "@/lib/useModalTransition";
 import { useSealRitual, type RitualPhase } from "./use-seal-ritual";
+import {
+  startSealCharge,
+  updateSealCharge,
+  releaseSealCharge,
+  stopSealCharge,
+  playSealShakeSfx,
+  playRevokeSfx,
+} from "@/lib/sfx";
 
 export type RevocationTarget = {
   id: string;
@@ -221,6 +230,34 @@ export default function RevocationModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
+  // ── Sonido del sello (grave) sincronizado con la carga ──
+  // Presionar arranca el zumbido; soltar antes de completar lo hace descender;
+  // al romperse el sello retumba y suena la revocación del título.
+  const handleSealDown = () => {
+    startCharge();
+    startSealCharge("revocation");
+  };
+  const handleSealRelease = () => {
+    const wasCharging = chargingRef.current;
+    cancelCharge();
+    if (wasCharging) releaseSealCharge();
+  };
+
+  useEffect(() => {
+    if (phase === "idle") updateSealCharge(charge);
+  }, [charge, phase]);
+
+  useEffect(() => {
+    if (phase === "sealing") {
+      stopSealCharge();
+      playSealShakeSfx();
+    } else if (phase === "success") {
+      playRevokeSfx();
+    }
+  }, [phase]);
+
+  useEffect(() => () => stopSealCharge(), []);
+
   // Ceniza cayendo (memoizada)
   const ashes = useMemo(
     () =>
@@ -252,6 +289,7 @@ export default function RevocationModal({
   const isSealing = phase === "sealing";
 
   return (
+    <ModalPortal>
     <div
       className={`fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${modalOverlayCls(
         closing,
@@ -352,7 +390,7 @@ export default function RevocationModal({
               </h3>
               <p className="mt-2 text-sm text-foreground/60 leading-relaxed max-w-xs">
                 Le despojarás del título de{" "}
-                <span className="text-blood/90 font-semibold">Administrador</span> y
+                <span className="text-blood/90 font-semibold">DM</span> y
                 de todos sus poderes en el Consejo. Volverá a ser un ciudadano común
                 de MeaCulpa.
               </p>
@@ -366,15 +404,15 @@ export default function RevocationModal({
                   try {
                     e.currentTarget.setPointerCapture(e.pointerId);
                   } catch {}
-                  startCharge();
+                  handleSealDown();
                 }}
-                onPointerUp={cancelCharge}
-                onPointerCancel={cancelCharge}
+                onPointerUp={handleSealRelease}
+                onPointerCancel={handleSealRelease}
                 onClick={(e) => {
                   if (e.detail === 0) beginSealing();
                 }}
                 className="group relative mt-6 w-full overflow-hidden rounded-xl border-2 border-blood/60 bg-gradient-to-b from-blood/25 to-blood/5 px-5 py-3.5 font-serif text-blood transition-colors hover:border-blood focus:outline-none focus:ring-2 focus:ring-blood/50"
-                aria-label={`Mantén pulsado para revocar el rol de administrador de ${user.name}`}
+                aria-label={`Mantén pulsado para revocar el rol de DM de ${user.name}`}
               >
                 {/* Relleno de carga */}
                 <span
@@ -412,7 +450,7 @@ export default function RevocationModal({
               <p className="mt-2 text-sm text-foreground/60">
                 Borrando el nombre de{" "}
                 <span className="text-parchment">{user.name}</span> de la Orden de
-                Administradores
+                los DM
                 <span className="asc-dots" />
               </p>
               <div className="relative mt-5 h-2 w-64 max-w-full mx-auto overflow-hidden rounded-full border border-blood/40 bg-black/50">
@@ -496,5 +534,6 @@ export default function RevocationModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

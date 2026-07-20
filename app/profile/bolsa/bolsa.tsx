@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag
 import { getIconForString } from "@/lib/iconMapper";
 import { getSupabase } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
+import { playBagOpenSfx, playItemSelectSfx } from "@/lib/sfx";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
 
@@ -850,6 +851,11 @@ export default function EquipmentModal({
   const [selectedCapeSocket, setSelectedCapeSocket] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState("Sin cambios pendientes");
 
+  // Sonido de cuero al abrir la bolsa (el modal se monta al abrirse).
+  useEffect(() => {
+    playBagOpenSfx();
+  }, []);
+
   const renderStatusMessage = (msg: string) => {
     if (msg.startsWith("⚠")) {
       return <span className="flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-amber-500" />{msg.slice(1).trim()}</span>;
@@ -1262,6 +1268,7 @@ export default function EquipmentModal({
         return;
       }
       setSelectedBagIndex(index);
+      playItemSelectSfx();
       if (selectedWeaponSocket) {
         setStatusMsg("Objeto seleccionado — haz clic en el sub-slot del arma para insertarlo");
         return;
