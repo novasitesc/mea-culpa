@@ -1,5 +1,8 @@
 "use client";
 
+// Cierre de la expedición: resumen de lo ocurrido y el descanso obligatorio.
+// Desde aquí se paga la posada — o se rehúsa y se acumula agotamiento.
+
 import { useEffect, useMemo, useState } from "react";
 import { Trophy, Swords, Home, Coins } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";

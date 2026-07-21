@@ -1,3 +1,6 @@
+// POST — Solo admin (el DM). Avanza el grupo a la siguiente sala de la mazmorra.
+// Registra el evento; a las SALAS_POR_DESCANSO salas (lib/descanso.ts) se avisa
+// de que toca descansar, pero es solo un aviso: manda el DM.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { SALAS_POR_DESCANSO, salasDesdeUltimoDescanso } from "@/lib/descanso";

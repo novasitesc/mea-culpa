@@ -1,3 +1,8 @@
+// POST — El VENDEDOR acepta o rechaza una solicitud. Cierra el trato.
+// Aceptar: el objeto pasa al comprador y el oro retenido al vendedor.
+// Rechazar: se devuelve el oro y la publicación vuelve a estar libre.
+// Comprueba que el personaje destino está vivo y no en expedición: no se puede
+// recibir nada de fuera mientras se juega una partida.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

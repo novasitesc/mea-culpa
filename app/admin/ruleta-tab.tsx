@@ -1,5 +1,10 @@
 "use client";
 
+// Pestaña de ruleta del panel: premios de cada categoría, interruptor global e
+// historial de tiradas.
+// Aquí se edita QUÉ se puede ganar; las probabilidades son fijas y están en el
+// código (lib/roulette.ts).
+
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,

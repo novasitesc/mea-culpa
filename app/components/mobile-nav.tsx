@@ -1,5 +1,7 @@
 "use client";
 
+// Navegación inferior en móvil.
+
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";

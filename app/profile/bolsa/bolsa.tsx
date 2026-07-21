@@ -1,11 +1,18 @@
 "use client";
 
+// Bolsa y equipamiento: arrastrar y soltar entre las ranuras de equipo y los
+// huecos de la bolsa.
+//
+// Aquí solo está la interacción; TODAS las reglas (qué entra en qué ranura, las
+// armas a dos manos, las gemas, la capacidad máxima) las decide el servidor en
+// POST /api/profile/update-bag. La pantalla propone, la ruta dispone.
+
 import { useState, useCallback, useEffect } from "react";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { getSupabase } from "@/lib/supabase";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { playBagOpenSfx, playItemSelectSfx } from "@/lib/sfx";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────

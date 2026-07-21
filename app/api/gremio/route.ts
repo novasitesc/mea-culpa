@@ -1,3 +1,6 @@
+// GET / POST — El gremio del usuario: crearlo y consultarlo.
+// GET devuelve el gremio, sus miembros, el contenido del baúl y las solicitudes
+// pendientes. Punto de entrada del sistema de gremios.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

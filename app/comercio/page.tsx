@@ -1,5 +1,9 @@
 "use client";
 
+// Mercado entre jugadores (/comercio). Ciclo completo de un trato:
+//   publicar → solicitar (el oro queda retenido) → el vendedor acepta o rechaza.
+// Cada paso es su propia ruta bajo /api/comercio/.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";

@@ -1,3 +1,5 @@
+// POST — Paso 1 de la resurrección pagada: crea la orden en PayPal y la
+// registra en `pagos_paypal` como pendiente. Todavía no se cobra ni se revive.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

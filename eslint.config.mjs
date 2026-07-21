@@ -31,6 +31,17 @@ const eslintConfig = defineConfig([
       "react-hooks/static-components": "warn",
       // Textos en español con comillas/acentos dentro de JSX.
       "react/no-unescaped-entities": "off",
+      // El prefijo `_` marca "esto no se usa a propósito": el parámetro que se
+      // mantiene por la firma, o la fuente de next/font que debe asignarse a una
+      // const para que Next la cargue aunque nadie lea la variable.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ]);

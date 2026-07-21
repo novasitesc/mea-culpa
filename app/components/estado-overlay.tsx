@@ -1,5 +1,7 @@
 "use client";
 
+// Aviso de cambio de estado del personaje (cansancio, heridas) durante la partida.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Zap, HeartPulse, Moon } from "lucide-react";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";

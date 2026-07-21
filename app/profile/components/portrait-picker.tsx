@@ -1,5 +1,7 @@
 "use client";
 
+// Selector de retrato del personaje.
+
 import { useState } from "react";
 import Image from "next/image";
 import { getSupabase } from "@/lib/supabase";

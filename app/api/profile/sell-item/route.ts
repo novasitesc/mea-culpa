@@ -1,3 +1,6 @@
+// POST — Vender un objeto de la bolsa por oro.
+// Lo quita de la bolsa y abona el oro con modifyGold() (lib/goldService.ts),
+// que deja el movimiento registrado.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

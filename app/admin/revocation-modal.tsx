@@ -1,5 +1,7 @@
 "use client";
 
+// Modal de revocación: retira nivel o privilegios a un jugador.
+
 import ModalPortal from "@/components/ui/modal-portal";
 import { useCallback, useEffect, useMemo } from "react";
 import { X, Flame, Loader2, ShieldAlert, ScrollText, ShieldOff } from "lucide-react";

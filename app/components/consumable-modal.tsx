@@ -1,5 +1,7 @@
 "use client";
 
+// Modal para usar un consumible de la bolsa durante la partida.
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { FlaskConical, Loader2, X, Sparkles } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";

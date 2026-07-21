@@ -1,3 +1,5 @@
+// GET — Solo admin. Auditoría de todas las tiradas de ruleta: quién giró, qué
+// casilla salió, qué premio tocó y cuánto pagó.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

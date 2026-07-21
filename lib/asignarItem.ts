@@ -16,6 +16,18 @@ type AsignarItemResult = {
   error?: string;
 };
 
+/**
+ * Mete objetos en la bolsa de un personaje cuando el DM los reparte en partida.
+ *
+ * La bolsa tiene un número fijo de huecos (`capacidad_bolsa`, derivado de la
+ * Fuerza), y de ahí salen las dos reglas de reparto:
+ *   · Consumible → apila: si ya hay una fila de ese objeto, solo sube `cantidad`
+ *     y no gasta hueco nuevo.
+ *   · No consumible → una fila (un hueco) por unidad, con su `orden` propio.
+ *
+ * Si no cabe todo, entrega lo que quepa: por eso devuelve `grantedQty`, que
+ * puede ser menor que `cantidad`. La ruta que llama avisa al DM de la merma.
+ */
 export async function asignarItem({
   db,
   partidaId,
@@ -54,9 +66,11 @@ export async function asignarItem({
     return { ok: false, grantedQty: 0, error: bagCountError.message };
   }
 
+  // Huecos libres = capacidad total − filas que ya hay en la bolsa.
   const bagCapacity = Number((personaje as any).capacidad_bolsa ?? 0);
   let freeSlots = Math.max(0, bagCapacity - Number(bagCount ?? 0));
 
+  // `orden` es la posición visual en la bolsa; se continúa desde la última.
   const { data: maxOrdenRow } = await db
     .from("bolsa_objetos")
     .select("orden")
@@ -107,6 +121,7 @@ export async function asignarItem({
     }
   }
 
+  // Rastro de auditoría: qué se entregó, a quién y en qué partida.
   if (grantedQty > 0) {
     await db.from("transacciones_objetos").insert({
       partida_id: partidaId,

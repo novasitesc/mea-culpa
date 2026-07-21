@@ -1,5 +1,9 @@
 "use client";
 
+// Modal de descanso obligatorio, montado globalmente: si el jugador debe un
+// descanso tras una expedición, aparece donde esté y no le deja seguir sin
+// resolverlo ("duerme o muere").
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Skull } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";

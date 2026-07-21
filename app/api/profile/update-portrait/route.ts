@@ -1,3 +1,4 @@
+// POST — Cambia el retrato del personaje.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

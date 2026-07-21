@@ -1,5 +1,8 @@
 "use client";
 
+// Tarjeta de un personaje: retrato, clases, nivel, estado de vida y accesos a
+// sus acciones. La unidad visual que más se repite en el perfil.
+
 /**
  * CharacterCard — Tarjeta compacta de personaje con panel de detalle expandible.
  *

@@ -1,3 +1,6 @@
+// GET / POST — Conjuros dentro de la partida.
+// GET  qué conjuros tiene disponibles el personaje y cuáles ya gastó.
+// POST lanza uno: lo marca como usado y lo publica en el feed de la sala.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

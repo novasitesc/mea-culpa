@@ -1,5 +1,7 @@
 "use client";
 
+// Aviso a pantalla completa cuando un personaje suma una caída.
+
 import { useEffect, useMemo, useState } from "react";
 import { Skull, Moon } from "lucide-react";
 import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";

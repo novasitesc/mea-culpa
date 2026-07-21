@@ -1,3 +1,5 @@
+// GET / POST — Consumibles disponibles del personaje dentro de la partida
+// (pociones, raciones…). Usarlos es la ruta /usar-consumible.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

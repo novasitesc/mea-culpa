@@ -1,5 +1,7 @@
 "use client";
 
+// Modal de ascenso: sube el nivel de cuenta de un jugador, con su ceremonia.
+
 import ModalPortal from "@/components/ui/modal-portal";
 import { useCallback, useEffect, useMemo } from "react";
 import { Crown, X, Sparkles, Loader2, ShieldAlert, ScrollText } from "lucide-react";

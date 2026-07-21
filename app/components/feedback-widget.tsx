@@ -1,5 +1,7 @@
 "use client";
 
+// Widget de reportes: manda lo escrito a POST /api/feedback.
+
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {

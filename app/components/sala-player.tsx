@@ -1,5 +1,8 @@
 "use client";
 
+// Vista del jugador dentro de la sala: su personaje, el feed de lo que va
+// pasando y sus acciones (lanzar conjuros, usar consumibles).
+
 import { useState } from "react";
 import { FlaskConical, Skull, Moon, Zap, Sparkles } from "lucide-react";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";

@@ -1,5 +1,13 @@
 "use client";
 
+// Modal de creación de personaje. El formulario más largo del proyecto: clases
+// (hasta 3), método de estadísticas y conjuros iniciales.
+//
+// Las reglas de reparto de estadísticas las comparte con el servidor
+// (lib/statAllocation.ts), así que lo que valida aquí es lo mismo que valida la
+// ruta — esto es solo para dar respuesta inmediata; la validación que manda es
+// la del servidor, en POST /api/profile/create-character.
+
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {

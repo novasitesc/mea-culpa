@@ -1,3 +1,6 @@
+// Layout raíz: envuelve TODAS las páginas. Aquí se cargan las fuentes, los
+// estilos globales y los componentes que viven en toda la app (cabecera,
+// carrito, overlays globales). Si algo aparece en cada pantalla, está aquí.
 import React from "react"
 import type { Metadata } from 'next'
 import { Cinzel, Cinzel_Decorative, MedievalSharp } from 'next/font/google'

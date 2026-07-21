@@ -1,5 +1,9 @@
 "use client";
 
+// Pestaña de dados del panel: editor de las tablas de recompensas — las 20
+// caras del d20, las sub-tablas anidadas y las sublistas.
+// Es lo que configura al motor de dados (lib/dice/engine.ts).
+
 import ModalPortal from "@/components/ui/modal-portal";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, Trash2, Pencil, Loader2, Check, X, Dices, Dice6, GripVertical } from "lucide-react";

@@ -1,3 +1,6 @@
+// GET — Solo admin. Devuelve la configuración de dados ya montada para la UI
+// (caras, sub-tablas y sublistas en formato camelCase).
+// Es lectura para pintar el panel; la edición está en /admin.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { mapLutCaraRows, mapSubtablaCaraRows, mapSublistaRows } from "@/lib/dice/load";

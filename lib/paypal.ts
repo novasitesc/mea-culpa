@@ -1,3 +1,14 @@
+// Cliente HTTP de PayPal. Solo habla con PayPal: no toca la base de datos ni
+// concede nada. Quien decide qué se entrega tras el pago son las rutas
+// /api/profile/*-paypal/* y /api/paypal/webhook.
+//
+// El flujo de un pago tiene tres momentos:
+//   1. createPayPalOrder  → se crea la orden y el navegador abre el checkout.
+//   2. capturePayPalOrder → el usuario ya aprobó; aquí se cobra de verdad.
+//   3. webhook            → PayPal avisa por su cuenta del resultado, por si el
+//      usuario cerró la pestaña antes del paso 2. De ahí que el efecto se
+//      registre con `effect_applied` en `pagos_paypal`: los pasos 2 y 3 pueden
+//      llegar los dos, y el premio debe entregarse UNA sola vez.
 type PayPalEnv = "sandbox" | "live";
 
 type PayPalOrderResponse = {
@@ -39,6 +50,7 @@ function getClientCredentials(): { clientId: string; clientSecret: string } {
   return { clientId, clientSecret };
 }
 
+/** Token de acceso de PayPal (caduca; se pide uno nuevo en cada operación). */
 export async function getPayPalAccessToken(): Promise<string> {
   const { clientId, clientSecret } = getClientCredentials();
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
@@ -66,6 +78,11 @@ export async function getPayPalAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+/**
+ * Crea la orden de pago. `customId` viaja hasta el webhook, así que es donde se
+ * mete la referencia interna (qué usuario y qué concepto) para reconocer el
+ * pago cuando PayPal nos avise.
+ */
 export async function createPayPalOrder(params: {
   amountUsd: number;
   description: string;
@@ -113,6 +130,7 @@ export async function createPayPalOrder(params: {
   return data;
 }
 
+/** Cobra una orden ya aprobada por el usuario. Este es el punto donde el dinero se mueve. */
 export async function capturePayPalOrder(orderId: string): Promise<PayPalCaptureResponse> {
   const token = await getPayPalAccessToken();
 
@@ -142,6 +160,14 @@ export function getCaptureIdFromCaptureResponse(capture: PayPalCaptureResponse):
   return capture.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? null;
 }
 
+/**
+ * Comprueba con PayPal que un webhook entrante es auténtico.
+ *
+ * OBLIGATORIO: la URL del webhook es pública, cualquiera puede mandarle un JSON
+ * diciendo "pago completado". Sin esta verificación se regalarían resurrecciones
+ * y tiradas. Devuelve false ante cualquier duda (incluido webhook_id sin
+ * configurar): fallar cerrado, nunca abierto.
+ */
 export async function verifyPayPalWebhookSignature(params: {
   body: string;
   transmissionId: string;

@@ -1,5 +1,7 @@
 "use client";
 
+// Solicitud de correo de recuperación de contraseña.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";

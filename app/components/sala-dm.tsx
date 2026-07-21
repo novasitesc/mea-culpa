@@ -1,7 +1,11 @@
 "use client";
 
+// Vista del DM dentro de la sala. El panel de mando de la partida: avanzar de
+// sala, tirar dados, repartir objetos, aplicar caídas, cansancio y muertes,
+// declarar descansos y cerrar la expedición.
+// Cada botón llama a su ruta de /api/partidas/[id]/* o /api/admin/personajes/*.
+
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap, DoorOpen } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
@@ -34,7 +38,6 @@ type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
 function mkId() { return Math.random().toString(36).slice(2, 9); }
 
 export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
-  const router = useRouter();
 
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
     participantes[0]?.personajeId ?? null,

@@ -1,5 +1,8 @@
 "use client";
 
+// Pantalla de acceso (/login). Email+contraseña o Google/Discord, ambos vía
+// useAuth() (lib/useAuth.ts). Ningún componente llama a Supabase Auth directamente.
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -16,7 +19,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/lib/useAuth";
 

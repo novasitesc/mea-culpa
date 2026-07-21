@@ -1,5 +1,7 @@
 "use client";
 
+// Decoración 3D de la cabecera del mercado.
+
 // Pieza central del mercado: una pila de monedas de oro que gira lentamente
 // con polvo dorado flotando. Reutiliza el entorno PBR de los dados. Decorativo:
 // pointer-events none y con fallback estático si no hay WebGL / reduce-motion.

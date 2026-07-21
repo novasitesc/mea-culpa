@@ -1,3 +1,5 @@
+// POST — El jugador consume un objeto de su bolsa en plena partida.
+// Descuenta la unidad y lo publica en el feed para que el DM lo vea.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

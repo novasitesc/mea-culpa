@@ -1,5 +1,7 @@
 "use client";
 
+// Modal para elegir y lanzar un conjuro dentro de la partida.
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Loader2, X, Sparkles, Flame, Moon } from "lucide-react";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";

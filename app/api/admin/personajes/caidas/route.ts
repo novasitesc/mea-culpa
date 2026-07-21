@@ -1,3 +1,7 @@
+// POST / PATCH — Solo admin (el DM en plena expedición). Gestiona las caídas.
+// Regla: a las 3 caídas (MAX_CAIDAS, lib/caidas.ts) el personaje pierde la
+// expedición, vuelve al Nexo derrotado —no muerto— y gana cansancio.
+// Los descansos las curan; cada cambio queda como evento en `partidas_eventos`.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { MAX_CAIDAS, MAX_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";

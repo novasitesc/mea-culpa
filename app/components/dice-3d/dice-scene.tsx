@@ -1,5 +1,8 @@
 "use client";
 
+// Escena three.js de los dados: cámara, luces, físicas y aterrizaje del dado en
+// la cara que el servidor ya decidió.
+
 // Escena R3F: los dados entran lanzados desde un lado y RUEDAN por la mesa
 // hasta su casilla — rotación ligada cinemáticamente al avance (rodadura sin
 // deslizar), rebotes decrecientes y asentado en la cara resuelta por el

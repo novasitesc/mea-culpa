@@ -1,3 +1,8 @@
+// GET — La foto completa de la sala de juego: partida, participantes con sus
+// personajes y el feed de eventos.
+// La usan tanto la vista del jugador (sala-player.tsx) como la del DM
+// (sala-dm.tsx), consultándola cada pocos segundos para mantenerla al día.
+// Es la mejor ruta por la que empezar a entender el sistema de partidas.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

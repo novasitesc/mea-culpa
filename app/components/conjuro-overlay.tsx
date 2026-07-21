@@ -1,5 +1,8 @@
 "use client";
 
+// Animación de lanzamiento de conjuro, con el color de su escuela de magia
+// (SPELL_SCHOOL_RGB, lib/spells.ts).
+
 // Lanzamiento de conjuro: overlay a pantalla completa con escena R3F. Un
 // círculo de invocación se dibuja bajo el conjurador, la energía se arremolina
 // hacia el centro y se descarga en un frente de partículas, todo teñido por la

@@ -1,3 +1,7 @@
+// GET / POST — El escaparate del mercado entre jugadores.
+// GET  lista lo publicado por los demás.
+// POST publica un objeto propio: sale de la bolsa y queda EN DEPÓSITO en la
+//      publicación (no se puede vender dos veces lo mismo).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

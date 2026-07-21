@@ -1,5 +1,7 @@
 "use client";
 
+// Animación de pérdida de una extremidad (lib/limbs.ts).
+
 import { useEffect, useMemo, useState } from "react";
 import { Axe, Droplet } from "lucide-react";
 import { playDesmembramientoSfx } from "@/lib/sfx";

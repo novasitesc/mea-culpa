@@ -1,3 +1,6 @@
+// POST — Paso 2 de la tirada de ruleta pagada: cobra la orden aprobada y deja
+// el pago disponible. NO gira la ruleta: eso lo hace /ruleta-spin, que consume
+// este pago pendiente.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

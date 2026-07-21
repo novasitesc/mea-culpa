@@ -1,3 +1,6 @@
+// POST — El COMPRADOR pide comprar una publicación.
+// El oro se RETIENE ya (se le descuenta), no se paga al aceptar: así el
+// vendedor sabe que la oferta está respaldada. Si se cancela, se devuelve.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

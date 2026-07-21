@@ -1,3 +1,5 @@
+// POST — Solo admin. Revive un personaje sin pago, desde el panel.
+// La versión de pago es /api/profile/revive-paypal/*.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

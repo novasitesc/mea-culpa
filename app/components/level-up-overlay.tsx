@@ -1,5 +1,7 @@
 "use client";
 
+// Animación de subida de nivel.
+
 // Ascenso de nivel: overlay a pantalla completa con una escena R3F — sello
 // rúnico que carga, estalla en partículas y deja los anillos girando — más el
 // cartel del nuevo nivel. Este archivo se importa dinámicamente, así que

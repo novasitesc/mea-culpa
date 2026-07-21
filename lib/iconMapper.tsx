@@ -1,7 +1,7 @@
 import React from "react";
 import { 
   Package, Shield, Swords, Coins, Crown, Flame, Zap, Droplet, Wind, Sparkles, 
-  Sword, Axe, Wand, Gem, Scroll, Book, Store, Home, MapPin, Dices, Shirt, Leaf, 
+  Axe, Wand, Gem, Scroll, Book, Store, Home, MapPin, Dices, Leaf, 
   Wrench, Hammer 
 } from "lucide-react";
 import { 
@@ -13,7 +13,7 @@ import {
   GiLeatherArmor, GiLeatherBoot, GiLeatherVest, GiMailShirt, GiMeat, GiMusicalNotes, 
   GiMusket, GiNecklace, GiPlainDagger, GiPocketBow, GiPointySword, GiQuiver, 
   GiRing, GiRobe, GiRuneStone, GiRuneSword, GiScrollQuill, GiShield, GiSickle, 
-  GiSlicedBread, GiSpears, GiSpectacles, GiSpikedArmor, GiSpikedMace, GiSwapBag, 
+  GiSlicedBread, GiSpears, GiSpikedArmor, GiSpikedMace, GiSwapBag, 
   GiSwordBrandish, GiTribalMask, GiTrident, GiTwoCoins, GiUnstableOrb, GiWarPick, 
   GiWarhammer, GiWaterDrop, GiWhip, GiWizardStaff, GiWolfHead,
   GiElephant, GiMechanicalArm, GiEyeTarget, GiElephantHead, GiTrojanHorse, GiCamel, GiDonkey, GiCavalry, GiHound

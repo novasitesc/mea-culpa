@@ -1,3 +1,7 @@
+// GET / POST — Solo admin. Pool de premios de la ruleta
+// (`ruleta_premios_pool`): qué puede tocar en cada categoría.
+// Aquí se define el CONTENIDO de los premios; las probabilidades son fijas y
+// viven en el código (lib/roulette.ts).
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { categoryToLabel, type RouletteCategory } from "@/lib/roulette";

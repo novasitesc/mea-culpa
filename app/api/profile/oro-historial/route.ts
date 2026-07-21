@@ -1,3 +1,4 @@
+// GET — Historial de movimientos de oro del usuario (`transacciones_oro`).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 

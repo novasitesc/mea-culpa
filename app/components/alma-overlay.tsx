@@ -1,5 +1,7 @@
 "use client";
 
+// Animación de muerte del personaje: el alma abandona el cuerpo.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Skull } from "lucide-react";
 import ModalPortal from "@/components/ui/modal-portal";

@@ -1,5 +1,8 @@
 "use client";
 
+// Gremio (/gremio): miembros, baúl común y solicitudes.
+// Los objetos del baúl no se cogen directamente: se piden y el líder aprueba.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/components/header";

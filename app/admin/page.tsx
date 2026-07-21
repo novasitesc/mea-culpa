@@ -1,5 +1,13 @@
 "use client";
 
+// Panel de administración (/admin). El archivo más grande del proyecto: reúne
+// en pestañas la gestión de usuarios, personajes, objetos, tiendas, partidas,
+// impuestos, ruleta y dados.
+//
+// Para leerlo: NO lo leas entero. Busca la pestaña que te interese y sigue la
+// llamada `fetch` que hace a su ruta de /api/admin/*. Cada pestaña es
+// independiente de las demás.
+
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -2559,7 +2567,7 @@ function CharactersFormModal({
         } else {
           onToast("Error al cargar personajes", "error");
         }
-      } catch (error) {
+      } catch {
         onToast("Error al cargar personajes", "error");
       } finally {
         setLoading(false);
@@ -2599,7 +2607,7 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al guardar", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al guardar personaje", "error");
     } finally {
       setSaving(false);
@@ -2630,7 +2638,7 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al revivir", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al revivir", "error");
     } finally {
       setSaving(false);
@@ -2670,7 +2678,7 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al matar personaje", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al matar personaje", "error");
     } finally {
       setSaving(false);
@@ -2688,7 +2696,7 @@ function CharactersFormModal({
     });
   };
 
-  const executeDelete = async (characterId: number, nombre: string) => {
+  const executeDelete = async (characterId: number) => {
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/characters?characterId=${characterId}`, {
@@ -2702,7 +2710,7 @@ function CharactersFormModal({
         const e = await res.json();
         onToast(e.error ?? "Error al eliminar personaje", "error");
       }
-    } catch (error) {
+    } catch {
       onToast("Error al eliminar personaje", "error");
     } finally {
       setSaving(false);
@@ -2716,7 +2724,7 @@ function CharactersFormModal({
       message: `¿Estás completamente seguro de que deseas ELIMINAR PERMANENTEMENTE al personaje "${nombre}"? Esta acción no se puede deshacer y borrará al personaje del sistema.`,
       confirmText: "Destruir para siempre",
       variant: "danger",
-      onConfirm: () => executeDelete(characterId, nombre),
+      onConfirm: () => executeDelete(characterId),
     });
   };
 

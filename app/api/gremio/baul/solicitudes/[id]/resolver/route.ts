@@ -1,3 +1,6 @@
+// POST — El líder del gremio aprueba o rechaza una petición del baúl.
+// Aprobada, el objeto pasa a la bolsa del solicitante — salvo que su personaje
+// esté en expedición: durante una partida no se recibe nada de fuera.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

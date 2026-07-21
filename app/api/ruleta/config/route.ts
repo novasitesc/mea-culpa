@@ -1,3 +1,6 @@
+// GET — Estado de la ruleta para el jugador: si está activa, cuántas tiradas
+// lleva, cuánto le cuesta la siguiente y si tiene un pago USD sin usar.
+// Es lo que la pantalla de ruleta consulta antes de dejar girar.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getCostCycle, getNextSpinCost, getRouletteSlots } from "@/lib/roulette";

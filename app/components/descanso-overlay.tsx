@@ -1,5 +1,7 @@
 "use client";
 
+// Animación de descanso (corto o largo) dentro de la expedición.
+
 import { useEffect, useMemo, useState } from "react";
 import { Flame, Moon, UtensilsCrossed, Zap } from "lucide-react";
 import type { DescansoPersonajeResultado } from "@/lib/types/sala";

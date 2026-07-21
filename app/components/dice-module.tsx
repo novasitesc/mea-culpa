@@ -1,5 +1,11 @@
 "use client";
 
+// Módulo de tirada de dados: pide la tirada al servidor y anima el resultado.
+//
+// Quién decide qué sale es SIEMPRE el servidor (POST /api/dados/roll); esto solo
+// lo representa. El `rollId` permite recuperar la tirada si se refresca la
+// página a media animación, en vez de generar otra distinta.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
@@ -151,7 +157,6 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, per
         // sin red: el pendiente queda para el próximo intento
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, pendingKey, rollUrl]);
 
   const selectedReward = recompensas.find((r) => r.id === selectedId) ?? null;

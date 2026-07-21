@@ -1,3 +1,10 @@
+// GET / PATCH — El perfil del usuario y sus personajes. La ruta que más se
+// llama de todo el proyecto.
+// GET   devuelve perfil, oro, personajes con clases, estadísticas, equipo y
+//       bolsa: es lo que pinta la pantalla de Perfil entera.
+// PATCH edita los datos del perfil.
+// Es larga por la cantidad de datos que junta, no por su lógica; léela con el
+// esquema de tablas al lado.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";

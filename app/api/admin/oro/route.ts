@@ -1,3 +1,6 @@
+// GET — Solo admin. Libro de contabilidad del oro: lee `transacciones_oro`,
+// donde queda registrado cada movimiento (compras, premios, impuestos, ajustes
+// manuales) con su concepto y su referencia.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

@@ -1,5 +1,8 @@
 "use client";
 
+// Piezas visuales compartidas por el panel de admin (paneles, títulos,
+// contadores). Solo presentación, sin lógica de negocio.
+
 /**
  * Primitivas visuales compartidas de los módulos del panel admin.
  * Reutilizan el sistema de diseño del "salón de mando" (clases adm-* de

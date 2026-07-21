@@ -1,5 +1,8 @@
 "use client";
 
+// Listado de partidas (/partidas): las abiertas a las que unirse y las que ya
+// se están jugando.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Loader2, Shield, Dices } from "lucide-react";
@@ -66,13 +69,10 @@ export default function PartidasPage() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loadingOpenGames, setLoadingOpenGames] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(false);
-  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
-  const [selectedCharacterByGame, setSelectedCharacterByGame] = useState<Record<string, number>>({});
   const [alert, setAlert] = useState<AlertState>(INITIAL_ALERT);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedGameDetail, setSelectedGameDetail] = useState<OpenPartida | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<string>("");
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [joiningDetail, setJoiningDetail] = useState(false);
   const [leavingDetail, setLeavingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string>("");
@@ -84,12 +84,6 @@ export default function PartidasPage() {
     [],
   );
 
-  const formatCooldown = useCallback((seconds: number) => {
-    const safe = Math.max(0, Math.floor(seconds));
-    const hours = Math.floor(safe / 3600);
-    const mins = Math.floor((safe % 3600) / 60);
-    return `${hours}h ${mins}m`;
-  }, []);
 
   const loadCharacters = useCallback(async () => {
     if (!token || !user?.id) return;
@@ -147,67 +141,11 @@ export default function PartidasPage() {
     }
   }, [token, showAlert]);
 
-  const joinGame = useCallback(
-    async (gameId: string) => {
-      if (!token) return;
-      const characterId = selectedCharacterByGame[gameId];
-
-      if (!characterId) {
-        showAlert(
-          "Selecciona personaje",
-          "Debes elegir un personaje para unirte a la partida.",
-          "warning",
-        );
-        return;
-      }
-
-      setJoiningGameId(gameId);
-      try {
-        const res = await fetch("/api/partidas/join", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ partidaId: gameId, characterId }),
-        });
-
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          cooldownEndsAt?: string;
-        };
-        if (!res.ok) {
-          let message = data.error ?? "No se pudo unir a la partida";
-          if (data.cooldownEndsAt) {
-            const remainingSeconds =
-              (new Date(data.cooldownEndsAt).getTime() - Date.now()) / 1000;
-            if (remainingSeconds > 0) {
-              message += `. Tiempo restante: ${formatCooldown(remainingSeconds)}`;
-            }
-          }
-          throw new Error(message);
-        }
-
-        showAlert("Inscripcion completada", "Te uniste correctamente a la partida.", "success");
-        await loadOpenGames();
-      } catch (error) {
-        showAlert(
-          "No se pudo unir",
-          error instanceof Error ? error.message : "Error desconocido",
-          "error",
-        );
-      } finally {
-        setJoiningGameId(null);
-      }
-    },
-    [token, selectedCharacterByGame, loadOpenGames, showAlert, formatCooldown],
-  );
 
   const loadGameDetail = useCallback(
     async (gameId: string) => {
       if (!token) return;
       setDetailError("");
-      setLoadingDetail(true);
       setSelectedGameId(gameId);
 
       try {
@@ -215,7 +153,6 @@ export default function PartidasPage() {
         if (!matched) {
           setDetailError("No se encontró la partida.");
           setSelectedGameDetail(null);
-          setLoadingDetail(false);
           return;
         }
 
@@ -229,7 +166,6 @@ export default function PartidasPage() {
           error instanceof Error ? error.message : "Error al cargar los detalles.",
         );
       } finally {
-        setLoadingDetail(false);
       }
     },
     [token, openGames, characters],
@@ -319,10 +255,6 @@ export default function PartidasPage() {
     void Promise.all([loadCharacters(), loadOpenGames()]);
   }, [isAuthenticated, token, user?.id, loadCharacters, loadOpenGames]);
 
-  const hasAliveCharacters = useMemo(
-    () => characters.some((character) => character.lifeStatus !== "muerto"),
-    [characters],
-  );
 
   const cooldownGame = useMemo(
     () => openGames.find((game) => game.inCooldown && game.cooldownSecondsRemaining > 0) ?? null,
@@ -628,9 +560,6 @@ export default function PartidasPage() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {openGames.map((game) => {
-                      const alreadyJoined = game.joinedCharacterIds.length > 0;
-                      const canJoin = !game.isFull && !alreadyJoined && !game.inCooldown;
-                      const progress = Math.min(100, Math.round((game.participantCount / game.maxPlayers) * 100));
                       const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][game.tier];
                       const tierLabel = `Tier ${tierRoman}`;
                       const tierStyles =

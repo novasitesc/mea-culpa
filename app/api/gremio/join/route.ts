@@ -1,3 +1,4 @@
+// POST — Entrar en un gremio.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

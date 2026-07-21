@@ -1,3 +1,7 @@
+// POST / GET — Solo admin (el DM). Tirada de dados DENTRO de una partida.
+// Misma resolución que /api/dados/roll pero con otro aplicador (partidaAwarder,
+// lib/dice/apply.ts): aquí el DM no paga, el premio va al personaje del jugador
+// y queda registrado en el feed de la sala en vez de en el historial personal.
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";

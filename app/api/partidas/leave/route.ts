@@ -1,3 +1,4 @@
+// POST — Abandonar una partida antes de que empiece o durante ella.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 

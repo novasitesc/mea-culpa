@@ -1,5 +1,7 @@
 "use client";
 
+// Historial de partidas jugadas por el usuario.
+
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 

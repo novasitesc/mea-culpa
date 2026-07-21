@@ -1,5 +1,8 @@
 "use client";
 
+// Portada (/). Si no hay sesión enseña la presentación; con sesión, el Nexo:
+// el punto desde el que se va a las demás zonas.
+
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";

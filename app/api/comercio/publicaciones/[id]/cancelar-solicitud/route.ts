@@ -1,3 +1,5 @@
+// POST — El COMPRADOR retira su solicitud antes de que el vendedor responda.
+// Le devuelve el oro que tenía retenido y la publicación vuelve a estar libre.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

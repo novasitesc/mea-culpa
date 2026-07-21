@@ -1,5 +1,8 @@
 "use client";
 
+// Feed de eventos de la partida (`partidas_eventos`): el registro en vivo de lo
+// que ocurre en la sala. Lo ven jugadores y DM.
+
 import { useEffect, useRef } from "react";
 import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";

@@ -1,3 +1,5 @@
+// GET — Tiendas y sus artículos a la venta, para el escaparate del jugador.
+// Solo lectura; comprar es /comprar.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 

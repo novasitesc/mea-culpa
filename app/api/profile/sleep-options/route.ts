@@ -1,3 +1,7 @@
+// GET / POST — El descanso OBLIGATORIO tras una expedición ("duerme o muere").
+// Al terminar una partida queda un descanso pendiente; el jugador elige dónde
+// dormir y paga (lib/sleepOptions.ts). Si rehúsa, sube su agotamiento — y a
+// nivel 6, muere. Por eso esta ruta puede llamar a markCharacterDead().
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { SLEEP_OPTIONS } from "@/lib/sleepOptions";

@@ -1,3 +1,5 @@
+// GET — Solo admin. Lista los personajes muertos, para el panel de
+// resurrecciones.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

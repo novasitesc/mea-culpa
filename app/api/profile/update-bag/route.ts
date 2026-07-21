@@ -1,3 +1,8 @@
+// POST — Equipar, desequipar y mover objetos entre bolsa y equipo.
+// Aquí viven las reglas de equipamiento: qué tipo de objeto entra en qué ranura,
+// las armas a dos manos que ocupan las dos, las gemas engarzadas y la capacidad
+// máxima de la bolsa (derivada de la Fuerza).
+// Es la ruta con más reglas de inventario del proyecto.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

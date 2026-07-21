@@ -145,7 +145,6 @@ export function ObjectSelector({
                   visibleItems.map((item) => {
                     const quantitySuffix =
                       showQuantity && typeof item.qty === "number" ? ` x${item.qty}` : "";
-                    const iconPrefix = item.icon ? `${item.icon} ` : "";
 
                     return (
                       <button

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+// Registro de conjuros del personaje: los que conoce, agrupados por nivel.
+
+import { useState, useEffect, useMemo } from "react";
 import {
   getCasterType,
   getPreparedSpellsCount,
-  getMaxSpellLevel,
   getEffectiveMaxSpellLevel,
   getMulticlassCasterLevel,
   getMaxRegistrableSpells,

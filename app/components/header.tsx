@@ -1,5 +1,7 @@
 "use client";
 
+// Cabecera fija: navegación, oro del usuario y menú de cuenta.
+
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {

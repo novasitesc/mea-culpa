@@ -1,3 +1,6 @@
+// GET / POST — Subidas de nivel del personaje.
+// GET  cuántas subidas tiene pendientes de aplicar.
+// POST sube un nivel en una de sus clases (tope 20 entre todas).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

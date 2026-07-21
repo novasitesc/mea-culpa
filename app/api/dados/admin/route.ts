@@ -1,3 +1,7 @@
+// GET / POST / PUT / DELETE — Solo admin. Editor de las tablas de recompensas
+// de dados: la recompensa, su sublista, las 20 caras del d20 (`dados_lut_caras`)
+// y las sub-tablas anidadas.
+// Esto configura lo que luego resuelve el motor en lib/dice/engine.ts.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";

@@ -1,3 +1,4 @@
+// GET — Partidas jugadas por el usuario y qué pasó en cada una.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

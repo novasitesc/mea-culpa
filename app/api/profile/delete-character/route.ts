@@ -1,3 +1,5 @@
+// DELETE — El jugador borra un personaje suyo. Definitivo: limpia su bolsa y su
+// pertenencia al gremio. No confundir con matarlo (eso lo deja en la base de datos).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

@@ -1,5 +1,8 @@
 "use client";
 
+// Carrito flotante, presente en toda la app: acumula lo elegido en las tiendas
+// y confirma la compra.
+
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {

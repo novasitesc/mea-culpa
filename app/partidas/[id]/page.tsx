@@ -1,5 +1,11 @@
 "use client";
 
+// La sala de juego (/partidas/[id]). Decide qué vista montar:
+//   · sala-dm.tsx     si eres el DM (admin)
+//   · sala-player.tsx si eres jugador
+// Ambas se alimentan de GET /api/partidas/[id]/sala, que se consulta cada pocos
+// segundos para mantener la sala al día.
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";

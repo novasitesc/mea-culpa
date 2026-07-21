@@ -1,5 +1,8 @@
 "use client";
 
+// Vigila las subidas de nivel pendientes y lanza su animación en cualquier
+// pantalla.
+
 // Vigila los ascensos de nivel pendientes del jugador y lanza la celebración.
 // Ligero a propósito: sólo hace fetch a un endpoint pequeño; el overlay (y con
 // él `three`) se descarga sólo cuando de verdad hay un ascenso que mostrar.

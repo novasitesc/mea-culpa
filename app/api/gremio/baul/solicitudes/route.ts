@@ -1,3 +1,5 @@
+// POST — Un miembro PIDE un objeto del baúl. No se lo lleva: crea una solicitud
+// que el líder debe aprobar en /[id]/resolver.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

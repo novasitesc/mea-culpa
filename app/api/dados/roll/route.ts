@@ -1,3 +1,15 @@
+// POST — Tirada de dados PERSONAL (el probador del panel admin: el usuario paga
+// y recibe él mismo). La versión de partida está en partidas/[id]/dados/roll.
+//
+// La tirada tiene cuatro pasos separados a propósito (lib/dice/):
+//   load.ts    → carga la configuración de la recompensa
+//   engine.ts  → resuelve el resultado (función pura: config + azar → resultado)
+//   apply.ts   → cobra y entrega, en una única transacción de base de datos
+//   engine.ts  → traduce el resultado al formato que anima la UI
+//
+// GET existe para el caso de refrescar la página a media animación: con el
+// `rollId` devuelve la tirada YA comprometida en vez de generar otra. Ese id es
+// además la clave de idempotencia: reenviar el mismo POST no vuelve a cobrar.
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";

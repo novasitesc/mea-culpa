@@ -1,5 +1,8 @@
 "use client";
 
+// Buscador de conjuros para asignárselos a un personaje: filtra por nivel,
+// escuela y clase.
+
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";

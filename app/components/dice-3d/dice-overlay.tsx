@@ -1,5 +1,7 @@
 "use client";
 
+// Capa a pantalla completa que monta la escena 3D de los dados.
+
 // Overlay a pantalla completa: el dado entra lanzado, rueda por la mesa y
 // revela el premio. La animación es SIEMPRE una reproducción del resultado
 // del servidor.
