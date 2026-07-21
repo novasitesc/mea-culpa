@@ -15,7 +15,7 @@ import {
 import SpellSearchModal from "./spell-search-modal";
 import * as Popover from "@radix-ui/react-popover";
 import DOMPurify from "isomorphic-dompurify";
-import { Info, Sparkles, Lock, Flame, RotateCcw } from "lucide-react";
+import { Info, Sparkles, Lock, Flame } from "lucide-react";
 
 // Etiquetas de formato permitidas en las descripciones de conjuros.
 // Sin atributos: elimina on*, href, src, style y demás vectores de XSS.
@@ -56,38 +56,14 @@ export default function SpellsRegistry({
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [pendingSpells, setPendingSpells] = useState<CatalogSpell[]>([]);
   const [isClosing, setIsClosing] = useState(false);
-  // Conjuros gastados: el jugador los marca al lanzarlos y el descanso largo
-  // los devuelve todos (D&D 5e 2014, PHB p.186). Los trucos no se gastan.
-  const [usedSpells, setUsedSpells] = useState<string[]>(
+  // Conjuros gastados: SOLO lectura aquí. Se lanzan durante la expedición
+  // (sala de partida) y el descanso largo los devuelve (D&D 5e 2014, PHB p.186).
+  // La ficha únicamente refleja el estado para consultarlo antes de salir.
+  const usedSpells = useMemo(
     () => normalizeUsedSpells(character.usedSpells),
+    [character.usedSpells],
   );
-
-  // El descanso largo limpia la lista en servidor: al recargar el perfil hay
-  // que reflejarlo aquí, o la ficha seguiría mostrando conjuros gastados.
-  useEffect(() => {
-    setUsedSpells(normalizeUsedSpells(character.usedSpells));
-  }, [character.usedSpells]);
-
   const usedSet = useMemo(() => new Set(usedSpells), [usedSpells]);
-
-  const toggleSpellUsed = async (name: string, next: boolean) => {
-    const key = spellKey(name);
-    const previous = usedSpells;
-    setUsedSpells(next ? [...previous, key] : previous.filter((k) => k !== key));
-    try {
-      const res = await fetch("/api/profile/spell-usage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ characterId: character.id, spellName: name, used: next }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo actualizar el conjuro");
-      setUsedSpells(normalizeUsedSpells(data.usedSpells));
-    } catch (err: any) {
-      setErrorMsg(err.message || "No se pudo actualizar el conjuro.");
-      setUsedSpells(previous);
-    }
-  };
 
   const multiclass: ClassEntry[] = character.multiclass || [];
 
@@ -307,7 +283,7 @@ export default function SpellsRegistry({
             <Flame className="w-3.5 h-3.5 shrink-0" />
             <span>
               {usedSpells.length} conjuro{usedSpells.length === 1 ? "" : "s"} gastado
-              {usedSpells.length === 1 ? "" : "s"}. Un descanso largo los devuelve todos.
+              {usedSpells.length === 1 ? "" : "s"} en expedición. Un descanso largo los devuelve.
             </span>
           </div>
         )}
@@ -420,20 +396,13 @@ export default function SpellsRegistry({
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              {level > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleSpellUsed(spell.name, !isUsed)}
-                                  title={isUsed ? "Recuperar el espacio de conjuro" : "Marcar como lanzado"}
-                                  aria-pressed={isUsed}
-                                  className={`p-1 rounded border transition-colors ${
-                                    isUsed
-                                      ? "border-[#8B7355]/30 text-muted-foreground hover:text-emerald-300 hover:border-emerald-500/40"
-                                      : "border-transparent text-muted-foreground/50 hover:text-amber-300 hover:border-amber-500/40"
-                                  }`}
+                              {isUsed && (
+                                <span
+                                  title="Gastado en expedición; vuelve con un descanso largo"
+                                  className="text-amber-400/70"
                                 >
-                                  {isUsed ? <RotateCcw className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
-                                </button>
+                                  <Flame className="w-3.5 h-3.5" />
+                                </span>
                               )}
                               <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
                                 {level === 0 ? "Truco" : `Nivel ${level}`}

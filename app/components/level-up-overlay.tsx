@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
 import { ChevronsUp } from "lucide-react";
 import { playSubidaNivelSfx } from "@/lib/sfx";
-import { clamp01, easeOutCubic, makeSparkTexture, sphereDirections } from "./fx/particles";
+import { clamp01, easeOutCubic, makeSparkTexture, randomSpeeds, sphereDirections } from "./fx/particles";
 
 export type LevelUpData = {
   characterId: number;
@@ -35,8 +35,7 @@ function Sparks({ count }: { count: number }) {
   const { geometry, dirs, speeds } = useMemo(() => {
     const positions = new Float32Array(count * 3);
     const dirs = sphereDirections(count);
-    const speeds = new Float32Array(count);
-    for (let i = 0; i < count; i++) speeds[i] = 2.6 + Math.random() * 5.4;
+    const speeds = randomSpeeds(count, 2.6, 8);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     return { geometry, dirs, speeds };

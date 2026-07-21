@@ -28,6 +28,21 @@ export function makeSparkTexture(core = "255,248,220", edge = "212,175,55"): THR
   return tex;
 }
 
+/** Velocidades sorteadas en [min, max) — una por partícula. */
+export function randomSpeeds(count: number, min: number, max: number): Float32Array {
+  const speeds = new Float32Array(count);
+  const rango = max - min;
+  for (let i = 0; i < count; i++) speeds[i] = min + Math.random() * rango;
+  return speeds;
+}
+
+/** Fases iniciales del remolino, repartidas por toda la circunferencia. */
+export function randomPhases(count: number): Float32Array {
+  const phases = new Float32Array(count);
+  for (let i = 0; i < count; i++) phases[i] = Math.random() * Math.PI * 2;
+  return phases;
+}
+
 /**
  * Direcciones uniformes sobre la esfera (evita el apelmazamiento en los polos
  * que produce sortear los dos ángulos por separado), achatadas en Y para que

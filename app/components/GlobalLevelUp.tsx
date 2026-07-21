@@ -15,6 +15,10 @@ export default function GlobalLevelUp() {
   const { isAuthenticated } = useAuth();
   const [queue, setQueue] = useState<LevelUpData[]>([]);
   const checking = useRef(false);
+  // Personajes ya celebrados en esta pestaña. El marcado en servidor es
+  // asíncrono, así que un chequeo que corra antes de que aterrice el POST
+  // volvería a devolverlos: este filtro evita repetir la animación.
+  const celebrados = useRef<Set<number>>(new Set());
 
   const check = useCallback(async () => {
     if (!isAuthenticated || checking.current) return;
@@ -31,12 +35,20 @@ export default function GlobalLevelUp() {
       });
       if (!res.ok) return;
       const data = (await res.json()) as { pending?: LevelUpData[] };
-      const pending = data.pending ?? [];
+      const pending = (data.pending ?? []).filter(
+        (p) => !celebrados.current.has(p.characterId),
+      );
       if (pending.length === 0) return;
 
-      // Sustituye la cola en vez de concatenar: el endpoint ya devuelve el
-      // estado completo, así un chequeo repetido no duplica celebraciones.
-      setQueue((prev) => (prev.length > 0 ? prev : pending));
+      // El endpoint devuelve el estado completo. Si la cola ya coincide se
+      // devuelve `prev` para no remontar el overlay a media animación; si no,
+      // se reemplaza (cubre el cambio de usuario tras cerrar sesión).
+      setQueue((prev) => {
+        const igual =
+          prev.length === pending.length &&
+          prev.every((p, i) => p.characterId === pending[i].characterId);
+        return igual ? prev : pending;
+      });
     } catch {
       // silencioso — un fallo de red no debe romper la navegación
     } finally {
@@ -45,10 +57,7 @@ export default function GlobalLevelUp() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setQueue([]);
-      return;
-    }
+    if (!isAuthenticated) return;
     check();
     // Sin polling periódico: la celebración se dispara en los momentos en que
     // el nivel pudo cambiar (cierre de partida → "profile:refresh") o al volver
@@ -65,10 +74,13 @@ export default function GlobalLevelUp() {
     };
   }, [isAuthenticated, check]);
 
-  const current = queue[0] ?? null;
+  // Al cerrar sesión no se pinta nada aunque la cola siga en memoria: el
+  // siguiente usuario no debe ver el ascenso del anterior.
+  const current = isAuthenticated ? (queue[0] ?? null) : null;
 
   const dismiss = useCallback(async () => {
     if (!current) return;
+    celebrados.current.add(current.characterId);
     setQueue((prev) => prev.slice(1));
     try {
       const {

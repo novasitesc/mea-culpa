@@ -11,7 +11,14 @@ import { motion } from "framer-motion";
 import * as THREE from "three";
 import { playConjuroSfx } from "@/lib/sfx";
 import { schoolRgb } from "@/lib/spells";
-import { clamp01, easeOutCubic, makeSparkTexture, sphereDirections } from "./fx/particles";
+import {
+  clamp01,
+  easeOutCubic,
+  makeSparkTexture,
+  randomPhases,
+  randomSpeeds,
+  sphereDirections,
+} from "./fx/particles";
 
 export type ConjuroFxData = {
   personajeNombre: string;
@@ -37,12 +44,8 @@ function Vortice({ count, core, edge }: { count: number; core: string; edge: str
   const { geometry, dirs, speeds, phases } = useMemo(() => {
     const positions = new Float32Array(count * 3);
     const dirs = sphereDirections(count, 0.55);
-    const speeds = new Float32Array(count);
-    const phases = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      speeds[i] = 3 + Math.random() * 5;
-      phases[i] = Math.random() * Math.PI * 2;
-    }
+    const speeds = randomSpeeds(count, 3, 8);
+    const phases = randomPhases(count);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     return { geometry, dirs, speeds, phases };
