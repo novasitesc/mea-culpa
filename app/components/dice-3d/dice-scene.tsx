@@ -14,6 +14,19 @@ import { getDieMaterials } from "./dice-materials";
 import { playTick } from "./dice-sound";
 import type { DiceType } from "@/lib/types/dados";
 
+// R3F 9.x aún crea `new THREE.Clock()` internamente y three r183+ lo marca
+// deprecado, escupiendo el warning en cada montaje del Canvas (cada tirada).
+// Silenciamos SOLO ese mensaje hasta que R3F migre a THREE.Timer; borrar entonces.
+// ponytail: filtro puntual por dependencia desactualizada, quitar al actualizar @react-three/fiber
+if (typeof window !== "undefined" && !(window as { __clockWarnPatched?: boolean }).__clockWarnPatched) {
+  (window as { __clockWarnPatched?: boolean }).__clockWarnPatched = true;
+  const orig = console.warn;
+  console.warn = (...args: unknown[]) => {
+    if (typeof args[0] === "string" && args[0].includes("Clock: This module has been deprecated")) return;
+    orig(...args);
+  };
+}
+
 export const DICE_FALL_MS = 2400;
 export const DICE_STAGGER_MS = 90;
 

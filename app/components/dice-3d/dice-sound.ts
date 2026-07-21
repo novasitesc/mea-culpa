@@ -132,6 +132,27 @@ function dNoise(
   src.start(t);
 }
 
+// Tintineo de UNA moneda: partiales inarmónicos (metal, no nota musical) con
+// decaimiento rápido + micro-transitorio de contacto. Es el ladrillo del saco.
+function coinClink(a: AudioContext, t: number, base: number, vol: number): void {
+  // Ratios inarmónicos tipo metal golpeado — nada de armónicos enteros.
+  for (const [ratio, g] of [[1, 1], [1.62, 0.55], [2.35, 0.32]] as const) {
+    const osc = a.createOscillator();
+    osc.type = "sine";
+    const f = base * ratio * (0.98 + Math.random() * 0.04);
+    osc.frequency.setValueAtTime(f, t);
+    osc.frequency.exponentialRampToValueAtTime(f * 0.94, t + 0.12);
+    const gain = a.createGain();
+    gain.gain.setValueAtTime(vol * g, t);
+    gain.gain.exponentialRampToValueAtTime(0.0008, t + 0.09 + Math.random() * 0.06);
+    osc.connect(gain).connect(a.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+  // "Tick" del canto al chocar.
+  dNoise(a, t, 0.012, "bandpass", 6000 + Math.random() * 2500, vol * 0.7);
+}
+
 /**
  * Revelación del premio: swoosh ascendente + impacto grave y, según el tipo,
  * cascada de monedas (oro) y/o arpegio mágico con destellos (ítem).
@@ -152,12 +173,17 @@ export function playReveal(kind: "oro" | "item" | "nada" | "mixto"): void {
   dTone(a, t, 130, 0.18, 0.28, "sine", 320);
 
   if (kind === "oro" || kind === "mixto") {
-    // Cascada de monedas: chispazos metálicos brillantes, algo aleatorios.
-    for (let i = 0; i < 7; i++) {
-      const at = t + 0.12 + i * 0.045;
-      const f = 1400 + Math.random() * 1400;
-      dTone(a, at, f, 0.16, 0.06, "square", f * 0.6);
-      dNoise(a, at, 0.03, "bandpass", 5200 + Math.random() * 2000, 0.05);
+    // Saco de monedas volcándose: golpe sordo de la bolsa + un puñado de
+    // tintineos metálicos amontonándose (denso al inicio, se dispersa al caer).
+    dTone(a, t + 0.06, 90, 0.22, 0.3, "sine", 55); // impacto grave del saco
+    dNoise(a, t + 0.06, 0.09, "lowpass", 420, 0.16); // tela/cuero del saco
+    const N = 14;
+    let at = t + 0.08;
+    for (let i = 0; i < N; i++) {
+      at += 0.018 + Math.random() * 0.05 * (i / N); // se van separando al asentarse
+      const base = 2500 + Math.random() * 1700; // cada moneda su propio timbre
+      const vol = 0.075 * (1 - (i / N) * 0.45); // las últimas suenan más suaves
+      coinClink(a, at, base, vol);
     }
   }
 
