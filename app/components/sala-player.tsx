@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { FlaskConical, Skull, Moon, Zap } from "lucide-react";
+import { FlaskConical, Skull, Moon, Zap, Sparkles } from "lucide-react";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SalaFeed from "@/app/components/sala-feed";
 import ConsumableModal from "@/app/components/consumable-modal";
+import SpellCastModal from "@/app/components/spell-cast-modal";
 import CaidasTracker from "@/app/components/caidas-tracker";
 import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 
@@ -21,11 +22,13 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
   const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][partida.tier] ?? partida.tier;
 
   const [consumablesOpen, setConsumablesOpen] = useState(false);
+  const [spellsOpen, setSpellsOpen] = useState(false);
 
   const me = usuarioId
     ? participantes.find((p) => p.usuarioId === usuarioId) ?? null
     : null;
-  const canUseConsumables =
+  // Mismo gate para consumibles y conjuros: solo actúa quien sigue en pie.
+  const canAct =
     partida.estado === "en_progreso" && me != null && !me.muerto && !me.derrotado;
 
   return (
@@ -56,15 +59,25 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
             Cansancio {me.cansancio}/{MAX_CANSANCIO}
           </div>
         )}
-        {canUseConsumables && (
-          <button
-            type="button"
-            onClick={() => setConsumablesOpen(true)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            Consumibles
-          </button>
+        {canAct && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSpellsOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Conjuros
+            </button>
+            <button
+              type="button"
+              onClick={() => setConsumablesOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              Consumibles
+            </button>
+          </div>
         )}
       </div>
 
@@ -129,6 +142,16 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
           token={token}
           onClose={() => setConsumablesOpen(false)}
           onUsed={onEvent}
+        />
+      )}
+
+      {/* Modal de conjuros */}
+      {spellsOpen && (
+        <SpellCastModal
+          partidaId={partida.id}
+          token={token}
+          onClose={() => setSpellsOpen(false)}
+          onCast={onEvent}
         />
       )}
     </div>

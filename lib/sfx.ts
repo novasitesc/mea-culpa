@@ -148,6 +148,110 @@ export function playRevivirSfx(): void {
   );
 }
 
+// ── Lanzamiento de conjuro ───────────────────────────────────────────────────
+// Estructura común (canalización → descarga → cola) con el timbre de la
+// descarga cambiado por escuela: es lo que hace que Evocación suene a fuego y
+// Nigromancia a algo enfermo, sin escribir ocho sonidos distintos.
+type EscuelaSfx = {
+  /** Notas de la descarga; la primera marca el carácter del conjuro. */
+  acorde: number[];
+  onda: OscillatorType;
+  /** Filtro del ruido de la descarga. */
+  ruido: [BiquadFilterType, number, number];
+  /** true → la cola desciende (magia sombría) en vez de ascender. */
+  sombrio?: boolean;
+};
+
+const ESCUELA_SFX: Record<string, EscuelaSfx> = {
+  "Abjuración":    { acorde: [392, 587.33, 783.99], onda: "sine",     ruido: ["highpass", 2200, 5200] },
+  "Conjuración":   { acorde: [349.23, 523.25, 698.46], onda: "triangle", ruido: ["bandpass", 1400, 3200] },
+  "Adivinación":   { acorde: [659.25, 987.77, 1318.5], onda: "sine",   ruido: ["highpass", 4000, 9000] },
+  "Encantamiento": { acorde: [440, 554.37, 659.25], onda: "sine",      ruido: ["bandpass", 900, 2600] },
+  "Evocación":     { acorde: [261.63, 329.63, 392], onda: "sawtooth",  ruido: ["lowpass", 2400, 600] },
+  "Ilusión":       { acorde: [466.16, 622.25, 830.61], onda: "triangle", ruido: ["bandpass", 2600, 1200] },
+  "Nigromancia":   { acorde: [155.56, 207.65, 233.08], onda: "sawtooth", ruido: ["lowpass", 700, 220], sombrio: true },
+  "Transmutación": { acorde: [329.63, 415.3, 493.88], onda: "triangle", ruido: ["bandpass", 1800, 4200] },
+};
+
+const ESCUELA_SFX_DEFAULT: EscuelaSfx = {
+  acorde: [392, 523.25, 659.25],
+  onda: "triangle",
+  ruido: ["bandpass", 1600, 3600],
+};
+
+/**
+ * Conjuro lanzado (~2 s): la energía se canaliza, descarga en el acorde de su
+ * escuela y deja una cola de brillos. Trucos y conjuros de nivel suenan igual
+ * salvo por el peso, que crece con `spellLevel`.
+ */
+export function playConjuroSfx(escuela?: string | null, spellLevel = 1): void {
+  const a = ac();
+  if (!a) return;
+  const t = a.currentTime;
+  const cfg = (escuela && ESCUELA_SFX[escuela]) || ESCUELA_SFX_DEFAULT;
+  const [filtro, fIni, fFin] = cfg.ruido;
+  // Los conjuros altos pesan más, pero con techo para no reventar la mezcla.
+  const peso = Math.min(1, 0.55 + spellLevel * 0.07);
+
+  // Canalización: energía que se arremolina antes de soltarse
+  noise(a, t, 0.55, "bandpass", cfg.sombrio ? 600 : 900, 0.07 * peso, cfg.sombrio ? 200 : 3400);
+  tone(a, t, cfg.acorde[0] / 2, 0.6, 0.05 * peso, "sine", cfg.acorde[0] * (cfg.sombrio ? 0.6 : 0.9));
+
+  // Descarga
+  const d = t + 0.55;
+  noise(a, d, 0.22, filtro, fIni, 0.22 * peso, fFin);
+  cfg.acorde.forEach((f, i) => {
+    tone(a, d + i * 0.035, f, 0.7 - i * 0.08, 0.075 * peso, cfg.onda);
+    tone(a, d + i * 0.035, f * 2, 0.35, 0.025 * peso, "sine");
+  });
+
+  // Cola: asciende (magia luminosa) o cae (magia sombría)
+  const cola = cfg.sombrio ? [0.5, 0.35, 0.25] : [2, 2.5, 3];
+  cola.forEach((mult, i) =>
+    tone(a, d + 0.3 + i * 0.11, cfg.acorde[0] * mult, 0.75 - i * 0.12, 0.03 * peso, "sine"),
+  );
+}
+
+/**
+ * Ascenso de nivel: swell ascendente, fanfarria mayor de tres acordes,
+ * campana de proclamación y una lluvia de brillos que se apaga.
+ * Es el sonido más largo del set (~4 s) porque acompaña al overlay 3D.
+ */
+export function playSubidaNivelSfx(): void {
+  const a = ac();
+  if (!a) return;
+  const t = a.currentTime;
+
+  // Swell: aire que asciende antes del impacto
+  noise(a, t, 0.85, "bandpass", 300, 0.09, 5200);
+
+  // Golpe de luz al estallar el sello
+  tone(a, t + 0.8, 180, 0.3, 0.34, "sine", 60);
+  noise(a, t + 0.8, 0.14, "lowpass", 1200, 0.24);
+
+  // Fanfarria mayor ascendente (Do → Fa → Sol7) con octava de brillo
+  const chords: [number[], number, number][] = [
+    [[261.63, 329.63, 392.0], 0.82, 0.4],
+    [[349.23, 440.0, 523.25], 1.2, 0.4],
+    [[392.0, 493.88, 587.33, 783.99], 1.58, 1.9],
+  ];
+  for (const [notes, at, dur] of chords) {
+    for (const f of notes) {
+      pad(a, t + at, f, dur, 0.055, "sawtooth", 6);
+      tone(a, t + at, f * 2, dur, 0.022, "triangle");
+    }
+  }
+
+  // Campana de proclamación sobre el acorde final
+  tone(a, t + 1.62, 1046.5, 2.2, 0.07, "triangle");
+  tone(a, t + 1.62, 1568.0, 1.6, 0.035, "sine");
+
+  // Lluvia de brillos que se apaga
+  [2093, 2637, 3136, 2349, 1976, 2794].forEach((f, i) =>
+    tone(a, t + 1.9 + i * 0.13, f, 0.8 - i * 0.08, 0.03, "sine"),
+  );
+}
+
 /** Muerte: impacto profundo, barrido de fatalidad y doble tañido fúnebre disonante. */
 export function playMatarSfx(): void {
   const a = ac();

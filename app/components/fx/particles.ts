@@ -1,0 +1,47 @@
+// Helpers compartidos por los overlays 3D (ascenso de nivel, conjuros).
+// Viven aparte para que ambos los reutilicen sin duplicar la textura ni las
+// curvas de easing; al importarse sólo desde overlays dinámicos, `three` sigue
+// fuera del bundle principal.
+import * as THREE from "three";
+
+export const easeOutCubic = (u: number) => 1 - Math.pow(1 - u, 3);
+export const clamp01 = (u: number) => (u < 0 ? 0 : u > 1 ? 1 : u);
+
+/**
+ * Textura radial para partículas: un punto cuadrado delata el truco.
+ * `core` es el centro incandescente y `edge` el color que se difumina.
+ * Quien la crea debe llamar a `.dispose()` al desmontar.
+ */
+export function makeSparkTexture(core = "255,248,220", edge = "212,175,55"): THREE.Texture {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, `rgba(${core},1)`);
+  g.addColorStop(0.35, `rgba(${edge},0.85)`);
+  g.addColorStop(1, `rgba(${edge},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Direcciones uniformes sobre la esfera (evita el apelmazamiento en los polos
+ * que produce sortear los dos ángulos por separado), achatadas en Y para que
+ * la nube se lea mejor en pantallas anchas.
+ */
+export function sphereDirections(count: number, flatten = 0.75): Float32Array {
+  const dirs = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const u = Math.random() * 2 - 1;
+    const theta = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(1 - u * u);
+    dirs[i * 3] = r * Math.cos(theta);
+    dirs[i * 3 + 1] = u * flatten;
+    dirs[i * 3 + 2] = r * Math.sin(theta);
+  }
+  return dirs;
+}

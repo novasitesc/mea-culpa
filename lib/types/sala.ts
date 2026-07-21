@@ -108,6 +108,27 @@ export type DescansoPersonajeResultado = {
   cansancio?: number;
   /** Sin ración: no recibió beneficio y ganó +1 cansancio. */
   sinRacion?: boolean;
+  /** Descanso largo con ración: recuperó todos los espacios de conjuro. */
+  conjurosRecuperados?: boolean;
+};
+
+export type EventoConjuroLanzado = {
+  tipo: "conjuro_lanzado";
+  personajeId: number;
+  personajeNombre: string;
+  conjuro: string;
+  /** 0 = truco (no gasta espacio y puede repetirse). */
+  spellLevel: number;
+  /** Escuela del catálogo; tiñe la animación y el sonido. */
+  escuela: string | null;
+};
+
+export type EventoSalaAvanzada = {
+  tipo: "sala_avanzada";
+  /** Nº de sala explorada tras el evento (reinicia a 0 con cada descanso). */
+  sala: number;
+  /** true cuando toca el descanso obligatorio (SALAS_POR_DESCANSO). */
+  requiereDescanso: boolean;
 };
 
 export type EventoDescansoLargo = {
@@ -132,4 +153,6 @@ export type SalaEvento =
   | EventoCaida
   | EventoCansancio
   | EventoDescansoLargo
-  | EventoDescansoCorto;
+  | EventoDescansoCorto
+  | EventoSalaAvanzada
+  | EventoConjuroLanzado;

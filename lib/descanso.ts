@@ -8,6 +8,29 @@ import { MAX_CAIDAS, MAX_CANSANCIO, CAIDAS_CURADAS_DESCANSO_CORTO } from "./caid
 // - Largo: además requiere 1 tienda de acampar del grupo; restaura caídas a 0
 //   y reduce 1 nivel de cansancio (D&D 5e 2014). Uno por expedición.
 
+// Salas exploradas antes de que el descanso sea obligatorio. Es una regla de
+// la mesa, no de D&D 5e: el DM avanza sala y al llegar a SALAS_POR_DESCANSO se
+// avisa al grupo. Solo avisa — el DM sigue mandando sobre el ritmo de la
+// expedición.
+// ponytail: aviso sin bloqueo; si la mesa lo exige, bloquear tiradas aquí.
+export const SALAS_POR_DESCANSO = 4;
+
+/**
+ * Salas exploradas desde el último descanso. Se deriva del log de eventos de
+ * la partida (no hay contador persistido): cualquier descanso pone el conteo
+ * a cero, igual que en la mesa.
+ */
+export function salasDesdeUltimoDescanso(
+  eventos: Array<{ tipo: string }>,
+): number {
+  let salas = 0;
+  for (const ev of eventos) {
+    if (ev.tipo === "sala_avanzada") salas += 1;
+    else if (ev.tipo === "descanso_corto" || ev.tipo === "descanso_largo") salas = 0;
+  }
+  return salas;
+}
+
 export type TipoDescanso = "corto" | "largo";
 
 export type EstadoDescanso = { caidas: number; cansancio: number };

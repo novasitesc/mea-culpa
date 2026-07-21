@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles } from "lucide-react";
+import { schoolRgb } from "@/lib/spells";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
 import { getIconForString } from "@/lib/iconMapper";
@@ -237,7 +238,9 @@ function renderEvento(ev: SalaEvento, i: number) {
               <p className="text-[11px] text-foreground/50 font-sans">
                 <span className="text-foreground/70">{conRacion.map((p) => p.nombre).join(", ")}</span>
                 <span className="text-emerald-400 font-semibold">
-                  {corto ? " — ración consumida, cura 1 caída" : " — caídas restauradas y −1 de cansancio"}
+                  {corto
+                    ? " — ración consumida, cura 1 caída"
+                    : " — caídas restauradas, −1 de cansancio y conjuros recuperados"}
                 </span>
               </p>
             )}
@@ -254,6 +257,59 @@ function renderEvento(ev: SalaEvento, i: number) {
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "conjuro_lanzado") {
+    const [, edge] = schoolRgb(ev.escuela);
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500"
+      >
+        <span
+          className="shrink-0 flex items-center justify-center w-7 h-7 rounded border"
+          style={{ color: `rgb(${edge})`, borderColor: `rgba(${edge},0.4)`, background: `rgba(${edge},0.12)` }}
+        >
+          <Sparkles className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans min-w-0">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> lanza </span>
+          <span className="font-semibold" style={{ color: `rgb(${edge})` }}>
+            {ev.conjuro}
+          </span>
+          <span className="text-foreground/30">
+            {ev.spellLevel === 0 ? " · truco" : ` · nivel ${ev.spellLevel}`}
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "sala_avanzada") {
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-[#8B7355]/20 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500"
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            ev.requiereDescanso
+              ? "bg-amber-900/20 border-amber-700/50 text-amber-300"
+              : "bg-black/30 border-[#8B7355]/40 text-foreground/50"
+          }`}
+        >
+          <DoorOpen className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/40">El grupo avanza a la </span>
+          <span className="text-foreground/70 font-semibold">sala {ev.sala}</span>
+          {ev.requiereDescanso && (
+            <span className="text-amber-300 font-semibold"> — toca descansar</span>
+          )}
+        </p>
       </div>
     );
   }

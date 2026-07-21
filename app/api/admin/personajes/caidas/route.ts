@@ -237,9 +237,17 @@ export async function POST(request: Request) {
       tieneRacion,
     );
 
+    // D&D 5e 2014 (PHB p.186): el descanso largo devuelve los espacios de
+    // conjuro. Sin ración no hay descanso efectivo, así que tampoco se recuperan.
+    const recuperaConjuros = tipo === "largo" && tieneRacion;
+
     const { error: updateError } = await session.db
       .from("personajes")
-      .update({ caidas: nuevo.caidas, puntos_cansancio: nuevo.cansancio })
+      .update({
+        caidas: nuevo.caidas,
+        puntos_cansancio: nuevo.cansancio,
+        ...(recuperaConjuros ? { conjuros_usados: [] } : {}),
+      })
       .eq("id", p.personajeId);
 
     if (updateError) {
@@ -251,6 +259,7 @@ export async function POST(request: Request) {
       caidas: nuevo.caidas,
       cansancio: nuevo.cansancio,
       sinRacion: !tieneRacion,
+      ...(recuperaConjuros ? { conjurosRecuperados: true } : {}),
     });
   }
 

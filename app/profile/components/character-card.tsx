@@ -125,6 +125,8 @@ export type Character = {
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntryLocal[];
+  /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
+  usedSpells?: string[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;

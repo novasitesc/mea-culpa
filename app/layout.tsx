@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import FeedbackWidget from './components/feedback-widget'
 import GlobalSleepModal from './components/GlobalSleepModal'
 import GlobalCartWidget from './components/GlobalCartWidget'
+import GlobalLevelUp from './components/GlobalLevelUp'
 import './globals.css'
 
 const _cinzel = Cinzel({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -74,6 +75,7 @@ export default function RootLayout({
         {children}
         <GlobalSleepModal />
         <GlobalCartWidget />
+        <GlobalLevelUp />
         <Analytics />
         <FeedbackWidget />
       </body>

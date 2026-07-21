@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
-import { normalizeSpells, type SpellEntry } from "@/lib/spells";
+import { normalizeSpells, normalizeUsedSpells, type SpellEntry } from "@/lib/spells";
 
 function hasDismemberedLimb(extremities: unknown): boolean {
   if (!extremities || typeof extremities !== "object") {
@@ -305,6 +305,7 @@ export async function GET(request: Request) {
       puntoCansancio: Number(p.puntos_cansancio ?? 0),
       caidas: Number(p.caidas ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
+      usedSpells: normalizeUsedSpells(p.conjuros_usados),
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),
       stats: stats

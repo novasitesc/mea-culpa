@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap, DoorOpen } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
@@ -15,6 +15,7 @@ import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { SALAS_POR_DESCANSO, salasDesdeUltimoDescanso } from "@/lib/descanso";
 
 type Props = {
   partida: SalaPartida;
@@ -80,12 +81,16 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   // Descanso largo (resetear caídas) state
   const [restModalOpen, setRestModalOpen] = useState(false);
   const [resting, setResting] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
   const participantesActivos = participantes.filter((p) => !p.muerto && !p.derrotado);
   const participantesQueDescansan = participantesActivos.filter((p) => p.caidas > 0 || p.cansancio > 0);
   // D&D 5e 2014: un solo descanso largo por día de aventura → uno por expedición.
   const yaDescansaron = eventos.some((ev) => ev.tipo === "descanso_largo");
+  // Salas exploradas desde el último descanso: a las SALAS_POR_DESCANSO se avisa.
+  const salasRecorridas = salasDesdeUltimoDescanso(eventos);
+  const tocaDescanso = salasRecorridas >= SALAS_POR_DESCANSO;
 
   const loadObjects = useCallback(async () => {
     if (objects.length > 0) return;
@@ -345,6 +350,31 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     }
   }
 
+  // ── Avanzar de sala ────────────────────────────────────────────────────────
+
+  async function handleAvanzarSala() {
+    setAdvancing(true);
+    try {
+      const res = await fetch(`/api/partidas/${partida.id}/sala-avanzada`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo avanzar de sala" });
+        return;
+      }
+      const data = await res.json();
+      onEvent({
+        tipo: "sala_avanzada",
+        sala: Number(data.sala ?? 0),
+        requiereDescanso: Boolean(data.requiereDescanso),
+      });
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
   // ── Descanso handler (corto o largo) ───────────────────────────────────────
 
   async function handleDescanso(tipo: "corto" | "largo") {
@@ -380,7 +410,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
           message:
             tipo === "corto"
               ? "Descanso corto realizado: raciones consumidas y 1 caída curada."
-              : "Descanso largo realizado: caídas restauradas y −1 cansancio.",
+              : "Descanso largo realizado: caídas restauradas, −1 cansancio y conjuros recuperados.",
         });
       }
     } finally {
@@ -667,7 +697,29 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                   );
                 })()}
 
-                <div className="border-t border-red-900/20 pt-2.5">
+                <div className="border-t border-red-900/20 pt-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+                      Sala {salasRecorridas} / {SALAS_POR_DESCANSO}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAvanzarSala}
+                      disabled={advancing}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#8B7355]/40 text-[11px] font-sans text-foreground/70 hover:text-gold hover:border-gold/50 transition-all disabled:opacity-40"
+                    >
+                      {advancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <DoorOpen className="w-3 h-3" />}
+                      Avanzar sala
+                    </button>
+                  </div>
+
+                  {tocaDescanso && (
+                    <p className="text-[10px] text-amber-300 font-sans leading-relaxed rounded border border-amber-600/40 bg-amber-900/15 px-2 py-1.5">
+                      El grupo lleva {salasRecorridas} salas sin descansar: toca el descanso
+                      obligatorio.
+                    </p>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setRestModalOpen(true)}
@@ -1049,8 +1101,9 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               >
                 <p className="text-sm font-semibold text-emerald-300">Descanso largo</p>
                 <p className="text-[11px] text-foreground/50 font-sans mt-0.5">
-                  Acampar toda la noche: requiere 1 tienda de acampar del grupo. Caídas a 0 y
-                  −1 nivel de cansancio. Solo uno por expedición.
+                  Acampar toda la noche: requiere 1 tienda de acampar del grupo. Caídas a 0,
+                  −1 nivel de cansancio y todos los conjuros gastados vuelven. Solo uno por
+                  expedición.
                   {yaDescansaron && (
                     <span className="block italic text-foreground/35 mt-0.5">
                       Ya se realizó en esta expedición.

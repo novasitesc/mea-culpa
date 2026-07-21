@@ -26,6 +26,7 @@ import type {
   EventoCaida,
   EventoCansancio,
   EventoDesmembramiento,
+  EventoConjuroLanzado,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
@@ -33,6 +34,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // Solo carga three/fiber cuando hay una tirada ajena que reproducir.
 const DiceOverlay = dynamic(() => import("@/app/components/dice-3d/dice-overlay"), { ssr: false });
+// Igual con el conjuro: la escena baja la primera vez que alguien lanza uno.
+const ConjuroOverlay = dynamic(() => import("@/app/components/conjuro-overlay"), { ssr: false });
 
 // La tirada del DM llega por broadcast: los espectadores reproducen la misma
 // animación con el resultado ya comprometido en el servidor.
@@ -76,6 +79,8 @@ export default function SalaPage() {
   const [desmFx, setDesmFx] = useState<{ key: number; ev: EventoDesmembramiento } | null>(null);
   // Agotamiento y recuperación: solo los ve el jugador afectado.
   const [estadoFx, setEstadoFx] = useState<{ key: number; fx: EstadoFx } | null>(null);
+  // Conjuro en escena; lo ve toda la sala. key remonta si encadenan lanzamientos.
+  const [conjuroFx, setConjuroFx] = useState<{ key: number; ev: EventoConjuroLanzado } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
@@ -266,6 +271,15 @@ export default function SalaPage() {
           aplicarDescansoLocal(payload);
         }
       })
+      .on("broadcast", { event: "sala_avanzada" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+      })
+      .on("broadcast", { event: "conjuro_lanzado" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "conjuro_lanzado") {
+          setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev: payload }));
+        }
+      })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "desmembramiento") {
@@ -353,6 +367,12 @@ export default function SalaPage() {
       appendEvento(ev);
       setRestEvent(ev);
       aplicarDescansoLocal(ev);
+      return;
+    }
+
+    if (ev.tipo === "conjuro_lanzado") {
+      appendEvento(ev);
+      setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
       return;
     }
 
@@ -513,6 +533,20 @@ export default function SalaPage() {
         <EstadoOverlay key={estadoFx.key} fx={estadoFx.fx} onDone={() => setEstadoFx(null)} />
       )}
 
+      {/* Conjuro lanzado: lo ve toda la sala, teñido por su escuela */}
+      {conjuroFx && (
+        <ConjuroOverlay
+          key={conjuroFx.key}
+          data={{
+            personajeNombre: conjuroFx.ev.personajeNombre,
+            conjuro: conjuroFx.ev.conjuro,
+            spellLevel: conjuroFx.ev.spellLevel,
+            escuela: conjuroFx.ev.escuela,
+          }}
+          onDone={() => setConjuroFx(null)}
+        />
+      )}
+
       {/* Desmembramiento escenificado para toda la sala */}
       {desmFx && (
         <DesmembramientoOverlay key={desmFx.key} evento={desmFx.ev} onDone={() => setDesmFx(null)} />
@@ -523,8 +557,16 @@ export default function SalaPage() {
         <PartidaFinalOverlay
           titulo={partida.titulo}
           eventos={mySessionItems}
-          onIrPartidas={() => router.push("/partidas")}
-          onPagarPosada={() => router.push("/profile")}
+          onIrPartidas={() => {
+            // Tras el cierre ceremonial: si el DM concedió niveles, ahora toca
+            // la celebración de ascenso (GlobalLevelUp escucha este evento).
+            window.dispatchEvent(new CustomEvent("profile:refresh"));
+            router.push("/partidas");
+          }}
+          onPagarPosada={() => {
+            window.dispatchEvent(new CustomEvent("profile:refresh"));
+            router.push("/profile");
+          }}
         />
       )}
     </div>

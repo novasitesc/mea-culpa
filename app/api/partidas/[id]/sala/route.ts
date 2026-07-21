@@ -33,6 +33,19 @@ function mapEventoRow(row: any): SalaEvento | null {
       cansancio:       Number(row.cantidad ?? 0),
       delta:           Number((row.metadata as any)?.delta ?? 1),
     };
+    case "conjuro_lanzado": return {
+      tipo: "conjuro_lanzado",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      conjuro:         row.objeto_nombre ?? "",
+      spellLevel:      Number(row.cantidad ?? 0),
+      escuela:         ((row.metadata as any)?.escuela ?? null) as string | null,
+    };
+    case "sala_avanzada": return {
+      tipo: "sala_avanzada",
+      sala:             Number(row.cantidad ?? 0),
+      requiereDescanso: Boolean((row.metadata as any)?.requiereDescanso ?? false),
+    };
     case "descanso_largo":
     case "descanso_corto": return {
       tipo: row.tipo,
@@ -44,6 +57,9 @@ function mapEventoRow(row: any): SalaEvento | null {
         ...(p.caidas !== undefined ? { caidas: Number(p.caidas) } : {}),
         ...(p.cansancio !== undefined ? { cansancio: Number(p.cansancio) } : {}),
         ...(p.sinRacion !== undefined ? { sinRacion: Boolean(p.sinRacion) } : {}),
+        ...(p.conjurosRecuperados !== undefined
+          ? { conjurosRecuperados: Boolean(p.conjurosRecuperados) }
+          : {}),
       })),
     };
     case "consumible_usado": return {

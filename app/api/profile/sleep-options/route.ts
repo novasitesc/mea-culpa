@@ -243,7 +243,9 @@ export async function POST(request: Request) {
       db.from("perfiles").update({ hogar: selectedOption.homeLabel }).eq("id", userId),
       db
         .from("personajes")
-        .update({ caidas: 0, puntos_cansancio: newCansancio })
+        // Pagar la posada es el descanso largo posterior a la expedición:
+        // además de caídas y cansancio devuelve los espacios de conjuro.
+        .update({ caidas: 0, puntos_cansancio: newCansancio, conjuros_usados: [] })
         .eq("id", characterId)
         .eq("usuario_id", userId),
     ]);
