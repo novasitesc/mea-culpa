@@ -1,3 +1,5 @@
+// POST — PÚBLICA (no pide sesión). Recoge los reportes del widget de feedback.
+// Al ser abierta, valida con cuidado lo que entra antes de guardarlo.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import type { FeedbackType } from "@/lib/types/feedback";

@@ -1,3 +1,5 @@
+// GET — Catálogo de conjuros: qué conjuros existen y qué clase puede lanzarlos.
+// Solo lectura; los conjuros que un personaje conoce están en su ficha.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 

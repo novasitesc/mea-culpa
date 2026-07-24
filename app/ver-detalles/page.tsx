@@ -1,5 +1,7 @@
 "use client";
 
+// Ficha detallada de un objeto o personaje, enlazada desde varias pantallas.
+
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";

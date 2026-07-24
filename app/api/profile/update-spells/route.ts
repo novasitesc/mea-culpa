@@ -1,14 +1,14 @@
+// POST — Guarda los conjuros conocidos del personaje.
+// Valida que cada conjuro exista y que su clase pueda lanzarlo: el cliente
+// manda nombres, y sin comprobarlos se podrían aprender conjuros ajenos.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import {
-  getCasterType,
-  getMaxKnownSpells,
   getMaxSpellLevel,
   getEffectiveMaxSpellLevel,
   getMaxRegistrableSpells,
   normalizeSpells,
-  validateSpells,
   type SpellEntry,
 } from "@/lib/spells";
 
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, spells: uniqueSpells });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Error procesando la solicitud" }, { status: 500 });
   }
 }

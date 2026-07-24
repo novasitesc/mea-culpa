@@ -1,3 +1,7 @@
+// GET / POST — El descanso OBLIGATORIO tras una expedición ("duerme o muere").
+// Al terminar una partida queda un descanso pendiente; el jugador elige dónde
+// dormir y paga (lib/sleepOptions.ts). Si rehúsa, sube su agotamiento — y a
+// nivel 6, muere. Por eso esta ruta puede llamar a markCharacterDead().
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { SLEEP_OPTIONS } from "@/lib/sleepOptions";
@@ -243,7 +247,9 @@ export async function POST(request: Request) {
       db.from("perfiles").update({ hogar: selectedOption.homeLabel }).eq("id", userId),
       db
         .from("personajes")
-        .update({ caidas: 0, puntos_cansancio: newCansancio })
+        // Pagar la posada es el descanso largo posterior a la expedición:
+        // además de caídas y cansancio devuelve los espacios de conjuro.
+        .update({ caidas: 0, puntos_cansancio: newCansancio, conjuros_usados: [] })
         .eq("id", characterId)
         .eq("usuario_id", userId),
     ]);

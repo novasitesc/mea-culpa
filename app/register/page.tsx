@@ -1,5 +1,7 @@
 "use client";
 
+// Registro de cuenta nueva (/register).
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";

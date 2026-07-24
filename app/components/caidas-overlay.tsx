@@ -1,27 +1,37 @@
 "use client";
 
+// Aviso a pantalla completa cuando un personaje suma una caída.
+
 import { useEffect, useMemo, useState } from "react";
 import { Skull, Moon } from "lucide-react";
 import { MAX_CAIDAS, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { playCaidaSfx, playDerrotaSfx } from "@/lib/sfx";
 import type { EventoCaida } from "@/lib/types/sala";
 import CaidasTracker from "@/app/components/caidas-tracker";
 import HuesoRoto from "@/app/components/hueso-roto";
 
 type Props = {
   evento: EventoCaida;
+  /** true si el personaje caído es el del propio jugador (segunda persona);
+   *  false para el resto de la sala y el DM (tercera persona, con nombre). */
+  esPropio: boolean;
   onDone: () => void;
 };
 
 /**
- * Aviso dramático a pantalla completa cuando el personaje del jugador cae.
- * Con menos de 3 caídas es un destello breve; con la tercera, la derrota:
- * el personaje pierde la expedición y regresa al Nexo con cansancio.
+ * Aviso dramático a pantalla completa cuando un personaje cae. Lo ve TODA la
+ * sala, así que el texto se dirige en segunda persona solo al dueño del
+ * personaje ("¡Has caído!") y nombra al personaje para los demás
+ * ("¡{nombre} ha caído!"), evitando que a otros les parezca que cayeron ellos.
+ * Con menos de 3 caídas es un destello breve; con la tercera, la derrota.
  */
-export default function CaidasOverlay({ evento, onDone }: Props) {
+export default function CaidasOverlay({ evento, esPropio, onDone }: Props) {
   const defeat = evento.derrotado || evento.caidas >= MAX_CAIDAS;
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    if (defeat) playDerrotaSfx();
+    else playCaidaSfx();
     const visibleMs = defeat ? 5600 : 2700;
     const t1 = window.setTimeout(() => setLeaving(true), visibleMs);
     const t2 = window.setTimeout(onDone, visibleMs + 400);
@@ -55,7 +65,15 @@ export default function CaidasOverlay({ evento, onDone }: Props) {
       }`}
       onClick={dismiss}
       role="alertdialog"
-      aria-label={defeat ? "Derrotado" : "Has caído"}
+      aria-label={
+        defeat
+          ? esPropio
+            ? "Derrotado"
+            : `${evento.personajeNombre} derrotado`
+          : esPropio
+            ? "Has caído"
+            : `${evento.personajeNombre} ha caído`
+      }
     >
       {/* Viñeta de sangre */}
       <div
@@ -107,7 +125,13 @@ export default function CaidasOverlay({ evento, onDone }: Props) {
           className="cd-overlay-title font-serif uppercase text-red-400"
           style={{ fontSize: defeat ? "clamp(1.8rem, 6vw, 3.2rem)" : "clamp(1.4rem, 5vw, 2.4rem)" }}
         >
-          {defeat ? "Derrotado" : "¡Has caído!"}
+          {defeat
+            ? esPropio
+              ? "Derrotado"
+              : `${evento.personajeNombre} derrotado`
+            : esPropio
+              ? "¡Has caído!"
+              : `¡${evento.personajeNombre} ha caído!`}
         </h2>
 
         <div className="cd-overlay-sub flex flex-col items-center gap-3">
@@ -127,7 +151,9 @@ export default function CaidasOverlay({ evento, onDone }: Props) {
             <p className="text-sm sm:text-base text-red-200/80 font-sans max-w-md leading-relaxed">
               {evento.personajeNombre} muerde el polvo — caída {evento.caidas} de {MAX_CAIDAS}.
               {evento.caidas === MAX_CAIDAS - 1 && (
-                <span className="block mt-1 text-red-400/90 italic">Una más y la expedición te perderá…</span>
+                <span className="block mt-1 text-red-400/90 italic">
+                  Una más y la expedición {esPropio ? "te" : "lo"} perderá…
+                </span>
               )}
             </p>
           )}

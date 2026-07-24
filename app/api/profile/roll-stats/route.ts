@@ -1,3 +1,11 @@
+// POST — Tira 4d6 (descartando el dado más bajo) seis veces para un personaje
+// nuevo, y devuelve los valores junto a un token firmado.
+//
+// La tirada se hace EN EL SERVIDOR y es determinista por (usuario, día, nº de
+// personajes): repetir la petición devuelve los mismos dados, así que no se
+// puede insistir hasta sacar valores altos. El token viaja de vuelta al crear el
+// personaje y demuestra que esos seis valores son los que el servidor tiró.
+// Detalles en lib/statRollToken.ts.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

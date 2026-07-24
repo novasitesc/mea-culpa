@@ -1,8 +1,12 @@
 "use client";
 
+// Vista del DM dentro de la sala. El panel de mando de la partida: avanzar de
+// sala, tirar dados, repartir objetos, aplicar caídas, cansancio y muertes,
+// declarar descansos y cerrar la expedición.
+// Cada botón llama a su ruta de /api/partidas/[id]/* o /api/admin/personajes/*.
+
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap } from "lucide-react";
+import { Loader2, Coins, Package, X, Skull, ChevronDown, ChevronUp, Scissors, HeartCrack, Plus, Minus, Moon, Zap, DoorOpen } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
 import SalaFeed from "@/app/components/sala-feed";
@@ -15,6 +19,7 @@ import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
+import { SALAS_POR_DESCANSO, salasDesdeUltimoDescanso } from "@/lib/descanso";
 
 type Props = {
   partida: SalaPartida;
@@ -25,7 +30,7 @@ type Props = {
   onStart: () => void;
 };
 
-type AlertState = { variant: "success" | "error"; message: string } | null;
+type AlertState = { variant: "success" | "error" | "warning"; message: string } | null;
 
 type CloseRewardItem = { id: string; objectId: number | null; qty: number };
 type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
@@ -33,7 +38,6 @@ type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
 function mkId() { return Math.random().toString(36).slice(2, 9); }
 
 export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
-  const router = useRouter();
 
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
     participantes[0]?.personajeId ?? null,
@@ -80,12 +84,16 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   // Descanso largo (resetear caídas) state
   const [restModalOpen, setRestModalOpen] = useState(false);
   const [resting, setResting] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
   const selectedParticipante = participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
   const participantesActivos = participantes.filter((p) => !p.muerto && !p.derrotado);
   const participantesQueDescansan = participantesActivos.filter((p) => p.caidas > 0 || p.cansancio > 0);
   // D&D 5e 2014: un solo descanso largo por día de aventura → uno por expedición.
   const yaDescansaron = eventos.some((ev) => ev.tipo === "descanso_largo");
+  // Salas exploradas desde el último descanso: a las SALAS_POR_DESCANSO se avisa.
+  const salasRecorridas = salasDesdeUltimoDescanso(eventos);
+  const tocaDescanso = salasRecorridas >= SALAS_POR_DESCANSO;
 
   const loadObjects = useCallback(async () => {
     if (objects.length > 0) return;
@@ -133,6 +141,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       objeto: result.objeto,
       cantidadOro: result.cantidadOro,
       lutResultados: result.lutResultados,
+      entregas: result.entregas,
       personajeNombre: selectedParticipante.nombre,
       personajeId: selectedParticipante.personajeId,
     });
@@ -344,25 +353,69 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
     }
   }
 
-  // ── Descanso largo handler ─────────────────────────────────────────────────
+  // ── Avanzar de sala ────────────────────────────────────────────────────────
 
-  async function handleDescansoLargo() {
+  async function handleAvanzarSala() {
+    setAdvancing(true);
+    try {
+      const res = await fetch(`/api/partidas/${partida.id}/sala-avanzada`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo avanzar de sala" });
+        return;
+      }
+      const data = await res.json();
+      onEvent({
+        tipo: "sala_avanzada",
+        sala: Number(data.sala ?? 0),
+        requiereDescanso: Boolean(data.requiereDescanso),
+      });
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
+  // ── Descanso handler (corto o largo) ───────────────────────────────────────
+
+  async function handleDescanso(tipo: "corto" | "largo") {
     setResting(true);
     try {
       const res = await fetch("/api/admin/personajes/caidas", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ partidaId: partida.id }),
+        body: JSON.stringify({ partidaId: partida.id, tipo }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo realizar el descanso largo" });
+        setAlert({ variant: "error", message: (err as any).error ?? "No se pudo realizar el descanso" });
         return;
       }
       const data = await res.json();
       setRestModalOpen(false);
-      onEvent({ tipo: "descanso_largo", personajes: data.personajes ?? [] });
-      setAlert({ variant: "success", message: "Descanso largo realizado: caídas restauradas." });
+      onEvent({
+        tipo: tipo === "corto" ? "descanso_corto" : "descanso_largo",
+        personajes: data.personajes ?? [],
+      });
+      const sinRacion = (data.personajes ?? []).filter((p: any) => p.sinRacion);
+      if (sinRacion.length > 0) {
+        setAlert({
+          variant: "warning",
+          message: `Descanso ${tipo} realizado. Sin ración (+1 cansancio): ${sinRacion
+            .map((p: any) => p.nombre)
+            .join(", ")}.`,
+        });
+      } else {
+        setAlert({
+          variant: "success",
+          message:
+            tipo === "corto"
+              ? "Descanso corto realizado: raciones consumidas y 1 caída curada."
+              : "Descanso largo realizado: caídas restauradas, −1 cansancio y conjuros recuperados.",
+        });
+      }
     } finally {
       setResting(false);
     }
@@ -515,6 +568,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
             rollApiUrl={rollApiUrl}
             extraBody={extraBody}
             hideCost
+            personajeNombre={selectedParticipante?.nombre}
             onRollComplete={handleRollComplete}
           />
         ) : (
@@ -646,19 +700,41 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                   );
                 })()}
 
-                <div className="border-t border-red-900/20 pt-2.5">
+                <div className="border-t border-red-900/20 pt-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+                      Sala {salasRecorridas} / {SALAS_POR_DESCANSO}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAvanzarSala}
+                      disabled={advancing}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#8B7355]/40 text-[11px] font-sans text-foreground/70 hover:text-gold hover:border-gold/50 transition-all disabled:opacity-40"
+                    >
+                      {advancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <DoorOpen className="w-3 h-3" />}
+                      Avanzar sala
+                    </button>
+                  </div>
+
+                  {tocaDescanso && (
+                    <p className="text-[10px] text-amber-300 font-sans leading-relaxed rounded border border-amber-600/40 bg-amber-900/15 px-2 py-1.5">
+                      El grupo lleva {salasRecorridas} salas sin descansar: toca el descanso
+                      obligatorio.
+                    </p>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setRestModalOpen(true)}
-                    disabled={yaDescansaron || participantesActivos.length === 0}
+                    disabled={participantesActivos.length === 0}
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded border border-emerald-500/40 bg-emerald-900/15 text-[11px] font-sans text-emerald-300 hover:bg-emerald-900/35 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Moon className="w-3 h-3" />
-                    Descanso largo · Resetear caídas
+                    Descansar · Corto o largo
                   </button>
                   {yaDescansaron && (
                     <p className="text-[10px] text-foreground/30 italic font-sans mt-1.5 text-center">
-                      Ya se realizó un descanso largo en esta expedición.
+                      Ya se realizó el descanso largo de esta expedición; quedan los cortos.
                     </p>
                   )}
                 </div>
@@ -807,7 +883,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       </div>
 
       {/* Panel derecho: Feed */}
-      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-3 min-h-[300px] lg:min-h-0 overflow-hidden">
+      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-3 min-h-[300px] max-h-[65vh] lg:min-h-0 overflow-hidden">
         <SalaFeed eventos={eventos} />
       </div>
 
@@ -991,7 +1067,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
           <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="text-lg font-bold text-emerald-300 flex items-center gap-2">
-                <Moon className="w-5 h-5" /> Descanso largo
+                <Moon className="w-5 h-5" /> Descanso
               </h2>
               <button
                 onClick={() => setRestModalOpen(false)}
@@ -1003,10 +1079,41 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
 
             <div className="p-5 overflow-y-auto min-h-0 flex flex-col gap-3">
               <p className="text-sm text-muted-foreground">
-                El grupo acampa y recupera fuerzas: las caídas se restauran a 0 y cada personaje
-                activo reduce 1 nivel de cansancio. Los muertos o derrotados ya abandonaron la
-                expedición y no se ven afectados. Solo puede haber un descanso largo por expedición.
+                Cada descanso consume 1 ración por personaje activo; quien no tenga ración no se
+                recupera y gana +1 de cansancio. Los muertos o derrotados ya abandonaron la
+                expedición y no se ven afectados.
               </p>
+
+              <button
+                type="button"
+                onClick={() => handleDescanso("corto")}
+                disabled={resting}
+                className="text-left rounded-lg border border-emerald-900/40 bg-emerald-950/15 hover:bg-emerald-950/35 hover:border-emerald-600/50 transition-all p-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <p className="text-sm font-semibold text-emerald-300">Descanso corto</p>
+                <p className="text-[11px] text-foreground/50 font-sans mt-0.5">
+                  Un respiro junto al camino: cura 1 caída. Sin límite por expedición.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDescanso("largo")}
+                disabled={resting || yaDescansaron}
+                className="text-left rounded-lg border border-emerald-900/40 bg-emerald-950/15 hover:bg-emerald-950/35 hover:border-emerald-600/50 transition-all p-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <p className="text-sm font-semibold text-emerald-300">Descanso largo</p>
+                <p className="text-[11px] text-foreground/50 font-sans mt-0.5">
+                  Acampar toda la noche: requiere 1 tienda de acampar del grupo. Caídas a 0,
+                  −1 nivel de cansancio y todos los conjuros gastados vuelven. Solo uno por
+                  expedición.
+                  {yaDescansaron && (
+                    <span className="block italic text-foreground/35 mt-0.5">
+                      Ya se realizó en esta expedición.
+                    </span>
+                  )}
+                </p>
+              </button>
 
               {participantesQueDescansan.length > 0 ? (
                 <div className="flex flex-col gap-2">
@@ -1035,22 +1142,19 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               )}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border p-5">
+            <div className="flex items-center justify-end gap-2 border-t border-border p-5">
+              {resting && (
+                <span className="mr-auto inline-flex items-center gap-2 text-sm text-emerald-300 font-sans">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Descansando...
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setRestModalOpen(false)}
-                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm"
+                disabled={resting}
+                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm disabled:opacity-60"
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleDescansoLargo}
-                disabled={resting}
-                className="px-4 py-2 rounded bg-emerald-700/80 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2"
-              >
-                {resting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {resting ? "Descansando..." : "Realizar descanso largo"}
               </button>
             </div>
           </div>

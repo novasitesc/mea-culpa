@@ -1,5 +1,8 @@
 "use client";
 
+// Tarjeta de un personaje: retrato, clases, nivel, estado de vida y accesos a
+// sus acciones. La unidad visual que más se repite en el perfil.
+
 /**
  * CharacterCard — Tarjeta compacta de personaje con panel de detalle expandible.
  *
@@ -34,6 +37,7 @@ import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
+import { playCardHoverSfx } from "@/lib/sfx";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Re-use the types from the parent. They are not exported from page.tsx so we
@@ -124,6 +128,8 @@ export type Character = {
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntryLocal[];
+  /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
+  usedSpells?: string[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
@@ -253,6 +259,7 @@ export default function CharacterCard({
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
       <motion.article
         layout
+        onHoverStart={playCardHoverSfx}
         transition={{ layout: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } }}
         exit={{
           opacity: 0,

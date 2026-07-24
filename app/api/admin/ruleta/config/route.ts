@@ -1,3 +1,5 @@
+// GET / PATCH — Solo admin. Interruptor global de la ruleta
+// (`ruleta_configuracion`): permite activarla o desactivarla para todos.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

@@ -1,3 +1,5 @@
+// GET — ¿Tiene el usuario una tirada USD ya pagada y sin usar?
+// La UI lo consulta para saber si puede girar sin volver a pasar por PayPal.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

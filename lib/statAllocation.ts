@@ -61,14 +61,25 @@ export const DEFAULT_STATS: StatsBlock = {
   chr: 10,
 };
 
+/**
+ * Modificador de una característica: lo que de verdad se suma a las tiradas.
+ * 10-11 → +0, y ±1 por cada 2 puntos. Un 16 da +3, un 8 da −1.
+ */
 export function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
 
+/** El modificador con signo para mostrarlo en pantalla: "+3", "-1". */
 export function formatModifier(mod: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
+/**
+ * Puntos gastados por un reparto en compra de puntos. Subir no es lineal: de 13
+ * a 14 cuesta 2 puntos y de 14 a 15 cuesta 2 más, para desincentivar los picos.
+ * Un valor fuera de la tabla devuelve Infinity y así la validación lo rechaza
+ * en vez de contarlo como gratis.
+ */
 export function totalPointBuyCost(stats: StatsBlock): number {
   return ABILITY_KEYS.reduce(
     (sum, key) => sum + (POINT_BUY_COST[stats[key]] ?? Number.POSITIVE_INFINITY),
@@ -76,6 +87,7 @@ export function totalPointBuyCost(stats: StatsBlock): number {
   );
 }
 
+/** ¿Vienen las seis características y todas son enteros? Primer filtro de todo lo que llega del cliente. */
 function isCompleteStatsBlock(stats: unknown): stats is StatsBlock {
   if (!stats || typeof stats !== "object") return false;
   return ABILITY_KEYS.every((key) => {
@@ -86,6 +98,12 @@ function isCompleteStatsBlock(stats: unknown): stats is StatsBlock {
 
 export type StatValidation = { ok: true; stats: StatsBlock } | { ok: false; error: string };
 
+// ── Validadores: uno por método de reparto ───────────────────────────────────
+// Los tres se ejecutan EN EL SERVIDOR al crear el personaje, aunque el modal ya
+// haya validado en el navegador. El cliente puede mandar lo que quiera; sin
+// esta comprobación cualquiera se crearía un personaje con seis 18.
+
+/** Compra de puntos: cada valor entre 8 y 15, y el coste total dentro de los 27 puntos. */
 export function validatePointBuy(stats: unknown): StatValidation {
   if (!isCompleteStatsBlock(stats)) {
     return { ok: false, error: "Faltan estadísticas o tienen un formato inválido." };
@@ -109,6 +127,11 @@ export function validatePointBuy(stats: unknown): StatValidation {
   return { ok: true, stats };
 }
 
+/**
+ * Matriz estándar: deben usarse exactamente los valores 15/14/13/12/10/8, en el
+ * orden que quiera el jugador. Por eso se comparan ordenados: importa el
+ * conjunto, no a qué característica fue cada uno.
+ */
 export function validateStandardArray(stats: unknown): StatValidation {
   if (!isCompleteStatsBlock(stats)) {
     return { ok: false, error: "Faltan estadísticas o tienen un formato inválido." };
@@ -125,6 +148,11 @@ export function validateStandardArray(stats: unknown): StatValidation {
   return { ok: true, stats };
 }
 
+/**
+ * Tirada de dados: aquí solo se comprueba el rango posible de 4d6 quitando el
+ * menor (3-18). La comprobación fuerte —que sean EXACTAMENTE los valores que
+ * tiró el servidor— la hace el token HMAC de statRollToken.ts.
+ */
 export function validateRolledStats(stats: unknown): StatValidation {
   if (!isCompleteStatsBlock(stats)) {
     return { ok: false, error: "Faltan estadísticas o tienen un formato inválido." };

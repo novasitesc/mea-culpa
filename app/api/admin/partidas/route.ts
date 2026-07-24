@@ -1,3 +1,9 @@
+// GET / POST / PATCH — Solo admin (el DM). Núcleo de la gestión de partidas.
+// GET   lista partidas con sus participantes y personajes.
+// POST  crea una partida.
+// PATCH cambia su estado (abierta → en_progreso → finalizada), y al finalizar
+//       resuelve el cierre: eventos, descansos pendientes y muertes.
+// Es la ruta más grande del proyecto; léela después de entender partidas/[id]/sala.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { markCharacterDead } from "@/lib/characterLife";

@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+// Registro de conjuros del personaje: los que conoce, agrupados por nivel.
+
+import { useState, useEffect, useMemo } from "react";
 import {
   getCasterType,
   getPreparedSpellsCount,
-  getMaxSpellLevel,
   getEffectiveMaxSpellLevel,
   getMulticlassCasterLevel,
   getMaxRegistrableSpells,
+  normalizeUsedSpells,
+  spellKey,
   type SpellEntry,
 } from "@/lib/spells";
 import SpellSearchModal from "./spell-search-modal";
 import * as Popover from "@radix-ui/react-popover";
 import DOMPurify from "isomorphic-dompurify";
-import { Info, Sparkles, Lock } from "lucide-react";
+import { Info, Sparkles, Lock, Flame } from "lucide-react";
 
 // Etiquetas de formato permitidas en las descripciones de conjuros.
 // Sin atributos: elimina on*, href, src, style y demás vectores de XSS.
@@ -25,6 +28,7 @@ type SpellCharacter = {
   multiclass: ClassEntry[];
   stats: Record<string, number>;
   knownSpells?: SpellEntry[];
+  usedSpells?: string[];
 };
 
 type CatalogSpell = {
@@ -53,6 +57,14 @@ export default function SpellsRegistry({
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [pendingSpells, setPendingSpells] = useState<CatalogSpell[]>([]);
   const [isClosing, setIsClosing] = useState(false);
+  // Conjuros gastados: SOLO lectura aquí. Se lanzan durante la expedición
+  // (sala de partida) y el descanso largo los devuelve (D&D 5e 2014, PHB p.186).
+  // La ficha únicamente refleja el estado para consultarlo antes de salir.
+  const usedSpells = useMemo(
+    () => normalizeUsedSpells(character.usedSpells),
+    [character.usedSpells],
+  );
+  const usedSet = useMemo(() => new Set(usedSpells), [usedSpells]);
 
   const multiclass: ClassEntry[] = character.multiclass || [];
 
@@ -267,6 +279,16 @@ export default function SpellsRegistry({
 
       {/* ── Registro de Conjuros (ahora disponible para TODOS los casters) ── */}
       <div className="space-y-3">
+        {usedSpells.length > 0 && (
+          <div className="flex items-center gap-2 text-xs text-amber-200/90 p-2 bg-amber-900/10 border border-amber-800/30 rounded">
+            <Flame className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {usedSpells.length} conjuro{usedSpells.length === 1 ? "" : "s"} gastado
+              {usedSpells.length === 1 ? "" : "s"} en expedición. Un descanso largo los devuelve.
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
             Conjuros Registrados:
@@ -314,15 +336,22 @@ export default function SpellsRegistry({
                         const colorClass = catalogInfo
                           ? (schoolColors[catalogInfo.escuela] ?? "text-blue-300")
                           : "text-blue-300";
+                        const isUsed = level > 0 && usedSet.has(spellKey(spell.name));
 
                         return (
                           <li
                             key={idx}
-                            className="relative overflow-hidden px-3 py-2 text-sm bg-[#1a1510] border border-[#8B7355]/20 hover:border-[#D4AF37]/40 rounded-md flex items-center justify-between gap-2 transition-colors group"
+                            className={`relative overflow-hidden px-3 py-2 text-sm border rounded-md flex items-center justify-between gap-2 transition-colors group ${
+                              isUsed
+                                ? "bg-[#130f0c] border-[#8B7355]/10 opacity-55"
+                                : "bg-[#1a1510] border-[#8B7355]/20 hover:border-[#D4AF37]/40"
+                            }`}
                           >
                             <div className="flex items-center gap-2 overflow-hidden">
-                              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${colorClass}`} /> 
-                              <span className="truncate font-medium">{spell.name}</span>
+                              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isUsed ? "text-muted-foreground/50" : colorClass}`} />
+                              <span className={`truncate font-medium ${isUsed ? "line-through text-muted-foreground" : ""}`}>
+                                {spell.name}
+                              </span>
                               {catalogInfo && (
                                 <span className="text-[10px] text-muted-foreground/70">
                                   {catalogInfo.escuela}
@@ -367,9 +396,19 @@ export default function SpellsRegistry({
                                 </Popover.Root>
                               )}
                             </div>
-                            <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded shrink-0">
-                              {level === 0 ? "Truco" : `Nivel ${level}`}
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isUsed && (
+                                <span
+                                  title="Gastado en expedición; vuelve con un descanso largo"
+                                  className="text-amber-400/70"
+                                >
+                                  <Flame className="w-3.5 h-3.5" />
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground bg-black/20 px-2 py-0.5 rounded">
+                                {level === 0 ? "Truco" : `Nivel ${level}`}
+                              </span>
+                            </div>
                           </li>
                         );
                       })}

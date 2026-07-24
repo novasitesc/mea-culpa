@@ -1,3 +1,5 @@
+// GET — Usuario autenticado. Las publicaciones propias en el mercado, con el
+// estado de cada una y las solicitudes recibidas.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

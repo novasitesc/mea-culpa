@@ -1,11 +1,17 @@
 "use client";
 
+// Perfil (/profile): la pantalla central del jugador.
+// Carga todo de un tirón desde GET /api/profile (perfil, oro, personajes con
+// clases, estadísticas, equipo y bolsa) y reparte esos datos entre la rejilla de
+// personajes, la bolsa y los modales.
+// Es la única pantalla accesible cuando todos los personajes están muertos.
+
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/header";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
-import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
+import { initMercadoPago } from "@mercadopago/sdk-react";
 import { useAuth } from "@/lib/useAuth";
 import { getAccountLevelTitle } from "@/lib/accountLevel";
 import EquipmentModal from "./bolsa/bolsa";
@@ -109,6 +115,8 @@ type Character = {
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntry[];
+  /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
+  usedSpells?: string[];
   bag: Bag;
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
@@ -141,7 +149,6 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [openBagModal, setOpenBagModal] = useState<number | null>(null);
   const [bagItems, setBagItems] = useState<Item[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Character | null>(
     null,
   );
@@ -240,7 +247,6 @@ export default function ProfilePage() {
 
     if (!profile || !user || !characterToSave) return;
 
-    setIsSaving(true);
     try {
       const response = await fetch("/api/profile/update-bag", {
         method: "POST",
@@ -289,7 +295,6 @@ export default function ProfilePage() {
         "error",
       );
     } finally {
-      setIsSaving(false);
     }
   };
 

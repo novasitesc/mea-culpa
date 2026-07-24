@@ -19,6 +19,41 @@ export function normalizeSpells(raw: unknown): SpellEntry[] {
   }).filter(s => s.name.trim().length > 0);
 }
 
+// Paleta por escuela para los efectos 3D del lanzamiento: [núcleo, borde] en
+// componentes RGB sueltos, que es lo que pide el gradiente de la textura.
+// El registro de conjuros usa su propio mapa de clases Tailwind para las
+// etiquetas; aquí hacen falta valores crudos para three.js.
+export const SPELL_SCHOOL_RGB: Record<string, [string, string]> = {
+  "Abjuración": ["220,240,255", "96,165,250"], // escudo azul
+  "Conjuración": ["255,246,205", "234,179,8"], // invocación ámbar
+  "Adivinación": ["224,255,255", "34,211,238"], // visión cian
+  "Encantamiento": ["255,228,245", "236,72,153"], // rosa hipnótico
+  "Evocación": ["255,232,205", "239,68,68"], // fuego
+  "Ilusión": ["240,225,255", "168,85,247"], // púrpura
+  "Nigromancia": ["215,225,215", "74,222,128"], // verde enfermizo
+  "Transmutación": ["225,255,235", "34,197,94"], // verde mutable
+};
+
+export const DEFAULT_SCHOOL_RGB: [string, string] = ["255,248,220", "212,175,55"];
+
+export const schoolRgb = (escuela?: string | null): [string, string] =>
+  (escuela && SPELL_SCHOOL_RGB[escuela]) || DEFAULT_SCHOOL_RGB;
+
+// Conjuros gastados: se guardan como nombres normalizados (minúsculas, sin
+// espacios sobrantes) para que el cotejo no dependa de mayúsculas ni tildes
+// escritas de otra forma en el catálogo.
+export const spellKey = (name: string) => name.toLowerCase().trim();
+
+export function normalizeUsedSpells(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out = new Set<string>();
+  for (const item of raw) {
+    const key = typeof item === "string" ? spellKey(item) : "";
+    if (key.length > 0) out.add(key);
+  }
+  return Array.from(out);
+}
+
 // Obtiene el modificador de un stat
 export function getStatModifier(stat: number): number {
   return Math.floor((stat - 10) / 2);

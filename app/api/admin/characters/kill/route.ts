@@ -1,3 +1,6 @@
+// POST — Solo admin. Mata un personaje desde el panel.
+// Delega en markCharacterDead() (lib/characterLife.ts), que cambia el estado y
+// deja el registro en el historial de muertes en una sola transacción.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { markCharacterDead } from "@/lib/characterLife";

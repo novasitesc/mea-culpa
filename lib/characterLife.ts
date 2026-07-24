@@ -1,9 +1,28 @@
+// Estado de vida del personaje: el guardián que usan casi todas las acciones.
+//
+// Un personaje tiene una columna `estado_vida` con tres valores posibles:
+//   · "vivo"      → puede actuar con normalidad
+//   · "muerto"    → congelado; solo revive pagando (PayPal) o por un admin
+//   · "eliminado" / "enterrado" → borrado definitivo, no vuelve
+//
+// Muerte y resurrección NO se escriben aquí a mano: se delegan en funciones RPC
+// de Postgres (`marcar_personaje_muerto`, `revivir_personaje`) para que el
+// cambio de estado y su registro en el historial ocurran en una sola
+// transacción y no puedan quedar a medias.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type OwnedAliveResult =
   | { ok: true }
   | { ok: false; status: number; error: string };
 
+/**
+ * Verifica de una vez las dos preguntas que toda acción necesita responder:
+ * ¿este personaje es del usuario que llama? ¿y está vivo?
+ *
+ * Comprobar la propiedad es lo que impide que alguien mande el `characterId` de
+ * otro jugador y actúe en su nombre. El `status` que devuelve es el HTTP que la
+ * ruta debe responder (403 no es tuyo, 409 muerto, 410 eliminado).
+ */
 export async function ensureOwnedAliveCharacter(
   db: SupabaseClient,
   userId: string,
@@ -45,6 +64,13 @@ export async function ensureOwnedAliveCharacter(
   return { ok: true };
 }
 
+/**
+ * ¿Le queda al usuario al menos un personaje vivo?
+ *
+ * Regla del juego: con todos los personajes muertos la cuenta queda encerrada
+ * en el Perfil (sin ruleta, sin partidas). Esto lo comprueban las rutas que no
+ * apuntan a un personaje concreto, como la tirada de ruleta.
+ */
 export async function userHasAnyAliveCharacter(
   db: SupabaseClient,
   userId: string,
@@ -64,6 +90,13 @@ export async function userHasAnyAliveCharacter(
   return { ok: true, hasAlive: Boolean(data?.id) };
 }
 
+/**
+ * Mata un personaje. `reason` es la causa ("impuesto_impago", "muerte_en_partida"…)
+ * y `metadata` guarda el contexto libre que luego se ve en el historial de muertes.
+ *
+ * La RPC hace el trabajo real: cambia `estado_vida` e inserta la fila en
+ * `personajes_historial_vida` de forma atómica.
+ */
 export async function markCharacterDead(params: {
   db: SupabaseClient;
   userId: string;
@@ -89,6 +122,11 @@ export async function markCharacterDead(params: {
   return { ok: true };
 }
 
+/**
+ * Revive un personaje muerto. Dos caminos llegan aquí: el pago de PayPal
+ * (entonces `paymentId` apunta a la fila de `pagos_paypal`) o un admin desde el
+ * panel (`paymentId` null).
+ */
 export async function reviveCharacter(params: {
   db: SupabaseClient;
   userId: string;

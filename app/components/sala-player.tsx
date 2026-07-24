@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { FlaskConical, Skull, Moon, Zap } from "lucide-react";
+// Vista del jugador dentro de la sala: su personaje, el feed de lo que va
+// pasando y sus acciones (lanzar conjuros, usar consumibles).
+
+import { useState } from "react";
+import { FlaskConical, Skull, Moon, Zap, Sparkles } from "lucide-react";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SalaFeed from "@/app/components/sala-feed";
 import ConsumableModal from "@/app/components/consumable-modal";
+import SpellCastModal from "@/app/components/spell-cast-modal";
 import CaidasTracker from "@/app/components/caidas-tracker";
-import CaidasOverlay from "@/app/components/caidas-overlay";
-import type { SalaPartida, SalaParticipante, SalaEvento, EventoCaida } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
 
 type Props = {
   partida: SalaPartida;
@@ -22,34 +25,14 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
   const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][partida.tier] ?? partida.tier;
 
   const [consumablesOpen, setConsumablesOpen] = useState(false);
-  const [overlayEvento, setOverlayEvento] = useState<EventoCaida | null>(null);
-  const prevEventosLen = useRef<number | null>(null);
+  const [spellsOpen, setSpellsOpen] = useState(false);
 
   const me = usuarioId
     ? participantes.find((p) => p.usuarioId === usuarioId) ?? null
     : null;
-  const canUseConsumables =
+  // Mismo gate para consumibles y conjuros: solo actúa quien sigue en pie.
+  const canAct =
     partida.estado === "en_progreso" && me != null && !me.muerto && !me.derrotado;
-
-  // Dispara el aviso dramático solo con caídas nuevas del propio personaje
-  // (el historial cargado al entrar a la sala no debe reabrir el overlay).
-  useEffect(() => {
-    if (prevEventosLen.current === null) {
-      prevEventosLen.current = eventos.length;
-      return;
-    }
-    if (eventos.length > prevEventosLen.current && me) {
-      const nuevos = eventos.slice(prevEventosLen.current);
-      const propia = [...nuevos]
-        .reverse()
-        .find(
-          (ev): ev is EventoCaida =>
-            ev.tipo === "caida" && ev.personajeId === me.personajeId && ev.delta > 0,
-        );
-      if (propia) setOverlayEvento(propia);
-    }
-    prevEventosLen.current = eventos.length;
-  }, [eventos, me]);
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -79,15 +62,25 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
             Cansancio {me.cansancio}/{MAX_CANSANCIO}
           </div>
         )}
-        {canUseConsumables && (
-          <button
-            type="button"
-            onClick={() => setConsumablesOpen(true)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            Consumibles
-          </button>
+        {canAct && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSpellsOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Conjuros
+            </button>
+            <button
+              type="button"
+              onClick={() => setConsumablesOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-sans font-semibold bg-gold/15 border border-gold/40 text-gold uppercase tracking-widest hover:bg-gold/30 active:scale-95 transition-all"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              Consumibles
+            </button>
+          </div>
         )}
       </div>
 
@@ -132,7 +125,7 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
       )}
 
       {/* Feed en vivo — ocupa todo el espacio restante */}
-      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-4 min-h-[300px] overflow-hidden">
+      <div className="flex-1 rounded-lg border border-gold-dim/40 bg-card p-4 min-h-[300px] max-h-[65vh] overflow-hidden">
         {partida.estado === "abierta" ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
             <div className="w-10 h-10 rounded-full border-2 border-gold-dim/30 flex items-center justify-center">
@@ -155,9 +148,14 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
         />
       )}
 
-      {/* Aviso dramático de caída / derrota */}
-      {overlayEvento && (
-        <CaidasOverlay evento={overlayEvento} onDone={() => setOverlayEvento(null)} />
+      {/* Modal de conjuros */}
+      {spellsOpen && (
+        <SpellCastModal
+          partidaId={partida.id}
+          token={token}
+          onClose={() => setSpellsOpen(false)}
+          onCast={onEvent}
+        />
       )}
     </div>
   );

@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+// Feed de eventos de la partida (`partidas_eventos`): el registro en vivo de lo
+// que ocurre en la sala. Lo ven jugadores y DM.
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles } from "lucide-react";
+import { schoolRgb, spellKey } from "@/lib/spells";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
+import SpellDescriptionHover from "@/app/components/spell-description-hover";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
   eventos: SalaEvento[];
 };
 
-function renderEvento(ev: SalaEvento, i: number) {
+function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => string | null) {
   if (ev.tipo === "dado_tirado") {
     const { recompensaNombre, tipoDado, resultados, tipoResultado, objeto, cantidadOro, lutResultados, personajeNombre } = ev;
 
@@ -101,8 +107,22 @@ function renderEvento(ev: SalaEvento, i: number) {
   if (ev.tipo === "consumible_usado") {
     const { objeto, personajeNombre, restante } = ev;
     return (
-      <div key={i} className="flex items-center gap-2 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-300">
-        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-purple-900/20 border border-purple-700/40 rounded text-purple-400"><FlaskConical className="w-4 h-4" /></span>
+      <div key={i} className="sf-flash-purple rounded-sm flex items-center gap-2 py-2 border-b border-gold-dim/10 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-300">
+        <span className="relative shrink-0 flex items-center justify-center w-7 h-7 bg-purple-900/20 border border-purple-700/40 rounded text-purple-400">
+          <span className="sf-flask-pop inline-flex"><FlaskConical className="w-4 h-4" /></span>
+          {[0, 1, 2].map((j) => (
+            <span
+              key={j}
+              className="sf-spark absolute w-1 h-1 rounded-full bg-purple-300 pointer-events-none"
+              style={{
+                left: `${22 + j * 24}%`,
+                top: "8%",
+                ["--sf-delay" as string]: `${0.15 + j * 0.2}s`,
+                ["--sf-drift" as string]: `${(j - 1) * 10}px`,
+              }}
+            />
+          ))}
+        </span>
         <p className="text-xs font-sans">
           <span className="text-foreground/70 font-semibold">{personajeNombre}</span>
           <span className="text-foreground/40"> tiró </span>
@@ -122,9 +142,9 @@ function renderEvento(ev: SalaEvento, i: number) {
     return (
       <div
         key={i}
-        className={`flex items-center gap-2 py-2 border-b last:border-0 animate-in fade-in duration-300 ${
-          ev.derrotado ? "border-red-900/40" : "border-rose-900/30"
-        }`}
+        className={`flex items-center gap-2 py-2 border-b last:border-0 rounded-sm ${
+          recuperacion ? "animate-in fade-in duration-300" : "sf-shake-in sf-flash-red"
+        } ${ev.derrotado ? "border-red-900/40" : "border-rose-900/30"}`}
       >
         <span
           className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
@@ -138,9 +158,9 @@ function renderEvento(ev: SalaEvento, i: number) {
           {recuperacion ? (
             <HeartPulse className="w-4 h-4" />
           ) : ev.derrotado ? (
-            <Skull className="w-4 h-4" />
+            <span className="cd-skull-ignite inline-flex"><Skull className="w-4 h-4" /></span>
           ) : (
-            <HuesoRoto className="w-4 h-4" />
+            <span className="cd-skull-ignite inline-flex"><HuesoRoto className="w-4 h-4" /></span>
           )}
         </span>
         <p className="text-xs font-sans">
@@ -204,7 +224,10 @@ function renderEvento(ev: SalaEvento, i: number) {
     );
   }
 
-  if (ev.tipo === "descanso_largo") {
+  if (ev.tipo === "descanso_largo" || ev.tipo === "descanso_corto") {
+    const corto = ev.tipo === "descanso_corto";
+    const conRacion = ev.personajes.filter((p) => !p.sinRacion);
+    const sinRacion = ev.personajes.filter((p) => p.sinRacion);
     return (
       <div key={i} className="py-2 border-b border-emerald-900/30 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500">
         <div className="rounded-lg border border-emerald-800/40 bg-gradient-to-r from-emerald-950/40 via-black/30 to-emerald-950/40 px-3 py-2.5 flex items-center gap-2.5">
@@ -213,14 +236,25 @@ function renderEvento(ev: SalaEvento, i: number) {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-sans text-emerald-300 font-semibold uppercase tracking-widest">
-              Descanso largo
+              {corto ? "Descanso corto" : "Descanso largo"}
             </p>
-            {ev.personajes.length > 0 ? (
+            {conRacion.length > 0 && (
               <p className="text-[11px] text-foreground/50 font-sans">
-                <span className="text-foreground/70">{ev.personajes.map((p) => p.nombre).join(", ")}</span>
-                <span className="text-emerald-400 font-semibold"> — caídas restauradas y −1 de cansancio</span>
+                <span className="text-foreground/70">{conRacion.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-emerald-400 font-semibold">
+                  {corto
+                    ? " — ración consumida, cura 1 caída"
+                    : " — caídas restauradas, −1 de cansancio y conjuros recuperados"}
+                </span>
               </p>
-            ) : (
+            )}
+            {sinRacion.length > 0 && (
+              <p className="text-[11px] text-foreground/50 font-sans">
+                <span className="text-foreground/70">{sinRacion.map((p) => p.nombre).join(", ")}</span>
+                <span className="text-red-400 font-semibold"> — sin ración: +1 de cansancio</span>
+              </p>
+            )}
+            {ev.personajes.length === 0 && (
               <p className="text-[11px] text-foreground/40 italic font-sans">
                 El grupo descansa; nadie necesitaba recuperarse.
               </p>
@@ -231,13 +265,87 @@ function renderEvento(ev: SalaEvento, i: number) {
     );
   }
 
+  if (ev.tipo === "conjuro_lanzado") {
+    const [, edge] = schoolRgb(ev.escuela);
+    // Catálogo primero (funciona para eventos viejos y nuevos); el evento como respaldo.
+    const descripcion = descOf(ev.conjuro) ?? ev.descripcion ?? null;
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500"
+      >
+        <span
+          className="shrink-0 flex items-center justify-center w-7 h-7 rounded border"
+          style={{ color: `rgb(${edge})`, borderColor: `rgba(${edge},0.4)`, background: `rgba(${edge},0.12)` }}
+        >
+          <Sparkles className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans min-w-0">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> lanza </span>
+          <SpellDescriptionHover
+            name={ev.conjuro}
+            escuela={ev.escuela}
+            spellLevel={ev.spellLevel}
+            description={descripcion}
+          >
+            <span
+              tabIndex={descripcion ? 0 : undefined}
+              className={`font-semibold ${
+                descripcion
+                  ? "cursor-help underline decoration-dotted underline-offset-2 outline-none"
+                  : ""
+              }`}
+              style={{ color: `rgb(${edge})` }}
+            >
+              {ev.conjuro}
+            </span>
+          </SpellDescriptionHover>
+          <span className="text-foreground/30">
+            {ev.spellLevel === 0 ? " · truco" : ` · nivel ${ev.spellLevel}`}
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "sala_avanzada") {
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-[#8B7355]/20 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500"
+      >
+        <span
+          className={`shrink-0 flex items-center justify-center w-7 h-7 rounded border ${
+            ev.requiereDescanso
+              ? "bg-amber-900/20 border-amber-700/50 text-amber-300"
+              : "bg-black/30 border-[#8B7355]/40 text-foreground/50"
+          }`}
+        >
+          <DoorOpen className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/40">El grupo avanza a la </span>
+          <span className="text-foreground/70 font-semibold">sala {ev.sala}</span>
+          {ev.requiereDescanso && (
+            <span className="text-amber-300 font-semibold"> — toca descansar</span>
+          )}
+        </p>
+      </div>
+    );
+  }
+
   if (ev.tipo === "desmembramiento") {
     return (
       <div
         key={i}
-        className="flex items-center gap-2 py-2 border-b border-rose-900/30 last:border-0 animate-in fade-in duration-300"
+        className={`flex items-center gap-2 py-2 border-b border-rose-900/30 last:border-0 rounded-sm ${
+          ev.desmembrado ? "sf-shake-in sf-flash-red" : "animate-in fade-in duration-300"
+        }`}
       >
-        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-rose-900/20 border border-rose-900/50 rounded text-rose-500"><Droplet className="w-4 h-4" /></span>
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-rose-900/20 border border-rose-900/50 rounded text-rose-500">
+          <span className={ev.desmembrado ? "cd-skull-ignite inline-flex" : "inline-flex"}><Droplet className="w-4 h-4" /></span>
+        </span>
         <p className="text-xs font-sans">
           <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
           <span className="text-foreground/40"> {ev.desmembrado ? "perdió" : "recuperó"} </span>
@@ -254,10 +362,58 @@ function renderEvento(ev: SalaEvento, i: number) {
 
 export default function SalaFeed({ eventos }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevLen = useRef<number | null>(null);
+
+  // Descripciones de conjuros para el tooltip del log. Se resuelven desde el
+  // catálogo por nombre (una sola carga la primera vez que aparece un conjuro),
+  // así funciona con eventos históricos que no traen la descripción embebida.
+  const [spellDesc, setSpellDesc] = useState<Map<string, string>>(new Map());
+  const spellsFetched = useRef(false);
+  const hasConjuros = eventos.some((e) => e.tipo === "conjuro_lanzado");
+  useEffect(() => {
+    if (!hasConjuros || spellsFetched.current) return;
+    spellsFetched.current = true;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/spells");
+        const data = await res.json();
+        if (!alive || !Array.isArray(data?.spells)) return;
+        const m = new Map<string, string>();
+        for (const s of data.spells) {
+          if (s?.nombre && s?.description) m.set(spellKey(String(s.nombre)), String(s.description));
+        }
+        setSpellDesc(m);
+      } catch {
+        // silencioso: el tooltip cae al respaldo del evento o simplemente no aparece
+      }
+    })();
+    return () => { alive = false; };
+  }, [hasConjuros]);
+  const descOf = useCallback(
+    (name: string) => spellDesc.get(spellKey(name)) ?? null,
+    [spellDesc],
+  );
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // "nearest": desplaza solo el contenedor del feed, nunca la página entera.
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [eventos.length]);
+
+  // Burbujeo del frasco solo con consumibles nuevos, no con el historial
+  // cargado al entrar a la sala. Caídas y desmembramientos suenan en su overlay.
+  useEffect(() => {
+    if (prevLen.current === null) {
+      prevLen.current = eventos.length;
+      return;
+    }
+    if (eventos.length > prevLen.current) {
+      for (const ev of eventos.slice(prevLen.current)) {
+        if (ev.tipo === "consumible_usado") playConsumibleSfx();
+      }
+    }
+    prevLen.current = eventos.length;
+  }, [eventos]);
 
   return (
     <div className="flex flex-col h-full">
@@ -268,7 +424,7 @@ export default function SalaFeed({ eventos }: Props) {
         {eventos.length === 0 ? (
           <p className="text-xs text-foreground/30 italic font-sans">Esperando al DM...</p>
         ) : (
-          eventos.map((ev, i) => renderEvento(ev, i))
+          eventos.map((ev, i) => renderEvento(ev, i, descOf))
         )}
         <div ref={bottomRef} />
       </div>

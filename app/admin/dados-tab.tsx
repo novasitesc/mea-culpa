@@ -1,7 +1,12 @@
 "use client";
 
+// Pestaña de dados del panel: editor de las tablas de recompensas — las 20
+// caras del d20, las sub-tablas anidadas y las sublistas.
+// Es lo que configura al motor de dados (lib/dice/engine.ts).
+
+import ModalPortal from "@/components/ui/modal-portal";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Plus, Trash2, Pencil, Loader2, Check, X, Dices, GripVertical } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, Check, X, Dices, Dice6, GripVertical } from "lucide-react";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import { Select } from "@/components/ui/select";
@@ -11,6 +16,9 @@ import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";
 import type { DiceType, RewardType, LutCaraTipo } from "@/lib/types/dados";
 import DiceVisual from "@/app/components/dice-visual";
 import DiceModule from "@/app/components/dice-module";
+import { AdmHero, AdmPanel } from "./section-ui";
+
+const ACCENT = "#d4af37";
 
 type AdminObject = {
   id: number;
@@ -74,9 +82,8 @@ type RecompensaFull = {
     id: number;
     numeroCara: number;
     tipo: LutCaraTipo;
-    cantidadDados: number | null;
-    tipoDadoOro: DiceType | null;
-    multiplicadorOro: number;
+    oroMin: number;
+    oroMax: number;
     objetoId: number | null;
     cantidadMin: number;
     cantidadMax: number;
@@ -100,15 +107,6 @@ const TIPO_LABEL: Record<RewardType, string> = {
   oro_dados: "Oro por dados",
   lut: "LUT — D20 por caras",
   subtabla: "Sub-tabla D20",
-};
-
-const DICE_LABEL: Record<DiceType, string> = {
-  d4: "D4 (1-4)",
-  d6: "D6 (1-6)",
-  d8: "D8 (1-8)",
-  d10: "D10 (1-10)",
-  d12: "D12 (1-12)",
-  d20: "D20 (1-20)",
 };
 
 const DICE_FACES: Record<DiceType, number> = {
@@ -225,8 +223,8 @@ export function DadosTab({ token }: { token: string | null }) {
       return {
         numeroCara: saved.numeroCara,
         tipo: saved.tipo,
-        oroMin: String(saved.cantidadDados ?? 10),
-        oroMax: String(saved.multiplicadorOro ?? 50),
+        oroMin: String(saved.oroMin ?? 10),
+        oroMax: String(saved.oroMax ?? 50),
         objetoId: saved.objetoId,
         cantidadMin: String(saved.cantidadMin ?? 1),
         cantidadMax: String(saved.cantidadMax ?? 1),
@@ -409,58 +407,62 @@ export function DadosTab({ token }: { token: string | null }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-serif text-gold">Dados — Recompensas</h2>
-          <p className="text-xs text-foreground/50 font-sans mt-0.5">
-            Configura las opciones de dados que aparecen en la homepage.
-          </p>
-        </div>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gold/50 text-gold text-sm hover:bg-gold/10 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva recompensa
-        </button>
-      </div>
+    <div className="space-y-6">
+      {/* Hero */}
+      <AdmHero
+        accent={ACCENT}
+        icon={Dice6}
+        title="Dados del Destino"
+        subtitle="Configura las tiradas y tablas de botín que aparecen en la homepage."
+        right={
+          <button
+            onClick={openNew}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-background transition-all active:scale-95"
+            style={{ background: ACCENT, boxShadow: `0 8px 24px -10px ${ACCENT}` }}
+          >
+            <Plus className="h-4 w-4" />
+            Nueva recompensa
+          </button>
+        }
+      />
 
       {successMsg && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded bg-green-900/30 border border-green-500/40 text-green-400 text-sm">
-          <Check className="w-4 h-4" />
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-900/25 px-3 py-2.5 text-sm text-emerald-300 animate-in fade-in slide-in-from-top-1">
+          <Check className="h-4 w-4" />
           {successMsg}
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 text-gold animate-spin" />
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-gold" />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {recompensas.length === 0 && (
-            <p className="text-center text-sm text-foreground/40 py-8">
+            <AdmPanel accent={ACCENT} className="py-10 text-center text-sm text-muted-foreground">
               Sin recompensas configuradas. Crea la primera.
-            </p>
+            </AdmPanel>
           )}
 
-          {recompensas.map((r) => (
+          {recompensas.map((r, idx) => (
             <div
               key={r.id}
-              className={`flex items-center gap-3 px-3 py-3 rounded border ${
-                r.activo ? "border-gold-dim/40 bg-card" : "border-border/30 bg-card/50 opacity-60"
+              className={`adm-row-in group flex items-center gap-3 rounded-xl border p-3 transition-all hover:border-gold/50 ${
+                r.activo
+                  ? "border-gold-dim/40 bg-gradient-to-br from-secondary/40 to-black/30"
+                  : "border-border/30 bg-card/50 opacity-60"
               }`}
+              style={{ ["--adm-delay" as string]: `${idx * 0.04}s` }}
             >
-              <div className="shrink-0">
+              <div className="dice-idle shrink-0">
                 <DiceVisual type={r.tipoDado} rolling={false} size={40} />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-sans font-medium text-foreground/90 truncate">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground/90">
                   {r.nombre}
                   {!r.activo && (
-                    <span className="ml-2 text-[10px] text-foreground/40 uppercase tracking-wider">inactivo</span>
+                    <span className="ml-2 text-[10px] uppercase tracking-wider text-foreground/40">inactivo</span>
                   )}
                 </p>
                 <p className="text-xs text-foreground/50">
@@ -471,18 +473,18 @@ export function DadosTab({ token }: { token: string | null }) {
                   {r.tipo === "subtabla" && ` · ${r.subtablaCaras?.filter((c) => c.objetoId !== null).length ?? 0} ítems`}
                 </p>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   onClick={() => openEdit(r)}
-                  className="p-1.5 rounded text-foreground/50 hover:text-gold hover:bg-gold/10 transition-colors"
+                  className="rounded-lg p-2 text-foreground/50 transition-colors hover:bg-gold/10 hover:text-gold"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setDeleteTarget(r)}
-                  className="p-1.5 rounded text-foreground/50 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  className="rounded-lg p-2 text-foreground/50 transition-colors hover:bg-red-900/20 hover:text-red-400"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -492,18 +494,34 @@ export function DadosTab({ token }: { token: string | null }) {
 
       {/* Modal de edición */}
       {editingId !== null && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4 ${modalOverlayCls(editClosing)}`}>
-          <div className={`bg-card border border-gold-dim/60 rounded-lg w-full ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto shadow-2xl ${modalPanelCls(editClosing)}`}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
-              <h3 className="font-serif text-gold text-base">
-                {editingId === "new" ? "Nueva recompensa" : "Editar recompensa"}
-              </h3>
-              <button onClick={closeEdit} className="text-foreground/40 hover:text-foreground transition-colors">
-                <X className="w-4 h-4" />
+        <ModalPortal>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 ${modalOverlayCls(editClosing)}`}>
+          <div
+            className={`adm-modal relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl ${form.tipo === "lut" || form.tipo === "subtabla" ? "max-w-2xl" : "max-w-lg"} ${modalPanelCls(editClosing)}`}
+            style={{ ["--adm-accent" as string]: ACCENT }}
+          >
+            <span className="adm-modal-line" aria-hidden />
+            <div className="adm-modal-head relative flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+                  style={{ borderColor: `${ACCENT}55`, background: `${ACCENT}1a`, color: ACCENT }}
+                >
+                  <Dices className="h-5 w-5" />
+                </span>
+                <h3 className="truncate font-serif text-base text-foreground">
+                  {editingId === "new" ? "Nueva recompensa" : "Editar recompensa"}
+                </h3>
+              </div>
+              <button
+                onClick={closeEdit}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="adm-grain relative min-h-0 space-y-4 overflow-y-auto p-5">
               {/* Nombre */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1 font-sans">Nombre *</label>
@@ -861,36 +879,43 @@ export function DadosTab({ token }: { token: string | null }) {
                 </p>
               )}
 
-              {/* Botones */}
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded bg-gold/20 border border-gold/50 text-gold text-sm font-sans hover:bg-gold/30 transition-colors disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {saving ? "Guardando…" : "Guardar"}
-                </button>
-                <button
-                  onClick={closeEdit}
-                  className="px-4 py-2 rounded border border-border/50 text-foreground/60 text-sm hover:border-border hover:text-foreground transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
+            </div>
+
+            <div className="relative flex shrink-0 items-center justify-end gap-2 border-t border-border/70 bg-secondary/30 px-5 py-4">
+              <button
+                onClick={closeEdit}
+                className="rounded-lg border border-border/60 px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-background transition-all active:scale-95 disabled:opacity-50"
+                style={{ background: ACCENT, boxShadow: `0 8px 24px -10px ${ACCENT}` }}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? "Guardando…" : "Guardar"}
+              </button>
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Sección de prueba — visible si hay recompensas activas */}
       {!loading && recompensas.filter((r) => r.tipo !== "subtabla" && r.activo).length > 0 && (
-        <div className="border border-gold-dim/40 rounded-lg overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-gold-dim/10 border-b border-gold-dim/30">
-            <Dices className="w-4 h-4 text-gold/70" />
-            <span className="text-sm font-serif text-gold">Probar tirador</span>
+        <div className="adm-panel overflow-hidden rounded-xl" style={{ ["--adm-accent" as string]: ACCENT }}>
+          <div className="relative flex items-center gap-2.5 border-b border-gold-dim/30 px-4 py-3">
+            <span
+              className="dice-idle inline-flex h-8 w-8 items-center justify-center rounded-lg border"
+              style={{ borderColor: `${ACCENT}55`, background: `${ACCENT}1a`, color: ACCENT }}
+            >
+              <Dices className="h-4 w-4" />
+            </span>
+            <span className="font-serif text-sm text-gold">Probar tirador</span>
           </div>
-          <div className="p-3">
+          <div className="relative p-3">
             <DiceModule token={token} />
           </div>
         </div>

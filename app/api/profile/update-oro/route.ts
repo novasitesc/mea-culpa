@@ -1,3 +1,5 @@
+// POST — Solo admin. Ajuste manual de oro; envoltorio fino sobre
+// modifyGold() (lib/goldService.ts).
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { modifyGold } from "@/lib/goldService";

@@ -1,5 +1,7 @@
 "use client";
 
+// Cuenta atrás reutilizable (banner y chip) para las acciones con espera.
+
 import { useEffect, useRef, useState } from "react";
 import { Hourglass } from "lucide-react";
 

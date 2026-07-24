@@ -1,3 +1,5 @@
+// PATCH — Solo admin. Marca extremidades perdidas (los 4 miembros de
+// lib/limbs.ts). Puramente narrativo: se registra y se muestra.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { LIMBS } from "@/lib/limbs";

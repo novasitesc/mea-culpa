@@ -1,3 +1,12 @@
+// POST — Crea un personaje. La ruta más densa del proyecto, porque valida el
+// personaje entero de una vez:
+//   · que al usuario le queden huecos de personaje (compra de slots)
+//   · las clases elegidas (hasta 3) y sus niveles
+//   · las estadísticas, según el método usado (lib/statAllocation.ts) y, si se
+//     tiraron dados, verificando el token HMAC (lib/statRollToken.ts)
+//   · los conjuros iniciales que correspondan a la clase
+// Luego inserta en varias tablas: personajes, clases_personaje,
+// estadisticas_personaje y equipamiento_personaje.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
@@ -6,7 +15,6 @@ import {
   getCasterType,
   getMaxKnownSpells,
   normalizeSpells,
-  validateSpells,
   type SpellEntry,
 } from "@/lib/spells";
 import {

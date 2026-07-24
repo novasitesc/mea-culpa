@@ -1,8 +1,12 @@
+// POST — El COMPRADOR pide comprar una publicación.
+// El oro se RETIENE ya (se le descuenta), no se paga al aceptar: así el
+// vendedor sabe que la oferta está respaldada. Si se cancela, se devuelve.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { modifyGold } from "@/lib/goldService";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { personajeEnExpedicion } from "@/lib/partidasState";
 
 export async function POST(
   request: Request,
@@ -39,6 +43,13 @@ export async function POST(
   const lifeCheck = await ensureOwnedAliveCharacter(db, user.id, buyerCharacterId);
   if (!lifeCheck.ok) {
     return NextResponse.json({ error: lifeCheck.error }, { status: lifeCheck.status });
+  }
+
+  if (await personajeEnExpedicion(db, buyerCharacterId)) {
+    return NextResponse.json(
+      { error: "Ese personaje está en una expedición en curso y no puede recibir objetos" },
+      { status: 409 },
+    );
   }
 
   const { data: publication, error: publicationError } = await db

@@ -1,8 +1,15 @@
+// GET / PATCH — El perfil del usuario y sus personajes. La ruta que más se
+// llama de todo el proyecto.
+// GET   devuelve perfil, oro, personajes con clases, estadísticas, equipo y
+//       bolsa: es lo que pinta la pantalla de Perfil entera.
+// PATCH edita los datos del perfil.
+// Es larga por la cantidad de datos que junta, no por su lógica; léela con el
+// esquema de tablas al lado.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
-import { normalizeSpells, type SpellEntry } from "@/lib/spells";
+import { normalizeSpells, normalizeUsedSpells, type SpellEntry } from "@/lib/spells";
 
 function hasDismemberedLimb(extremities: unknown): boolean {
   if (!extremities || typeof extremities !== "object") {
@@ -163,7 +170,7 @@ export async function GET(request: Request) {
     .order("numero_slot", { ascending: true });
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
-  let spellsByCharId: Record<string, SpellEntry[]> = {};
+  const spellsByCharId: Record<string, SpellEntry[]> = {};
   try {
     const { data: spellRows } = await db
       .from("personajes")
@@ -305,6 +312,7 @@ export async function GET(request: Request) {
       puntoCansancio: Number(p.puntos_cansancio ?? 0),
       caidas: Number(p.caidas ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
+      usedSpells: normalizeUsedSpells(p.conjuros_usados),
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),
       stats: stats

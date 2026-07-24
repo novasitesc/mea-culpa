@@ -1,3 +1,5 @@
+// POST — Reordenar objetos dentro de la bolsa (arrastrar y soltar).
+// Solo cambia la columna `orden`; equipar y desequipar es /update-bag.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

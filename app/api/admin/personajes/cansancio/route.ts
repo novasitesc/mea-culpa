@@ -1,3 +1,6 @@
+// PATCH — Solo admin. Ajusta el nivel de agotamiento (0-6) de un personaje.
+// A nivel 6 el personaje muere; los efectos de cada nivel están en
+// EFECTOS_CANSANCIO (lib/caidas.ts).
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { MAX_CANSANCIO } from "@/lib/caidas";

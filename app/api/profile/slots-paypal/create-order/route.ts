@@ -1,3 +1,4 @@
+// POST — Paso 1 de la compra de huecos de personaje: crea la orden en PayPal.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

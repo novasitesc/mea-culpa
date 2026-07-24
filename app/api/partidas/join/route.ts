@@ -1,3 +1,7 @@
+// POST — Unirse a una partida con un personaje concreto.
+// Es la ruta que más condiciones comprueba: personaje vivo y tuyo, partida
+// abierta y con hueco, sin descansos pendientes (si debes un descanso no puedes
+// entrar en otra expedición) y sin estar ya en otra partida.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";

@@ -1,3 +1,5 @@
+// GET / POST / PATCH / DELETE — Solo admin. Gestión de cuentas (`perfiles`):
+// datos, nivel de cuenta, rol de sistema y permisos de admin.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { normalizeAccountLevel } from "@/lib/accountLevel";

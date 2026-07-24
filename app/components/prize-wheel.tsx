@@ -1,5 +1,9 @@
 "use client";
 
+// La rueda de premios: 100 casillas y la animación de giro.
+// La casilla ganadora la manda el servidor; la animación se limita a frenar
+// donde toca. Nada de lo que pasa aquí decide el premio.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { History, Loader2, Sparkles, Trophy } from "lucide-react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";

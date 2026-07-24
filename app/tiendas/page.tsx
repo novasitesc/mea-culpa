@@ -1,5 +1,9 @@
 "use client";
 
+// Tiendas (/tiendas): escaparate, carrito y compra.
+// La compra entera se resuelve en la RPC `comprar_en_tienda` a través de
+// POST /api/tiendas/comprar: stock, oro y bolsa cambian de golpe o no cambian.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -10,7 +14,6 @@ import {
   X,
   Plus,
   Minus,
-  Lock,
   CheckCircle2,
   MapPin,
 } from "lucide-react";

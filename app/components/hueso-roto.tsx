@@ -1,5 +1,7 @@
 "use client";
 
+// Icono decorativo de hueso roto, usado por los indicadores de daño.
+
 import { Bone } from "lucide-react";
 
 // Fractura en zigzag compartida por ambas mitades para que el corte encaje.

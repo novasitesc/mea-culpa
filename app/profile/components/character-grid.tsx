@@ -1,5 +1,8 @@
 "use client";
 
+// Rejilla de personajes del perfil: una tarjeta por personaje, más los huecos
+// vacíos y bloqueados (los huecos extra se compran con PayPal).
+
 /**
  * CharacterGrid — Grid de tarjetas de personaje con skeleton loading y
  * staggered entry animations.

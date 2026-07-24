@@ -1,27 +1,10 @@
+// GET / PATCH / DELETE — Solo admin. Ficha completa de un personaje.
+// GET devuelve personaje + clases + estadísticas + bolsa; PATCH edita esos
+// mismos bloques; DELETE lo borra de verdad (distinto de matarlo: matar lo deja
+// en la base de datos, borrar lo elimina).
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { calculateBagSlots } from "@/lib/types/character";
-
-type Character = {
-  id: number;
-  nombre: string;
-  raza: string;
-  estado_vida: string;
-  muerto_en: string | null;
-  clases: Array<{
-    nombre_clase: string;
-    nivel: number;
-  }>;
-  estadisticas: {
-    fuerza: number;
-    destreza: number;
-    constitucion: number;
-    inteligencia: number;
-    sabiduria: number;
-    carisma: number;
-  };
-  nivel20Url: string | null;
-};
 
 // GET /api/admin/characters?userId={id}
 // Obtiene todos los personajes de un usuario

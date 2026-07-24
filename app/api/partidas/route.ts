@@ -1,3 +1,6 @@
+// GET — Listado de partidas disponibles con sus participantes, para la
+// pantalla de partidas. Crearlas y cambiarlas de estado es cosa del admin
+// (/api/admin/partidas).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";

@@ -1,5 +1,7 @@
 "use client";
 
+// Cabecera fija: navegación, oro del usuario y menú de cuenta.
+
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -96,7 +98,7 @@ export default function Header() {
                       ? "bg-gold text-background ring-2 ring-gold/50"
                       : "bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30"
                   }`}
-                  title="Panel de Administrador"
+                  title="Panel de DM"
                 >
                   <Shield className="w-5 h-5" />
                 </button>

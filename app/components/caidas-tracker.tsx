@@ -1,5 +1,8 @@
 "use client";
 
+// Indicador de las 3 caídas del personaje. A la tercera pierde la expedición
+// (MAX_CAIDAS, lib/caidas.ts).
+
 import { Skull } from "lucide-react";
 import { MAX_CAIDAS } from "@/lib/caidas";
 

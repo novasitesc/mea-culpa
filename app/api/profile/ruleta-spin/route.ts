@@ -1,3 +1,13 @@
+// POST — Girar la ruleta. Une las dos mitades del sorteo y el cobro:
+//   1. Exige al menos un personaje vivo (con todos muertos, solo Perfil).
+//   2. Cuenta las tiradas previas para saber el coste de esta (ciclo de 6 pasos,
+//      lib/roulette.ts): unas se pagan en oro y otras en dólares.
+//   3. Sortea la casilla (lib/roulette.ts) y el premio de esa categoría
+//      (lib/rouletteRewards.ts).
+//   4. Si el paso toca en dólares, busca un pago de PayPal ya completado y sin
+//      consumir; sin él responde 402 y no gira.
+//   5. Registra la tirada con la RPC `ruleta_registrar_tirada` (cobro + premio +
+//      registro atómicos) y marca el pago como consumido para que no valga dos veces.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getNextSpinCost, rollRoulette } from "@/lib/roulette";

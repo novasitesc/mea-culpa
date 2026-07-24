@@ -1,3 +1,6 @@
+// GET / POST / PATCH / DELETE — Solo admin. Artículos en venta de cada tienda
+// (`articulos_tienda`): qué objeto, a qué precio y con cuánto stock.
+// Un objeto del catálogo solo se puede comprar si tiene fila aquí.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

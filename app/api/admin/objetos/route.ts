@@ -1,3 +1,6 @@
+// GET / POST / PATCH / DELETE — Solo admin. CRUD del catálogo de objetos
+// (tabla `objetos`): nombre, icono, tipo, rareza, precio.
+// Es el catálogo maestro del que tiran tiendas, ruleta, dados y bolsas.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

@@ -1,3 +1,5 @@
+// Hook de la animación del sello que acompaña a las acciones ceremoniales del
+// panel (ascensos y revocaciones).
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type RitualPhase = "idle" | "sealing" | "success" | "error";

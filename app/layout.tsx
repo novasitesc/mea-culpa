@@ -1,3 +1,6 @@
+// Layout raíz: envuelve TODAS las páginas. Aquí se cargan las fuentes, los
+// estilos globales y los componentes que viven en toda la app (cabecera,
+// carrito, overlays globales). Si algo aparece en cada pantalla, está aquí.
 import React from "react"
 import type { Metadata } from 'next'
 import { Cinzel, Cinzel_Decorative, MedievalSharp } from 'next/font/google'
@@ -5,6 +8,7 @@ import { Analytics } from '@vercel/analytics/next'
 import FeedbackWidget from './components/feedback-widget'
 import GlobalSleepModal from './components/GlobalSleepModal'
 import GlobalCartWidget from './components/GlobalCartWidget'
+import GlobalLevelUp from './components/GlobalLevelUp'
 import './globals.css'
 
 const _cinzel = Cinzel({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -74,6 +78,7 @@ export default function RootLayout({
         {children}
         <GlobalSleepModal />
         <GlobalCartWidget />
+        <GlobalLevelUp />
         <Analytics />
         <FeedbackWidget />
       </body>

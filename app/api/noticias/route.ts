@@ -1,3 +1,4 @@
+// GET — PÚBLICA. Noticias y anuncios que se ven en la portada.
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";

@@ -1,8 +1,10 @@
 "use client";
 
+// Navegación lateral en escritorio.
+
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords, Dices } from "lucide-react";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords } from "lucide-react";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
 import { useAuth } from "@/lib/useAuth";
 
