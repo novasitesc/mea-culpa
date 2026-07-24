@@ -3,20 +3,21 @@
 // Feed de eventos de la partida (`partidas_eventos`): el registro en vivo de lo
 // que ocurre en la sala. Lo ven jugadores y DM.
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";
 import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles } from "lucide-react";
-import { schoolRgb } from "@/lib/spells";
+import { schoolRgb, spellKey } from "@/lib/spells";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
+import SpellDescriptionHover from "@/app/components/spell-description-hover";
 import { getIconForString } from "@/lib/iconMapper";
 
 type Props = {
   eventos: SalaEvento[];
 };
 
-function renderEvento(ev: SalaEvento, i: number) {
+function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => string | null) {
   if (ev.tipo === "dado_tirado") {
     const { recompensaNombre, tipoDado, resultados, tipoResultado, objeto, cantidadOro, lutResultados, personajeNombre } = ev;
 
@@ -266,6 +267,8 @@ function renderEvento(ev: SalaEvento, i: number) {
 
   if (ev.tipo === "conjuro_lanzado") {
     const [, edge] = schoolRgb(ev.escuela);
+    // Catálogo primero (funciona para eventos viejos y nuevos); el evento como respaldo.
+    const descripcion = descOf(ev.conjuro) ?? ev.descripcion ?? null;
     return (
       <div
         key={i}
@@ -280,9 +283,24 @@ function renderEvento(ev: SalaEvento, i: number) {
         <p className="text-xs font-sans min-w-0">
           <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
           <span className="text-foreground/40"> lanza </span>
-          <span className="font-semibold" style={{ color: `rgb(${edge})` }}>
-            {ev.conjuro}
-          </span>
+          <SpellDescriptionHover
+            name={ev.conjuro}
+            escuela={ev.escuela}
+            spellLevel={ev.spellLevel}
+            description={descripcion}
+          >
+            <span
+              tabIndex={descripcion ? 0 : undefined}
+              className={`font-semibold ${
+                descripcion
+                  ? "cursor-help underline decoration-dotted underline-offset-2 outline-none"
+                  : ""
+              }`}
+              style={{ color: `rgb(${edge})` }}
+            >
+              {ev.conjuro}
+            </span>
+          </SpellDescriptionHover>
           <span className="text-foreground/30">
             {ev.spellLevel === 0 ? " · truco" : ` · nivel ${ev.spellLevel}`}
           </span>
@@ -346,6 +364,37 @@ export default function SalaFeed({ eventos }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLen = useRef<number | null>(null);
 
+  // Descripciones de conjuros para el tooltip del log. Se resuelven desde el
+  // catálogo por nombre (una sola carga la primera vez que aparece un conjuro),
+  // así funciona con eventos históricos que no traen la descripción embebida.
+  const [spellDesc, setSpellDesc] = useState<Map<string, string>>(new Map());
+  const spellsFetched = useRef(false);
+  const hasConjuros = eventos.some((e) => e.tipo === "conjuro_lanzado");
+  useEffect(() => {
+    if (!hasConjuros || spellsFetched.current) return;
+    spellsFetched.current = true;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/spells");
+        const data = await res.json();
+        if (!alive || !Array.isArray(data?.spells)) return;
+        const m = new Map<string, string>();
+        for (const s of data.spells) {
+          if (s?.nombre && s?.description) m.set(spellKey(String(s.nombre)), String(s.description));
+        }
+        setSpellDesc(m);
+      } catch {
+        // silencioso: el tooltip cae al respaldo del evento o simplemente no aparece
+      }
+    })();
+    return () => { alive = false; };
+  }, [hasConjuros]);
+  const descOf = useCallback(
+    (name: string) => spellDesc.get(spellKey(name)) ?? null,
+    [spellDesc],
+  );
+
   useEffect(() => {
     // "nearest": desplaza solo el contenedor del feed, nunca la página entera.
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -375,7 +424,7 @@ export default function SalaFeed({ eventos }: Props) {
         {eventos.length === 0 ? (
           <p className="text-xs text-foreground/30 italic font-sans">Esperando al DM...</p>
         ) : (
-          eventos.map((ev, i) => renderEvento(ev, i))
+          eventos.map((ev, i) => renderEvento(ev, i, descOf))
         )}
         <div ref={bottomRef} />
       </div>

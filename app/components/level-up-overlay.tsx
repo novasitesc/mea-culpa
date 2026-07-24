@@ -13,7 +13,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
 import { ChevronsUp } from "lucide-react";
 import { playSubidaNivelSfx } from "@/lib/sfx";
-import { clamp01, easeOutCubic, makeSparkTexture, randomSpeeds, sphereDirections } from "./fx/particles";
+import {
+  clamp01,
+  confettiColors,
+  easeOutBack,
+  easeOutCubic,
+  makeSparkTexture,
+  makeWhiteSparkTexture,
+  randomSpeeds,
+  sphereDirections,
+} from "./fx/particles";
 
 export type LevelUpData = {
   characterId: number;
@@ -27,12 +36,13 @@ export type LevelUpData = {
 /** Momento del estallido, en segundos. El sfx está sincronizado con él. */
 const BURST_AT = 0.8;
 const TOTAL_MS = 6800;
-const GOLD = "#D4AF37";
+const GOLD = "#ffd23c"; // oro brillante arcade (más vivo que el D4AF37 de la web)
+const CYAN = "#00e5ff"; // acento eléctrico del anillo interior
 
-/** Chispas: convergen hacia el centro, estallan y caen. Un solo draw call. */
+/** Confeti arcade: converge al centro, estalla multicolor y cae. Un solo draw call. */
 function Sparks({ count }: { count: number }) {
   const points = useRef<THREE.Points>(null);
-  const texture = useMemo(() => makeSparkTexture(), []);
+  const texture = useMemo(() => makeWhiteSparkTexture(), []);
 
   const { geometry, dirs, speeds } = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -40,6 +50,8 @@ function Sparks({ count }: { count: number }) {
     const speeds = randomSpeeds(count, 2.6, 8);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    // Color por partícula → confeti saturado sin coste extra de draw calls.
+    geometry.setAttribute("color", new THREE.BufferAttribute(confettiColors(count), 3));
     return { geometry, dirs, speeds };
   }, [count]);
 
@@ -86,7 +98,8 @@ function Sparks({ count }: { count: number }) {
     <points ref={points} geometry={geometry}>
       <pointsMaterial
         map={texture}
-        size={0.34}
+        vertexColors
+        size={0.42}
         sizeAttenuation
         transparent
         depthWrite={false}
@@ -106,8 +119,8 @@ function Runes() {
     const t = clock.elapsedTime;
     const charge = clamp01(t / BURST_AT);
     const after = Math.max(0, t - BURST_AT);
-    // Antes: acelera y se encoge. Después: salta de tamaño y frena.
-    const scale = t < BURST_AT ? 1.5 - charge * 0.7 : 0.8 + easeOutCubic(Math.min(1, after / 1.4)) * 1.5;
+    // Antes: acelera y se encoge. Después: salta de tamaño con overshoot y frena.
+    const scale = t < BURST_AT ? 1.5 - charge * 0.7 : 0.8 + easeOutBack(Math.min(1, after / 1.4)) * 1.5;
     const fade = Math.max(0, 1 - after / 3.2);
 
     if (outer.current) {
@@ -125,12 +138,12 @@ function Runes() {
   return (
     <group rotation={[Math.PI / 2.6, 0, 0]}>
       <mesh ref={outer}>
-        <torusGeometry args={[2.1, 0.035, 8, 96]} />
+        <torusGeometry args={[2.1, 0.045, 8, 96]} />
         <meshBasicMaterial color={GOLD} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
       <mesh ref={inner}>
-        <torusGeometry args={[2.1, 0.06, 8, 6]} />
-        <meshBasicMaterial color="#fff3c4" transparent blending={THREE.AdditiveBlending} depthWrite={false} />
+        <torusGeometry args={[2.1, 0.075, 8, 6]} />
+        <meshBasicMaterial color={CYAN} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -313,6 +326,21 @@ export default function LevelUpOverlay({ data, onClose }: Props) {
         </div>
       )}
 
+      {/* Fogonazo del estallido: golpe de luz cálido con halo cian, sincronizado. */}
+      {animate3d && (
+        <motion.div
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.9, 0] }}
+          transition={{ duration: 0.55, delay: BURST_AT, times: [0, 0.14, 1], ease: "easeOut" }}
+          className="absolute inset-0 pointer-events-none mix-blend-screen"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 45%, rgba(255,245,205,0.95), rgba(0,229,255,0.18) 42%, transparent 70%)",
+          }}
+        />
+      )}
+
       <AnimatePresence>
         {revealed && (
           <motion.div
@@ -353,11 +381,11 @@ export default function LevelUpOverlay({ data, onClose }: Props) {
                 <ChevronsUp className="w-6 h-6 sm:w-8 sm:h-8 text-[#D4AF37]" />
               </motion.span>
               <motion.span
-                initial={{ scale: 0.4, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.34, type: "spring", stiffness: 400, damping: 14 }}
-                className="font-serif font-bold text-5xl sm:text-7xl text-[#D4AF37]"
-                style={{ textShadow: "0 0 34px rgba(212,175,55,0.8)" }}
+                initial={{ scale: 0.3, opacity: 0 }}
+                animate={{ scale: [0.3, 1.4, 1], opacity: 1 }}
+                transition={{ delay: 0.34, duration: 0.62, times: [0, 0.62, 1], ease: "easeOut" }}
+                className="font-serif font-bold text-5xl sm:text-7xl text-[#ffd23c]"
+                style={{ textShadow: "0 0 44px rgba(255,210,60,0.95), 0 0 14px rgba(0,229,255,0.6)" }}
               >
                 {data.to}
               </motion.span>

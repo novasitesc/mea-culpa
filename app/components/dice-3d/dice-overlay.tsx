@@ -13,6 +13,7 @@ import DiceScene from "./dice-scene";
 import { preloadDiceAssets } from "./dice-materials";
 import { isDiceSoundEnabled, setDiceSoundEnabled, playThud, playReveal } from "./dice-sound";
 import DiceVisual from "@/app/components/dice-visual";
+import ConfettiBurst from "@/app/components/fx/confetti-burst";
 import { getIconForString } from "@/lib/iconMapper";
 import type { DiceType, LutCaraResult, RollResult } from "@/lib/types/dados";
 
@@ -31,6 +32,9 @@ type Props = {
   /** Al asentarse los dados (o de inmediato sin animación): momento de anunciar. */
   onFinished: () => void;
   onClose: () => void;
+  /** false → espectador que NO recibe la recompensa: ve caer el dado pero no el
+   *  panel de premio (el detalle le llega por el log). Por defecto true. */
+  revealReward?: boolean;
 };
 
 type ItemGanado = { objeto: { id: number; nombre: string; icono: string }; cantidad: number };
@@ -99,7 +103,7 @@ function LutFila({ r }: { r: LutCaraResult }) {
   );
 }
 
-export default function DiceOverlay({ data, onFinished, onClose }: Props) {
+export default function DiceOverlay({ data, onFinished, onClose, revealReward = true }: Props) {
   const { result, tipoDado } = data;
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<"falling" | "revealed">("falling");
@@ -131,10 +135,16 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
   const reveal = useCallback(() => {
     if (revealedRef.current) return;
     revealedRef.current = true;
-    playReveal(kind);
     onFinished();
+    // Espectador que no es el destinatario: ve caer el dado, no el panel de
+    // premio ni la fanfarria. El detalle del botín ya está en el log de la sala.
+    if (!revealReward) {
+      window.setTimeout(onClose, 1100);
+      return;
+    }
+    playReveal(kind);
     setPhase("revealed");
-  }, [kind, onFinished]);
+  }, [kind, onFinished, revealReward, onClose]);
 
   // Carga de fuentes/texturas; sin animación se revela de inmediato.
   useEffect(() => {
@@ -276,6 +286,9 @@ export default function DiceOverlay({ data, onFinished, onClose }: Props) {
               className="reward-aura pointer-events-none absolute -inset-10 rounded-full blur-2xl"
               style={{ background: `radial-gradient(circle, rgba(${auraTint},0.35), transparent 70%)` }}
             />
+
+            {/* Estallido de confeti al revelar (salvo cuando no toca nada) */}
+            {kind !== "nada" && <ConfettiBurst />}
 
             <div className="reward-texture relative w-[92vw] max-w-sm max-h-[76vh] overflow-y-auto overflow-x-hidden bg-card border border-gold-dim/60 rounded-lg p-4 space-y-3 medieval-border">
               {/* Barrido de brillo: una sola pasada al aparecer */}

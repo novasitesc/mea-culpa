@@ -16,6 +16,7 @@ import { playConjuroSfx } from "@/lib/sfx";
 import { schoolRgb } from "@/lib/spells";
 import {
   clamp01,
+  easeOutBack,
   easeOutCubic,
   makeSparkTexture,
   randomPhases,
@@ -30,9 +31,10 @@ export type ConjuroFxData = {
   escuela: string | null;
 };
 
-/** Instante de la descarga, en segundos. El sfx está sincronizado con él. */
-const CAST_AT = 0.55;
-const TOTAL_MS = 2900;
+/** Instante de la descarga, en segundos. El sfx está sincronizado con él.
+ *  Canalización más larga: da tiempo a leer qué conjuro se lanzó antes del clímax. */
+const CAST_AT = 0.9;
+const TOTAL_MS = 4400;
 
 const rgbCss = (rgb: string, alpha = 1) => `rgba(${rgb},${alpha})`;
 
@@ -128,7 +130,7 @@ function CirculoInvocacion({ color, spellLevel }: { color: string; spellLevel: n
     const t = clock.elapsedTime;
     const carga = clamp01(t / CAST_AT);
     const tras = Math.max(0, t - CAST_AT);
-    const escala = t < CAST_AT ? 0.7 + carga * 0.5 : 1.2 + easeOutCubic(Math.min(1, tras / 1.2)) * 1.6;
+    const escala = t < CAST_AT ? 0.7 + carga * 0.5 : 1.2 + easeOutBack(Math.min(1, tras / 1.2)) * 1.6;
     const fade = Math.max(0, 1 - tras / 1.8);
 
     if (externo.current) {
@@ -201,7 +203,7 @@ function Nucleo({ core, edge }: { core: string; edge: string }) {
     const t = clock.elapsedTime;
     const carga = clamp01(t / CAST_AT);
     const tras = Math.max(0, t - CAST_AT);
-    const size = t < CAST_AT ? 0.7 + carga * 1.8 : 5 * Math.max(0, 1 - tras / 1.1) + 0.9;
+    const size = t < CAST_AT ? 0.7 + carga * 2.1 : 6.5 * Math.max(0, 1 - tras / 1.05) + 1.1;
     s.scale.set(size, size, 1);
     (s.material as THREE.SpriteMaterial).opacity =
       t < CAST_AT ? carga * 0.8 : Math.max(0, 1 - tras / 1.5) * 0.95;
@@ -303,6 +305,20 @@ export default function ConjuroOverlay({ data, onDone }: Props) {
         }}
       />
 
+      {/* Fogonazo de la descarga: núcleo blanco con halo de la escuela, sincronizado. */}
+      {animate3d && (
+        <motion.div
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.85, 0] }}
+          transition={{ duration: 0.5, delay: CAST_AT, times: [0, 0.16, 1], ease: "easeOut" }}
+          className="absolute inset-0 mix-blend-screen"
+          style={{
+            background: `radial-gradient(circle at 50% 45%, rgba(255,255,255,0.9), ${rgbCss(edge, 0.35)} 38%, transparent 68%)`,
+          }}
+        />
+      )}
+
       {animate3d && (
         <div className="absolute inset-0">
           <ConjuroScene motas={motas} core={core} edge={edge} spellLevel={data.spellLevel} />
@@ -313,7 +329,7 @@ export default function ConjuroOverlay({ data, onDone }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.85, y: 14 }}
           animate={{ opacity: [0, 1, 1, 0], scale: 1, y: 0 }}
-          transition={{ duration: 2.1, times: [0, 0.12, 0.7, 1] }}
+          transition={{ duration: 3.4, times: [0, 0.08, 0.8, 1] }}
           className="relative z-10 text-center px-6 select-none"
         >
           <p

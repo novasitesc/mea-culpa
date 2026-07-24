@@ -7,6 +7,54 @@ import * as THREE from "three";
 export const easeOutCubic = (u: number) => 1 - Math.pow(1 - u, 3);
 export const clamp01 = (u: number) => (u < 0 ? 0 : u > 1 ? 1 : u);
 
+/** Overshoot arcade: pasa de 1 y vuelve. El "boing" de Brawl Stars/Clash Royale. */
+export const easeOutBack = (u: number, s = 2.2) =>
+  1 + (s + 1) * Math.pow(u - 1, 3) + s * Math.pow(u - 1, 2);
+
+/**
+ * Paleta saturada tipo arcade para estallidos de recompensa. Oro de base + acentos
+ * eléctricos (cian, magenta, verde, violeta) y un blanco cálido de chispa.
+ */
+export const CANDY_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [255, 210, 60], // oro brillante
+  [0, 229, 255], // cian eléctrico
+  [255, 60, 160], // magenta
+  [90, 255, 120], // verde eléctrico
+  [180, 110, 255], // violeta
+  [255, 250, 230], // blanco cálido (chispa)
+];
+
+/** Textura blanca suave: base neutra para partículas teñidas con vertex colors. */
+export function makeWhiteSparkTexture(): THREE.Texture {
+  return makeSparkTexture("255,255,255", "255,255,255");
+}
+
+/**
+ * Colores por-partícula (RGB 0–1) para confeti multicolor en UN solo draw call.
+ * Se adjunta como attribute `color` y el material se pone `vertexColors`.
+ */
+export function confettiColors(
+  count: number,
+  palette: ReadonlyArray<readonly [number, number, number]> = CANDY_PALETTE,
+): Float32Array {
+  const c = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const [r, g, b] = palette[(Math.random() * palette.length) | 0];
+    c[i * 3] = r / 255;
+    c[i * 3 + 1] = g / 255;
+    c[i * 3 + 2] = b / 255;
+  }
+  return c;
+}
+
+/** Tamaños por-partícula sorteados en [min, max) — confeti irregular. */
+export function randomSizes(count: number, min: number, max: number): Float32Array {
+  const sizes = new Float32Array(count);
+  const rango = max - min;
+  for (let i = 0; i < count; i++) sizes[i] = min + Math.random() * rango;
+  return sizes;
+}
+
 /**
  * Textura radial para partículas: un punto cuadrado delata el truco.
  * `core` es el centro incandescente y `edge` el color que se difumina.

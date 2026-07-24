@@ -121,6 +121,8 @@ export type EventoConjuroLanzado = {
   spellLevel: number;
   /** Escuela del catálogo; tiñe la animación y el sonido. */
   escuela: string | null;
+  /** Descripción del catálogo (HTML acotado) para el tooltip del log. */
+  descripcion?: string | null;
 };
 
 export type EventoSalaAvanzada = {

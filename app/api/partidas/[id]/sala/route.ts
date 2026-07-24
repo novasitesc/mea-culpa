@@ -45,6 +45,7 @@ function mapEventoRow(row: any): SalaEvento | null {
       conjuro:         row.objeto_nombre ?? "",
       spellLevel:      Number(row.cantidad ?? 0),
       escuela:         ((row.metadata as any)?.escuela ?? null) as string | null,
+      descripcion:     ((row.metadata as any)?.descripcion ?? null) as string | null,
     };
     case "sala_avanzada": return {
       tipo: "sala_avanzada",

@@ -61,22 +61,27 @@ async function cargarParticipacion(
   };
 }
 
-/** Añade la escuela del catálogo a cada conjuro conocido. */
-async function conEscuela(
+type SpellInfo = { escuela: string | null; descripcion: string | null };
+
+/** Escuela + descripción del catálogo por conjuro conocido (para tinte y tooltip). */
+async function catalogoDe(
   db: ReturnType<typeof createServerClient>,
   known: ReturnType<typeof normalizeSpells>,
-): Promise<Map<string, string | null>> {
+): Promise<Map<string, SpellInfo>> {
   const nombres = known.map((s) => s.name);
   if (nombres.length === 0) return new Map();
 
   const { data: catalogo } = await db
     .from("conjuros")
-    .select("nombre, escuela")
+    .select("nombre, escuela, description")
     .in("nombre", nombres);
 
-  const porNombre = new Map<string, string | null>();
+  const porNombre = new Map<string, SpellInfo>();
   for (const row of (catalogo ?? []) as any[]) {
-    porNombre.set(spellKey(row.nombre), row.escuela ?? null);
+    porNombre.set(spellKey(row.nombre), {
+      escuela: row.escuela ?? null,
+      descripcion: row.description ?? null,
+    });
   }
   return porNombre;
 }
@@ -98,20 +103,24 @@ export async function GET(
   }
 
   const { known, used, personajeId, personajeNombre } = result.data;
-  const escuelas = await conEscuela(db, known);
+  const catalogo = await catalogoDe(db, known);
   const usedSet = new Set(used);
 
   return NextResponse.json({
     personajeId,
     personajeNombre,
     conjuros: known
-      .map((s) => ({
-        name: s.name,
-        spellLevel: s.spellLevel,
-        escuela: escuelas.get(spellKey(s.name)) ?? null,
-        // Los trucos no gastan espacio: siempre disponibles (PHB p.201).
-        used: s.spellLevel > 0 && usedSet.has(spellKey(s.name)),
-      }))
+      .map((s) => {
+        const info = catalogo.get(spellKey(s.name));
+        return {
+          name: s.name,
+          spellLevel: s.spellLevel,
+          escuela: info?.escuela ?? null,
+          descripcion: info?.descripcion ?? null,
+          // Los trucos no gastan espacio: siempre disponibles (PHB p.201).
+          used: s.spellLevel > 0 && usedSet.has(spellKey(s.name)),
+        };
+      })
       .sort((a, b) => a.spellLevel - b.spellLevel || a.name.localeCompare(b.name)),
   });
 }
@@ -178,11 +187,12 @@ export async function POST(
 
   const { data: catalogo } = await db
     .from("conjuros")
-    .select("escuela")
+    .select("escuela, description")
     .eq("nombre", entry.name)
     .maybeSingle();
 
   const escuela = ((catalogo as any)?.escuela ?? null) as string | null;
+  const descripcion = ((catalogo as any)?.description ?? null) as string | null;
 
   const payload = {
     tipo: "conjuro_lanzado" as const,
@@ -191,6 +201,7 @@ export async function POST(
     conjuro: entry.name,
     spellLevel: entry.spellLevel,
     escuela,
+    descripcion,
   };
 
   await db.from("partidas_eventos").insert({
@@ -201,7 +212,7 @@ export async function POST(
     usuario_id: user.id,
     objeto_nombre: entry.name,
     cantidad: entry.spellLevel,
-    metadata: { escuela },
+    metadata: { escuela, descripcion },
   });
 
   // El broadcast lo hace el cliente al recibir esta respuesta (mismo camino que

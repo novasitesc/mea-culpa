@@ -107,6 +107,18 @@ export default function GlobalSleepModal() {
     return () => window.clearInterval(id);
   }, [isAuthenticated, loadSleepStatus]);
 
+  // Al volver al perfil tras cerrar una partida se emite "profile:refresh":
+  // recargamos el estado para que el descanso obligatorio aparezca de inmediato
+  // sin depender de que el realtime esté replicando o del poll de 60s. Sin esto,
+  // el modal podía tardar hasta un minuto en salir (y con él, el descanso largo
+  // que devuelve caídas, cansancio y espacios de conjuro).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handler = () => { loadSleepStatus(); };
+    window.addEventListener("profile:refresh", handler);
+    return () => window.removeEventListener("profile:refresh", handler);
+  }, [isAuthenticated, loadSleepStatus]);
+
   // Suscripción Realtime: detecta el INSERT en descansos_pendientes al instante
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;

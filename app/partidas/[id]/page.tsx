@@ -76,7 +76,9 @@ export default function SalaPage() {
   const [showFinalModal, setShowFinalModal] = useState(false);
   // Tirada de otro cliente pendiente de reproducir; key fuerza remontar el
   // overlay si llega otra tirada mientras la anterior sigue abierta.
-  const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData } | null>(null);
+  // `reveal` = el espectador es el destinatario de la recompensa: solo él ve el
+  // panel de premio; el resto ve caer el dado y lee el detalle en el log.
+  const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData; reveal: boolean } | null>(null);
   // Descanso pendiente de escenificar (fogata a pantalla completa)
   const [restEvent, setRestEvent] = useState<EventoDescansoLargo | EventoDescansoCorto | null>(null);
   // Overlays dramáticos que ve toda la sala; key remonta si llega otro evento
@@ -211,7 +213,11 @@ export default function SalaPage() {
         // El emisor no recibe su propio broadcast: todo dado_tirado entrante
         // es de otro cliente y se reproduce con la animación completa.
         if (payload.tipo === "dado_tirado") {
-          setSpectatorRoll((prev) => ({ key: (prev?.key ?? 0) + 1, data: overlayFromEvento(payload) }));
+          setSpectatorRoll((prev) => ({
+            key: (prev?.key ?? 0) + 1,
+            data: overlayFromEvento(payload),
+            reveal: payload.personajeId === miPersonajeIdRef.current,
+          }));
         }
       })
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
@@ -519,11 +525,13 @@ export default function SalaPage() {
         />
       )}
 
-      {/* Tirada del DM reproducida en espectadores */}
+      {/* Tirada del DM reproducida en espectadores. El panel de premio solo se
+          revela al destinatario; los demás ven la tirada y el detalle va al log. */}
       {spectatorRoll && (
         <DiceOverlay
           key={spectatorRoll.key}
           data={spectatorRoll.data}
+          revealReward={spectatorRoll.reveal}
           onFinished={() => {}}
           onClose={() => setSpectatorRoll(null)}
         />
@@ -531,7 +539,12 @@ export default function SalaPage() {
 
       {/* Caída / derrota escenificada para toda la sala */}
       {caidaFx && (
-        <CaidasOverlay key={caidaFx.key} evento={caidaFx.ev} onDone={() => setCaidaFx(null)} />
+        <CaidasOverlay
+          key={caidaFx.key}
+          evento={caidaFx.ev}
+          esPropio={caidaFx.ev.personajeId === myPersonajeId}
+          onDone={() => setCaidaFx(null)}
+        />
       )}
 
       {/* Agotamiento / recuperación: solo para el jugador afectado */}

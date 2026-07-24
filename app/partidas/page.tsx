@@ -10,6 +10,7 @@ import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import { CooldownBanner, CooldownChip } from "@/app/components/cooldown-timer";
+import CreatePartidaButton from "./create-partida-button";
 import { useAuth } from "@/lib/useAuth";
 import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
@@ -533,14 +534,22 @@ export default function PartidasPage() {
                       Unete a una partida activa
                     </h1>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void loadOpenGames()}
-                    disabled={loadingOpenGames}
-                    className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
-                  >
-                    {loadingOpenGames ? "Cargando..." : "Actualizar"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <CreatePartidaButton
+                      token={token}
+                      isAdmin={!!user?.isAdmin}
+                      onCreated={loadOpenGames}
+                      showAlert={showAlert}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void loadOpenGames()}
+                      disabled={loadingOpenGames}
+                      className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
+                    >
+                      {loadingOpenGames ? "Cargando..." : "Actualizar"}
+                    </button>
+                  </div>
                 </div>
 
                 {cooldownGame && (

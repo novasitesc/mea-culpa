@@ -10,6 +10,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Float } from "@react-three/drei";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { confettiColors, makeSparkTexture, makeWhiteSparkTexture } from "@/app/components/fx/particles";
 
 const GOLD = "#D4AF37";
 const COINS = 7;
@@ -43,6 +44,7 @@ function Env() {
 
 function CoinStack() {
   const group = useRef<THREE.Group>(null);
+  const meshes = useRef<Array<THREE.Mesh | null>>([]);
   const coins = useMemo(() => {
     const rnd = mulberry32(4207);
     return Array.from({ length: COINS }, (_, i) => ({
@@ -50,28 +52,97 @@ function CoinStack() {
       rot: rnd() * Math.PI,
       off: (rnd() - 0.5) * 0.08, // ligero desalineado: montón, no torre perfecta
       offz: (rnd() - 0.5) * 0.08,
+      phase: rnd() * Math.PI * 2, // desfase del jiggle por moneda
     }));
   }, []);
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (group.current) group.current.rotation.y += delta * 0.5;
+    const t = clock.elapsedTime;
+    // Squash & stretch preservando volumen: la pila "respira" en oleada hacia arriba.
+    for (let i = 0; i < meshes.current.length; i++) {
+      const m = meshes.current[i];
+      if (!m) continue;
+      const s = 1 + Math.sin(t * 3.2 - i * 0.55 + coins[i].phase) * 0.07;
+      m.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+    }
   });
   return (
     <group ref={group}>
       {coins.map((c, i) => (
-        <mesh key={i} position={[c.off, c.y, c.offz]} rotation={[0, c.rot, 0]} castShadow>
+        <mesh
+          key={i}
+          ref={(m) => {
+            meshes.current[i] = m;
+          }}
+          position={[c.off, c.y, c.offz]}
+          rotation={[0, c.rot, 0]}
+          castShadow
+        >
           <cylinderGeometry args={[1, 1, 0.13, 64]} />
-          <meshStandardMaterial color={GOLD} metalness={1} roughness={0.28} envMapIntensity={1.1} />
+          <meshStandardMaterial
+            color={GOLD}
+            metalness={1}
+            roughness={0.24}
+            envMapIntensity={1.25}
+            emissive={GOLD}
+            emissiveIntensity={0.12}
+          />
         </mesh>
       ))}
     </group>
   );
 }
 
+/** Halo dorado detrás de la pila: brillo falso (sin post-proceso) que la hace irradiar. */
+function Halo() {
+  const texture = useMemo(() => makeSparkTexture("255,235,170", "212,175,55"), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const sprite = useRef<THREE.Sprite>(null);
+  useFrame(({ clock }) => {
+    const s = sprite.current;
+    if (!s) return;
+    const pulse = 3.6 + Math.sin(clock.elapsedTime * 1.6) * 0.35; // latido suave
+    s.scale.set(pulse, pulse, 1);
+  });
+  return (
+    <sprite ref={sprite} position={[0, 0, -0.6]}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        opacity={0.55}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </sprite>
+  );
+}
+
+/** Dos luces de colores orbitando: tiñen los reflejos del metal de cian y magenta. */
+function OrbitLights() {
+  const cyan = useRef<THREE.PointLight>(null);
+  const magenta = useRef<THREE.PointLight>(null);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (cyan.current) cyan.current.position.set(Math.cos(t * 0.9) * 3, 1.2, Math.sin(t * 0.9) * 3);
+    if (magenta.current)
+      magenta.current.position.set(Math.cos(t * 0.9 + Math.PI) * 3, -0.6, Math.sin(t * 0.9 + Math.PI) * 3);
+  });
+  return (
+    <>
+      <pointLight ref={cyan} color="#00e5ff" intensity={7} distance={8} />
+      <pointLight ref={magenta} color="#ff3ca0" intensity={6} distance={8} />
+    </>
+  );
+}
+
 function GoldDust() {
   const pts = useRef<THREE.Points>(null);
-  const { positions, speeds } = useMemo(() => {
+  const mat = useRef<THREE.PointsMaterial>(null);
+  const texture = useMemo(() => makeWhiteSparkTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const { positions, colors, speeds } = useMemo(() => {
     const rnd = mulberry32(90125);
-    const N = 70;
+    const N = 90;
     const positions = new Float32Array(N * 3);
     const speeds = new Float32Array(N);
     for (let i = 0; i < N; i++) {
@@ -82,9 +153,9 @@ function GoldDust() {
       positions[i * 3 + 2] = Math.sin(a) * r;
       speeds[i] = 0.15 + rnd() * 0.35;
     }
-    return { positions, speeds };
+    return { positions, colors: confettiColors(N), speeds };
   }, []);
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const p = pts.current;
     if (!p) return;
     const arr = p.geometry.attributes.position.array as Float32Array;
@@ -94,13 +165,25 @@ function GoldDust() {
     }
     p.geometry.attributes.position.needsUpdate = true;
     p.rotation.y += delta * 0.12;
+    if (mat.current) mat.current.size = 0.11 + Math.sin(clock.elapsedTime * 4) * 0.03; // titileo
   });
   return (
     <points ref={pts}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial color={GOLD} size={0.06} transparent opacity={0.75} sizeAttenuation depthWrite={false} />
+      <pointsMaterial
+        ref={mat}
+        map={texture}
+        vertexColors
+        size={0.11}
+        transparent
+        opacity={0.85}
+        sizeAttenuation
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
     </points>
   );
 }
@@ -142,6 +225,8 @@ export default function CommerceHero3D() {
       <ambientLight intensity={0.5} color="#ffe8c0" />
       <directionalLight position={[4, 7, 4]} intensity={1.8} color="#ffdf9e" castShadow />
       <directionalLight position={[-5, 3, -4]} intensity={0.4} color="#b09a7a" />
+      <OrbitLights />
+      <Halo />
       <Float speed={2} rotationIntensity={0.15} floatIntensity={0.5}>
         <CoinStack />
       </Float>

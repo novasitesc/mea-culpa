@@ -7,11 +7,13 @@ import { Loader2, X, Sparkles, Flame, Moon } from "lucide-react";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 import { schoolRgb } from "@/lib/spells";
 import type { EventoConjuroLanzado } from "@/lib/types/sala";
+import SpellDescriptionHover from "@/app/components/spell-description-hover";
 
 type ConjuroDisponible = {
   name: string;
   spellLevel: number;
   escuela: string | null;
+  descripcion: string | null;
   used: boolean;
 };
 
@@ -95,6 +97,7 @@ export default function SpellCastModal({ partidaId, token, onClose, onCast }: Pr
         conjuro: data.conjuro,
         spellLevel: data.spellLevel,
         escuela: data.escuela ?? null,
+        descripcion: data.descripcion ?? spell.descripcion ?? null,
       });
 
       // Cerrar de inmediato: la animación ocurre a pantalla completa detrás.
@@ -208,13 +211,23 @@ export default function SpellCastModal({ partidaId, token, onClose, onCast }: Pr
                         </span>
 
                         <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm font-semibold truncate ${
-                              spell.used ? "text-foreground/40 line-through" : "text-foreground/90"
-                            }`}
+                          <SpellDescriptionHover
+                            name={spell.name}
+                            escuela={spell.escuela}
+                            spellLevel={spell.spellLevel}
+                            description={spell.descripcion}
                           >
-                            {spell.name}
-                          </p>
+                            <p
+                              tabIndex={spell.descripcion ? 0 : undefined}
+                              className={`text-sm font-semibold truncate w-fit max-w-full ${
+                                spell.descripcion
+                                  ? "cursor-help underline decoration-dotted decoration-foreground/25 underline-offset-4 outline-none focus-visible:decoration-gold/70"
+                                  : ""
+                              } ${spell.used ? "text-foreground/40 line-through" : "text-foreground/90"}`}
+                            >
+                              {spell.name}
+                            </p>
+                          </SpellDescriptionHover>
                           <p className="text-[11px] text-foreground/40 font-sans truncate">
                             {spell.escuela ?? "Escuela desconocida"}
                             {nivel === 0 && " · no gasta espacio"}

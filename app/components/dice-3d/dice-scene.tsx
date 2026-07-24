@@ -34,7 +34,7 @@ export const DICE_FALL_MS = 2400;
 export const DICE_STAGGER_MS = 90;
 
 const THROW_H = 5.2; // altura a la que entra el dado lanzado
-const GOLD = "#D4AF37";
+const EDGE = "#ffd23c"; // arista dorada brillante: más pop arcade que el oro de la web
 
 export type SceneDie = { type: DiceType; value: number };
 
@@ -137,7 +137,11 @@ type DieProps = {
 };
 
 function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieProps) {
-  const group = useRef<THREE.Group>(null);
+  const group = useRef<THREE.Group>(null); // posición + aplaste (mundo, sin rotar)
+  const spin = useRef<THREE.Group>(null); // tumbo del dado (rotación)
+  const edgeMat = useRef<THREE.LineBasicMaterial>(null);
+  const squash = useRef(0); // energía de aplaste, sube en cada impacto y decae
+  const settleAt = useRef<number | null>(null);
   const die = useMemo(() => getDie(type), [type]);
   const materials = useMemo(() => getDieMaterials(type), [type]);
 
@@ -170,13 +174,13 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
   const t0 = useRef<number | null>(null);
   const prevT = useRef(0);
   const prevQuarter = useRef<number | null>(null);
-  const settled = useRef(false);
   const q = useMemo(() => new THREE.Quaternion(), []);
   const qRoll = useMemo(() => new THREE.Quaternion(), []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const g = group.current;
-    if (!g) return;
+    const sp = spin.current;
+    if (!g || !sp) return;
     if (t0.current === null) t0.current = clock.elapsedTime;
 
     let t = (clock.elapsedTime - t0.current - anim.delay) / (DICE_FALL_MS / 1000);
@@ -194,13 +198,17 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
     q.copy(anim.startQ).slerp(anim.targetQ, p);
     // Rodadura sin deslizar: ángulo restante = distancia restante / radio.
     // Llega a 0 exactamente en la casilla → la cara ganadora queda arriba.
+    // El tumbo va en `spin` (hijo): así el aplaste de `g` queda alineado al mundo.
     const theta = back / die.restHeight;
     qRoll.setFromAxisAngle(anim.rollAxis, theta);
-    g.quaternion.multiplyQuaternions(qRoll, q);
+    sp.quaternion.multiplyQuaternions(qRoll, q);
 
     if (!skip) {
       for (const imp of IMPACTS) {
-        if (prevT.current < imp.t && t >= imp.t) onImpact(imp.intensity);
+        if (prevT.current < imp.t && t >= imp.t) {
+          onImpact(imp.intensity);
+          squash.current = Math.min(1, squash.current + imp.intensity * 0.9); // se aplasta contra la mesa
+        }
       }
       // Clic seco por cada cuarto de vuelta mientras tumba cerca del suelo.
       const quarter = Math.floor(theta / (Math.PI / 2));
@@ -216,10 +224,23 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
     }
     prevT.current = t;
 
-    if (t >= 1 && !settled.current) {
-      settled.current = true;
+    if (t >= 1 && settleAt.current === null) {
+      settleAt.current = clock.elapsedTime;
       onSettled();
     }
+
+    // Juice: aplaste vertical en impactos (preserva volumen) + boing al asentar.
+    squash.current *= Math.exp(-delta * 12);
+    let sy = 1 - squash.current * 0.4;
+    let sxz = 1 + squash.current * 0.22;
+    if (settleAt.current !== null) {
+      const st = clock.elapsedTime - settleAt.current;
+      const pop = Math.sin(st * 20) * Math.exp(-st * 7) * 0.16; // rebote amortiguado al caer
+      sy += pop;
+      sxz -= pop * 0.5;
+      if (edgeMat.current) edgeMat.current.opacity = 0.5 + 0.5 * Math.exp(-st * 4); // fogonazo dorado
+    }
+    g.scale.set(sxz, sy, sxz);
   });
 
   return (
@@ -231,10 +252,12 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
         rest[1] - anim.dir[1] * anim.dist,
       ]}
     >
-      <mesh geometry={die.geometry} material={materials} />
-      <lineSegments geometry={die.edges}>
-        <lineBasicMaterial color={GOLD} transparent opacity={0.35} />
-      </lineSegments>
+      <group ref={spin}>
+        <mesh geometry={die.geometry} material={materials} />
+        <lineSegments geometry={die.edges}>
+          <lineBasicMaterial ref={edgeMat} color={EDGE} transparent opacity={0.5} />
+        </lineSegments>
+      </group>
     </group>
   );
 }
