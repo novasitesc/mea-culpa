@@ -1,68 +1,89 @@
+// POST — Crea un personaje. La ruta más densa del proyecto, porque valida el
+// personaje entero de una vez:
+//   · que al usuario le queden huecos de personaje (compra de slots)
+//   · las clases elegidas (hasta 3) y sus niveles
+//   · las estadísticas, según el método usado (lib/statAllocation.ts) y, si se
+//     tiraron dados, verificando el token HMAC (lib/statRollToken.ts)
+//   · los conjuros iniciales que correspondan a la clase
+// Luego inserta en varias tablas: personajes, clases_personaje,
+// estadisticas_personaje y equipamiento_personaje.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
+import { getUserFromRequest } from "@/lib/apiAuth";
 import { calculateBagSlots } from "@/lib/types/character";
 import {
   getCasterType,
   getMaxKnownSpells,
   normalizeSpells,
-  validateSpells,
   type SpellEntry,
 } from "@/lib/spells";
+import {
+  ABILITY_KEYS,
+  recommendedStatsForClass,
+  validatePointBuy,
+  validateRolledStats,
+  validateStandardArray,
+  toDbStats,
+  type StatMethod,
+  type StatsBlock,
+} from "@/lib/statAllocation";
+import { verifyRollToken } from "@/lib/statRollToken";
 
-// Generar stats basados en la clase primaria
-function generateStatsForClass(className: string) {
-  const base = {
-    fuerza: 10,
-    destreza: 10,
-    constitucion: 10,
-    inteligencia: 10,
-    sabiduria: 10,
-    carisma: 10,
-  };
-  switch (className.toLowerCase()) {
-    case "barbarian":
-    case "bárbaro":
-    case "fighter":
-    case "guerrero":
-      return { ...base, fuerza: 16, constitucion: 14, destreza: 12 };
-    case "paladin":
-    case "paladín":
-      return { ...base, fuerza: 16, carisma: 14, constitucion: 12 };
-    case "ranger":
-    case "explorador":
-    case "monk":
-    case "monje":
-      return { ...base, destreza: 16, sabiduria: 14, constitucion: 12 };
-    case "rogue":
-    case "pícaro":
-      return { ...base, destreza: 16, carisma: 14, inteligencia: 12 };
-    case "bard":
-    case "bardo":
-      return { ...base, carisma: 16, destreza: 14, constitucion: 12 };
-    case "cleric":
-    case "clérigo":
-      return { ...base, sabiduria: 16, constitucion: 14, fuerza: 12 };
-    case "druid":
-    case "druida":
-      return { ...base, sabiduria: 16, constitucion: 14, destreza: 12 };
-    case "sorcerer":
-    case "hechicero":
-    case "warlock":
-    case "brujo":
-      return { ...base, carisma: 16, constitucion: 14, destreza: 12 };
-    case "wizard":
-    case "mago":
-      return { ...base, inteligencia: 16, constitucion: 14, destreza: 12 };
+// Resuelve las stats base según el método elegido (D&D 5e 2014).
+// Devuelve las stats en formato de columnas de BD, o un error 400.
+function resolveBaseStats(
+  userId: string,
+  primaryClass: string,
+  characterData: {
+    statMethod?: StatMethod;
+    stats?: unknown;
+    rollToken?: unknown;
+  },
+): { stats: ReturnType<typeof toDbStats> } | { error: string } {
+  const method = characterData.statMethod ?? "recommended";
+
+  switch (method) {
+    case "recommended":
+      return { stats: toDbStats(recommendedStatsForClass(primaryClass)) };
+
+    case "pointbuy": {
+      const result = validatePointBuy(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
+    case "standard": {
+      const result = validateStandardArray(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
+    case "roll": {
+      const result = validateRolledStats(characterData.stats);
+      if (!result.ok) return { error: result.error };
+      const totals = ABILITY_KEYS.map((key) => (result.stats as StatsBlock)[key]);
+      const tokenCheck = verifyRollToken(userId, totals, characterData.rollToken);
+      if (!tokenCheck.ok) return { error: tokenCheck.error };
+      return { stats: toDbStats(result.stats) };
+    }
+
     default:
-      return base;
+      return { error: "Método de asignación de estadísticas inválido." };
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId, characterData } = await request.json();
+    const db = createServerClient();
+    const { user, error: authError } = await getUserFromRequest(db, request);
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const userId = user.id;
 
-    if (!userId || !characterData) {
+    const { characterData } = await request.json();
+
+    if (!characterData) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -117,8 +138,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = createServerClient();
-
     const { data: perfil, error: perfilError } = await db
       .from("perfiles")
       .select("max_personajes")
@@ -139,7 +158,7 @@ export async function POST(request: Request) {
       .from("personajes")
       .select("id", { count: "exact", head: true })
       .eq("usuario_id", userId)
-      .neq("estado_vida", "enterrado");
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     if ((count ?? 0) >= maxCharacterSlots) {
       return NextResponse.json(
@@ -155,7 +174,8 @@ export async function POST(request: Request) {
     const { data: existingSlots } = await db
       .from("personajes")
       .select("numero_slot")
-      .eq("usuario_id", userId);
+      .eq("usuario_id", userId)
+      .not("estado_vida", "in", '("enterrado","eliminado")');
 
     const usedSlots = new Set(
       (existingSlots ?? []).map((s: any) => s.numero_slot),
@@ -163,9 +183,13 @@ export async function POST(request: Request) {
     let nextSlot = 1;
     while (usedSlots.has(nextSlot) && nextSlot <= maxCharacterSlots) nextSlot++;
 
-    // Generar stats basados en la clase primaria
+    // Resolver stats base según el método elegido (validación server-side)
     const primaryClass = multiclass[0].className;
-    const stats = generateStatsForClass(primaryClass);
+    const statsResult = resolveBaseStats(userId, primaryClass, characterData);
+    if ("error" in statsResult) {
+      return NextResponse.json({ error: statsResult.error }, { status: 400 });
+    }
+    const stats = statsResult.stats;
 
     // Calcular capacidad de bolsa en base a fuerza
     const capacidadBolsa = calculateBagSlots(stats.fuerza);
@@ -291,11 +315,15 @@ export async function POST(request: Request) {
     const charId = personaje.id;
 
     // 2. Insertar clases
+    // Todo personaje nace a nivel 1: subir de nivel es cosa del DM al cerrar la
+    // partida o del panel de personajes. Antes se aceptaba el `level` del cuerpo,
+    // así que se podía nacer a nivel 20 (y con ello colar tier 2 y las tiendas
+    // altas) con una sola petición.
     const clasesInsert = multiclass.map(
-      (c: { className: string; level: number }, i: number) => ({
+      (c: { className: string }, i: number) => ({
         personaje_id: charId,
         nombre_clase: c.className,
-        nivel: Math.min(20, Math.max(1, Math.floor(Number(c.level) || 1))),
+        nivel: 1,
         orden: i + 1,
       }),
     );
@@ -326,10 +354,16 @@ export async function POST(request: Request) {
       character: {
         id: charId,
         name: name.trim(),
+        nivel20Url: null,
         multiclass,
         race: race.trim(),
         alignment,
         portrait: "/characters/profileplaceholder.webp",
+        lifeStatus: "vivo",
+        deadAt: null,
+        revivedAt: null,
+        puntoCansancio: 0,
+        caidas: 0,
         knownSpells: validatedSpells,
         stats: {
           str: stats.fuerza,

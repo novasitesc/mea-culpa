@@ -1,3 +1,5 @@
+// GET — Solo admin. Lista los personajes muertos, para el panel de
+// resurrecciones.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 
@@ -15,9 +17,9 @@ export async function GET(request: NextRequest) {
   const { data, error } = await db
     .from("personajes")
     .select(
-      "id, nombre, numero_slot, usuario_id, estado_vida, muerto_en, revivido_en, perfiles:usuario_id ( nombre )",
+      "id, nombre, numero_slot, usuario_id, estado_vida, muerto_en, revivido_en, eliminado_en, perfiles:usuario_id ( nombre )",
     )
-    .in("estado_vida", ["muerto", "enterrado"])
+    .eq("estado_vida", "muerto")
     .order("muerto_en", { ascending: false })
     .limit(limit);
 
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
     lifeStatus: String(row.estado_vida ?? "muerto"),
     deadAt: row.muerto_en ?? null,
     revivedAt: row.revivido_en ?? null,
+    deletedAt: row.eliminado_en ?? null,
   }));
 
   return NextResponse.json({

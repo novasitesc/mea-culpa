@@ -1,3 +1,4 @@
+// GET — Tiradas de ruleta del usuario y qué le tocó en cada una.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { getIconForString } from "@/lib/iconMapper";
 
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -98,7 +99,7 @@ export function ObjectSelector({
         {selectedItem ? (
           <div className="flex items-center justify-between bg-black/20 border border-gold/50 rounded-lg px-3 py-2 text-sm">
             <div className="flex items-center gap-2 min-w-0">
-              {selectedItem.icon ? <span>{selectedItem.icon}</span> : null}
+              {selectedItem.icon ? getIconForString(selectedItem.name, "w-4 h-4 text-[#D4AF37] shrink-0", selectedItem.icon) : null}
               <span className="font-medium text-foreground truncate">{selectedItem.name}</span>
               {showQuantity && typeof selectedItem.qty === "number" ? (
                 <span className="text-muted-foreground text-xs shrink-0">x{selectedItem.qty}</span>
@@ -144,7 +145,6 @@ export function ObjectSelector({
                   visibleItems.map((item) => {
                     const quantitySuffix =
                       showQuantity && typeof item.qty === "number" ? ` x${item.qty}` : "";
-                    const iconPrefix = item.icon ? `${item.icon} ` : "";
 
                     return (
                       <button
@@ -157,8 +157,10 @@ export function ObjectSelector({
                           setShowDropdown(false);
                         }}
                       >
-                        {iconPrefix}
-                        {item.name}
+                        <span className="inline-flex items-center gap-2">
+                          {item.icon ? getIconForString(item.name, "w-4 h-4 text-[#D4AF37] shrink-0", item.icon) : null}
+                          {item.name}
+                        </span>
                         {quantitySuffix}
                       </button>
                     );

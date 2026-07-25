@@ -1,3 +1,5 @@
+// PATCH / DELETE — Solo admin. Edita o borra un premio concreto del pool de la
+// ruleta. El listado y la creación están en la ruta padre.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

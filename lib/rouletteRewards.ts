@@ -1,3 +1,10 @@
+// Premios concretos de la ruleta. Segunda mitad del sorteo:
+//   roulette.ts decide la CATEGORÍA (jackpot, grande, pequeño…)
+//   este archivo decide QUÉ premio de esa categoría toca.
+//
+// El separarlo importa porque los premios no están en el código: viven en la
+// tabla `ruleta_premios_pool` y el admin los edita desde su panel. Dentro de una
+// categoría todos los premios activos son igual de probables.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RouletteCategory } from "@/lib/roulette";
 
@@ -31,6 +38,11 @@ export type RoulettePrizeSelection = {
   objectIcon: string | null;
 };
 
+/**
+ * Premios activos de una categoría, con el nombre e icono del objeto ya
+ * incluidos (el `objetos:objeto_id(...)` del select es un JOIN de Supabase, así
+ * evitamos una segunda consulta).
+ */
 export async function getActiveRoulettePool(
   db: SupabaseClient,
   category: RouletteCategory,
@@ -47,6 +59,8 @@ export async function getActiveRoulettePool(
   }
 
   return (data ?? []).map((row: any) => {
+    // Supabase devuelve la relación como array u objeto según el tipo de JOIN
+    // que infiera; normalizamos siempre a objeto.
     const objectRow = Array.isArray(row.objetos) ? row.objetos[0] : row.objetos;
     return {
       id: row.id,
@@ -68,6 +82,7 @@ export async function getActiveRoulettePool(
   });
 }
 
+/** Elige un premio al azar del pool, todos con el mismo peso. */
 export function pickRoulettePrize(
   pools: RoulettePrizePoolRow[],
 ): RoulettePrizePoolRow {
@@ -79,6 +94,11 @@ export function pickRoulettePrize(
   return pools[index];
 }
 
+/**
+ * Traduce la fila cruda de la tabla al objeto que consumen la ruta y la UI:
+ * unifica los dos tipos de premio (oro / objeto) y rellena una etiqueta legible
+ * cuando el admin no escribió ninguna.
+ */
 export function resolveRoulettePrizeSelection(pool: RoulettePrizePoolRow): RoulettePrizeSelection {
   if (pool.tipo_recompensa === "oro") {
     const amount = Number(pool.oro_monto ?? 0);

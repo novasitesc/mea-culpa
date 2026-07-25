@@ -1,3 +1,5 @@
+// GET / PATCH — Usuario autenticado. El bloc de notas privado del jugador
+// (`notas_usuario`): una fila por usuario, se lee y se sobrescribe.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

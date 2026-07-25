@@ -1,3 +1,6 @@
+// GET — Solo admin. Historial de muertes y resurrecciones
+// (`personajes_historial_vida`), la tabla que escriben las RPC de
+// characterLife.ts. Solo lectura: aquí no se mata ni se revive.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

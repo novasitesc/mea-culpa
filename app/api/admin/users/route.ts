@@ -1,3 +1,5 @@
+// GET / POST / PATCH / DELETE — Solo admin. Gestión de cuentas (`perfiles`):
+// datos, nivel de cuenta, rol de sistema y permisos de admin.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
@@ -27,13 +29,13 @@ export async function GET(request: NextRequest) {
   const users = (perfiles ?? []).map((p: any) => ({
     id: p.id,
     email: emailMap.get(p.id) ?? "",
-    name: p.nombre,
-    role: p.rol,
+    name: p.nombre ?? "",
+    role: p.rol ?? "",
     level: normalizeAccountLevel(p.nivel),
     gold: p.oro || 0,
-    home: p.hogar,
-    isAdmin: p.es_admin,
-    rolSistema: p.rol_sistema,
+    home: p.hogar ?? "",
+    isAdmin: p.es_admin === true,
+    rolSistema: p.rol_sistema ?? (p.es_admin ? "admin" : "usuario"),
     createdAt: p.creado_en,
     nivel20Url: p.nivel20_url ?? null,
   }));

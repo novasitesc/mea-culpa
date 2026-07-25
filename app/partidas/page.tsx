@@ -1,11 +1,16 @@
 "use client";
 
+// Listado de partidas (/partidas): las abiertas a las que unirse y las que ya
+// se están jugando.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Loader2, Shield } from "lucide-react";
+import { Clock, Loader2, Shield, Dices } from "lucide-react";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { CooldownBanner, CooldownChip } from "@/app/components/cooldown-timer";
+import CreatePartidaButton from "./create-partida-button";
 import { useAuth } from "@/lib/useAuth";
 import { getCharacterPortraitByClass } from "@/lib/constantes_img_personajes";
 
@@ -65,13 +70,10 @@ export default function PartidasPage() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loadingOpenGames, setLoadingOpenGames] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(false);
-  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
-  const [selectedCharacterByGame, setSelectedCharacterByGame] = useState<Record<string, number>>({});
   const [alert, setAlert] = useState<AlertState>(INITIAL_ALERT);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedGameDetail, setSelectedGameDetail] = useState<OpenPartida | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<string>("");
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [joiningDetail, setJoiningDetail] = useState(false);
   const [leavingDetail, setLeavingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string>("");
@@ -83,12 +85,6 @@ export default function PartidasPage() {
     [],
   );
 
-  const formatCooldown = useCallback((seconds: number) => {
-    const safe = Math.max(0, Math.floor(seconds));
-    const hours = Math.floor(safe / 3600);
-    const mins = Math.floor((safe % 3600) / 60);
-    return `${hours}h ${mins}m`;
-  }, []);
 
   const loadCharacters = useCallback(async () => {
     if (!token || !user?.id) return;
@@ -146,56 +142,11 @@ export default function PartidasPage() {
     }
   }, [token, showAlert]);
 
-  const joinGame = useCallback(
-    async (gameId: string) => {
-      if (!token) return;
-      const characterId = selectedCharacterByGame[gameId];
-
-      if (!characterId) {
-        showAlert(
-          "Selecciona personaje",
-          "Debes elegir un personaje para unirte a la partida.",
-          "warning",
-        );
-        return;
-      }
-
-      setJoiningGameId(gameId);
-      try {
-        const res = await fetch("/api/partidas/join", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ partidaId: gameId, characterId }),
-        });
-
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        if (!res.ok) {
-          throw new Error(data.error ?? "No se pudo unir a la partida");
-        }
-
-        showAlert("Inscripcion completada", "Te uniste correctamente a la partida.", "success");
-        await loadOpenGames();
-      } catch (error) {
-        showAlert(
-          "No se pudo unir",
-          error instanceof Error ? error.message : "Error desconocido",
-          "error",
-        );
-      } finally {
-        setJoiningGameId(null);
-      }
-    },
-    [token, selectedCharacterByGame, loadOpenGames, showAlert],
-  );
 
   const loadGameDetail = useCallback(
     async (gameId: string) => {
       if (!token) return;
       setDetailError("");
-      setLoadingDetail(true);
       setSelectedGameId(gameId);
 
       try {
@@ -203,7 +154,6 @@ export default function PartidasPage() {
         if (!matched) {
           setDetailError("No se encontró la partida.");
           setSelectedGameDetail(null);
-          setLoadingDetail(false);
           return;
         }
 
@@ -217,7 +167,6 @@ export default function PartidasPage() {
           error instanceof Error ? error.message : "Error al cargar los detalles.",
         );
       } finally {
-        setLoadingDetail(false);
       }
     },
     [token, openGames, characters],
@@ -307,10 +256,19 @@ export default function PartidasPage() {
     void Promise.all([loadCharacters(), loadOpenGames()]);
   }, [isAuthenticated, token, user?.id, loadCharacters, loadOpenGames]);
 
-  const hasAliveCharacters = useMemo(
-    () => characters.some((character) => character.lifeStatus !== "muerto"),
-    [characters],
+
+  const cooldownGame = useMemo(
+    () => openGames.find((game) => game.inCooldown && game.cooldownSecondsRemaining > 0) ?? null,
+    [openGames],
   );
+
+  const handleCooldownExpire = useCallback(() => {
+    void loadOpenGames().then((freshGames) => {
+      setSelectedGameDetail((current) =>
+        current ? freshGames.find((g) => g.id === current.id) ?? current : current,
+      );
+    });
+  }, [loadOpenGames]);
 
   const selectedCharacterData = useMemo(
     () => characters.find((character) => String(character.id) === selectedCharacter),
@@ -396,7 +354,7 @@ export default function PartidasPage() {
                               ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
                               : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
                           }`}>
-                          {selectedGameDetail.isFull ? "Llena" : selectedGameDetail.inCooldown ? "En progreso" : "Abierta"}
+                          {selectedGameDetail.isFull ? "Llena" : selectedGameDetail.inCooldown ? "Cooldown" : "Abierta"}
                         </span>
                       </div>
                     </div>
@@ -458,11 +416,21 @@ export default function PartidasPage() {
                           href={`/partidas/${selectedGameDetail.id}`}
                           className="inline-flex w-full justify-center rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 sm:w-auto"
                         >
-                          🎲 Ir a sala (DM)
+                          <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Ir a sala (DM)</span>
                         </a>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="flex flex-col gap-3 pt-2">
+                        {selectedGameDetail.inCooldown &&
+                          selectedGameDetail.cooldownSecondsRemaining > 0 &&
+                          !selectedGameDetail.joinedCharacterIds?.length && (
+                            <CooldownBanner
+                              secondsRemaining={selectedGameDetail.cooldownSecondsRemaining}
+                              onExpire={handleCooldownExpire}
+                            />
+                          )}
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div className="flex-1">
                           <p className="text-[10px] uppercase tracking-[0.35em] text-[#b99d42]/80 mb-2">Selecciona personaje</p>
                           <select
@@ -518,7 +486,7 @@ export default function PartidasPage() {
                             href={`/partidas/${selectedGameDetail.id}`}
                             className="w-full rounded-2xl bg-linear-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
                           >
-                            🎲 Entrar a sala
+                            <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Entrar a sala</span>
                           </a>
                         ) : (
                           <button
@@ -526,6 +494,7 @@ export default function PartidasPage() {
                             onClick={selectedGameDetail.joinedCharacterIds?.length ? leaveGameDetail : joinGameDetail}
                             disabled={
                               (!selectedGameDetail.joinedCharacterIds?.length && (!selectedCharacter || !characters.length)) ||
+                              (!selectedGameDetail.joinedCharacterIds?.length && selectedGameDetail.inCooldown) ||
                               joiningDetail ||
                               leavingDetail ||
                               selectedGameDetail.isFull
@@ -538,9 +507,12 @@ export default function PartidasPage() {
                                 ? "Salir"
                                 : selectedGameDetail.isFull
                                   ? "Llena"
-                                  : "Unirse"}
+                                  : selectedGameDetail.inCooldown
+                                    ? "En descanso"
+                                    : "Unirse"}
                           </button>
                         )}
+                        </div>
                       </div>
                     )}
 
@@ -562,15 +534,30 @@ export default function PartidasPage() {
                       Unete a una partida activa
                     </h1>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void loadOpenGames()}
-                    disabled={loadingOpenGames}
-                    className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
-                  >
-                    {loadingOpenGames ? "Cargando..." : "Actualizar"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <CreatePartidaButton
+                      token={token}
+                      isAdmin={!!user?.isAdmin}
+                      onCreated={loadOpenGames}
+                      showAlert={showAlert}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void loadOpenGames()}
+                      disabled={loadingOpenGames}
+                      className="px-3 py-2 rounded border border-border text-sm hover:bg-secondary/60 disabled:opacity-60"
+                    >
+                      {loadingOpenGames ? "Cargando..." : "Actualizar"}
+                    </button>
+                  </div>
                 </div>
+
+                {cooldownGame && (
+                  <CooldownBanner
+                    secondsRemaining={cooldownGame.cooldownSecondsRemaining}
+                    onExpire={handleCooldownExpire}
+                  />
+                )}
 
                 {loadingOpenGames || loadingCharacters ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -582,9 +569,6 @@ export default function PartidasPage() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {openGames.map((game) => {
-                      const alreadyJoined = game.joinedCharacterIds.length > 0;
-                      const canJoin = !game.isFull && !alreadyJoined && !game.inCooldown;
-                      const progress = Math.min(100, Math.round((game.participantCount / game.maxPlayers) * 100));
                       const tierRoman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][game.tier];
                       const tierLabel = `Tier ${tierRoman}`;
                       const tierStyles =
@@ -619,16 +603,20 @@ export default function PartidasPage() {
                                 {tierLabel}
                               </span>
 
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${game.isFull
-                                    ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
-                                    : game.inCooldown
-                                      ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
-                                      : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
-                                  }`}
-                              >
-                                {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
-                              </span>
+                              {!game.isFull && game.inCooldown && game.cooldownSecondsRemaining > 0 ? (
+                                <CooldownChip secondsRemaining={game.cooldownSecondsRemaining} />
+                              ) : (
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${game.isFull
+                                      ? "bg-[#5d1515] text-rose-200 border border-red-500/30"
+                                      : game.inCooldown
+                                        ? "bg-[#4b3810] text-amber-200 border border-amber-500/30"
+                                        : "bg-[#16311d] text-emerald-200 border border-emerald-500/30"
+                                    }`}
+                                >
+                                  {game.isFull ? "Llena" : game.inCooldown ? "Cooldown" : "Abierta"}
+                                </span>
+                              )}
                             </div>
 
                             <div className="grid gap-2 text-sm text-muted-foreground">
@@ -670,7 +658,7 @@ export default function PartidasPage() {
                                   href={`/partidas/${game.id}`}
                                   className="w-full rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#C29431] to-[#8B7355] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#121011] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)] transition hover:brightness-110 text-center sm:w-auto"
                                 >
-                                  🎲 Entrar a sala
+                                  <span className="flex items-center justify-center gap-1.5"><Dices className="w-4 h-4" /> Entrar a sala</span>
                                 </a>
                               ) : (
                                 <button

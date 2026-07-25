@@ -1,3 +1,5 @@
+// GET / POST / PATCH / DELETE — Solo admin. CRUD de tiendas (el continente).
+// Los artículos que vende cada una están en /articulos.
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

@@ -1,3 +1,9 @@
+// GET / POST / PATCH — Solo admin (el DM). Núcleo de la gestión de partidas.
+// GET   lista partidas con sus participantes y personajes.
+// POST  crea una partida.
+// PATCH cambia su estado (abierta → en_progreso → finalizada), y al finalizar
+//       resuelve el cierre: eventos, descansos pendientes y muertes.
+// Es la ruta más grande del proyecto; léela después de entender partidas/[id]/sala.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { markCharacterDead } from "@/lib/characterLife";
@@ -53,8 +59,8 @@ export async function GET(request: NextRequest) {
           oro_delta,
           comentario,
           muerto,
-          personaje:personaje_id ( nombre ),
-          usuario:usuario_id ( nombre, nivel20_url )
+          personaje:personaje_id ( nombre, nivel20_url ),
+          usuario:usuario_id ( nombre )
         )
       `,
     )
@@ -157,7 +163,7 @@ export async function GET(request: NextRequest) {
         gold: pp.oro_delta ?? 0,
         comment: pp.comentario ?? "",
         dead: pp.muerto ?? false,
-        nivel20Url: pp.usuario?.nivel20_url ?? null,
+        nivel20Url: pp.personaje?.nivel20_url ?? null,
       })),
       items: (itemsByPartida.get(p.id) ?? []).map((it: any) => ({
         characterId: it.personaje_id,
@@ -313,7 +319,7 @@ export async function PATCH(request: NextRequest) {
   if (action === "start") {
     const { data: partidaToStart, error: startFetchError } = await session.db
       .from("partidas")
-      .select("id, estado")
+      .select("id, estado, creada_por")
       .eq("id", partidaId)
       .maybeSingle();
 
@@ -322,6 +328,15 @@ export async function PATCH(request: NextRequest) {
     }
     if (!partidaToStart) {
       return NextResponse.json({ error: "Partida no encontrada" }, { status: 404 });
+    }
+    // Cada partida la arranca el DM que la creó. El super admin puede hacerlo
+    // igualmente para poder desatascar una mesa cuyo DM no aparece.
+    const esCreador = (partidaToStart as any).creada_por === session.userId;
+    if (!esCreador && session.rolSistema !== "super_admin") {
+      return NextResponse.json(
+        { error: "Solo el DM que creó la partida puede iniciarla" },
+        { status: 403 },
+      );
     }
     if ((partidaToStart as any).estado !== "abierta") {
       return NextResponse.json({ error: "Solo se pueden iniciar partidas abiertas" }, { status: 409 });
@@ -368,6 +383,38 @@ export async function PATCH(request: NextRequest) {
       id: partida.id,
       status: partida.estado,
       finalizedAt: partida.finalizada_en,
+    });
+  }
+
+  // Reclamar el cierre ANTES de repartir. El reparto son muchas escrituras
+  // sueltas (oro, niveles, objetos) y no hay transacción: si una fallaba a mitad,
+  // la partida seguía abierta y volver a cerrarla pagaba otra vez a quien ya
+  // había cobrado. Este UPDATE condicionado solo lo gana una llamada; la segunda
+  // se corta arriba con el 200 idempotente.
+  const finalizedAt = new Date().toISOString();
+  const { data: claimed, error: claimError } = await session.db
+    .from("partidas")
+    .update({ estado: "finalizada", finalizada_en: finalizedAt })
+    .eq("id", partidaId)
+    .neq("estado", "finalizada")
+    .select("id")
+    .maybeSingle();
+
+  if (claimError) {
+    return NextResponse.json({ error: claimError.message }, { status: 500 });
+  }
+
+  if (!claimed) {
+    const { data: yaCerrada } = await session.db
+      .from("partidas")
+      .select("id, estado, finalizada_en")
+      .eq("id", partidaId)
+      .maybeSingle();
+
+    return NextResponse.json({
+      id: partidaId,
+      status: (yaCerrada as any)?.estado ?? "finalizada",
+      finalizedAt: (yaCerrada as any)?.finalizada_en ?? null,
     });
   }
 
@@ -653,21 +700,7 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const finalizedAt = new Date().toISOString();
-  const { data: updated, error: updateError } = await session.db
-    .from("partidas")
-    .update({ estado: "finalizada", finalizada_en: finalizedAt })
-    .eq("id", partidaId)
-    .select("id, estado, finalizada_en")
-    .single();
-
-  if (updateError || !updated) {
-    return NextResponse.json(
-      { error: updateError?.message ?? "No se pudo cerrar la partida" },
-      { status: 500 },
-    );
-  }
-
+  // El cierre ya se reclamó arriba, antes de repartir.
   const deadParticipants = (participantesPartida ?? [])
     .filter((row: any) => Boolean(row.muerto))
     .map((row: any) => ({
@@ -762,8 +795,8 @@ export async function PATCH(request: NextRequest) {
   });
 
   return NextResponse.json({
-    id: (updated as any).id,
-    status: (updated as any).estado,
-    finalizedAt: (updated as any).finalizada_en,
+    id: partidaId,
+    status: "finalizada",
+    finalizedAt,
   });
 }

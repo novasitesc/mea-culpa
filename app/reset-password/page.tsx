@@ -1,5 +1,7 @@
 "use client";
 
+// Nueva contraseña, tras llegar desde el enlace del correo.
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";

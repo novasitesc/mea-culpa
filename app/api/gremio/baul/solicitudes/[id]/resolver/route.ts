@@ -1,6 +1,10 @@
+// POST — El líder del gremio aprueba o rechaza una petición del baúl.
+// Aprobada, el objeto pasa a la bolsa del solicitante — salvo que su personaje
+// esté en expedición: durante una partida no se recibe nada de fuera.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
+import { personajeEnExpedicion } from "@/lib/partidasState";
 
 export async function POST(
   request: Request,
@@ -49,6 +53,23 @@ export async function POST(
       { error: "action debe ser aprobar o rechazar" },
       { status: 400 },
     );
+  }
+
+  // La partida del destinatario pudo iniciar entre la solicitud y la entrega
+  if (action === "aprobar") {
+    const { data: solicitud } = await db
+      .from("gremio_solicitudes_baul")
+      .select("personaje_destino_id")
+      .eq("id", solicitudId)
+      .maybeSingle();
+
+    const destinoId = Number((solicitud as any)?.personaje_destino_id ?? 0);
+    if (destinoId > 0 && (await personajeEnExpedicion(db, destinoId))) {
+      return NextResponse.json(
+        { error: "El personaje destino está en una expedición en curso; aprueba cuando salga" },
+        { status: 409 },
+      );
+    }
   }
 
   const { data, error: rpcError } = await db.rpc("resolver_solicitud_gremio_baul", {

@@ -1,52 +1,16 @@
+// GET — Solo admin. Devuelve la configuración de dados ya montada para la UI
+// (caras, sub-tablas y sublistas en formato camelCase).
+// Es lectura para pintar el panel; la edición está en /admin.
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabaseServer";
-import { getUserFromRequest } from "@/lib/apiAuth";
+import { requireAdmin } from "@/lib/adminAuth";
+import { mapLutCaraRows, mapSubtablaCaraRows, mapSublistaRows } from "@/lib/dice/load";
 
-function mapLutCaras(rows: any[]) {
-  return rows
-    .map((c: any) => {
-      const obj = Array.isArray(c.objeto) ? c.objeto[0] : c.objeto;
-      const sub = Array.isArray(c.subtabla) ? c.subtabla[0] : c.subtabla;
-      return {
-        id: c.id,
-        recompensaId: c.recompensa_id,
-        numeroCara: c.numero_cara,
-        tipo: c.tipo,
-        cantidadDados: c.cantidad_dados ?? null,
-        tipoDadoOro: c.tipo_dado_oro ?? null,
-        multiplicadorOro: c.multiplicador_oro ?? 1,
-        objetoId: c.objeto_id ?? null,
-        objetoNombre: obj?.nombre ?? null,
-        objetoIcono: obj?.icono ?? null,
-        subtablaId: c.subtabla_id ?? null,
-        subtablaNombre: sub?.nombre ?? null,
-      };
-    })
-    .sort((a: any, b: any) => a.numeroCara - b.numeroCara);
-}
-
-function mapSubtablaCaras(rows: any[]) {
-  return rows
-    .map((c: any) => {
-      const obj = Array.isArray(c.objeto) ? c.objeto[0] : c.objeto;
-      return {
-        id: c.id,
-        recompensaId: c.recompensa_id,
-        numeroCara: c.numero_cara,
-        objetoId: c.objeto_id ?? null,
-        objetoNombre: obj?.nombre ?? null,
-        objetoIcono: obj?.icono ?? null,
-      };
-    })
-    .sort((a: any, b: any) => a.numeroCara - b.numeroCara);
-}
-
+// Config del tirador: solo admins/DMs (sala DM y probador del panel admin).
 export async function GET(request: Request) {
-  const db = createServerClient();
-  const { user, error: authError } = await getUserFromRequest(db, request);
-  if (authError || !user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const result = await requireAdmin(request);
+  if ("error" in result) return result.error;
+  const { session } = result;
+  const db = session.db;
 
   const { data: recompensas, error } = await db
     .from("dados_recompensas")
@@ -63,14 +27,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Queries separadas para LUT/subtabla — fallan silenciosamente si las tablas no existen aún
-  const { data: lutCarasData } = await db
-    .from("dados_lut_caras")
-    .select(`id, recompensa_id, numero_cara, tipo, cantidad_dados, tipo_dado_oro, multiplicador_oro, objeto_id, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`);
-
-  const { data: subtablaCarasData } = await db
-    .from("dados_subtabla_caras")
-    .select(`id, recompensa_id, numero_cara, objeto_id, objeto:objeto_id(id, nombre, icono)`);
+  const [{ data: lutCarasData }, { data: subtablaCarasData }, { data: personajesData }] =
+    await Promise.all([
+      db
+        .from("dados_lut_caras")
+        .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, subtabla_id, objeto:objeto_id(id, nombre, icono), subtabla:subtabla_id(id, nombre)`),
+      db
+        .from("dados_subtabla_caras")
+        .select(`id, recompensa_id, numero_cara, tipo, oro_min, oro_max, objeto_id, cantidad_min, cantidad_max, objeto:objeto_id(id, nombre, icono)`),
+      // Personajes vivos del usuario: destino de los ítems en la tirada personal.
+      db.from("personajes").select("id, nombre, muerto").eq("usuario_id", session.userId).order("id"),
+    ]);
 
   const lutMap = new Map<number, any[]>();
   for (const row of lutCarasData ?? []) {
@@ -90,24 +57,6 @@ export async function GET(request: Request) {
     .filter((r: any) => r.tipo !== "subtabla")
     .map((r: any) => {
       const objetoRow = Array.isArray(r.objeto) ? r.objeto[0] : r.objeto;
-      const sublistaItems = (r.dados_sublista_items ?? [])
-        .map((si: any) => {
-          const siObj = Array.isArray(si.objeto) ? si.objeto[0] : si.objeto;
-          return {
-            id: si.id,
-            objetoId: si.objeto_id,
-            objetoNombre: siObj?.nombre ?? "",
-            objetoIcono: siObj?.icono ?? "",
-            valorMin: si.valor_min,
-            valorMax: si.valor_max,
-            orden: si.orden,
-          };
-        })
-        .sort((a: any, b: any) => a.orden - b.orden);
-
-      const lutCaras = mapLutCaras(lutMap.get(r.id) ?? []);
-      const subtablaCaras = mapSubtablaCaras(subtablaMap.get(r.id) ?? []);
-
       return {
         id: r.id,
         nombre: r.nombre,
@@ -120,11 +69,15 @@ export async function GET(request: Request) {
         objetoIcono: objetoRow?.icono ?? null,
         cantidadDados: r.cantidad_dados ?? 1,
         multiplicadorOro: r.multiplicador_oro ?? 1,
-        sublistaItems,
-        lutCaras,
-        subtablaCaras,
+        sublistaItems: mapSublistaRows(r.dados_sublista_items ?? []),
+        lutCaras: mapLutCaraRows(lutMap.get(r.id) ?? []),
+        subtablaCaras: mapSubtablaCaraRows(subtablaMap.get(r.id) ?? []),
       };
     });
 
-  return NextResponse.json({ recompensas: mapped });
+  const personajes = ((personajesData ?? []) as Array<{ id: number; nombre: string; muerto: boolean }>)
+    .filter((p) => !p.muerto)
+    .map((p) => ({ id: p.id, nombre: p.nombre }));
+
+  return NextResponse.json({ recompensas: mapped, personajes });
 }

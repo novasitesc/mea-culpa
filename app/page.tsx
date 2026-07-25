@@ -1,11 +1,15 @@
 "use client";
 
+// Portada (/). Si no hay sesión enseña la presentación; con sesión, el Nexo:
+// el punto desde el que se va a las demás zonas.
+
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ChevronLeft, ChevronRight, X, Maximize2, Eye, ExternalLink } from "lucide-react";
 import Header from "./components/header";
 import Sidebar from "./components/sidebar";
+import { MobileQuickNav } from "./components/mobile-nav";
 import PrizeWheel from "./components/prize-wheel";
 import { useAuth } from "@/lib/useAuth";
 import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
@@ -97,11 +101,20 @@ function HomePageContent({ forcedSection }: HomePageProps) {
 
   useEffect(() => {
     let isMounted = true;
-    const userId = user?.id ?? "demo-user";
+
+    // El perfil es privado: sin sesión no hay nada que pedir. Antes se llamaba
+    // con "demo-user" y la ruta contestaba igual, ahora responde 401.
+    if (!user?.id || !token) {
+      setProfile(null);
+      setIsProfileLoading(false);
+      return;
+    }
 
     setIsProfileLoading(true);
 
-    fetch(`/api/profile?userId=${userId}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((data: ProfileResponse) => {
         if (isMounted) {
@@ -124,7 +137,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     return () => {
       isMounted = false;
     };
-  }, [router, user?.id]);
+  }, [router, user?.id, token]);
 
   // Cargar imágenes de noticias
   useEffect(() => {
@@ -334,6 +347,9 @@ function HomePageContent({ forcedSection }: HomePageProps) {
       <div className="relative z-10 max-w-7xl mx-auto p-4">
         {/* Header */}
         <Header />
+
+        {/* Acceso rápido (solo móvil) */}
+        <MobileQuickNav rouletteEnabled={isRouletteEnabled} />
 
         {/* Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_280px] gap-4">

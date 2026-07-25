@@ -1,7 +1,14 @@
 "use client";
 
+// La sala de juego (/partidas/[id]). Decide qué vista montar:
+//   · sala-dm.tsx     si eres el DM (admin)
+//   · sala-player.tsx si eres jugador
+// Ambas se alimentan de GET /api/partidas/[id]/sala, que se consulta cada pocos
+// segundos para mantener la sala al día.
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Header from "@/app/components/header";
@@ -10,8 +17,50 @@ import SalaDM from "@/app/components/sala-dm";
 import SalaPlayer from "@/app/components/sala-player";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
-import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
+import DescansoOverlay from "@/app/components/descanso-overlay";
+import CaidasOverlay from "@/app/components/caidas-overlay";
+import DesmembramientoOverlay from "@/app/components/desmembramiento-overlay";
+import PartidaFinalOverlay from "@/app/components/partida-final-overlay";
+import EstadoOverlay, { type EstadoFx } from "@/app/components/estado-overlay";
+import type {
+  SalaPartida,
+  SalaParticipante,
+  SalaEvento,
+  EventoDadoTirado,
+  EventoDescansoLargo,
+  EventoDescansoCorto,
+  EventoCaida,
+  EventoCansancio,
+  EventoDesmembramiento,
+  EventoConjuroLanzado,
+  EventoEjercitoBaja,
+} from "@/lib/types/sala";
+import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
+import type { DiceType } from "@/lib/types/dados";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+
+// Solo carga three/fiber cuando hay una tirada ajena que reproducir.
+const DiceOverlay = dynamic(() => import("@/app/components/dice-3d/dice-overlay"), { ssr: false });
+// Igual con el conjuro: la escena baja la primera vez que alguien lanza uno.
+const ConjuroOverlay = dynamic(() => import("@/app/components/conjuro-overlay"), { ssr: false });
+
+// La tirada del DM llega por broadcast: los espectadores reproducen la misma
+// animación con el resultado ya comprometido en el servidor.
+function overlayFromEvento(ev: EventoDadoTirado): DiceOverlayData {
+  return {
+    tipoDado: ev.tipoDado as DiceType,
+    recompensaNombre: ev.recompensaNombre,
+    personajeNombre: ev.personajeNombre,
+    result: {
+      resultados: ev.resultados,
+      tipoResultado: ev.tipoResultado as DiceOverlayData["result"]["tipoResultado"],
+      objeto: ev.objeto,
+      cantidadOro: ev.cantidadOro,
+      lutResultados: ev.lutResultados,
+      entregas: ev.entregas,
+    },
+  };
+}
 
 export default function SalaPage() {
   const params = useParams();
@@ -26,9 +75,106 @@ export default function SalaPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [showFinalModal, setShowFinalModal] = useState(false);
+  // Tirada de otro cliente pendiente de reproducir; key fuerza remontar el
+  // overlay si llega otra tirada mientras la anterior sigue abierta.
+  // `reveal` = el espectador es el destinatario de la recompensa: solo él ve el
+  // panel de premio; el resto ve caer el dado y lee el detalle en el log.
+  const [spectatorRoll, setSpectatorRoll] = useState<{ key: number; data: DiceOverlayData; reveal: boolean } | null>(null);
+  // Descanso pendiente de escenificar (fogata a pantalla completa)
+  const [restEvent, setRestEvent] = useState<EventoDescansoLargo | EventoDescansoCorto | null>(null);
+  // Overlays dramáticos que ve toda la sala; key remonta si llega otro evento
+  // mientras el anterior sigue abierto.
+  const [caidaFx, setCaidaFx] = useState<{ key: number; ev: EventoCaida } | null>(null);
+  const [desmFx, setDesmFx] = useState<{ key: number; ev: EventoDesmembramiento } | null>(null);
+  // Agotamiento y recuperación: solo los ve el jugador afectado.
+  const [estadoFx, setEstadoFx] = useState<{ key: number; fx: EstadoFx } | null>(null);
+  // Conjuro en escena; lo ve toda la sala. key remonta si encadenan lanzamientos.
+  const [conjuroFx, setConjuroFx] = useState<{ key: number; ev: EventoConjuroLanzado } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
+  const miPersonajeIdRef = useRef<number | null>(null);
+
+  // Aplica los resultados de un descanso al estado local de participantes.
+  // Usa los valores por personaje del evento (cubre a los que no tenían
+  // ración); los eventos antiguos sin esos campos caen al comportamiento previo.
+  const aplicarDescansoLocal = useCallback((ev: EventoDescansoLargo | EventoDescansoCorto) => {
+    const porId = new Map(ev.personajes.map((p) => [p.personajeId, p]));
+    setParticipantes((prev) =>
+      prev.map((p) => {
+        const r = porId.get(p.personajeId);
+        if (!r) return p;
+        return {
+          ...p,
+          caidas: r.caidas ?? (ev.tipo === "descanso_largo" ? 0 : p.caidas),
+          cansancio:
+            r.cansancio ??
+            (ev.tipo === "descanso_largo" ? Math.max(0, p.cansancio - 1) : p.cansancio),
+        };
+      }),
+    );
+  }, []);
+
+  // Aplica una baja de ejército al estado local: descuenta los regimientos
+  // caídos y saca la unidad de la lista si el regimiento fue aniquilado.
+  const aplicarBajaEjercito = useCallback((ev: EventoEjercitoBaja) => {
+    setParticipantes((prev) =>
+      prev.map((p) => {
+        if (p.personajeId !== ev.personajeId) return p;
+        return {
+          ...p,
+          // `restante` son soldados en pie, no regimientos: lo que cambia es el
+          // acumulado de caídos, nunca `cantidad` (esa es la compra del jugador).
+          ejercito: ev.aniquilada
+            ? p.ejercito.filter((u) => u.id !== ev.unidadId)
+            : p.ejercito.map((u) =>
+                u.id === ev.unidadId
+                  ? {
+                      ...u,
+                      soldadosCaidos:
+                        ev.soldadosCaidos ??
+                        Math.max(0, (u.soldados ?? 0) * u.cantidad - ev.restante),
+                    }
+                  : u,
+              ),
+        };
+      }),
+    );
+  }, []);
+
+  // Añade un evento evitando duplicados (mismo eventoId ya presente en el feed)
+  const appendEvento = useCallback((ev: SalaEvento) => {
+    setEventos((prev) => {
+      const id = (ev as { eventoId?: string }).eventoId;
+      if (id && prev.some((e) => (e as { eventoId?: string }).eventoId === id)) {
+        return prev;
+      }
+      return [...prev, ev];
+    });
+  }, []);
+
+  // Escenifica la caída o el desmembramiento para toda la sala (jugadores y DM);
+  // solo los eventos que empeoran (marcar caída, perder miembro) montan el overlay.
+  const triggerCaidaFx = useCallback((ev: EventoCaida) => {
+    if (ev.delta > 0) setCaidaFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+  }, []);
+
+  const triggerDesmFx = useCallback((ev: EventoDesmembramiento) => {
+    if (ev.desmembrado) setDesmFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+  }, []);
+
+  // Agotamiento (+1 cansancio) y recuperación (−1 caída): a diferencia de las
+  // caídas, solo se escenifican para el dueño del personaje afectado.
+  const triggerEstadoFx = useCallback((ev: EventoCaida | EventoCansancio) => {
+    if (ev.personajeId !== miPersonajeIdRef.current) return;
+    const fx: EstadoFx | null =
+      ev.tipo === "cansancio" && ev.delta > 0
+        ? { tipo: "cansancio", personajeNombre: ev.personajeNombre, cansancio: ev.cansancio }
+        : ev.tipo === "caida" && ev.delta < 0
+          ? { tipo: "recuperacion", personajeNombre: ev.personajeNombre, caidas: ev.caidas }
+          : null;
+    if (fx) setEstadoFx((p) => ({ key: (p?.key ?? 0) + 1, fx }));
+  }, []);
 
   const loadSala = useCallback(async () => {
     if (!token || !partidaId) return;
@@ -66,6 +212,20 @@ export default function SalaPage() {
 
   useEffect(() => { esAdminRef.current = esAdmin; }, [esAdmin]);
 
+  useEffect(() => {
+    miPersonajeIdRef.current =
+      !esAdmin && user
+        ? participantes.find((p) => p.usuarioId === user.id)?.personajeId ?? null
+        : null;
+  }, [esAdmin, user, participantes]);
+
+  // Persist feed to localStorage whenever eventos changes
+  useEffect(() => {
+    if (!partidaId) return;
+    try {
+      localStorage.setItem(`sala-eventos-${partidaId}`, JSON.stringify(eventos));
+    } catch { }
+  }, [eventos, partidaId]);
 
   // Supabase Realtime channel
   useEffect(() => {
@@ -77,12 +237,25 @@ export default function SalaPage() {
 
     channel
       .on("broadcast", { event: "dado_tirado" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
+        // El emisor no recibe su propio broadcast: todo dado_tirado entrante
+        // es de otro cliente y se reproduce con la animación completa.
+        if (payload.tipo === "dado_tirado") {
+          setSpectatorRoll((prev) => ({
+            key: (prev?.key ?? 0) + 1,
+            data: overlayFromEvento(payload),
+            reveal: payload.personajeId === miPersonajeIdRef.current,
+          }));
+        }
       })
       .on("broadcast", { event: "asignacion_manual" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
+        appendEvento(payload);
+      })
+      .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
       })
       .on("broadcast", { event: "partida_cerrada" }, () => {
+        try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
         if (esAdminRef.current) {
           router.push("/partidas");
         } else {
@@ -92,24 +265,81 @@ export default function SalaPage() {
       .on("broadcast", { event: "partida_iniciada" }, () => {
         void loadSala();
       })
-      .on("broadcast", { event: "consumible_usado" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
-      })
-      .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
-        setEventos((prev) => [...prev, payload]);
-        if (payload.tipo === "desmembramiento") {
+      .on("broadcast", { event: "caida" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "caida") {
+          triggerCaidaFx(payload);
+          triggerEstadoFx(payload);
           setParticipantes((prev) =>
             prev.map((p) =>
               p.personajeId === payload.personajeId
                 ? {
-                    ...p,
-                    extremidades: {
-                      ...(p.extremidades ?? {}),
-                      ...(payload.desmembrado
-                        ? { [payload.miembro]: false }
-                        : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
-                    },
-                  }
+                  ...p,
+                  caidas: payload.caidas,
+                  derrotado: payload.derrotado,
+                  cansancio: payload.cansancio ?? p.cansancio,
+                }
+                : p,
+            ),
+          );
+        }
+      })
+      .on("broadcast", { event: "cansancio" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "cansancio") {
+          triggerEstadoFx(payload);
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? { ...p, cansancio: payload.cansancio }
+                : p,
+            ),
+          );
+        }
+      })
+      .on("broadcast", { event: "descanso_largo" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "descanso_largo") {
+          setRestEvent(payload);
+          aplicarDescansoLocal(payload);
+        }
+      })
+      .on("broadcast", { event: "descanso_corto" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "descanso_corto") {
+          setRestEvent(payload);
+          aplicarDescansoLocal(payload);
+        }
+      })
+      .on("broadcast", { event: "sala_avanzada" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+      })
+      .on("broadcast", { event: "conjuro_lanzado" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "conjuro_lanzado") {
+          setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev: payload }));
+        }
+      })
+      .on("broadcast", { event: "ejercito_baja" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "ejercito_baja") aplicarBajaEjercito(payload);
+      })
+      .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "desmembramiento") {
+          triggerDesmFx(payload);
+          setParticipantes((prev) =>
+            prev.map((p) =>
+              p.personajeId === payload.personajeId
+                ? {
+                  ...p,
+                  extremidades: {
+                    ...(p.extremidades ?? {}),
+                    ...(payload.desmembrado
+                      ? { [payload.miembro]: false }
+                      : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[payload.miembro]; return ex; })()),
+                  },
+                }
                 : p,
             ),
           );
@@ -123,7 +353,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated]);
+  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, aplicarBajaEjercito, triggerCaidaFx, triggerDesmFx, triggerEstadoFx]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -133,6 +363,7 @@ export default function SalaPage() {
     });
 
     if (ev.tipo === "partida_cerrada") {
+      try { localStorage.removeItem(`sala-eventos-${partidaId}`); } catch { }
       if (esAdmin) {
         router.push("/partidas");
       } else {
@@ -146,24 +377,74 @@ export default function SalaPage() {
       return;
     }
 
-    if (ev.tipo === "desmembramiento") {
-      setEventos((prev) => [...prev, ev]);
+    if (ev.tipo === "caida") {
+      appendEvento(ev);
+      triggerCaidaFx(ev);
+      triggerEstadoFx(ev);
       setParticipantes((prev) =>
         prev.map((p) =>
           p.personajeId === ev.personajeId
             ? {
-                ...p,
-                extremidades: ev.desmembrado
-                  ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
-                  : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
-              }
+              ...p,
+              caidas: ev.caidas,
+              derrotado: ev.derrotado,
+              cansancio: ev.cansancio ?? p.cansancio,
+            }
             : p,
         ),
       );
       return;
     }
 
-    setEventos((prev) => [...prev, ev]);
+    if (ev.tipo === "cansancio") {
+      appendEvento(ev);
+      triggerEstadoFx(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId ? { ...p, cansancio: ev.cansancio } : p,
+        ),
+      );
+      return;
+    }
+
+    if (ev.tipo === "descanso_largo" || ev.tipo === "descanso_corto") {
+      appendEvento(ev);
+      setRestEvent(ev);
+      aplicarDescansoLocal(ev);
+      return;
+    }
+
+    if (ev.tipo === "conjuro_lanzado") {
+      appendEvento(ev);
+      setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+      return;
+    }
+
+    if (ev.tipo === "ejercito_baja") {
+      appendEvento(ev);
+      aplicarBajaEjercito(ev);
+      return;
+    }
+
+    if (ev.tipo === "desmembramiento") {
+      appendEvento(ev);
+      triggerDesmFx(ev);
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.personajeId === ev.personajeId
+            ? {
+              ...p,
+              extremidades: ev.desmembrado
+                ? { ...(p.extremidades ?? {}), [ev.miembro]: false }
+                : (() => { const ex = { ...(p.extremidades ?? {}) }; delete ex[ev.miembro]; return ex; })(),
+            }
+            : p,
+        ),
+      );
+      return;
+    }
+
+    appendEvento(ev);
   }
 
   // Compute player's own personajeId for the final modal
@@ -173,10 +454,10 @@ export default function SalaPage() {
 
   const mySessionItems = myPersonajeId != null
     ? eventos.filter(
-        (ev) =>
-          (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
-          (ev as any).personajeId === myPersonajeId,
-      )
+      (ev) =>
+        (ev.tipo === "dado_tirado" || ev.tipo === "asignacion_manual") &&
+        (ev as any).personajeId === myPersonajeId,
+    )
     : [];
 
   if (isLoading) {
@@ -258,6 +539,7 @@ export default function SalaPage() {
                     participantes={participantes}
                     eventos={eventos}
                     token={token}
+                    usuarioId={user?.id ?? null}
                     onEvent={handleEvent}
                   />
                 )}
@@ -267,101 +549,82 @@ export default function SalaPage() {
         </div>
       </div>
 
-      {/* Modal: Partida finalizada (jugadores) */}
+      {/* Escena del descanso (jugadores y DM) */}
+      {restEvent && (
+        <DescansoOverlay
+          tipo={restEvent.tipo === "descanso_corto" ? "corto" : "largo"}
+          subtitulo={
+            restEvent.tipo === "descanso_corto"
+              ? "El grupo toma un respiro y comparte las raciones"
+              : "El grupo acampa y recupera fuerzas"
+          }
+          personajes={restEvent.personajes}
+          onDone={() => setRestEvent(null)}
+        />
+      )}
+
+      {/* Tirada del DM reproducida en espectadores. El panel de premio solo se
+          revela al destinatario; los demás ven la tirada y el detalle va al log. */}
+      {spectatorRoll && (
+        <DiceOverlay
+          key={spectatorRoll.key}
+          data={spectatorRoll.data}
+          revealReward={spectatorRoll.reveal}
+          onFinished={() => {}}
+          onClose={() => setSpectatorRoll(null)}
+        />
+      )}
+
+      {/* Caída / derrota escenificada para toda la sala */}
+      {caidaFx && (
+        <CaidasOverlay
+          key={caidaFx.key}
+          evento={caidaFx.ev}
+          esPropio={caidaFx.ev.personajeId === myPersonajeId}
+          onDone={() => setCaidaFx(null)}
+        />
+      )}
+
+      {/* Agotamiento / recuperación: solo para el jugador afectado */}
+      {estadoFx && (
+        <EstadoOverlay key={estadoFx.key} fx={estadoFx.fx} onDone={() => setEstadoFx(null)} />
+      )}
+
+      {/* Conjuro lanzado: lo ve toda la sala, teñido por su escuela */}
+      {conjuroFx && (
+        <ConjuroOverlay
+          key={conjuroFx.key}
+          data={{
+            personajeNombre: conjuroFx.ev.personajeNombre,
+            conjuro: conjuroFx.ev.conjuro,
+            spellLevel: conjuroFx.ev.spellLevel,
+            escuela: conjuroFx.ev.escuela,
+          }}
+          onDone={() => setConjuroFx(null)}
+        />
+      )}
+
+      {/* Desmembramiento escenificado para toda la sala */}
+      {desmFx && (
+        <DesmembramientoOverlay key={desmFx.key} evento={desmFx.ev} onDone={() => setDesmFx(null)} />
+      )}
+
+      {/* Cierre ceremonial: Partida finalizada (jugadores) */}
       {showFinalModal && partida && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
-            <div className="p-5 border-b border-border">
-              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-1">Fin de la aventura</p>
-              <h2 className="text-lg font-bold text-gold">⚔️ {partida.titulo}</h2>
-              <p className="text-sm text-foreground/50 font-sans mt-1">La partida ha finalizado.</p>
-            </div>
-
-            <div className="p-5 flex flex-col gap-3 overflow-y-auto max-h-[50vh]">
-              <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
-                Lo que recibiste en la sesión
-              </p>
-              {mySessionItems.length === 0 ? (
-                <p className="text-sm text-foreground/30 italic font-sans">Sin asignaciones registradas.</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {mySessionItems.map((ev, i) => {
-                    if (ev.tipo === "dado_tirado") {
-                      if (ev.lutResultados && ev.lutResultados.length > 0) {
-                        const items = ev.lutResultados.filter(
-                          (r: any) => r.tipo === "item" || (r.tipo === "subtabla" && r.subRoll?.objeto),
-                        );
-                        const oro = ev.lutResultados
-                          .filter((r: any) => r.tipo === "oro")
-                          .reduce((acc: number, r: any) => acc + (r.oroDetalle?.cantidadOro ?? 0), 0) +
-                          ev.lutResultados
-                            .filter((r: any) => r.tipo === "subtabla" && r.subRoll?.cantidadOro)
-                            .reduce((acc: number, r: any) => acc + (r.subRoll?.cantidadOro ?? 0), 0);
-                        return (
-                          <div key={i} className="flex flex-wrap gap-2 py-1 border-b border-border/30 last:border-0">
-                            {items.map((r: any, j: number) => {
-                              const obj = r.tipo === "item" ? r.objeto : r.subRoll?.objeto;
-                              return obj ? (
-                                <span key={j} className="text-sm text-green-400 font-semibold">
-                                  {obj.icono} {obj.nombre}
-                                </span>
-                              ) : null;
-                            })}
-                            {oro > 0 && (
-                              <span className="text-sm text-gold font-semibold">+{oro.toLocaleString("es-ES")} oro</span>
-                            )}
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
-                          {ev.tipoResultado === "item" && ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold">{ev.objeto.icono} {ev.objeto.nombre}</span>
-                          ) : ev.tipoResultado === "oro" && ev.cantidadOro ? (
-                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
-                          ) : (
-                            <span className="text-sm text-foreground/30 italic">Sin recompensa</span>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (ev.tipo === "asignacion_manual") {
-                      return (
-                        <div key={i} className="flex gap-2 py-1 border-b border-border/30 last:border-0">
-                          {ev.objeto ? (
-                            <span className="text-sm text-green-400 font-semibold">
-                              {ev.objeto.icono} {ev.objeto.nombre}{ev.cantidad && ev.cantidad > 1 ? ` ×${ev.cantidad}` : ""}
-                            </span>
-                          ) : ev.cantidadOro ? (
-                            <span className="text-sm text-gold font-semibold">+{ev.cantidadOro.toLocaleString("es-ES")} oro</span>
-                          ) : null}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2 p-5 border-t border-border">
-              <button
-                type="button"
-                onClick={() => router.push("/partidas")}
-                className="px-4 py-2 rounded border border-border bg-secondary hover:bg-muted text-sm font-sans"
-              >
-                Ir a partidas
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/perfil")}
-                className="px-4 py-2 rounded bg-gold/20 border border-gold/40 hover:bg-gold/30 text-gold text-sm font-semibold font-sans"
-              >
-                🏠 Pagar posada
-              </button>
-            </div>
-          </div>
-        </div>
+        <PartidaFinalOverlay
+          titulo={partida.titulo}
+          eventos={mySessionItems}
+          onIrPartidas={() => {
+            // Tras el cierre ceremonial: si el DM concedió niveles, ahora toca
+            // la celebración de ascenso (GlobalLevelUp escucha este evento).
+            window.dispatchEvent(new CustomEvent("profile:refresh"));
+            router.push("/partidas");
+          }}
+          onPagarPosada={() => {
+            window.dispatchEvent(new CustomEvent("profile:refresh"));
+            router.push("/profile");
+          }}
+        />
       )}
     </div>
   );

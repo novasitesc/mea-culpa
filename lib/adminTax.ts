@@ -1,3 +1,17 @@
+// Impuesto global del admin: cobra la misma cantidad de oro a TODAS las cuentas
+// de golpe, y quien no puede pagar entero pierde un personaje.
+//
+// Regla completa:
+//   1. Se cobra `amount` a cada usuario. Si no tiene tanto, se le vacía el oro
+//      (cobro parcial) y queda una deuda (`shortfall`).
+//   2. Con deuda > 0, muere su personaje vivo de MAYOR nivel total (suma de los
+//      niveles de sus clases). Si empatan varios, se elige uno al azar.
+//   3. Si no le queda ningún personaje vivo, solo se le vacía el oro.
+//
+// Se ejecuta en dos pasos deliberadamente: `previewMassTax` enseña al admin
+// exactamente qué va a pasar (quién muere, cuánto se cobra) SIN tocar nada, y
+// `executeMassTax` lo aplica. Ambos comparten el mismo cálculo (`runMassTax`)
+// para que la vista previa no pueda mentir respecto a la ejecución real.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const TAX_CONCEPT_FULL = "impuesto_admin_global";
@@ -67,6 +81,7 @@ export type AdminTaxResult = {
   rows: AdminTaxResultRow[];
 };
 
+/** Nivel total del personaje = suma de los niveles de sus clases (hasta 3). */
 function calculateTotalLevel(clases: AliveCharacterRow["clases_personaje"]): number {
   if (!Array.isArray(clases) || clases.length === 0) {
     return 0;
@@ -78,6 +93,7 @@ function calculateTotalLevel(clases: AliveCharacterRow["clases_personaje"]): num
   }, 0);
 }
 
+/** Totales agregados de la tabla de resultados, para la cabecera del panel. */
 function buildSummary(amount: number, rows: AdminTaxResultRow[]): AdminTaxSummary {
   const summary: AdminTaxSummary = {
     totalAccounts: rows.length,
@@ -111,6 +127,12 @@ function buildSummary(amount: number, rows: AdminTaxResultRow[]): AdminTaxSummar
   return summary;
 }
 
+/**
+ * Elige qué personaje muere por impago: el de mayor nivel total, y si hay
+ * empate uno al azar entre los empatados. `tieCandidates` se devuelve para que
+ * el panel avise al admin de que el resultado real puede variar respecto a la
+ * vista previa (el azar se vuelve a tirar al ejecutar).
+ */
 function pickCandidate(characters: CharacterCandidate[]): {
   winner: CharacterCandidate | null;
   tieCandidates: number;
@@ -134,6 +156,16 @@ function pickCandidate(characters: CharacterCandidate[]): {
   };
 }
 
+/**
+ * Cálculo compartido por la vista previa y la ejecución.
+ *
+ * `apply: false` → solo simula y devuelve la tabla de lo que pasaría.
+ * `apply: true`  → además ejecuta el cobro y las muertes.
+ *
+ * Carga perfiles y personajes vivos en 2 consultas (no una por usuario), y
+ * luego recorre cuenta por cuenta. Un fallo en una cuenta se marca con
+ * `status: "error"` en su fila y no aborta el resto del cobro.
+ */
 async function runMassTax(params: {
   db: SupabaseClient;
   amount: number;
@@ -296,6 +328,7 @@ async function runMassTax(params: {
   };
 }
 
+/** Simulacro: enseña el resultado del impuesto sin tocar la base de datos. */
 export async function previewMassTax(params: {
   db: SupabaseClient;
   amount: number;
@@ -303,6 +336,7 @@ export async function previewMassTax(params: {
   return runMassTax({ db: params.db, amount: params.amount, apply: false });
 }
 
+/** Aplica el impuesto de verdad: descuenta oro y mata a los morosos. */
 export async function executeMassTax(params: {
   db: SupabaseClient;
   amount: number;

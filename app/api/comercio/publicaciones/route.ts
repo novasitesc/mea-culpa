@@ -1,3 +1,7 @@
+// GET / POST — El escaparate del mercado entre jugadores.
+// GET  lista lo publicado por los demás.
+// POST publica un objeto propio: sale de la bolsa y queda EN DEPÓSITO en la
+//      publicación (no se puede vender dos veces lo mismo).
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
@@ -111,14 +115,22 @@ export async function POST(request: Request) {
   const bagRowId = Number(body.bagRowId);
   const price = Number(body.price);
 
+  // `precio` es INT en la base: un precio de 2^31 o con decimales llegaba a
+  // Postgres y volvía como 500 con el mensaje crudo (incluido el nombre de la
+  // constraint). Se acota aquí y se responde 400.
+  const PRECIO_MAX = 2147483647;
+
   if (
     !Number.isFinite(characterId) ||
     !Number.isFinite(bagRowId) ||
-    !Number.isFinite(price) ||
-    price <= 0
+    !Number.isInteger(price) ||
+    price <= 0 ||
+    price > PRECIO_MAX
   ) {
     return NextResponse.json(
-      { error: "characterId, bagRowId y price son requeridos" },
+      {
+        error: `characterId, bagRowId y price son requeridos; price debe ser un entero entre 1 y ${PRECIO_MAX}`,
+      },
       { status: 400 },
     );
   }

@@ -14,6 +14,8 @@ export const ITEM_TYPE_OPTIONS = [
   "ingrediente",
   "misc",
   "capa",
+  // Sólo puede guardarse en el inventario de ejército (lib/ejercito.ts).
+  "ejército",
 ] as const;
 
 export const ITEM_RARITY_OPTIONS = [
@@ -32,6 +34,15 @@ export const ITEM_RARITY_COLORS: Record<ItemRarity, string> = {
   raro: "text-blue-400 border-blue-800",
   épico: "text-purple-400 border-purple-800",
   legendario: "text-gold border-gold-dim",
+};
+
+/** Hex de cada rareza, para halos y bordes que se pintan con style inline. */
+export const ITEM_RARITY_HEX: Record<ItemRarity, string> = {
+  común: "#94a3b8",
+  "poco común": "#4ade80",
+  raro: "#60a5fa",
+  épico: "#c084fc",
+  legendario: "#d4af37",
 };
 
 export const ITEM_RARITY_BADGES: Record<ItemRarity, string> = {

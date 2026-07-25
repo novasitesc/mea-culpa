@@ -1,3 +1,6 @@
+// POST — Paso 2 de la resurrección pagada: cobra la orden aprobada y, si el
+// cobro va bien, revive el personaje.
+// La marca `effect_applied` evita revivirlo dos veces si además llega el webhook.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

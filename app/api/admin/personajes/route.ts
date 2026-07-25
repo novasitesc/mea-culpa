@@ -1,3 +1,4 @@
+// GET — Solo admin. Lista simple de personajes, para los selectores del panel.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

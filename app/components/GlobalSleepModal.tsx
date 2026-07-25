@@ -1,9 +1,17 @@
 "use client";
 
+// Modal de descanso obligatorio, montado globalmente: si el jugador debe un
+// descanso tras una expedición, aparece donde esté y no le deja seguir sin
+// resolverlo ("duerme o muere").
+
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Moon, Skull } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import CaidasTracker from "@/app/components/caidas-tracker";
+import DescansoOverlay from "@/app/components/descanso-overlay";
+import { MAX_CANSANCIO } from "@/lib/caidas";
 
 type SleepOption = {
   id: string;
@@ -17,6 +25,8 @@ type SleepPendingCharacter = {
   pendingId: string;
   characterId: number;
   characterName: string;
+  characterCaidas: number;
+  characterCansancio: number;
   partidaId: string | null;
   partidaTitle: string;
   requiredAt: string | null;
@@ -37,26 +47,47 @@ type Alert = {
 };
 
 export default function GlobalSleepModal() {
-  const { isAuthenticated, token, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [sleepStatus, setSleepStatus] = useState<SleepStatusResponse | null>(null);
   const [loadingSleepStatus, setLoadingSleepStatus] = useState(false);
   const [resolvingSleep, setResolvingSleep] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [alert, setAlert] = useState<Alert | null>(null);
+  // Escena de descanso tras pagar la posada (animación + sonido)
+  const [restScene, setRestScene] = useState<{
+    subtitulo: string;
+    personajes: Array<{ personajeId: number; nombre: string; caidasPrevias: number; cansancioPrevio: number }>;
+  } | null>(null);
   const isFetching = useRef(false);
 
   const showAlert = (title: string, message: string, variant: Alert["variant"]) => {
     setAlert({ id: Date.now(), title, message, variant });
   };
 
+  // getSession() renueva el access token automáticamente si expiró, lo que
+  // evita disparar peticiones con un token vencido (401) tras restaurar la
+  // sesión o cuando el token caduca entre ticks del polling.
+  const getFreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
+      return session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const loadSleepStatus = useCallback(async () => {
-    if (!isAuthenticated || !token || isFetching.current) return;
+    if (!isAuthenticated || isFetching.current) return;
 
     isFetching.current = true;
     setLoadingSleepStatus(true);
     try {
+      const freshToken = await getFreshToken();
+      if (!freshToken) return;
       const res = await fetch("/api/profile/sleep-options", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${freshToken}` },
       });
       if (!res.ok) return;
       const data = (await res.json()) as SleepStatusResponse;
@@ -67,14 +98,26 @@ export default function GlobalSleepModal() {
       setLoadingSleepStatus(false);
       setTimeout(() => { isFetching.current = false; }, 1000);
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, getFreshToken]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated) return;
     loadSleepStatus();
     const id = window.setInterval(loadSleepStatus, 60_000);
     return () => window.clearInterval(id);
-  }, [isAuthenticated, token, loadSleepStatus]);
+  }, [isAuthenticated, loadSleepStatus]);
+
+  // Al volver al perfil tras cerrar una partida se emite "profile:refresh":
+  // recargamos el estado para que el descanso obligatorio aparezca de inmediato
+  // sin depender de que el realtime esté replicando o del poll de 60s. Sin esto,
+  // el modal podía tardar hasta un minuto en salir (y con él, el descanso largo
+  // que devuelve caídas, cansancio y espacios de conjuro).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handler = () => { loadSleepStatus(); };
+    window.addEventListener("profile:refresh", handler);
+    return () => window.removeEventListener("profile:refresh", handler);
+  }, [isAuthenticated, loadSleepStatus]);
 
   // Suscripción Realtime: detecta el INSERT en descansos_pendientes al instante
   useEffect(() => {
@@ -99,19 +142,27 @@ export default function GlobalSleepModal() {
   }, [isAuthenticated, user?.id, loadSleepStatus]);
 
   const pendingCharacter = sleepStatus?.pendingCharacters?.[0] ?? null;
+  // Al nivel 6 de agotamiento el personaje muere (D&D 5e 2014): un punto más lo mata.
+  const riesgoMuerte = (pendingCharacter?.characterCansancio ?? 0) >= MAX_CANSANCIO - 1;
 
   const resolveSleepDecision = async (
     pendingId: string,
     action: "pay" | "decline",
     optionId?: string,
   ) => {
-    if (!token) return;
     setResolvingSleep(true);
+    // Snapshot antes de refrescar: loadSleepStatus vaciará pendingCharacters
+    const snapshot = pendingCharacter;
+    const optionName = sleepStatus?.options.find((o) => o.id === optionId)?.name ?? null;
     try {
+      const freshToken = await getFreshToken();
+      if (!freshToken) {
+        throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+      }
       const res = await fetch("/api/profile/sleep-options", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${freshToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ pendingId, action, optionId: optionId ?? null }),
@@ -124,11 +175,27 @@ export default function GlobalSleepModal() {
         throw new Error(String(data.error ?? message));
       }
 
-      showAlert(
-        data.dead ? "Cansancio acumulado" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
-        message,
-        data.dead ? "warning" : data.eliminated ? "error" : "success",
-      );
+      if (action === "pay" && data.success && snapshot) {
+        setRestScene({
+          subtitulo: optionName
+            ? `${snapshot.characterName} descansa en ${optionName} y recupera fuerzas`
+            : `${snapshot.characterName} descansa y recupera fuerzas`,
+          personajes: [
+            {
+              personajeId: snapshot.characterId,
+              nombre: snapshot.characterName,
+              caidasPrevias: snapshot.characterCaidas,
+              cansancioPrevio: snapshot.characterCansancio,
+            },
+          ],
+        });
+      } else {
+        showAlert(
+          data.dead ? "Muerte por agotamiento" : data.eliminated ? "Personaje eliminado" : "Descanso resuelto",
+          message,
+          data.dead || data.eliminated ? "error" : "success",
+        );
+      }
 
       setShowConfirm(false);
 
@@ -149,23 +216,42 @@ export default function GlobalSleepModal() {
     }
   };
 
-  if (!pendingCharacter) return null;
+  const alertNode = alert && (
+    <FantasyAlert
+      key={alert.id}
+      open
+      title={alert.title}
+      message={alert.message}
+      variant={alert.variant}
+      onClose={() => setAlert(null)}
+    />
+  );
+
+  const restSceneNode = restScene && (
+    <DescansoOverlay
+      subtitulo={restScene.subtitulo}
+      personajes={restScene.personajes}
+      onDone={() => setRestScene(null)}
+    />
+  );
+
+  // Tras resolver el último descanso, la lista queda vacía: el alert o la
+  // escena de descanso deben seguir visibles aunque ya no haya modal.
+  if (!pendingCharacter || restScene) {
+    return (
+      <>
+        {alertNode}
+        {restSceneNode}
+      </>
+    );
+  }
 
   return (
     <>
-      {alert && (
-        <FantasyAlert
-          key={alert.id}
-          open
-          title={alert.title}
-          message={alert.message}
-          variant={alert.variant}
-          onClose={() => setAlert(null)}
-        />
-      )}
+      {alertNode}
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-2xl rounded-xl border-2 border-[#8B7355] bg-[#12100d] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-[#B8860B]">
               Descanso Obligatorio
@@ -175,9 +261,41 @@ export default function GlobalSleepModal() {
             </h2>
             <p className="text-sm text-muted-foreground mt-2">
               La partida &quot;{pendingCharacter.partidaTitle}&quot; finalizó. Si no pagas el
-              descanso, el personaje acumulará un punto de cansancio.
+              descanso, el personaje{" "}
+              {riesgoMuerte
+                ? "morirá de agotamiento"
+                : `acumulará un punto de cansancio${pendingCharacter.characterCaidas > 0 ? " y conservará sus caídas" : ""}`}
+              .
             </p>
           </div>
+
+          {pendingCharacter.characterCaidas > 0 && (
+            <div className="rounded border border-red-900/50 bg-red-950/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+              <CaidasTracker caidas={pendingCharacter.characterCaidas} size="md" showLabel />
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-[#D4AF37]" />
+                El descanso largo restaurará sus caídas.
+              </p>
+            </div>
+          )}
+
+          {pendingCharacter.characterCansancio > 0 && (
+            <div
+              className={`rounded border p-3 flex items-center gap-2.5 ${
+                riesgoMuerte
+                  ? "border-red-700/70 bg-red-950/40 animate-in fade-in duration-300"
+                  : "border-border/70 bg-secondary/20"
+              }`}
+            >
+              {riesgoMuerte && <Skull className="w-5 h-5 text-red-500 shrink-0 cd-token-doom rounded-full" />}
+              <p className={`text-xs ${riesgoMuerte ? "text-red-200" : "text-muted-foreground"}`}>
+                Cansancio: {pendingCharacter.characterCansancio}/{MAX_CANSANCIO}.{" "}
+                {riesgoMuerte
+                  ? "Un punto más de agotamiento lo matará. Si no descansa, morirá."
+                  : "El descanso largo reducirá 1 nivel de cansancio."}
+              </p>
+            </div>
+          )}
 
           <div className="rounded border border-border/70 bg-secondary/20 p-3 text-sm text-muted-foreground">
             Oro disponible:{" "}
@@ -221,17 +339,30 @@ export default function GlobalSleepModal() {
               disabled={resolvingSleep || loadingSleepStatus}
               className="w-full px-4 py-2 rounded border border-red-700/60 text-red-300 hover:bg-red-900/20 transition disabled:opacity-60"
             >
-              No pagar (acumular punto de cansancio)
+              {riesgoMuerte ? "No pagar (morir de agotamiento)" : "No pagar (acumular punto de cansancio)"}
             </button>
           </div>
         </div>
 
         {showConfirm && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70">
-            <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 animate-in fade-in duration-200">
+            <div className="w-full max-w-md rounded-xl border border-red-700/70 bg-[#1b0f0d] p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
               <h3 className="text-lg font-semibold text-red-300">Confirmar</h3>
               <p className="text-sm text-red-100/90 leading-relaxed">
-                El personaje acumulará un punto de cansancio. ¿Estás seguro?
+                {riesgoMuerte ? (
+                  <>
+                    El personaje alcanzará {MAX_CANSANCIO} niveles de agotamiento y{" "}
+                    <span className="font-bold text-red-300 uppercase">morirá</span>. ¿Estás seguro?
+                  </>
+                ) : (
+                  <>
+                    El personaje acumulará un punto de cansancio
+                    {pendingCharacter.characterCaidas > 0
+                      ? ` y conservará sus ${pendingCharacter.characterCaidas} caída${pendingCharacter.characterCaidas === 1 ? "" : "s"} hasta un descanso largo`
+                      : ""}
+                    . ¿Estás seguro?
+                  </>
+                )}
               </p>
               <div className="flex gap-3">
                 <button

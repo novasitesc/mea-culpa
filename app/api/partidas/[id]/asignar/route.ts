@@ -1,3 +1,6 @@
+// POST — Solo admin (el DM). Reparte un objeto a un participante durante la
+// partida. Delega en asignarItem() (lib/asignarItem.ts), que respeta la
+// capacidad de la bolsa y puede entregar menos de lo pedido si no cabe.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { asignarItem } from "@/lib/asignarItem";
@@ -93,10 +96,21 @@ export async function POST(
       cantidad: assignResult.grantedQty,
     });
 
+    // La bolsa puede no tener sitio para todo lo pedido, y antes la respuesta solo
+    // traía la cantidad final: el DM creía haber entregado 3 y habían entrado 1.
+    const truncado = assignResult.grantedQty < cantidad;
+
     return NextResponse.json({
       tipo: "item",
       objeto: objData,
       cantidad: assignResult.grantedQty,
+      cantidadSolicitada: cantidad,
+      truncado,
+      ...(truncado
+        ? {
+            aviso: `Solo cupieron ${assignResult.grantedQty} de ${cantidad}: la bolsa de ${personajeNombre || "el personaje"} está llena`,
+          }
+        : {}),
     });
   }
 

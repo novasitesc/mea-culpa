@@ -1,16 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords, Dices } from "lucide-react";
-import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
-import { useAuth } from "@/lib/useAuth";
+// Navegación lateral en escritorio.
 
-type OpenPartida = {
-  isFull: boolean;
-  inCooldown: boolean;
-  joinedCharacterIds: number[];
-};
+import { useRouter, usePathname } from "next/navigation";
+import { ShoppingBag, Wallet, Calendar, Store, Scroll, Dice6, Shield, Swords } from "lucide-react";
+import { useRouletteEnabled } from "@/lib/useRouletteEnabled";
+import { useOpenPartidasCount } from "@/lib/useOpenPartidasCount";
 
 // ─── Definición de ítems ──────────────────────────────────────────────────
 
@@ -98,53 +93,10 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token, isAuthenticated } = useAuth();
   const { rouletteEnabled: effectiveRouletteEnabled } = useRouletteEnabled({
     providedEnabled: rouletteEnabled,
   });
-  const [availableGamesCount, setAvailableGamesCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated || !token) {
-      setAvailableGamesCount(null);
-      return;
-    }
-
-    let isMounted = true;
-
-    const loadAvailableGamesCount = async () => {
-      try {
-        const res = await fetch("/api/partidas", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          throw new Error("No se pudieron cargar las partidas");
-        }
-
-        const data = (await res.json()) as OpenPartida[];
-        const count = (data ?? []).filter((game) => !game.isFull).length;
-
-        if (isMounted) {
-          setAvailableGamesCount(count);
-        }
-      } catch {
-        if (isMounted) {
-          setAvailableGamesCount(null);
-        }
-      }
-    };
-
-    void loadAvailableGamesCount();
-    const intervalId = window.setInterval(() => {
-      void loadAvailableGamesCount();
-    }, 30000);
-
-    return () => {
-      isMounted = false;
-      window.clearInterval(intervalId);
-    };
-  }, [isAuthenticated, token]);
+  const availableGamesCount = useOpenPartidasCount();
 
   const isActive = (item: (typeof sidebarItems)[number]): boolean => {
     if (item.href) {
@@ -165,7 +117,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="space-y-3">
+    <aside className="hidden space-y-3 lg:block">
       {sidebarItems.map((item) => {
         const staticDisabled = "disabled" in item && item.disabled;
         const roulettePending =

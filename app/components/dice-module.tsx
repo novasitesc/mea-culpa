@@ -1,16 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Coins, Package, List, Loader2, ChevronDown, ChevronUp, Dices } from "lucide-react";
+// Módulo de tirada de dados: pide la tirada al servidor y anima el resultado.
+//
+// Quién decide qué sale es SIEMPRE el servidor (POST /api/dados/roll); esto solo
+// lo representa. El `rollId` permite recuperar la tirada si se refresca la
+// página a media animación, en vez de generar otra distinta.
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
+import { Coins, Package, List, Loader2, ChevronDown, ChevronUp, Dices, UserRound } from "lucide-react";
 import DiceVisual from "./dice-visual";
 import FantasyAlert from "@/components/ui/fantasy-alert";
+import { getIconForString } from "@/lib/iconMapper";
+import { primeDiceSound } from "./dice-3d/dice-sound";
+import type { DiceOverlayData } from "./dice-3d/dice-overlay";
 import type { DadoRecompensa, RollResult, LutCaraResult } from "@/lib/types/dados";
+
+// Solo carga three/fiber cuando hay una tirada que animar.
+const DiceOverlay = dynamic(() => import("./dice-3d/dice-overlay"), { ssr: false });
 
 type Props = {
   token: string | null;
   rollApiUrl?: string;
   extraBody?: Record<string, unknown>;
   hideCost?: boolean;
+  /** Nombre del receptor de ítems en contexto partida (para el panel de entrega). */
+  personajeNombre?: string;
   onRollComplete?: (result: RollResult & { recompensaNombre: string; tipoDado: string }) => void;
 };
 
@@ -19,11 +35,13 @@ type AlertState = {
   message: string;
 } | null;
 
-const TIPO_LABEL: Record<string, string> = {
-  item_fijo: "Ítem garantizado",
-  sublista: "Tabla de ítems",
-  oro_dados: "Oro por dados",
-  lut: "Tabla D20",
+type Personaje = { id: number; nombre: string };
+
+type PendingRoll = {
+  rollId: string;
+  tipoDado: string;
+  recompensaNombre: string;
+  personajeNombre?: string;
 };
 
 const TIPO_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -44,8 +62,19 @@ function rewardDescription(r: DadoRecompensa): string {
   return "";
 }
 
-export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onRollComplete }: Props) {
+function newRollId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, personajeNombre, onRollComplete }: Props) {
   const [recompensas, setRecompensas] = useState<DadoRecompensa[]>([]);
+  const [personajes, setPersonajes] = useState<Personaje[]>([]);
+  const [personajeId, setPersonajeId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [rollingState, setRollingState] = useState<"idle" | "rolling" | "done">("idle");
@@ -54,6 +83,12 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
   const [alert, setAlert] = useState<AlertState>(null);
   const [expanded, setExpanded] = useState(true);
   const [cantidad, setCantidad] = useState(1);
+  const [overlay, setOverlay] = useState<DiceOverlayData | null>(null);
+
+  const esPersonal = !rollApiUrl;
+  const rollUrl = rollApiUrl ?? "/api/dados/roll";
+  const pendingKey = `dados-pending:${rollUrl}`;
+  const finishRef = useRef<(RollResult & { recompensaNombre: string; tipoDado: string; replay: boolean }) | null>(null);
 
   const fetchConfig = useCallback(async () => {
     if (!token) return;
@@ -66,8 +101,12 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
       // subtabla no se muestra al usuario
       const visibles = (data.recompensas ?? []).filter((r: DadoRecompensa) => r.tipo !== "subtabla");
       setRecompensas(visibles);
-      if (visibles.length > 0) {
-        setSelectedId(visibles[0].id);
+      if (visibles.length > 0) setSelectedId(visibles[0].id);
+      const pjs: Personaje[] = data.personajes ?? [];
+      setPersonajes(pjs);
+      if (pjs.length > 0) {
+        const saved = Number(localStorage.getItem("dados-personaje"));
+        setPersonajeId(pjs.some((p) => p.id === saved) ? saved : pjs[0].id);
       }
     } finally {
       setLoading(false);
@@ -78,7 +117,58 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
     fetchConfig();
   }, [fetchConfig]);
 
+  // Recuperación tras refresh: si quedó una tirada pendiente de mostrar,
+  // se pide al servidor el resultado ya comprometido y se reproduce.
+  useEffect(() => {
+    if (!token) return;
+    const raw = localStorage.getItem(pendingKey);
+    if (!raw) return;
+    let pending: PendingRoll;
+    try {
+      pending = JSON.parse(raw);
+    } catch {
+      localStorage.removeItem(pendingKey);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(`${rollUrl}?rollId=${pending.rollId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 404 || res.status === 400) {
+          // la tirada nunca llegó a comprometerse: no hay nada que reproducir
+          localStorage.removeItem(pendingKey);
+          return;
+        }
+        if (!res.ok) return; // se reintenta en el próximo montaje
+        const data: RollResult = await res.json();
+        setRollResult(data);
+        setLutResultados(data.lutResultados ?? null);
+        setRollingState("rolling");
+        finishRef.current = { ...data, recompensaNombre: pending.recompensaNombre, tipoDado: pending.tipoDado, replay: true };
+        setOverlay({
+          tipoDado: pending.tipoDado as DadoRecompensa["tipoDado"],
+          result: data,
+          recompensaNombre: pending.recompensaNombre,
+          personajeNombre: pending.personajeNombre,
+          replay: true,
+        });
+      } catch {
+        // sin red: el pendiente queda para el próximo intento
+      }
+    })();
+  }, [token, pendingKey, rollUrl]);
+
   const selectedReward = recompensas.find((r) => r.id === selectedId) ?? null;
+
+  // Precalienta el chunk 3D, la fuente y las texturas del dado seleccionado:
+  // al pulsar Tirar solo queda esperar al servidor.
+  const tipoSel = selectedReward?.tipoDado;
+  useEffect(() => {
+    if (!tipoSel) return;
+    void import("./dice-3d/dice-overlay");
+    void import("./dice-3d/dice-materials").then((m) => m.preloadDiceAssets(tipoSel));
+  }, [tipoSel]);
 
   function selectReward(id: number) {
     setSelectedId(id);
@@ -88,15 +178,51 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
     setCantidad(1);
   }
 
+  function openOverlay(data: RollResult, meta: PendingRoll, replay: boolean) {
+    setRollResult(data);
+    setLutResultados(data.lutResultados ?? null);
+    finishRef.current = { ...data, recompensaNombre: meta.recompensaNombre, tipoDado: meta.tipoDado, replay };
+    setOverlay({
+      tipoDado: meta.tipoDado as DadoRecompensa["tipoDado"],
+      result: data,
+      recompensaNombre: meta.recompensaNombre,
+      personajeNombre: meta.personajeNombre,
+      replay,
+    });
+  }
+
+  // Al asentarse los dados (la animación manda, sin timeouts): anunciar premio.
+  const handleOverlayFinished = useCallback(() => {
+    const f = finishRef.current;
+    localStorage.removeItem(pendingKey);
+    setRollingState("done");
+    if (f && !f.replay) {
+      const { replay: _omit, ...result } = f;
+      onRollComplete?.(result);
+    }
+  }, [pendingKey, onRollComplete]);
+
   async function handleRoll() {
     if (!selectedReward || rollingState === "rolling") return;
+    primeDiceSound(); // dentro del gesto del usuario, para poder sonar al caer
+
+    const personaje = esPersonal ? (personajes.find((p) => p.id === personajeId) ?? null) : null;
+    const meta: PendingRoll = {
+      rollId: newRollId(),
+      tipoDado: selectedReward.tipoDado,
+      recompensaNombre: selectedReward.nombre,
+      personajeNombre: esPersonal ? personaje?.nombre : personajeNombre,
+    };
+    try {
+      localStorage.setItem(pendingKey, JSON.stringify(meta));
+    } catch {}
 
     setRollingState("rolling");
     setRollResult(null);
     setLutResultados(null);
 
     try {
-      const res = await fetch(rollApiUrl ?? "/api/dados/roll", {
+      const res = await fetch(rollUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,48 +231,32 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
         body: JSON.stringify({
           recompensa_id: selectedReward.id,
           cantidad: selectedReward.tipo === "lut" ? cantidad : 1,
+          roll_id: meta.rollId,
+          ...(esPersonal && personaje ? { personaje_id: personaje.id } : {}),
           ...extraBody,
         }),
       });
-
       const data = await res.json();
 
-      // Esperar que la animación termine antes de mostrar resultado
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       if (!res.ok) {
+        localStorage.removeItem(pendingKey);
         setRollingState("idle");
         setAlert({ variant: "error", message: data.error ?? "Error al tirar los dados" });
         return;
       }
-
-      setRollResult(data);
-      if (data.lutResultados) setLutResultados(data.lutResultados);
-      setRollingState("done");
-
-      onRollComplete?.({ ...data, recompensaNombre: selectedReward.nombre, tipoDado: selectedReward.tipoDado });
-
-      if (selectedReward.tipo === "lut" && data.lutResultados) {
-        const oros = (data.lutResultados as LutCaraResult[])
-          .filter((r) => r.tipo === "oro")
-          .reduce((acc: number, r: LutCaraResult) => acc + (r.oroDetalle?.cantidadOro ?? 0), 0);
-        const items = (data.lutResultados as LutCaraResult[]).filter(
-          (r) => r.tipo === "item" || (r.tipo === "subtabla" && r.subRoll?.objeto)
-        );
-        if (oros > 0 && items.length > 0) {
-          setAlert({ variant: "success", message: `¡+${oros} oro y ${items.length} ítem(s)!` });
-        } else if (oros > 0) {
-          setAlert({ variant: "success", message: `¡+${oros} oro!` });
-        } else if (items.length > 0) {
-          setAlert({ variant: "success", message: `¡${items.length} ítem(s) obtenido(s)!` });
-        }
-      } else if (data.tipoResultado === "oro") {
-        setAlert({ variant: "success", message: `¡Obtuviste ${data.cantidadOro} de oro!` });
-      } else if (data.objeto) {
-        setAlert({ variant: "success", message: `¡Obtuviste ${data.objeto.nombre}!` });
-      }
+      openOverlay(data, meta, false);
     } catch {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // La petición pudo llegar igualmente: comprobar si la tirada se comprometió.
+      try {
+        const check = await fetch(`${rollUrl}?rollId=${meta.rollId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (check.ok) {
+          openOverlay(await check.json(), meta, false);
+          return;
+        }
+        if (check.status === 404) localStorage.removeItem(pendingKey);
+      } catch {}
       setRollingState("idle");
       setAlert({ variant: "error", message: "Error de conexión" });
     }
@@ -160,6 +270,13 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
 
   if (!loading && recompensas.length === 0) return null;
 
+  const diceCount =
+    rollingState === "done" && rollResult
+      ? rollResult.resultados.length
+      : selectedReward?.tipo === "oro_dados"
+        ? selectedReward.cantidadDados
+        : 1;
+
   return (
     <div className="bg-card border border-gold-dim/60 rounded-lg overflow-hidden">
       {/* Header */}
@@ -168,7 +285,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
         className="w-full flex items-center justify-between px-4 py-2.5 bg-linear-to-r from-gold-dim/20 to-transparent hover:from-gold-dim/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-gold text-sm font-serif tracking-wider">🎲 Dados</span>
+          <span className="text-gold text-sm font-serif tracking-wider flex items-center gap-1.5"><Dices className="w-4 h-4" /> Dados</span>
           {selectedReward && (
             <span className="text-[10px] text-foreground/50 font-sans uppercase tracking-widest">
               — {selectedReward.tipoDado.toUpperCase()}
@@ -218,9 +335,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                 <div className="flex items-start gap-4">
                   {/* Dados visuales */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    {Array.from({
-                      length: selectedReward.tipo === "oro_dados" ? selectedReward.cantidadDados : 1,
-                    }).map((_, i) => (
+                    {Array.from({ length: diceCount }).map((_, i) => (
                       <div key={i} className="mt-5">
                         <DiceVisual
                           type={selectedReward.tipoDado}
@@ -257,6 +372,34 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                       </p>
                     )}
 
+                    {/* Personaje que recibe los ítems (solo tirada personal) */}
+                    {esPersonal && personajes.length > 0 && selectedReward.tipo !== "oro_dados" && (
+                      <div className="flex items-center gap-2">
+                        <UserRound className="w-3.5 h-3.5 text-gold/60 shrink-0" />
+                        <select
+                          value={personajeId ?? ""}
+                          onChange={(e) => {
+                            const id = Number(e.target.value) || null;
+                            setPersonajeId(id);
+                            try {
+                              if (id) localStorage.setItem("dados-personaje", String(id));
+                            } catch {}
+                          }}
+                          className="flex-1 max-w-48 px-2 py-0.5 text-xs bg-background border border-border rounded focus:outline-none focus:border-gold/60 font-sans"
+                          aria-label="Personaje que recibe los ítems"
+                        >
+                          {personajes.map((p) => (
+                            <option key={p.id} value={p.id}>{p.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {esPersonal && personajes.length === 0 && selectedReward.tipo !== "oro_dados" && (
+                      <p className="text-[11px] text-amber-400/80 font-sans">
+                        Sin personaje vivo: los ítems ganados no se entregarán.
+                      </p>
+                    )}
+
                     {/* Selector de cantidad para LUT */}
                     {selectedReward.tipo === "lut" && rollingState === "idle" && (
                       <div className="flex items-center gap-2">
@@ -288,7 +431,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                           </span>
                         ) : rollResult.objeto ? (
                           <span className="text-green-400 font-bold flex items-center gap-1">
-                            {rollResult.objeto.icono && <span>{rollResult.objeto.icono}</span>}
+                            {rollResult.objeto.icono && <span>{getIconForString(rollResult.objeto.nombre, "w-4 h-4 shrink-0", rollResult.objeto.icono)}</span>}
                             {rollResult.objeto.nombre}
                           </span>
                         ) : null}
@@ -315,9 +458,9 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                             Tirando…
                           </span>
                         ) : selectedReward.tipo === "lut" && cantidad > 1 ? (
-                          `🎲 Tirar ×${cantidad}`
+                          <span className="flex items-center gap-1.5"><Dices className="w-4 h-4" /> Tirar ×{cantidad}</span>
                         ) : (
-                          "🎲 Tirar"
+                          <span className="flex items-center gap-1.5"><Dices className="w-4 h-4" /> Tirar</span>
                         )}
                       </button>
                     )}
@@ -326,7 +469,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
               )}
 
               {/* Resultados LUT — multi-tirada */}
-              {selectedReward?.tipo === "lut" && lutResultados && lutResultados.length > 0 && (
+              {selectedReward?.tipo === "lut" && rollingState === "done" && lutResultados && lutResultados.length > 0 && (
                 <div className="border-t border-gold-dim/20 pt-2 space-y-1.5">
                   <p className="text-[10px] text-foreground/40 uppercase tracking-widest font-sans">
                     Resultados {lutResultados.length > 1 ? `(${lutResultados.length} tiradas)` : ""}
@@ -343,8 +486,9 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                       )}
 
                       {r.tipo === "item" && r.objeto && (
-                        <span className="text-green-400 font-semibold leading-6">
-                          {r.objeto.icono} {r.objeto.nombre}
+                        <span className="text-green-400 font-semibold leading-6 flex items-center gap-1.5">
+                          {getIconForString(r.objeto.nombre, "w-4 h-4 shrink-0", r.objeto.icono)} {r.objeto.nombre}
+                          {(r.cantidadObjeto ?? 1) > 1 && <span className="text-foreground/50">×{r.cantidadObjeto}</span>}
                         </span>
                       )}
 
@@ -358,8 +502,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                             +{r.oroDetalle.cantidadOro.toLocaleString("es-ES")} oro
                           </span>
                           <span className="text-foreground/40 font-normal ml-1.5 text-[10px]">
-                            ({r.oroDetalle.formula}: [{r.oroDetalle.dados.join(", ")}]{" "}
-                            {r.oroDetalle.multiplicador > 1 && `× ${r.oroDetalle.multiplicador}`})
+                            ({r.oroDetalle.formula})
                           </span>
                         </span>
                       )}
@@ -370,8 +513,9 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                             {r.subRoll.subtablaNombre} → cara {r.subRoll.cara}
                           </span>
                           {r.subRoll.objeto ? (
-                            <span className="text-green-400 font-semibold">
-                              {r.subRoll.objeto.icono} {r.subRoll.objeto.nombre}
+                            <span className="text-green-400 font-semibold flex items-center gap-1.5">
+                              {getIconForString(r.subRoll.objeto.nombre, "w-4 h-4 shrink-0", r.subRoll.objeto.icono)} {r.subRoll.objeto.nombre}
+                              {(r.subRoll.cantidadObjeto ?? 1) > 1 && <span className="text-foreground/50">×{r.subRoll.cantidadObjeto}</span>}
                             </span>
                           ) : r.subRoll.cantidadOro !== undefined ? (
                             <span className="text-gold font-semibold">
@@ -406,7 +550,7 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
                         <span className="text-gold/60 shrink-0">
                           {si.valorMin === si.valorMax ? si.valorMin : `${si.valorMin}–${si.valorMax}`}
                         </span>
-                        <span className="truncate">{si.objetoIcono} {si.objetoNombre}</span>
+                        <span className="truncate flex items-center gap-1.5">{getIconForString(si.objetoNombre, "w-3 h-3 shrink-0", si.objetoIcono)} {si.objetoNombre}</span>
                       </div>
                     ))}
                   </div>
@@ -415,6 +559,25 @@ export default function DiceModule({ token, rollApiUrl, extraBody, hideCost, onR
             </>
           )}
         </div>
+      )}
+
+      {/* Escudo inmediato al pulsar Tirar: bloquea la interacción y da
+          feedback mientras responde el servidor, sin oscurecer la página. */}
+      {rollingState === "rolling" &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            {!overlay && <Loader2 className="w-6 h-6 text-gold animate-spin" />}
+          </div>,
+          document.body,
+        )}
+
+      {/* Overlay de tirada: el dado entra lanzado, rueda y revela el premio del servidor */}
+      {overlay && (
+        <DiceOverlay
+          data={overlay}
+          onFinished={handleOverlayFinished}
+          onClose={() => setOverlay(null)}
+        />
       )}
 
       <FantasyAlert

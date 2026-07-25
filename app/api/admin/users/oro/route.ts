@@ -1,3 +1,6 @@
+// POST — Solo admin. Suma o resta oro a un usuario a mano. Pasa por la RPC
+// `modificar_oro`, así que el ajuste queda registrado como cualquier otro
+// movimiento y no se puede dejar el saldo en negativo.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 

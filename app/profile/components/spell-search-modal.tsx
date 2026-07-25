@@ -1,9 +1,17 @@
 "use client";
 
+// Buscador de conjuros para asignárselos a un personaje: filtra por nivel,
+// escuela y clase.
+
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { Search, X, Filter, Sparkles, XCircle, Info } from "lucide-react";
+import DOMPurify from "isomorphic-dompurify";
+import { Search, X, Filter, Sparkles, XCircle, Info, Clock } from "lucide-react";
+
+// Etiquetas de formato permitidas en las descripciones de conjuros.
+// Sin atributos: elimina on*, href, src, style y demás vectores de XSS.
+const SPELL_ALLOWED_TAGS = ["p", "br", "ul", "ol", "li", "em", "strong", "i", "b"];
 
 export type CatalogSpell = {
   nombre: string;
@@ -148,7 +156,7 @@ const SpellCard = ({
         </h4>
         <div className="flex items-center gap-1 shrink-0">
           {spell.description && (
-            <Popover.Root>
+            <Popover.Root modal={false}>
               <Popover.Trigger asChild>
                 <button
                   type="button"
@@ -164,15 +172,22 @@ const SpellCard = ({
                   side="top"
                   sideOffset={8}
                   onClick={(e) => e.stopPropagation()}
-                  className="z-[60] w-[280px] max-w-[90vw] max-h-[250px] overflow-y-auto p-3 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  className="z-[60] w-[320px] sm:w-[350px] max-w-[90vw] max-h-[280px] overflow-y-auto overscroll-contain p-3.5 rounded-lg border border-[#8B7355]/40 bg-[#120e0b]/95 backdrop-blur-md shadow-2xl custom-scrollbar data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 pointer-events-auto"
                 >
                   <div className="flex flex-col gap-2">
                     <div className="border-b border-[#8B7355]/20 pb-1.5">
                       <span className="text-sm font-bold text-[#D4AF37] font-serif">{spell.nombre}</span>
                     </div>
                     <div 
-                      className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: spell.description }} 
+                      className="text-xs text-muted-foreground prose prose-invert prose-p:my-1 prose-strong:text-amber-100/90 leading-relaxed select-text"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(spell.description ?? "", {
+                          ALLOWED_TAGS: SPELL_ALLOWED_TAGS,
+                          ALLOWED_ATTR: [],
+                        }),
+                      }}
                     />
                   </div>
                   <Popover.Arrow className="fill-[#8B7355]/40" />
@@ -181,18 +196,18 @@ const SpellCard = ({
             </Popover.Root>
           )}
           <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/40 border border-[#8B7355]/30 text-muted-foreground uppercase">
-            Nv. {spell.nivel}
+            {spell.nivel === 0 ? "Truco" : `Nv. ${spell.nivel}`}
           </span>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
         <span className={`text-[10px] px-2 py-0.5 rounded border ${colorClass} flex items-center gap-1`}>
-          <span>✧</span> {spell.escuela}
+          <Sparkles className="w-3 h-3" /> {spell.escuela}
         </span>
         {spell.duracion && (
-          <span className="text-[10px] px-2 py-0.5 rounded border border-[#8B7355]/20 bg-black/20 text-muted-foreground/80 truncate max-w-[120px]">
-            ⏱ {spell.duracion}
+          <span className="text-[10px] px-2 py-0.5 rounded border border-[#8B7355]/20 bg-black/20 text-muted-foreground/80 truncate max-w-[120px] flex items-center gap-1">
+            <Clock className="w-3 h-3" /> {spell.duracion}
           </span>
         )}
       </div>

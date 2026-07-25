@@ -1,7 +1,12 @@
+// POST — Unirse a una partida con un personaje concreto.
+// Es la ruta que más condiciones comprueba: personaje vivo y tuyo, partida
+// abierta y con hueco, sin descansos pendientes (si debes un descanso no puedes
+// entrar en otra expedición) y sin estar ya en otra partida.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { MAX_CAIDAS } from "@/lib/caidas";
 
 // POST /api/partidas/join
 // Inscribe un personaje del usuario autenticado a una partida abierta con cupo.
@@ -122,6 +127,26 @@ export async function POST(request: Request) {
   if (pendingSleep) {
     return NextResponse.json(
       { error: "Debes elegir donde dormir antes de volver a jugar" },
+      { status: 409 },
+    );
+  }
+
+  const { data: caidasRow, error: caidasError } = await db
+    .from("personajes")
+    .select("caidas")
+    .eq("id", characterId)
+    .maybeSingle();
+
+  if (caidasError) {
+    return NextResponse.json({ error: caidasError.message }, { status: 500 });
+  }
+
+  if (Number((caidasRow as any)?.caidas ?? 0) >= MAX_CAIDAS) {
+    return NextResponse.json(
+      {
+        error:
+          "Ese personaje acumuló 3 caídas y necesita un descanso largo antes de volver a una expedición",
+      },
       { status: 409 },
     );
   }

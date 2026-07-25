@@ -1,5 +1,7 @@
 "use client";
 
+// Dibujo 2D de un dado con su valor, para las tiradas sin escena 3D.
+
 import type { DiceType } from "@/lib/types/dados";
 
 type Props = {

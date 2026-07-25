@@ -1,3 +1,6 @@
+// POST — Solo admin. Vista previa del impuesto global: devuelve exactamente lo
+// que pasaría (cuánto se cobra a cada uno, quién muere) SIN tocar nada.
+// Mismo cálculo que /cobrar, con apply=false. Ver lib/adminTax.ts.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { previewMassTax } from "@/lib/adminTax";

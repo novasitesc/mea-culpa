@@ -1,3 +1,5 @@
+// POST — Paso 2 de la compra de huecos de personaje: cobra la orden y desbloquea
+// un hueco más en el perfil.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

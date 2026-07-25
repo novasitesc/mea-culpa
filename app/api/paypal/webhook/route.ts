@@ -1,3 +1,13 @@
+// POST — PÚBLICA, la llama PayPal (no el navegador). Aviso asíncrono de que un
+// pago se completó, por si el usuario cerró la pestaña antes de que su cliente
+// confirmara.
+//
+// Dos cosas que no se pueden tocar:
+//   1. Verifica la firma con PayPal ANTES de creer nada. La URL es pública:
+//      sin esa verificación cualquiera regalaría resurrecciones mandando un JSON.
+//   2. El efecto se marca con `effect_applied` en `pagos_paypal`. Este webhook y
+//      la ruta de captura pueden llegar los dos por el mismo pago, y el premio
+//      debe entregarse una sola vez.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { verifyPayPalWebhookSignature } from "@/lib/paypal";

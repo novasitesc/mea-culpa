@@ -1,3 +1,6 @@
+// POST — El VENDEDOR retira su publicación.
+// Deshace el depósito: el objeto vuelve a su bolsa y, si ya había una solicitud
+// con oro retenido, ese oro se le devuelve al comprador.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

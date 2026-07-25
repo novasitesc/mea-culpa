@@ -1,3 +1,7 @@
+// POST — Solo admin. EJECUTA el impuesto global: cobra oro a todas las cuentas
+// y mata al personaje de mayor nivel de quien no pueda pagar.
+// Toda la lógica está en executeMassTax() (lib/adminTax.ts).
+// Es destructivo e irreversible: llamar antes a /preview.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
 import { executeMassTax } from "@/lib/adminTax";

@@ -1,5 +1,7 @@
 "use client";
 
+// Bloc de notas privado del jugador, guardado en /api/notas.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 

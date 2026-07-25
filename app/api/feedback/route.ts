@@ -1,11 +1,55 @@
+// POST — PÚBLICA (no pide sesión). Recoge los reportes del widget de feedback.
+// Al ser abierta, valida con cuidado lo que entra antes de guardarlo.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import type { FeedbackType } from "@/lib/types/feedback";
 
 const VALID_TYPES: FeedbackType[] = ["bug", "suggestion", "comment"];
 
+// La ruta es pública a propósito (el widget lo usa gente sin sesión), así que el
+// freno va por IP.
+// ponytail: contador en memoria del proceso; si esto escala a varias instancias o
+// hace falta bloqueo persistente, mover a una tabla o a un KV.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_REPORTS = 5;
+const recentByIp = new Map<string, number[]>();
+
+function ipRateLimited(request: Request): boolean {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "desconocida";
+
+  const now = Date.now();
+  const hits = (recentByIp.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+
+  if (hits.length >= RATE_MAX_REPORTS) {
+    recentByIp.set(ip, hits);
+    return true;
+  }
+
+  hits.push(now);
+  recentByIp.set(ip, hits);
+
+  // Barrido perezoso para que el Map no crezca sin fin.
+  if (recentByIp.size > 5000) {
+    for (const [key, times] of recentByIp) {
+      if (times.every((t) => now - t >= RATE_WINDOW_MS)) recentByIp.delete(key);
+    }
+  }
+
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
+    if (ipRateLimited(request)) {
+      return NextResponse.json(
+        { error: "Has enviado demasiados reportes seguidos. Prueba en un minuto." },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
 
     const { type, title, description, page_url, user_agent } = body as {
@@ -51,8 +95,9 @@ export async function POST(request: Request) {
       type,
       title: title.trim(),
       description: description.trim(),
-      page_url: typeof page_url === "string" ? page_url : null,
-      user_agent: typeof user_agent === "string" ? user_agent : null,
+      // Acotar longitud para evitar abuso de almacenamiento con payloads enormes.
+      page_url: typeof page_url === "string" ? page_url.slice(0, 500) : null,
+      user_agent: typeof user_agent === "string" ? user_agent.slice(0, 500) : null,
     });
 
     if (error) {

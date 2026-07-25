@@ -1,3 +1,5 @@
+// POST — Miembro del gremio. Deposita un objeto de su bolsa en el baúl común.
+// Comprueba que es miembro y que el personaje está vivo.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";

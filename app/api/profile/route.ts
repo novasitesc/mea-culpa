@@ -1,8 +1,16 @@
+// GET / PATCH — El perfil del usuario y sus personajes. La ruta que más se
+// llama de todo el proyecto.
+// GET   devuelve perfil, oro, personajes con clases, estadísticas, equipo y
+//       bolsa: es lo que pinta la pantalla de Perfil entera.
+// PATCH edita los datos del perfil.
+// Es larga por la cantidad de datos que junta, no por su lógica; léela con el
+// esquema de tablas al lado.
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
-import { normalizeSpells, type SpellEntry } from "@/lib/spells";
+import { normalizeSpells, normalizeUsedSpells, type SpellEntry } from "@/lib/spells";
+import { EJERCITO_SELECT, EJERCITO_SLOTS, mapUnidadRow } from "@/lib/ejercito";
 
 function hasDismemberedLimb(extremities: unknown): boolean {
   if (!extremities || typeof extremities !== "object") {
@@ -115,24 +123,27 @@ function normalizeNivel20Url(rawValue: unknown): {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const db = createServerClient();
 
-  if (!userId) {
-    return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+  // El `userId` de la query se ignora: el dueño de los datos es el dueño del
+  // token. Antes esta ruta no autenticaba, así que cualquiera podía leer el oro,
+  // los personajes y el inventario de otra cuenta con solo su uuid.
+  const { user, error: authError } = await getUserFromRequest(db, request);
+  if (authError || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const db = createServerClient();
+  const userId = user.id;
 
   // Obtener perfil del jugador
   const { data: perfil } = await db
     .from("perfiles")
-    .select("nombre, rol, nivel, hogar, oro, max_personajes, nivel20_url")
+    .select("nombre, rol, nivel, hogar, oro, max_personajes")
     .eq("id", userId)
     .single();
 
   // Obtener personajes con sus clases, stats, equipamiento e inventario
-  const { data: personajes } = await db
+  const { data: personajes, error: personajesError } = await db
     .from("personajes")
     .select(
       `
@@ -140,7 +151,7 @@ export async function GET(request: Request) {
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
-        cabeza, pecho, guante, botas,
+        cabeza, pecho, guante, botas, capa,
         collar, anillo1, anillo2, anillo3, amuleto, cinturon,
         mano_izquierda, mano_derecha,
         mano_izquierda_socket_1, mano_izquierda_socket_2, mano_izquierda_socket_3,
@@ -155,15 +166,35 @@ export async function GET(request: Request) {
         fue_comerciado,
         publicado_en_trade,
         objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion, requiere_dos_manos )
-      )
+      ),
+      ejercito_objetos ( ${EJERCITO_SELECT} )
     `,
     )
     .eq("usuario_id", userId)
-    .neq("estado_vida", "enterrado")
+    .not("estado_vida", "in", '("enterrado","eliminado")')
     .order("numero_slot", { ascending: true });
 
+  // Si esta consulta falla, el jugador NO se ha quedado sin personajes: es un
+  // error nuestro. Antes se descartaba y la pantalla de Perfil se pintaba vacía,
+  // que es indistinguible de una cuenta nueva. El 42703 (columna inexistente)
+  // avisa además de que falta correr una migración.
+  if (personajesError) {
+    console.error("[profile] no se pudieron cargar los personajes:", personajesError);
+    const faltaColumna = personajesError.code === "42703";
+    return NextResponse.json(
+      {
+        error: faltaColumna
+          ? "La base de datos está desactualizada: falta aplicar una migración de supabase/migrations"
+          : "No se pudieron cargar los personajes",
+        detail: personajesError.message,
+        code: personajesError.code ?? null,
+      },
+      { status: 500 },
+    );
+  }
+
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
-  let spellsByCharId: Record<string, SpellEntry[]> = {};
+  const spellsByCharId: Record<string, SpellEntry[]> = {};
   try {
     const { data: spellRows } = await db
       .from("personajes")
@@ -190,6 +221,7 @@ export async function GET(request: Request) {
       equip.pecho,
       equip.guante,
       equip.botas,
+      equip.capa,
       equip.collar,
       equip.anillo1,
       equip.anillo2,
@@ -249,6 +281,7 @@ export async function GET(request: Request) {
       equip?.pecho,
       equip?.guante,
       equip?.botas,
+      equip?.capa,
       equip?.collar,
       equip?.anillo1,
       equip?.anillo2,
@@ -291,6 +324,7 @@ export async function GET(request: Request) {
     return {
       id: p.id,
       name: p.nombre,
+      nivel20Url: p.nivel20_url ?? null,
       multiclass: clases.map((c: any) => ({
         className: c.nombre_clase,
         level: c.nivel,
@@ -302,7 +336,9 @@ export async function GET(request: Request) {
       deadAt: p.muerto_en ?? null,
       revivedAt: p.revivido_en ?? null,
       puntoCansancio: Number(p.puntos_cansancio ?? 0),
+      caidas: Number(p.caidas ?? 0),
       knownSpells: spellsByCharId[p.id] ?? [],
+      usedSpells: normalizeUsedSpells(p.conjuros_usados),
       hasDismemberedLimb: hasDismemberedLimb(extremities),
       dismemberedLimbs: getDismemberedLimbs(extremities),
       stats: stats
@@ -363,6 +399,10 @@ export async function GET(request: Request) {
           mapEquipItem(equip?.mano_derecha_socket_3),
         ],
       },
+      cape: {
+        capa:
+          equip?.capa != null ? equipIdToName.get(equip.capa) : undefined,
+      },
       capeSockets: [
         mapEquipItem(equip?.capa_socket_1),
         mapEquipItem(equip?.capa_socket_2),
@@ -392,6 +432,12 @@ export async function GET(request: Request) {
           })),
         maxSlots: p.capacidad_bolsa,
       },
+      army: {
+        units: (p.ejercito_objetos ?? [])
+          .sort((a: any, b: any) => a.orden - b.orden)
+          .map(mapUnidadRow),
+        maxSlots: EJERCITO_SLOTS,
+      },
     };
   });
 
@@ -403,7 +449,6 @@ export async function GET(request: Request) {
       home: perfil?.hogar ?? "Sin hogar",
       oro: perfil?.oro ?? 0,
       maxCharacterSlots: perfil?.max_personajes ?? 2,
-      nivel20Url: perfil?.nivel20_url ?? null,
     },
     characters,
     userId,
@@ -418,7 +463,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { nivel20Url?: unknown };
+  let body: { nivel20Url?: unknown; characterId?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -432,15 +477,39 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const characterId = Number(body.characterId);
+  if (!Number.isFinite(characterId) || characterId <= 0) {
+    return NextResponse.json(
+      { error: "characterId es requerido" },
+      { status: 400 },
+    );
+  }
+
   const normalized = normalizeNivel20Url(body.nivel20Url);
   if (normalized.error) {
     return NextResponse.json({ error: normalized.error }, { status: 400 });
   }
 
+  // Verify the character belongs to this user
+  const { data: charCheck } = await db
+    .from("personajes")
+    .select("id")
+    .eq("id", characterId)
+    .eq("usuario_id", user.id)
+    .single();
+
+  if (!charCheck) {
+    return NextResponse.json(
+      { error: "Personaje no encontrado o no te pertenece" },
+      { status: 404 },
+    );
+  }
+
   const { data, error } = await db
-    .from("perfiles")
+    .from("personajes")
     .update({ nivel20_url: normalized.value })
-    .eq("id", user.id)
+    .eq("id", characterId)
+    .eq("usuario_id", user.id)
     .select("nivel20_url")
     .single();
 
@@ -450,6 +519,7 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({
     success: true,
+    characterId,
     nivel20Url: data?.nivel20_url ?? normalized.value,
   });
 }
