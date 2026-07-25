@@ -80,7 +80,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 export default function TiendasPage() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
@@ -155,7 +155,9 @@ export default function TiendasPage() {
   // Cargar personajes del usuario (para el selector de bolsa al comprar)
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/profile?userId=${user.id}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then((data) =>
         setCharacters(
@@ -169,7 +171,7 @@ export default function TiendasPage() {
           })),
         ),
       );
-  }, [user?.id]);
+  }, [user?.id, token]);
 
   useEffect(() => {
     if (characters.length === 0) return;

@@ -9,6 +9,12 @@ import { getUserFromRequest } from "@/lib/apiAuth";
 const HISTORY_LIMIT = 100;
 const MAX_LEN = 500;
 
+// El esquema (database/gremio_mensajes.sql) ya prometía rate limit y no existía.
+// Se cuenta lo que el propio usuario mandó en la ventana; es una consulta más por
+// mensaje, y el índice (gremio_id, creado_en desc) la cubre.
+const RATE_WINDOW_MS = 10_000;
+const RATE_MAX_MESSAGES = 8;
+
 type Db = ReturnType<typeof createServerClient>;
 
 async function myGuildId(db: Db, userId: string) {
@@ -85,6 +91,24 @@ export async function POST(request: Request) {
   const gremioId = await myGuildId(db, user.id);
   if (!gremioId) {
     return NextResponse.json({ error: "No perteneces a ningun gremio" }, { status: 403 });
+  }
+
+  const { count: recientes, error: rateError } = await db
+    .from("gremio_mensajes")
+    .select("id", { count: "exact", head: true })
+    .eq("gremio_id", gremioId)
+    .eq("usuario_id", user.id)
+    .gte("creado_en", new Date(Date.now() - RATE_WINDOW_MS).toISOString());
+
+  if (rateError) {
+    return NextResponse.json({ error: rateError.message }, { status: 500 });
+  }
+
+  if ((recientes ?? 0) >= RATE_MAX_MESSAGES) {
+    return NextResponse.json(
+      { error: "Vas demasiado rapido, espera unos segundos" },
+      { status: 429 },
+    );
   }
 
   const { data, error: insertError } = await db

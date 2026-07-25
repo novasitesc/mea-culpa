@@ -315,11 +315,15 @@ export async function POST(request: Request) {
     const charId = personaje.id;
 
     // 2. Insertar clases
+    // Todo personaje nace a nivel 1: subir de nivel es cosa del DM al cerrar la
+    // partida o del panel de personajes. Antes se aceptaba el `level` del cuerpo,
+    // así que se podía nacer a nivel 20 (y con ello colar tier 2 y las tiendas
+    // altas) con una sola petición.
     const clasesInsert = multiclass.map(
-      (c: { className: string; level: number }, i: number) => ({
+      (c: { className: string }, i: number) => ({
         personaje_id: charId,
         nombre_clase: c.className,
-        nivel: Math.min(20, Math.max(1, Math.floor(Number(c.level) || 1))),
+        nivel: 1,
         orden: i + 1,
       }),
     );

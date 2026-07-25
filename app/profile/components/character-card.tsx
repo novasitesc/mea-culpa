@@ -75,6 +75,10 @@ type WeaponSlots = {
   manoDerecha?: string;
 };
 
+type CapeSlot = {
+  capa?: string;
+};
+
 type ItemType =
   | "cabeza"
   | "armadura"
@@ -129,6 +133,8 @@ export type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  /** La capa: ranura propia, con sus tres engarces en `capeSockets`. */
+  cape?: CapeSlot;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntryLocal[];

@@ -51,7 +51,7 @@ type Character = {
 
 export default function GlobalCartWidget() {
   const pathname = usePathname();
-  const { user, refreshUser } = useAuth();
+  const { user, token, refreshUser } = useAuth();
 
   const cartKey = user?.id ? `mc_tiendas_cart_${user.id}` : null;
   const [cart, setCart] = useState<CartEntry[]>([]);
@@ -110,7 +110,9 @@ export default function GlobalCartWidget() {
   // Load characters when buy modal opens
   useEffect(() => {
     if (!buyModalOpen || !user?.id) return;
-    fetch(`/api/profile?userId=${user.id}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then((data) =>
         setCharacters(
@@ -125,7 +127,7 @@ export default function GlobalCartWidget() {
         ),
       )
       .catch(() => {});
-  }, [buyModalOpen, user?.id]);
+  }, [buyModalOpen, user?.id, token]);
 
   // Ocultar si no hay sesión activa o si estamos dentro de /tiendas
   if (!user?.id || pathname === "/tiendas") {

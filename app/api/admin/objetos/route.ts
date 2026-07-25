@@ -73,11 +73,12 @@ function normalizeRarity(raw: string): string {
   }
 }
 
+// La base ya guarda la forma can\u00f3nica ("com\u00fan", "poco com\u00fan", "\u00e9pico"), que es la
+// misma de ITEM_RARITY_OPTIONS. Quitarle los acentos aqu\u00ed dejaba al panel con
+// valores que no existen en ITEM_RARITY_HEX, as\u00ed que la rareza se pintaba con el
+// color por defecto y no coincid\u00eda con lo que devuelve /api/admin/tiendas/articulos.
 function mapRarityFromDb(rarity: string): string {
-  return rarity
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  return normalizeRarity(rarity ?? "com\u00fan");
 }
 
 const OBJECT_COLUMNS =

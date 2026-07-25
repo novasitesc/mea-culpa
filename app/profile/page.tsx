@@ -60,6 +60,10 @@ type WeaponSlots = {
   manoDerecha?: string;
 };
 
+type CapeSlot = {
+  capa?: string;
+};
+
 type ItemType =
   | "cabeza"
   | "armadura"
@@ -117,6 +121,8 @@ type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  /** La capa: ranura propia, con sus tres engarces en `capeSockets`. */
+  cape?: CapeSlot;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntry[];
@@ -206,7 +212,9 @@ export default function ProfilePage() {
   const loadProfile = useCallback(async () => {
     if (!isAuthenticated || !user) return;
 
-    const res = await fetch(`/api/profile?userId=${user.id}`);
+    const res = await fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const data = (await res.json()) as ProfileResponse;
 
     setProfile({
@@ -274,6 +282,7 @@ export default function ProfilePage() {
           armor: characterToSave.armor,
           accessories: characterToSave.accessories,
           weapons: characterToSave.weapons,
+          cape: characterToSave.cape,
           weaponSockets: characterToSave.weaponSockets,
           capeSockets: characterToSave.capeSockets,
         }),
@@ -303,6 +312,7 @@ export default function ProfilePage() {
               armor: characterToSave.armor,
               accessories: characterToSave.accessories,
               weapons: characterToSave.weapons,
+              cape: characterToSave.cape,
             }
             : char,
         ),

@@ -6,8 +6,50 @@ import type { FeedbackType } from "@/lib/types/feedback";
 
 const VALID_TYPES: FeedbackType[] = ["bug", "suggestion", "comment"];
 
+// La ruta es pública a propósito (el widget lo usa gente sin sesión), así que el
+// freno va por IP.
+// ponytail: contador en memoria del proceso; si esto escala a varias instancias o
+// hace falta bloqueo persistente, mover a una tabla o a un KV.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_REPORTS = 5;
+const recentByIp = new Map<string, number[]>();
+
+function ipRateLimited(request: Request): boolean {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "desconocida";
+
+  const now = Date.now();
+  const hits = (recentByIp.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+
+  if (hits.length >= RATE_MAX_REPORTS) {
+    recentByIp.set(ip, hits);
+    return true;
+  }
+
+  hits.push(now);
+  recentByIp.set(ip, hits);
+
+  // Barrido perezoso para que el Map no crezca sin fin.
+  if (recentByIp.size > 5000) {
+    for (const [key, times] of recentByIp) {
+      if (times.every((t) => now - t >= RATE_WINDOW_MS)) recentByIp.delete(key);
+    }
+  }
+
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
+    if (ipRateLimited(request)) {
+      return NextResponse.json(
+        { error: "Has enviado demasiados reportes seguidos. Prueba en un minuto." },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
 
     const { type, title, description, page_url, user_agent } = body as {

@@ -5,6 +5,16 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
 
+/** 500 que conserva el código de Postgres, igual que en /update-bag. */
+function dbFailure(context: string, error: unknown) {
+  const err = error as { message?: string; code?: string } | null;
+  console.error(`[move-item] ${context}:`, err);
+  return NextResponse.json(
+    { error: context, detail: err?.message ?? "Error desconocido", code: err?.code ?? null },
+    { status: 500 },
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const db = createServerClient();
@@ -116,12 +126,29 @@ export async function POST(request: Request) {
       );
     }
 
+    // El destino es MAX(orden)+1, no COUNT+1: la bolsa puede tener huecos (una
+    // venta, un depósito en comercio) y entonces COUNT+1 apunta a un `orden` que
+    // ya existe → uq_bolsa_orden (23505). Es el mismo cálculo que hacen las RPC.
+    const { data: lastRow, error: lastRowError } = await db
+      .from("bolsa_objetos")
+      .select("orden")
+      .eq("personaje_id", toCharacterId)
+      .order("orden", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastRowError) {
+      return NextResponse.json({ error: lastRowError.message }, { status: 500 });
+    }
+
+    const nextOrden = Number((lastRow as any)?.orden ?? 0) + 1;
+
     // Mover el objeto: actualizar personaje_id y orden (al final de la bolsa destino)
     const { data: movedItem, error: updateError } = await db
       .from("bolsa_objetos")
       .update({
         personaje_id: toCharacterId,
-        orden: currentTargetCount + 1,
+        orden: nextOrden,
         fue_comerciado: true,
       })
       .eq("id", itemRow.id)
@@ -131,6 +158,12 @@ export async function POST(request: Request) {
       .single();
 
     if (updateError || !movedItem) {
+      // Un choque de `orden` no es "ya fue comerciado": confundirlos hacía que el
+      // jugador leyera que su objeto estaba quemado cuando el fallo era nuestro.
+      if (String((updateError as any)?.code) === "23505") {
+        return dbFailure("No se pudo colocar el objeto en la bolsa destino", updateError);
+      }
+
       return NextResponse.json(
         {
           error:

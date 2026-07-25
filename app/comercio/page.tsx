@@ -308,7 +308,9 @@ export default function ComercioPage() {
     setLoading(true);
     try {
       const [profileRes, marketRes, mineRes] = await Promise.all([
-        fetch(`/api/profile?userId=${user.id}`),
+        fetch(`/api/profile?userId=${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
         fetch("/api/comercio/publicaciones?includeSolicitados=1", {
           headers: { Authorization: `Bearer ${token}` },
         }),

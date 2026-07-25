@@ -214,7 +214,9 @@ export default function GremioPage() {
     setLoading(true);
     try {
       const [profileRes, guildRes] = await Promise.all([
-        fetch(`/api/profile?userId=${user.id}`),
+        fetch(`/api/profile?userId=${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
         fetch("/api/gremio", {
           headers: { Authorization: `Bearer ${token}` },
         }),

@@ -386,6 +386,38 @@ export async function PATCH(request: NextRequest) {
     });
   }
 
+  // Reclamar el cierre ANTES de repartir. El reparto son muchas escrituras
+  // sueltas (oro, niveles, objetos) y no hay transacción: si una fallaba a mitad,
+  // la partida seguía abierta y volver a cerrarla pagaba otra vez a quien ya
+  // había cobrado. Este UPDATE condicionado solo lo gana una llamada; la segunda
+  // se corta arriba con el 200 idempotente.
+  const finalizedAt = new Date().toISOString();
+  const { data: claimed, error: claimError } = await session.db
+    .from("partidas")
+    .update({ estado: "finalizada", finalizada_en: finalizedAt })
+    .eq("id", partidaId)
+    .neq("estado", "finalizada")
+    .select("id")
+    .maybeSingle();
+
+  if (claimError) {
+    return NextResponse.json({ error: claimError.message }, { status: 500 });
+  }
+
+  if (!claimed) {
+    const { data: yaCerrada } = await session.db
+      .from("partidas")
+      .select("id, estado, finalizada_en")
+      .eq("id", partidaId)
+      .maybeSingle();
+
+    return NextResponse.json({
+      id: partidaId,
+      status: (yaCerrada as any)?.estado ?? "finalizada",
+      finalizedAt: (yaCerrada as any)?.finalizada_en ?? null,
+    });
+  }
+
   const { data: participantesPartida, error: participantesPartidaError } = await session.db
     .from("partida_participantes")
     .select("id, personaje_id, usuario_id, muerto")
@@ -668,21 +700,7 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const finalizedAt = new Date().toISOString();
-  const { data: updated, error: updateError } = await session.db
-    .from("partidas")
-    .update({ estado: "finalizada", finalizada_en: finalizedAt })
-    .eq("id", partidaId)
-    .select("id, estado, finalizada_en")
-    .single();
-
-  if (updateError || !updated) {
-    return NextResponse.json(
-      { error: updateError?.message ?? "No se pudo cerrar la partida" },
-      { status: 500 },
-    );
-  }
-
+  // El cierre ya se reclamó arriba, antes de repartir.
   const deadParticipants = (participantesPartida ?? [])
     .filter((row: any) => Boolean(row.muerto))
     .map((row: any) => ({
@@ -777,8 +795,8 @@ export async function PATCH(request: NextRequest) {
   });
 
   return NextResponse.json({
-    id: (updated as any).id,
-    status: (updated as any).estado,
-    finalizedAt: (updated as any).finalizada_en,
+    id: partidaId,
+    status: "finalizada",
+    finalizedAt,
   });
 }

@@ -123,14 +123,17 @@ function normalizeNivel20Url(rawValue: unknown): {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const db = createServerClient();
 
-  if (!userId) {
-    return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+  // El `userId` de la query se ignora: el dueño de los datos es el dueño del
+  // token. Antes esta ruta no autenticaba, así que cualquiera podía leer el oro,
+  // los personajes y el inventario de otra cuenta con solo su uuid.
+  const { user, error: authError } = await getUserFromRequest(db, request);
+  if (authError || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const db = createServerClient();
+  const userId = user.id;
 
   // Obtener perfil del jugador
   const { data: perfil } = await db
@@ -148,7 +151,7 @@ export async function GET(request: Request) {
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
-        cabeza, pecho, guante, botas,
+        cabeza, pecho, guante, botas, capa,
         collar, anillo1, anillo2, anillo3, amuleto, cinturon,
         mano_izquierda, mano_derecha,
         mano_izquierda_socket_1, mano_izquierda_socket_2, mano_izquierda_socket_3,
@@ -199,6 +202,7 @@ export async function GET(request: Request) {
       equip.pecho,
       equip.guante,
       equip.botas,
+      equip.capa,
       equip.collar,
       equip.anillo1,
       equip.anillo2,
@@ -258,6 +262,7 @@ export async function GET(request: Request) {
       equip?.pecho,
       equip?.guante,
       equip?.botas,
+      equip?.capa,
       equip?.collar,
       equip?.anillo1,
       equip?.anillo2,
@@ -374,6 +379,10 @@ export async function GET(request: Request) {
           mapEquipItem(equip?.mano_derecha_socket_2),
           mapEquipItem(equip?.mano_derecha_socket_3),
         ],
+      },
+      cape: {
+        capa:
+          equip?.capa != null ? equipIdToName.get(equip.capa) : undefined,
       },
       capeSockets: [
         mapEquipItem(equip?.capa_socket_1),
