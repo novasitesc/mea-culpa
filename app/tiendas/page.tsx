@@ -1,41 +1,30 @@
 "use client";
 
-// Tiendas (/tiendas): escaparate, carrito y compra.
-// La compra entera se resuelve en la RPC `comprar_en_tienda` a través de
-// POST /api/tiendas/comprar: stock, oro y bolsa cambian de golpe o no cambian.
+// Tiendas (/tiendas): el mercado del reino.
+//
+// Dos vistas: la fila de puestos y el interior de un puesto. La compra entera
+// se resuelve en la RPC `comprar_en_tienda` a través de POST /api/tiendas/comprar
+// —stock, oro, bolsa y ejército cambian de golpe o no cambian—, y se cierra en
+// un solo panel (components/mostrador.tsx) en vez de dos modales encadenados.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ShoppingCart,
-  Coins,
-  Package,
-  ChevronLeft,
-  X,
-  Plus,
-  Minus,
-  CheckCircle2,
-  MapPin,
+  ShoppingCart, Coins, ChevronLeft, CheckCircle2, MapPin, Store, Lock,
 } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { useAuth } from "@/lib/useAuth";
 import { getSupabase } from "@/lib/supabase";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import {
-  ITEM_RARITY_BADGES,
-  ITEM_RARITY_COLORS,
-  type ItemRarity,
-} from "@/lib/item-catalog";
+import { type ItemRarity } from "@/lib/item-catalog";
+import { TIPO_EJERCITO } from "@/lib/ejercito";
+import { temaTienda, fraseTendero, type SituacionTendero } from "@/lib/tienda-tema";
+import PuestoCard from "./components/puesto-card";
+import MercanciaCard from "./components/mercancia-card";
+import Tendero from "./components/tendero";
+import Mostrador from "./components/mostrador";
 
 // ─── Tipos (espejo de la API) ─────────────────────────────────────────────
 
@@ -45,7 +34,9 @@ type ItemCategory =
   | "armadura"
   | "accesorio"
   | "ingrediente"
-  | "misc";
+  | "misc"
+  // Va al inventario de ejército, no a la bolsa.
+  | "ejército";
 
 type ShopItem = {
   id: string;
@@ -83,11 +74,13 @@ type ShopListItem = Omit<Shop, "items"> & { itemCount: number };
 
 type CartEntry = ShopItem & { qty: number };
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 // ─── Componente principal ─────────────────────────────────────────────────
 
 export default function TiendasPage() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [shops, setShops] = useState<ShopListItem[]>([]);
   const [activeShop, setActiveShop] = useState<Shop | null>(null);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
@@ -135,14 +128,21 @@ export default function TiendasPage() {
     } catch {}
   }, [cart, cartKey]);
 
-  const [cartOpen, setCartOpen] = useState(false);
-  const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
+  const [mostradorOpen, setMostradorOpen] = useState(false);
   const [notification, setNotification] = useState<React.ReactNode | null>(null);
-  const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
+  // Lo que dice el tendero ahora mismo; `turno` rota la frase para que no repita.
+  const [charla, setCharla] = useState<{ situacion: SituacionTendero; turno: number }>({
+    situacion: "bienvenida",
+    turno: 0,
+  });
+
+  const decir = useCallback((situacion: SituacionTendero) => {
+    setCharla((prev) => ({ situacion, turno: prev.turno + 1 }));
+  }, []);
 
   // Cargar lista de tiendas
   useEffect(() => {
@@ -155,7 +155,9 @@ export default function TiendasPage() {
   // Cargar personajes del usuario (para el selector de bolsa al comprar)
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/profile?userId=${user.id}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then((data) =>
         setCharacters(
@@ -169,7 +171,7 @@ export default function TiendasPage() {
           })),
         ),
       );
-  }, [user?.id]);
+  }, [user?.id, token]);
 
   useEffect(() => {
     if (characters.length === 0) return;
@@ -183,24 +185,39 @@ export default function TiendasPage() {
   const openShop = (id: string) => {
     setIsLoadingShop(true);
     setFilterCategory("all");
+    setCharla({ situacion: "bienvenida", turno: 0 });
     fetch(`/api/tiendas?id=${id}`)
       .then((r) => r.json())
       .then((data: Shop) => setActiveShop(data))
       .finally(() => setIsLoadingShop(false));
   };
 
-  // Categorías únicas de la tienda activa
+  // Nivel > 10 abre todos los puestos; si no, manda el mínimo de cada uno.
+  const tieneAcceso = useCallback(
+    (minLevel?: number) =>
+      Boolean((user && user.level > 10) || !minLevel || (user && user.level >= minLevel)),
+    [user],
+  );
+
   const categories = activeShop
     ? ["all", ...Array.from(new Set(activeShop.items.map((i) => i.category)))]
     : [];
 
   const visibleItems = activeShop
-    ? activeShop.items.filter(
-        (i) => filterCategory === "all" || i.category === filterCategory,
-      )
+    ? activeShop.items.filter((i) => filterCategory === "all" || i.category === filterCategory)
     : [];
 
   // ── Carrito ──────────────────────────────────────────────────────────────
+
+  const enCarrito = useCallback(
+    (id: string) => cart.find((e) => e.id === id)?.qty ?? 0,
+    [cart],
+  );
+
+  const showNotification = (msg: React.ReactNode) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 2500);
+  };
 
   const addToCart = (item: ShopItem) => {
     setCart((prev) => {
@@ -208,17 +225,28 @@ export default function TiendasPage() {
       if (existing) {
         const maxQty = item.stock ?? Infinity;
         if (existing.qty >= maxQty) return prev;
-        return prev.map((e) =>
-          e.id === item.id ? { ...e, qty: e.qty + 1 } : e,
-        );
+        return prev.map((e) => (e.id === item.id ? { ...e, qty: e.qty + 1 } : e));
       }
       return [...prev, { ...item, qty: 1 }];
     });
-    showNotification(<span className="flex items-center gap-1.5"><ShoppingCart className="w-4 h-4 text-[#D4AF37]" /> {item.name} añadido al carrito</span>);
+
+    // El tendero comenta según lo que acabas de coger y lo que llevas encima.
+    const oro = user?.oro ?? 0;
+    decir(item.price > oro ? "sinOro" : item.price > oro * 0.4 ? "caro" : "anadido");
+
+    showNotification(
+      <span className="flex items-center gap-1.5">
+        <ShoppingCart className="h-4 w-4 text-[#D4AF37]" /> {item.name} al carrito
+      </span>,
+    );
   };
 
   const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((e) => e.id !== id));
+    setCart((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      if (next.length === 0) decir("vacio");
+      return next;
+    });
   };
 
   const changeQty = (id: string, delta: number) => {
@@ -233,20 +261,16 @@ export default function TiendasPage() {
     );
   };
 
-  const cartTotal = cart.reduce((sum, e) => sum + e.price * e.qty, 0);
-  const cartCount = cart.reduce((sum, e) => sum + e.qty, 0);
-  const canAfford = (user?.oro ?? 0) >= cartTotal && cartTotal > 0;
-
-  const handleBuy = () => {
-    setBuyError(null);
-    setSelectedCharId(null);
-    setBuyModalOpen(true);
-  };
+  const cartTotal = useMemo(() => cart.reduce((s, e) => s + e.price * e.qty, 0), [cart]);
+  const cartCount = useMemo(() => cart.reduce((s, e) => s + e.qty, 0), [cart]);
+  // Las unidades de ejército no ocupan bolsa: si el carrito solo las lleva,
+  // un personaje con la mochila llena puede comprar igualmente.
+  const cartNeedsBag = useMemo(() => cart.some((e) => e.category !== TIPO_EJERCITO), [cart]);
 
   const confirmBuy = async () => {
     if (!selectedCharId || isBuying) return;
 
-    const selectedCharacter = characters.find((character) => character.id === selectedCharId);
+    const selectedCharacter = characters.find((c) => c.id === selectedCharId);
     if (!selectedCharacter || selectedCharacter.lifeStatus === "muerto") {
       setBuyError("Este personaje está muerto y no puede comprar.");
       return;
@@ -266,10 +290,7 @@ export default function TiendasPage() {
         },
         body: JSON.stringify({
           personajeId: selectedCharId,
-          items: cart.map((e) => ({
-            articuloTiendaId: e.articuloTiendaId,
-            qty: e.qty,
-          })),
+          items: cart.map((e) => ({ articuloTiendaId: e.articuloTiendaId, qty: e.qty })),
         }),
       });
 
@@ -279,11 +300,8 @@ export default function TiendasPage() {
         return;
       }
 
-      // Éxito — limpiar estado, actualizar oro y mostrar notificación
+      // Éxito — descontar stock local, vaciar carrito y refrescar oro.
       const purchasedCart = [...cart];
-      const newPurchased = new Set(purchasedItems);
-      purchasedCart.forEach((e) => newPurchased.add(e.id));
-      setPurchasedItems(newPurchased);
       setActiveShop((prev) => {
         if (!prev) return prev;
         return {
@@ -291,36 +309,33 @@ export default function TiendasPage() {
           items: prev.items.map((item) => {
             const purchased = purchasedCart.find((e) => e.id === item.id);
             if (!purchased || item.stock === null) return item;
-            return {
-              ...item,
-              stock: Math.max(0, item.stock - purchased.qty),
-            };
+            return { ...item, stock: Math.max(0, item.stock - purchased.qty) };
           }),
         };
       });
       setCart([]);
-      setBuyModalOpen(false);
-      setCartOpen(false);
-      // Actualizar personajes para reflejar nueva bolsa
+      setMostradorOpen(false);
+      // Solo lo que va a la mochila ocupa hueco; el ejército tiene el suyo.
+      const huecosOcupados = purchasedCart.filter((e) => e.category !== TIPO_EJERCITO).length;
       setCharacters((prev) =>
         prev.map((c) =>
-          c.id === selectedCharId
-            ? { ...c, bagUsed: c.bagUsed + purchasedCart.length }
-            : c,
+          c.id === selectedCharId ? { ...c, bagUsed: c.bagUsed + huecosOcupados } : c,
         ),
       );
       await refreshUser();
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("auth:refresh", {
-            detail: {
-              oro: typeof data?.oro === "number" ? data.oro : undefined,
-            },
+            detail: { oro: typeof data?.oro === "number" ? data.oro : undefined },
           }),
         );
       }
+      decir("compra");
       showNotification(
-        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Compra completada · Saldo: {(data.oro ?? 0).toLocaleString()} <Coins className="w-4 h-4 text-yellow-500" /></span>
+        <span className="flex items-center gap-1.5">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Compra completada · Saldo:{" "}
+          {(data.oro ?? 0).toLocaleString()} <Coins className="h-4 w-4 text-yellow-500" />
+        </span>,
       );
     } catch {
       setBuyError("Error de conexión. Intenta de nuevo.");
@@ -329,560 +344,309 @@ export default function TiendasPage() {
     }
   };
 
-  const showNotification = (msg: React.ReactNode) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 2500);
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
+
+  const tema = activeShop
+    ? temaTienda(activeShop.id, `${activeShop.name} ${activeShop.description}`)
+    : null;
+  const frase = activeShop
+    ? fraseTendero(charla.situacion, activeShop.id, charla.turno)
+    : "";
 
   return (
     <div className="min-h-screen bg-background">
       {/* Fondo textura */}
       <div
-        className="fixed inset-0 opacity-5 pointer-events-none"
+        className="pointer-events-none fixed inset-0 opacity-5"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto p-4">
+      <div className="relative z-10 mx-auto max-w-7xl p-4">
         <Header />
 
-        {/* Notificación flotante */}
-        {notification && (
-          <div className="fixed bottom-20 right-6 z-50 bg-card border border-gold-dim text-foreground px-4 py-3 rounded-lg shadow-xl text-sm medieval-border animate-in slide-in-from-bottom-4">
-            {notification}
-          </div>
-        )}
+        {/* Aviso flotante */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 rounded-lg border border-gold/50 bg-[#12100d]/95 px-4 py-2 font-sans text-sm text-[#e8d8b0] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] backdrop-blur"
+            >
+              {notification}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Botón carrito flotante */}
-        {Boolean(user?.id) && cartCount > 0 && (
-          <button
-            onClick={() => setCartOpen(true)}
-            className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl font-medium transition-colors ${
-              canAfford
-                ? "bg-gold text-background hover:bg-gold-dim"
-                : "bg-destructive/80 text-white hover:bg-destructive"
-            }`}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {cartCount} objeto{cartCount !== 1 ? "s" : ""} ·{" "}
-            {cartTotal.toLocaleString()}
-            <Coins className="w-4 h-4" />
-          </button>
-        )}
+        {/* Botón del mostrador */}
+        <AnimatePresence>
+          {cartCount > 0 && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ type: "spring", stiffness: 380, damping: 24 }}
+              whileHover={{ y: -3 }}
+              onClick={() => {
+                setBuyError(null);
+                setMostradorOpen(true);
+              }}
+              // bottom-24: el widget de "Reportar" ocupa bottom-6 right-6 con
+              // z-50 y tapaba el carrito entero.
+              className="fixed bottom-24 right-6 z-40 flex items-center gap-2.5 rounded-full border border-gold/60 bg-[#12100d]/95 px-5 py-3 font-sans text-sm font-semibold text-gold shadow-[0_12px_36px_-12px_rgba(212,175,55,0.7)] backdrop-blur transition-colors hover:bg-[#1c1710]"
+            >
+              <span className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-background tabular-nums">
+                  {cartCount}
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                {cartTotal.toLocaleString("es-ES")} <Coins className="h-3.5 w-3.5" />
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
 
-        {/* Modal carrito */}
-        {cartOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-background/80"
-              onClick={() => setCartOpen(false)}
-            />
-            <Card className="relative z-10 w-full max-w-md medieval-border border-gold-dim">
-              <CardHeader className="border-b border-border pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-gold flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5" /> Carrito
-                  </CardTitle>
-                  <button
-                    onClick={() => setCartOpen(false)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                {cart.map((e) => (
-                  <div key={e.id} className="flex items-center gap-3">
-                    <span className="flex items-center justify-center text-[#D4AF37] shrink-0">{getIconForString(e.name, "w-6 h-6", e.icon)}</span>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{e.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {e.price.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" /> c/u
-                      </p>
-                    </div>
-
-                    {/* Controles de cantidad */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => changeQty(e.id, -1)}
-                        className="w-6 h-6 rounded bg-secondary hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                        title="Reducir"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold">
-                        {e.qty}
-                      </span>
-                      <button
-                        onClick={() => changeQty(e.id, 1)}
-                        className="w-6 h-6 rounded bg-secondary hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-gold transition-colors"
-                        title="Aumentar"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <span className="text-sm font-bold text-gold shrink-0 w-16 text-right">
-                      {(e.price * e.qty).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
-                    </span>
-
-                    <button
-                      onClick={() => removeFromCart(e.id)}
-                      className="text-muted-foreground hover:text-destructive shrink-0"
-                      title="Eliminar"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-
-                <div className="border-t border-border pt-3 flex items-center justify-between font-bold">
-                  <span>Total</span>
-                  <span className="text-gold flex items-center gap-1">
-                    {cartTotal.toLocaleString()} <Coins className="w-4 h-4" />
-                  </span>
-                </div>
-
-                {!canAfford && (
-                  <p className="text-xs text-destructive text-center">
-                    Te faltan{" "}
-                    <strong>
-                      {(cartTotal - (user?.oro ?? 0)).toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
-                    </strong>{" "}
-                    para esta compra
-                  </p>
-                )}
-
-                <Button
-                  className="w-full"
-                  onClick={handleBuy}
-                  disabled={!canAfford}
-                >
-                  {canAfford ? "Confirmar compra" : "Oro insuficiente"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Modal: selección de personaje para recibir la compra */}
-        {buyModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-background/80"
-              onClick={() => !isBuying && setBuyModalOpen(false)}
-            />
-            <Card className="relative z-10 w-full max-w-lg medieval-border border-gold-dim">
-              <CardHeader className="border-b border-border pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-gold">
-                    ¿A qué personaje va?
-                  </CardTitle>
-                  <button
-                    onClick={() => setBuyModalOpen(false)}
-                    className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                    disabled={isBuying}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {cartCount} objeto{cartCount !== 1 ? "s" : ""} ·{" "}
-                  <span className="text-gold font-semibold">
-                    {cartTotal.toLocaleString()} <Coins className="w-3.5 h-3.5 inline-block text-yellow-500 -mt-0.5" />
-                  </span>
-                </p>
-              </CardHeader>
-
-              <CardContent className="pt-4">
-                {/* Vista previa de items a comprar */}
-                <div className="mb-4 p-3 bg-secondary/30 rounded-lg border border-border">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                    Items a comprar:
-                  </p>
-                  <div className="space-y-1.5">
-                    {cart.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <span className="flex items-center justify-center text-[#D4AF37]">{getIconForString(item.name, "w-5 h-5", item.icon)}</span>
-                        <span className="flex-1 truncate">{item.name}</span>
-                        <span className="font-semibold text-gold shrink-0">
-                          ×{item.qty}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {characters.length === 0 ? (
-                  <p className="text-center text-muted-foreground text-sm py-6">
-                    No tienes personajes creados. Crea uno desde tu perfil.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                    {characters.map((char) => {
-                      const isFull = char.bagUsed >= char.bagCapacity;
-                      const isDead = char.lifeStatus === "muerto";
-                      const isSelected = selectedCharId === char.id;
-                      return (
-                        <button
-                          key={char.id}
-                          onClick={() => !isFull && !isDead && setSelectedCharId(char.id)}
-                          disabled={isFull || isDead}
-                          className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
-                            isFull || isDead
-                              ? "opacity-50 cursor-not-allowed border-border"
-                              : isSelected
-                                ? "border-gold bg-gold/10"
-                                : "border-border hover:border-gold-dim"
-                          }`}
-                        >
-                          <img
-                            src={
-                              char.portrait ||
-                              "/characters/profileplaceholder.webp"
-                            }
-                            alt={char.name}
-                            className="w-12 h-12 rounded object-cover shrink-0 bg-secondary"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate">
-                              {char.name}
-                            </p>
-                            <p
-                              className={`text-xs mt-0.5 ${isFull || isDead ? "text-destructive" : "text-muted-foreground"}`}
-                            >
-                              Bolsa: {char.bagUsed}/{char.bagCapacity}
-                              {isDead ? " · Muerto" : isFull ? " · Llena" : ""}
-                            </p>
-                          </div>
-                          {isSelected && (
-                            <span className="text-gold text-lg shrink-0">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {buyError && (
-                  <p className="text-sm text-destructive text-center mb-3">
-                    {buyError}
-                  </p>
-                )}
-
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setBuyModalOpen(false)}
-                    disabled={isBuying}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={confirmBuy}
-                    disabled={
-                      !selectedCharId || isBuying || characters.length === 0
-                    }
-                  >
-                    {isBuying ? "Comprando…" : "Comprar"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Layout con sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 mt-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[200px_1fr]">
           <Sidebar />
+
           <div className="min-h-screen">
-            {/* Título de sección */}
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gold tracking-wider font-sans flex items-center gap-2">
-                  <Package className="w-7 h-7" />
-                  Tiendas de Mea Culpa
-                </h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Explora los comerciantes del reino
-                </p>
-              </div>
-              {activeShop && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setActiveShop(null)}
-                  className="flex items-center gap-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Volver a tiendas
-                </Button>
-              )}
-            </div>
-
-            {/* ── Vista: lista de tiendas ────────────────────────────────────── */}
+            {/* ── Vista: fila de puestos ───────────────────────────────────── */}
             {!activeShop && (
-              <div>
+              <>
+                <div className="mb-6">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.25em] text-gold/60">
+                    Mercado del reino
+                  </p>
+                  <h1 className="mt-0.5 flex items-center gap-2 font-serif text-2xl text-[#D4AF37]">
+                    <Store className="h-6 w-6" />
+                    Los puestos
+                  </h1>
+                  <p className="mt-1 font-sans text-sm text-muted-foreground">
+                    Cada comerciante trae lo suyo. Algunos no abren para cualquiera.
+                  </p>
+                </div>
+
                 {isLoadingShops ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="shop-card rounded-lg bg-card animate-pulse border border-border"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {shops.map((shop) => {
-                      // allow access to all shops if user is over level 10
-                      const hasAccess =
-                        (user && user.level > 10) ||
-                        !shop.minLevel ||
-                        (user && user.level >= shop.minLevel);
-
-                      return (
-                        <div key={shop.id} className="relative">
-                          <Card
-                            className={`medieval-border shop-card flex flex-col transition-all ${hasAccess ? "cursor-pointer hover:border-gold-dim hover:shadow-lg group" : "cursor-not-allowed opacity-75"}`}
-                            onClick={() => hasAccess && openShop(shop.id)}
-                          >
-                            <CardHeader className="pb-2 pt-4 px-4">
-                              <div className="flex items-start gap-2.5">
-                                <span className="text-3xl shrink-0 flex items-center justify-center text-[#D4AF37]">
-                                  {getIconForString(shop.name, "w-8 h-8", shop.icon)}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <CardTitle
-                                    className={`text-sm line-clamp-1 transition-colors ${hasAccess ? "text-gold group-hover:text-gold-dim" : "text-muted-foreground"}`}
-                                  >
-                                    {shop.name}
-                                  </CardTitle>
-                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                    {shop.location}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 flex flex-col px-4 py-2">
-                              <CardDescription className="text-xs leading-relaxed line-clamp-2 flex-1">
-                                {shop.description}
-                              </CardDescription>
-                            </CardContent>
-                            <div className="px-4 pb-3 flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground italic line-clamp-1">
-                                — {shop.keeper}
-                              </span>
-                              <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">
-                                {(shop as ShopListItem).itemCount}o
-                              </span>
-                            </div>
-                          </Card>
-
-                          {/* Overlay de incognito cuando no tiene acceso (mismo tamaño que la tarjeta) */}
-                          {!hasAccess && (
-                            <div className="absolute inset-0 rounded-lg overflow-hidden medieval-border border border-gold-dim/50">
-                              <img
-                                src="/incognito.png"
-                                alt="Incógnito"
-                                className="w-full h-full object-fill"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Vista: tienda individual ───────────────────────────────────── */}
-            {activeShop && (
-              <div>
-                {isLoadingShop ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[...Array(6)].map((_, i) => (
                       <div
                         key={i}
-                        className="h-52 rounded-lg bg-card animate-pulse border border-border"
+                        className="h-56 animate-pulse rounded-xl border border-[#2a241a] bg-card/50"
+                        style={{ animationDelay: `${i * 120}ms` }}
                       />
                     ))}
                   </div>
                 ) : (
-                  (() => {
-                    // desbloqueo global: cualquier usuario con nivel > 10 tiene acceso a todo
-                    const hasAccess =
-                      (user && user.level > 10) ||
-                      !activeShop.minLevel ||
-                      (user && user.level >= activeShop.minLevel);
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {shops.map((shop, i) => (
+                      <PuestoCard
+                        key={shop.id}
+                        {...shop}
+                        index={i}
+                        hasAccess={tieneAcceso(shop.minLevel)}
+                        onOpen={() => openShop(shop.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-                    if (!hasAccess) {
-                      return (
-                        <div className="flex flex-col items-center justify-center gap-6 py-20">
-                          <img
-                            src="/incognito.png"
-                            alt="Acceso denegado"
-                            className="w-24 h-24 object-contain opacity-80"
-                          />
-                          <div className="text-center max-w-sm">
-                            <h2 className="text-2xl font-bold text-gold mb-2">
-                              Acceso restringido
-                            </h2>
-                            <p className="text-muted-foreground text-sm mb-4">
-                              No tienes el nivel suficiente para acceder a{" "}
-                              {activeShop.name}.
-                            </p>
-                            <p className="text-gold font-bold text-lg">
-                              Nivel requerido: {activeShop.minLevel}
-                            </p>
-                            <p className="text-muted-foreground text-sm mt-2">
-                              Tu nivel actual: {user?.level || "No definido"}
+            {/* ── Vista: dentro del puesto ─────────────────────────────────── */}
+            {activeShop && tema && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveShop(null)}
+                  className="mb-4 inline-flex items-center gap-1.5 font-sans text-xs text-foreground/50 transition-colors hover:text-gold"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Volver al mercado
+                </button>
+
+                {isLoadingShop ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="h-56 animate-pulse rounded-xl border border-[#2a241a] bg-card/50" />
+                    ))}
+                  </div>
+                ) : !tieneAcceso(activeShop.minLevel) ? (
+                  <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
+                    <Lock className="h-8 w-8 text-foreground/30" />
+                    <div>
+                      <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
+                      <p className="mt-1 font-sans text-sm text-muted-foreground">
+                        {activeShop.name} abre a nivel {activeShop.minLevel}.
+                      </p>
+                      <p className="mt-0.5 font-sans text-xs text-foreground/35">
+                        Tu nivel: {user?.level ?? "—"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Estandarte del puesto */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: EASE }}
+                      className="mb-5 overflow-hidden rounded-xl border border-[#3a3020]"
+                      style={{ background: `linear-gradient(180deg, ${tema.deep} 0%, #0d0b08 70%)` }}
+                    >
+                      <span
+                        aria-hidden
+                        className="block h-8 w-full"
+                        style={{
+                          backgroundImage: `repeating-linear-gradient(135deg, ${tema.accent} 0 16px, #f5e6c8 16px 32px)`,
+                          opacity: 0.85,
+                          boxShadow: "inset 0 -7px 12px -7px rgba(0,0,0,0.9)",
+                        }}
+                      />
+                      <span
+                        aria-hidden
+                        className="block h-1.5 w-full"
+                        style={{
+                          backgroundImage:
+                            "repeating-linear-gradient(90deg, transparent 0 7px, rgba(0,0,0,0.55) 7px 9px)",
+                        }}
+                      />
+
+                      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+                        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                          <span
+                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border"
+                            style={{
+                              borderColor: `${tema.accent}66`,
+                              background: `radial-gradient(circle at 50% 35%, ${tema.accent}26, transparent 70%)`,
+                              color: tema.accent,
+                            }}
+                          >
+                            {getIconForString(activeShop.name, "w-8 h-8", activeShop.icon)}
+                          </span>
+                          <div className="min-w-0">
+                            <h1 className="truncate font-serif text-xl text-[#D4AF37]">
+                              {activeShop.name}
+                            </h1>
+                            <p className="mt-0.5 inline-flex items-center gap-1 font-sans text-[11px] text-foreground/40">
+                              <MapPin className="h-3 w-3 shrink-0" /> {activeShop.location}
                             </p>
                           </div>
-                          <Button
-                            variant="outline"
-                            onClick={() => setActiveShop(null)}
-                            className="mt-4"
+                        </div>
+
+                        <div className="sm:max-w-xs sm:flex-1">
+                          <Tendero
+                            shopId={activeShop.id}
+                            shopName={`${activeShop.name} ${activeShop.description}`}
+                            keeper={activeShop.keeper}
+                            frase={frase}
+                            situacion={charla.situacion}
+                            fraseKey={charla.turno}
+                          />
+                        </div>
+                      </div>
+
+                      {activeShop.description?.trim() && (
+                        <p className="border-t border-white/5 px-5 py-2.5 font-sans text-[11.5px] leading-relaxed text-foreground/45">
+                          {activeShop.description}
+                        </p>
+                      )}
+                    </motion.div>
+
+                    {/* Estantes: filtro por categoría */}
+                    {categories.length > 2 && (
+                      <div className="mb-4 flex flex-wrap gap-1.5">
+                        {categories.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setFilterCategory(cat)}
+                            className={`relative rounded-full border px-3 py-1 font-sans text-[11px] capitalize transition-all ${
+                              filterCategory === cat
+                                ? "border-gold text-gold"
+                                : "border-[#3a3020] text-foreground/45 hover:border-[#8B7355] hover:text-foreground/70"
+                            }`}
                           >
-                            <ChevronLeft className="w-4 h-4 mr-2" />
-                            Volver a tiendas
-                          </Button>
-                        </div>
-                      );
-                    }
+                            {filterCategory === cat && (
+                              <motion.span
+                                layoutId="estante-activo"
+                                transition={{ duration: 0.3, ease: EASE }}
+                                className="absolute inset-0 rounded-full bg-gold/10"
+                              />
+                            )}
+                            <span className="relative">{cat === "all" ? "Todo" : cat}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                    return (
-                      <>
-                        {/* Cabecera de la tienda */}
-                        <Card className="mb-6 border-gold-dim medieval-border">
-                          <CardContent className="pt-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                              <span className="text-5xl flex items-center justify-center text-[#D4AF37]">
-                                {getIconForString(activeShop.name, "w-14 h-14", activeShop.icon)}
-                              </span>
-                              <div className="flex-1">
-                                <h2 className="text-xl font-bold text-gold font-sans">
-                                  {activeShop.name}
-                                </h2>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {activeShop.description}
-                                </p>
-                                 <p className="text-xs text-muted-foreground mt-2 italic flex items-center gap-1">
-                                  <MapPin className="w-3 h-3 shrink-0 text-gold/60" /> {activeShop.location} · Atendido por{" "}
-                                  <strong>{activeShop.keeper}</strong>
-                                </p>
-                              </div>
-                              {/* Filtro de categoría */}
-                              <div className="shrink-0">
-                                <Select
-                                  value={filterCategory}
-                                  onChange={(e) =>
-                                    setFilterCategory(e.target.value)
-                                  }
-                                  className="w-44"
-                                >
-                                  {categories.map((cat) => (
-                                    <option key={cat} value={cat}>
-                                      {cat === "all"
-                                        ? "Todas las categorías"
-                                        : cat.charAt(0).toUpperCase() +
-                                          cat.slice(1)}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Grid de items */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {visibleItems.map((item) => {
-                            const bought = purchasedItems.has(item.id);
-                            const outOfStock = item.stock === 0;
-                            const inCart = cart.some((e) => e.id === item.id);
-
-                            return (
-                              <Card
-                                key={item.id}
-                                className={`flex flex-col border transition-all ${ITEM_RARITY_COLORS[item.rarity]} ${!bought && !outOfStock ? "hover:shadow-lg" : "opacity-60"}`}
-                              >
-                                <CardHeader className="pb-2">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <span className="text-3xl">
-                                      <span className="flex items-center justify-center text-[#D4AF37] mr-1">{getIconForString(item.name, "w-4 h-4", item.icon)}</span>
-                                    </span>
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0 ${ITEM_RARITY_BADGES[item.rarity]}`}
-                                    >
-                                      {item.rarity}
-                                    </span>
-                                  </div>
-                                  <CardTitle className="text-sm text-foreground mt-2 leading-tight">
-                                    {item.name}
-                                  </CardTitle>
-                                </CardHeader>
-
-                                <CardContent className="flex-1 flex flex-col gap-3 pt-0">
-                                  <CardDescription className="text-xs leading-relaxed flex-1">
-                                    {item.description}
-                                  </CardDescription>
-
-                                  <div className="flex items-center justify-between mt-auto">
-                                    {/* Precio */}
-                                    <span className="flex items-center gap-1 font-bold text-gold text-sm">
-                                      <Coins className="w-4 h-4" />
-                                      {item.price.toLocaleString()}
-                                    </span>
-                                    {/* Stock */}
-                                    {item.stock !== null && (
-                                      <span className="text-xs text-muted-foreground">
-                                        Stock: {item.stock}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <Button
-                                    size="sm"
-                                    variant={inCart ? "secondary" : "default"}
-                                    disabled={bought || outOfStock}
-                                    onClick={() => addToCart(item)}
-                                    className="w-full"
-                                  >
-                                    {bought
-                                      ? <><CheckCircle2 className="w-4 h-4 inline-block mr-1" /> Comprado</>
-                                      : outOfStock
-                                        ? "Sin stock"
-                                        : inCart
-                                          ? "En carrito +"
-                                          : "Añadir al carrito"}
-                                  </Button>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </>
-                    );
-                  })()
+                    {/* Mercancía */}
+                    {visibleItems.length === 0 ? (
+                      <p className="rounded-xl border border-dashed border-[#3a3020] py-16 text-center font-sans text-sm italic text-foreground/30">
+                        Nada en este estante hoy.
+                      </p>
+                    ) : (
+                      <motion.div
+                        layout
+                        className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4"
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {visibleItems.map((item, i) => (
+                            <MercanciaCard
+                              key={item.id}
+                              {...item}
+                              index={i}
+                              enCarrito={enCarrito(item.id)}
+                              puedePagar={(user?.oro ?? 0) >= item.price}
+                              onAdd={() => addToCart(item)}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </motion.div>
+                    )}
+                  </>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Mostrador: carrito, destinatario y cuentas en un solo panel */}
+      <AnimatePresence>
+        {mostradorOpen && (
+          <Mostrador
+            key="mostrador"
+            lineas={cart.map((e) => ({
+              id: e.id,
+              name: e.name,
+              icon: e.icon,
+              price: e.price,
+              qty: e.qty,
+              rarity: e.rarity,
+              stock: e.stock,
+            }))}
+            personajes={characters}
+            seleccionadoId={selectedCharId}
+            oro={user?.oro ?? 0}
+            total={cartTotal}
+            necesitaBolsa={cartNeedsBag}
+            comprando={isBuying}
+            error={buyError}
+            onQty={changeQty}
+            onQuitar={removeFromCart}
+            onSeleccionar={setSelectedCharId}
+            onConfirmar={confirmBuy}
+            onClose={() => setMostradorOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

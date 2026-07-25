@@ -30,14 +30,18 @@ import {
   ExternalLink,
   Save,
   Loader2,
+  Swords,
 } from "lucide-react";
-import { EquipmentPreview } from "../bolsa/bolsa";
+import { AnimatePresence } from "framer-motion";
+import EjercitoModal from "./ejercito-modal";
+import { totalTropas, type UnidadEjercito } from "@/lib/ejercito";
+import { EquipmentStrip } from "../bolsa/bolsa";
 import CaidasTracker from "@/app/components/caidas-tracker";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
-import { playCardHoverSfx } from "@/lib/sfx";
+import { playUiHoverSfx } from "@/lib/sfx";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Re-use the types from the parent. They are not exported from page.tsx so we
@@ -69,6 +73,10 @@ type AccessorySlots = {
 type WeaponSlots = {
   manoIzquierda?: string;
   manoDerecha?: string;
+};
+
+type CapeSlot = {
+  capa?: string;
 };
 
 type ItemType =
@@ -125,12 +133,16 @@ export type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  /** La capa: ranura propia, con sus tres engarces en `capeSockets`. */
+  cape?: CapeSlot;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntryLocal[];
   /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
   usedSpells?: string[];
   bag: Bag;
+  /** Inventario de ejército (5 casillas); llega de GET /api/profile. */
+  army?: { units: UnidadEjercito[]; maxSlots: number };
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
   /** Caídas acumuladas en expedición (0-3); se restauran con un descanso largo. */
@@ -173,6 +185,10 @@ export default function CharacterCard({
   const [nivel20Input, setNivel20Input] = useState(character.nivel20Url ?? "");
   const [savingNivel20, setSavingNivel20] = useState(false);
   const [hasNewBagItems, setHasNewBagItems] = useState(false);
+  const [armyOpen, setArmyOpen] = useState(false);
+
+  const armyUnits = character.army?.units ?? [];
+  const armyTroops = totalTropas(armyUnits);
 
   useEffect(() => {
     if (!character?.id) return;
@@ -259,7 +275,7 @@ export default function CharacterCard({
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
       <motion.article
         layout
-        onHoverStart={playCardHoverSfx}
+        onHoverStart={playUiHoverSfx}
         transition={{ layout: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } }}
         exit={{
           opacity: 0,
@@ -386,6 +402,15 @@ export default function CharacterCard({
             <Zap className={`w-3 h-3 ${character.puntoCansancio >= MAX_CANSANCIO - 2 ? "text-red-500" : "text-[#8B7355]"}`} />
             Cansancio: {character.puntoCansancio}/{MAX_CANSANCIO}
           </span>
+          {armyUnits.length > 0 && (
+            <>
+              <span className="text-[#8B7355]">·</span>
+              <span className="inline-flex items-center gap-1" title="Soldados bajo su mando">
+                <Swords className="w-3 h-3 text-[#8B7355]" />
+                {armyTroops.toLocaleString("es-ES")} soldados
+              </span>
+            </>
+          )}
           {character.caidas > 0 && (
             <>
               <span className="text-[#8B7355]">·</span>
@@ -537,11 +562,29 @@ export default function CharacterCard({
                     ))}
                   </div>
 
-                  {/* Equipment Preview */}
-                  <EquipmentPreview character={character} />
+                  {/* Resumen de equipo. El muñeco con las ranuras grandes vive
+                      dentro de la bolsa, que es donde se edita; aquí solo se
+                      consulta, y una fila de casillas basta para eso. */}
+                  <EquipmentStrip
+                    character={character}
+                    onOpenBag={
+                      character.lifeStatus === "muerto" ? undefined : handleOpenBagClick
+                    }
+                  />
 
-                  {/* Open Bag button */}
+                  {/* Open Bag / Ejército buttons */}
                   <div className="flex justify-end gap-2 mt-2">
+                    <button
+                      className="relative px-4 py-2 rounded border border-[#8B7355] bg-[#1a1610] text-[#e8d8b0] font-semibold shadow transition hover:border-[#D4AF37] hover:bg-[#241d13] hover:text-[#D4AF37] inline-flex items-center gap-2"
+                      onClick={() => setArmyOpen(true)}
+                      title="Regimientos que comanda este personaje"
+                    >
+                      <Swords className="w-4 h-4" />
+                      Ejército
+                      <span className="rounded-full border border-[#8B7355]/60 bg-black/40 px-1.5 py-0.5 text-[10px] leading-none tabular-nums text-[#D4AF37]">
+                        {armyUnits.length > 0 ? armyTroops.toLocaleString("es-ES") : "0"}
+                      </span>
+                    </button>
                     <button
                       className="relative px-4 py-2 rounded bg-[#D4AF37] text-background font-semibold shadow hover:bg-[#B8860B] transition disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
                       onClick={handleOpenBagClick}
@@ -566,6 +609,17 @@ export default function CharacterCard({
               <SpellsRegistry character={character} token={token} />
             </div>
         </Collapsible.Content>
+
+        <AnimatePresence>
+          {armyOpen && (
+            <EjercitoModal
+              key="ejercito-modal"
+              nombrePersonaje={character.name}
+              unidades={armyUnits}
+              onClose={() => setArmyOpen(false)}
+            />
+          )}
+        </AnimatePresence>
       </motion.article>
     </Collapsible.Root>
   );

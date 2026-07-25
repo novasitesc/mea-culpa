@@ -96,10 +96,21 @@ export async function POST(
       cantidad: assignResult.grantedQty,
     });
 
+    // La bolsa puede no tener sitio para todo lo pedido, y antes la respuesta solo
+    // traía la cantidad final: el DM creía haber entregado 3 y habían entrado 1.
+    const truncado = assignResult.grantedQty < cantidad;
+
     return NextResponse.json({
       tipo: "item",
       objeto: objData,
       cantidad: assignResult.grantedQty,
+      cantidadSolicitada: cantidad,
+      truncado,
+      ...(truncado
+        ? {
+            aviso: `Solo cupieron ${assignResult.grantedQty} de ${cantidad}: la bolsa de ${personajeNombre || "el personaje"} está llena`,
+          }
+        : {}),
     });
   }
 

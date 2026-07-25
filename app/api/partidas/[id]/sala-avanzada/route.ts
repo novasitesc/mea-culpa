@@ -1,13 +1,14 @@
 // POST — Solo admin (el DM). Avanza el grupo a la siguiente sala de la mazmorra.
-// Registra el evento; a las SALAS_POR_DESCANSO salas (lib/descanso.ts) se avisa
-// de que toca descansar, pero es solo un aviso: manda el DM.
+// A las SALAS_POR_DESCANSO salas (lib/descanso.ts) el descanso es obligatorio y
+// este endpoint deja de avanzar hasta que el grupo descanse.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
-import { SALAS_POR_DESCANSO, salasDesdeUltimoDescanso } from "@/lib/descanso";
+import { debeDescansar, salasDesdeUltimoDescanso } from "@/lib/descanso";
 
 // El DM avanza al grupo a la siguiente sala de la expedición. El conteo vive
 // en el log de eventos (no hay contador persistido): cualquier descanso lo
-// pone a cero. Al llegar a SALAS_POR_DESCANSO se avisa de descanso obligatorio.
+// pone a cero. El bloqueo se valida aquí y no solo en el botón: el cliente es
+// del DM y un fetch a mano no puede saltarse la regla de la mesa.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -39,8 +40,21 @@ export async function POST(
     return NextResponse.json({ error: eventosError.message }, { status: 500 });
   }
 
-  const sala = salasDesdeUltimoDescanso((eventos ?? []) as Array<{ tipo: string }>) + 1;
-  const requiereDescanso = sala >= SALAS_POR_DESCANSO;
+  const salasRecorridas = salasDesdeUltimoDescanso((eventos ?? []) as Array<{ tipo: string }>);
+
+  if (debeDescansar(salasRecorridas)) {
+    return NextResponse.json(
+      {
+        error: `El grupo lleva ${salasRecorridas} salas sin descansar. El descanso es obligatorio antes de avanzar.`,
+        requiereDescanso: true,
+        salasRecorridas,
+      },
+      { status: 409 },
+    );
+  }
+
+  const sala = salasRecorridas + 1;
+  const requiereDescanso = debeDescansar(sala);
 
   const { error: insertError } = await session.db.from("partidas_eventos").insert({
     partida_id: partidaId,

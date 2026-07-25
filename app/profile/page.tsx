@@ -6,9 +6,12 @@
 // personajes, la bolsa y los modales.
 // Es la única pantalla accesible cuando todos los personajes están muertos.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { reduceMotion, useSmoothScroll } from "@/lib/useSmoothScroll";
 import Header from "../components/header";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { initMercadoPago } from "@mercadopago/sdk-react";
@@ -18,11 +21,13 @@ import EquipmentModal from "./bolsa/bolsa";
 import FantasyAlert from "@/components/ui/fantasy-alert";
 import CharacterGrid from "./components/character-grid";
 import PartidasHistorial from "./components/partidas-historial";
+import AnimatedNumber from "../components/animated-number";
 import CreateCharacterModal, {
   type CreateCharacterPayload,
 } from "./components/create-character-modal";
 import { type SpellEntry } from "@/lib/spells";
-import { Coins, Lock } from "lucide-react";
+import { type UnidadEjercito } from "@/lib/ejercito";
+import { Coins, HeartPulse, Lock, Plus, UserPlus } from "lucide-react";
 
 type Player = {
   name: string;
@@ -53,6 +58,10 @@ type AccessorySlots = {
 type WeaponSlots = {
   manoIzquierda?: string;
   manoDerecha?: string;
+};
+
+type CapeSlot = {
+  capa?: string;
 };
 
 type ItemType =
@@ -112,12 +121,16 @@ type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  /** La capa: ranura propia, con sus tres engarces en `capeSockets`. */
+  cape?: CapeSlot;
   weaponSockets?: WeaponSockets;
   capeSockets?: CapeSockets;
   knownSpells?: SpellEntry[];
   /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
   usedSpells?: string[];
   bag: Bag;
+  /** Inventario de ejército (5 casillas), aparte de la mochila. */
+  army?: { units: UnidadEjercito[]; maxSlots: number };
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
   caidas: number;
@@ -162,6 +175,12 @@ export default function ProfilePage() {
   const [reviveMessage, setReviveMessage] = useState<string | null>(null);
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Los pagos viven plegados: son la sección más alta de la página y la que
+  // menos veces se usa. Solo puede haber una abierta a la vez.
+  const [tienda, setTienda] = useState<"slots" | "revive" | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useSmoothScroll();
   const [deleteStep, setDeleteStep] = useState<"confirm" | "transfer">("confirm");
   const [transferTarget, setTransferTarget] = useState<{ type: "character" | "guild" | "none"; targetId?: number }>({ type: "none" });
 
@@ -193,7 +212,9 @@ export default function ProfilePage() {
   const loadProfile = useCallback(async () => {
     if (!isAuthenticated || !user) return;
 
-    const res = await fetch(`/api/profile?userId=${user.id}`);
+    const res = await fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const data = (await res.json()) as ProfileResponse;
 
     setProfile({
@@ -261,13 +282,22 @@ export default function ProfilePage() {
           armor: characterToSave.armor,
           accessories: characterToSave.accessories,
           weapons: characterToSave.weapons,
+          cape: characterToSave.cape,
           weaponSockets: characterToSave.weaponSockets,
           capeSockets: characterToSave.capeSockets,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update bag");
+        // La ruta manda `error`, `detail` y el código de Postgres. Repetirlos
+        // aquí evita que un fallo de inventario llegue como "Failed to update
+        // bag" y haya que adivinar cuál de sus siete escrituras se rompió.
+        const body = await response.json().catch(() => ({}));
+        throw new Error(
+          [body?.error ?? "Failed to update bag", body?.detail, body?.code && `(${body.code})`]
+            .filter(Boolean)
+            .join(" — "),
+        );
       }
 
       // Actualizar el estado local solo si la API responde exitosamente
@@ -282,6 +312,7 @@ export default function ProfilePage() {
               armor: characterToSave.armor,
               accessories: characterToSave.accessories,
               weapons: characterToSave.weapons,
+              cape: characterToSave.cape,
             }
             : char,
         ),
@@ -512,6 +543,35 @@ export default function ProfilePage() {
     });
   }, [profile?.characters]);
 
+  // Entradas con GSAP. `gsap.context` acota los selectores a este árbol y hace
+  // el `revert()` solo; el `ScrollTrigger` revela las secciones de abajo según
+  // llegas a ellas en vez de animarlas todas de golpe al cargar.
+  useLayoutEffect(() => {
+    if (!profile || reduceMotion()) return;
+
+    const ctx = gsap.context(() => {
+      gsap.from("[data-anim='pf-head']", {
+        y: 16,
+        opacity: 0,
+        duration: 0.55,
+        stagger: 0.07,
+        ease: "power3.out",
+      });
+      gsap.utils.toArray<HTMLElement>("[data-anim='pf-reveal']").forEach((el) => {
+        gsap.from(el, {
+          y: 24,
+          opacity: 0,
+          duration: 0.55,
+          ease: "power3.out",
+          scrollTrigger: { trigger: el, start: "top 92%", once: true },
+        });
+      });
+    }, rootRef);
+
+    ScrollTrigger.refresh();
+    return () => ctx.revert();
+  }, [profile]);
+
   // Mostrar loading mientras se verifica autenticación
   if (isLoading || !isAuthenticated) {
     return (
@@ -540,7 +600,7 @@ export default function ProfilePage() {
   const reviveTargetCharacter = selectedDeadCharacter ?? deadCharacters[0] ?? null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={rootRef} className="min-h-screen bg-background">
       {profileAlert && (
         <FantasyAlert
           key={profileAlert.id}
@@ -564,87 +624,169 @@ export default function ProfilePage() {
         <Header />
 
         <div className="space-y-10 mt-6">
-          <section className="rounded-lg border-2 border-[#8B7355] bg-card/80 backdrop-blur-sm p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <p className="text-[#B8860B] text-xs tracking-[0.3em] uppercase">
+          <section
+            data-anim="pf-reveal"
+            className="relative overflow-hidden rounded-lg border-2 border-[#8B7355] bg-card/80 p-6 backdrop-blur-sm"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-gold/5 blur-3xl"
+            />
+
+            <div className="relative flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <p data-anim="pf-head" className="text-xs uppercase tracking-[0.3em] text-[#B8860B]">
                   Perfil del Jugador
                 </p>
-                <h1 className="text-3xl font-serif text-[#D4AF37] tracking-wide mt-2">
+                <h1
+                  data-anim="pf-head"
+                  className="mt-2 truncate font-serif text-3xl tracking-wide text-[#D4AF37]"
+                >
                   {player?.name ?? "Cargando..."}
                 </h1>
-                <p className="text-muted-foreground mt-2">
+                <p data-anim="pf-head" className="mt-2 font-sans text-sm text-muted-foreground">
                   {player
                     ? `${player.role} · ${getAccountLevelTitle(player.level)} (Nivel ${player.level}) · ${player.home}`
                     : "Obteniendo datos del perfil"}
                 </p>
                 {player && (
-                  <div className="flex items-center gap-1.5 mt-3">
-                    <Coins className="w-6 h-6 text-yellow-500" />
-                    <span className="text-2xl font-bold text-yellow-400 font-serif">
-                      {(player.oro ?? 0).toLocaleString()}
-                    </span>
-                    <span className="text-xs text-muted-foreground uppercase tracking-widest self-end mb-1">
+                  <div data-anim="pf-head" className="mt-3 flex items-center gap-1.5">
+                    <Coins className="h-6 w-6 text-yellow-500" />
+                    <AnimatedNumber
+                      value={player.oro ?? 0}
+                      className="font-serif text-2xl font-bold text-yellow-400 tabular-nums"
+                    />
+                    <span className="mb-1 self-end text-xs uppercase tracking-widest text-muted-foreground">
                       oro
                     </span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded border border-[#B8860B] text-[#B8860B] text-xs uppercase">
-                  {characters.length} personaje
-                  {characters.length === 1 ? "" : "s"}
-                </span>
-                <span className="px-3 py-1 rounded bg-secondary text-foreground text-xs uppercase">
-                  Activo
-                </span>
+
+              {/* Slots como medidor: se lee de un vistazo cuántos te quedan sin
+                  necesidad de la línea de texto que había debajo. */}
+              <div data-anim="pf-head" className="flex flex-col gap-3 md:items-end">
+                <div className="w-full md:w-52">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-sans text-[10px] uppercase tracking-widest text-foreground/40">
+                      Personajes
+                    </span>
+                    <span className="font-serif text-sm tabular-nums text-gold">
+                      {characters.length}
+                      <span className="text-foreground/30">/{maxCharacterSlots}</span>
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex gap-1">
+                    {Array.from({ length: maxCharacterSlots }).map((_, i) => (
+                      <span
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${
+                          i < characters.length ? "bg-gold" : "bg-white/8"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   disabled={reachedCharacterLimit}
                   onClick={() => setShowCreateModal(true)}
-                  className={`px-4 py-2 rounded font-semibold text-sm transition-all ${reachedCharacterLimit
-                    ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700 text-white shadow hover:shadow-lg"
-                    }`}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-4 py-2 font-sans text-sm font-semibold transition-all active:scale-95 ${
+                    reachedCharacterLimit
+                      ? "cursor-not-allowed border-border bg-secondary text-muted-foreground"
+                      : "border-emerald-500/50 bg-emerald-900/25 text-emerald-200 hover:bg-emerald-900/50"
+                  }`}
                   title={
                     reachedCharacterLimit
                       ? `Limite alcanzado (${characters.length}/${maxCharacterSlots}).`
                       : "Crear nuevo personaje"
                   }
                 >
-                  {reachedCharacterLimit
-                    ? (
-                      <span className="flex items-center gap-1.5">
-                        Límite alcanzado <Lock className="w-4 h-4" />
-                      </span>
-                    )
-                    : "Crear Personaje"}
+                  {reachedCharacterLimit ? (
+                    <>
+                      Límite alcanzado <Lock className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Crear personaje
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Slots de personaje: <span className="text-foreground font-semibold">{characters.length}/{maxCharacterSlots}</span>
-              </p>
-
+            <div className="mt-5 space-y-3">
               {hasAllDead && (
                 <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 text-sm text-red-200">
                   Todos tus personajes están muertos. Solo puedes usar esta sección de Perfil hasta revivir al menos uno.
                 </div>
               )}
 
-              <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-3">
-                {canUnlockMoreSlots ? (
-                  <p className="text-sm text-amber-200">
-                    Desbloquea +1 slot por $10.00 USD. Pasaras de {maxCharacterSlots} a {nextSlotTarget} slots.
-                  </p>
-                ) : (
-                  <p className="text-sm text-emerald-200">
-                    Ya tienes el maximo de slots desbloqueados (5/5).
-                  </p>
-                )}
+              {/* ── Tienda de cuenta ──────────────────────────────────────
+                  Dos acciones en una fila; el formulario de pago solo baja
+                  cuando lo pides. Antes ocupaba media pantalla en reposo. */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTienda((t) => (t === "slots" ? null : "slots"))}
+                  aria-expanded={tienda === "slots"}
+                  disabled={!canUnlockMoreSlots}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 font-sans text-xs transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
+                    tienda === "slots"
+                      ? "border-amber-400/60 bg-amber-900/30 text-amber-100"
+                      : "border-amber-400/30 bg-amber-900/10 text-amber-200/80 hover:border-amber-400/50 hover:bg-amber-900/20"
+                  }`}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {canUnlockMoreSlots ? (
+                    <>
+                      Desbloquear slot
+                      <span className="text-amber-300/60">· $10 USD</span>
+                    </>
+                  ) : (
+                    "Slots al máximo (5/5)"
+                  )}
+                </button>
 
-                <div className="flex flex-col md:flex-row gap-4 items-start">
+                {deadCharacters.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTienda((t) => (t === "revive" ? null : "revive"))}
+                    aria-expanded={tienda === "revive"}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 font-sans text-xs transition-all active:scale-95 ${
+                      tienda === "revive"
+                        ? "border-red-500/60 bg-red-900/30 text-red-100"
+                        : "border-red-600/30 bg-red-900/10 text-red-200/80 hover:border-red-500/50 hover:bg-red-900/20"
+                    }`}
+                  >
+                    <HeartPulse className="h-3.5 w-3.5" />
+                    Revivir personaje
+                    <span className="text-red-300/60">· $10 USD</span>
+                    <span className="rounded-full bg-red-500/20 px-1.5 text-[10px] text-red-200">
+                      {deadCharacters.length}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <AnimatePresence initial={false}>
+                {tienda === "slots" && (
+                  <motion.div
+                    key="slots"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-3 rounded-lg border border-amber-400/40 bg-amber-900/20 p-3">
+                      <p className="font-sans text-sm text-amber-200">
+                        Desbloquea +1 slot por $10.00 USD. Pasarás de {maxCharacterSlots} a{" "}
+                        {nextSlotTarget} slots.
+                      </p>
+
+                      <div className="flex flex-col md:flex-row gap-4 items-start">
                   <div className="flex-1 w-full max-w-50">
                     {!paypalClientId ? (
                       <p className="text-xs text-amber-300">
@@ -735,19 +877,29 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {slotUpgradeMessage && (
-                  <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
+                      {slotUpgradeMessage && (
+                        <p className="text-xs text-amber-200">{slotUpgradeMessage}</p>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-              </div>
 
-              {deadCharacters.length > 0 && (
-                <div className="rounded-lg border border-red-700/50 bg-red-900/20 p-3 space-y-3">
-                  <p className="text-sm text-red-100">
-                    Revivir personaje muerto: <span className="font-semibold">$10.00 USD</span>
-                  </p>
+                {tienda === "revive" && deadCharacters.length > 0 && (
+                  <motion.div
+                    key="revive"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-3 rounded-lg border border-red-700/50 bg-red-900/20 p-3">
+                      <p className="font-sans text-sm text-red-100">
+                        Revivir personaje muerto:{" "}
+                        <span className="font-semibold">$10.00 USD</span>
+                      </p>
 
-                  <>
-                    <select
+                      <select
                       value={selectedDeadCharacterId ?? ""}
                       onChange={(e) =>
                         setSelectedDeadCharacterId(e.target.value ? Number(e.target.value) : null)
@@ -854,14 +1006,18 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    {reviveMessage && <p className="text-xs text-red-100/90">{reviveMessage}</p>}
-                  </>
-                </div>
-              )}
+                      {reviveMessage && (
+                        <p className="text-xs text-red-100/90">{reviveMessage}</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </section>
 
           {/* Character Grid — Compact cards with expand/collapse */}
+          <div data-anim="pf-reveal">
           <CharacterGrid
             characters={profile ? characters : null}
             user={user}
@@ -906,8 +1062,11 @@ export default function ProfilePage() {
             isDeleting={isDeleting}
             onAlert={showProfileAlert}
           />
+          </div>
 
-          <PartidasHistorial token={token} />
+          <div data-anim="pf-reveal">
+            <PartidasHistorial token={token} />
+          </div>
 
           <AnimatePresence>
             {openBagModal !== null && currentCharacter && (

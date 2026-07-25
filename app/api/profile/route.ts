@@ -10,6 +10,7 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { normalizeSpells, normalizeUsedSpells, type SpellEntry } from "@/lib/spells";
+import { EJERCITO_SELECT, EJERCITO_SLOTS, mapUnidadRow } from "@/lib/ejercito";
 
 function hasDismemberedLimb(extremities: unknown): boolean {
   if (!extremities || typeof extremities !== "object") {
@@ -122,14 +123,17 @@ function normalizeNivel20Url(rawValue: unknown): {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const db = createServerClient();
 
-  if (!userId) {
-    return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+  // El `userId` de la query se ignora: el dueño de los datos es el dueño del
+  // token. Antes esta ruta no autenticaba, así que cualquiera podía leer el oro,
+  // los personajes y el inventario de otra cuenta con solo su uuid.
+  const { user, error: authError } = await getUserFromRequest(db, request);
+  if (authError || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const db = createServerClient();
+  const userId = user.id;
 
   // Obtener perfil del jugador
   const { data: perfil } = await db
@@ -139,7 +143,7 @@ export async function GET(request: Request) {
     .single();
 
   // Obtener personajes con sus clases, stats, equipamiento e inventario
-  const { data: personajes } = await db
+  const { data: personajes, error: personajesError } = await db
     .from("personajes")
     .select(
       `
@@ -147,7 +151,7 @@ export async function GET(request: Request) {
       clases_personaje ( nombre_clase, nivel, orden ),
       estadisticas_personaje ( fuerza, destreza, constitucion, inteligencia, sabiduria, carisma ),
       equipamiento_personaje (
-        cabeza, pecho, guante, botas,
+        cabeza, pecho, guante, botas, capa,
         collar, anillo1, anillo2, anillo3, amuleto, cinturon,
         mano_izquierda, mano_derecha,
         mano_izquierda_socket_1, mano_izquierda_socket_2, mano_izquierda_socket_3,
@@ -162,12 +166,32 @@ export async function GET(request: Request) {
         fue_comerciado,
         publicado_en_trade,
         objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion, requiere_dos_manos )
-      )
+      ),
+      ejercito_objetos ( ${EJERCITO_SELECT} )
     `,
     )
     .eq("usuario_id", userId)
     .not("estado_vida", "in", '("enterrado","eliminado")')
     .order("numero_slot", { ascending: true });
+
+  // Si esta consulta falla, el jugador NO se ha quedado sin personajes: es un
+  // error nuestro. Antes se descartaba y la pantalla de Perfil se pintaba vacía,
+  // que es indistinguible de una cuenta nueva. El 42703 (columna inexistente)
+  // avisa además de que falta correr una migración.
+  if (personajesError) {
+    console.error("[profile] no se pudieron cargar los personajes:", personajesError);
+    const faltaColumna = personajesError.code === "42703";
+    return NextResponse.json(
+      {
+        error: faltaColumna
+          ? "La base de datos está desactualizada: falta aplicar una migración de supabase/migrations"
+          : "No se pudieron cargar los personajes",
+        detail: personajesError.message,
+        code: personajesError.code ?? null,
+      },
+      { status: 500 },
+    );
+  }
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
   const spellsByCharId: Record<string, SpellEntry[]> = {};
@@ -197,6 +221,7 @@ export async function GET(request: Request) {
       equip.pecho,
       equip.guante,
       equip.botas,
+      equip.capa,
       equip.collar,
       equip.anillo1,
       equip.anillo2,
@@ -256,6 +281,7 @@ export async function GET(request: Request) {
       equip?.pecho,
       equip?.guante,
       equip?.botas,
+      equip?.capa,
       equip?.collar,
       equip?.anillo1,
       equip?.anillo2,
@@ -373,6 +399,10 @@ export async function GET(request: Request) {
           mapEquipItem(equip?.mano_derecha_socket_3),
         ],
       },
+      cape: {
+        capa:
+          equip?.capa != null ? equipIdToName.get(equip.capa) : undefined,
+      },
       capeSockets: [
         mapEquipItem(equip?.capa_socket_1),
         mapEquipItem(equip?.capa_socket_2),
@@ -401,6 +431,12 @@ export async function GET(request: Request) {
             publicadoEnTrade: Boolean(bi.publicado_en_trade),
           })),
         maxSlots: p.capacidad_bolsa,
+      },
+      army: {
+        units: (p.ejercito_objetos ?? [])
+          .sort((a: any, b: any) => a.orden - b.orden)
+          .map(mapUnidadRow),
+        maxSlots: EJERCITO_SLOTS,
       },
     };
   });

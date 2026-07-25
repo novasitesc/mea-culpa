@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ItemRarity } from "@/lib/item-catalog";
+import { TIPO_EJERCITO } from "@/lib/ejercito";
 
 type ShopItem = {
   id: string;
@@ -50,7 +51,7 @@ type Character = {
 
 export default function GlobalCartWidget() {
   const pathname = usePathname();
-  const { user, refreshUser } = useAuth();
+  const { user, token, refreshUser } = useAuth();
 
   const cartKey = user?.id ? `mc_tiendas_cart_${user.id}` : null;
   const [cart, setCart] = useState<CartEntry[]>([]);
@@ -109,7 +110,9 @@ export default function GlobalCartWidget() {
   // Load characters when buy modal opens
   useEffect(() => {
     if (!buyModalOpen || !user?.id) return;
-    fetch(`/api/profile?userId=${user.id}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then((data) =>
         setCharacters(
@@ -124,7 +127,7 @@ export default function GlobalCartWidget() {
         ),
       )
       .catch(() => {});
-  }, [buyModalOpen, user?.id]);
+  }, [buyModalOpen, user?.id, token]);
 
   // Ocultar si no hay sesión activa o si estamos dentro de /tiendas
   if (!user?.id || pathname === "/tiendas") {
@@ -134,6 +137,9 @@ export default function GlobalCartWidget() {
   const cartTotal = cart.reduce((sum, e) => sum + e.price * e.qty, 0);
   const cartCount = cart.reduce((sum, e) => sum + e.qty, 0);
   const canAfford = (user?.oro ?? 0) >= cartTotal && cartTotal > 0;
+  // Las unidades de ejército no ocupan bolsa: si el carrito solo las lleva,
+  // un personaje con la mochila llena puede comprar igualmente.
+  const cartNeedsBag = cart.some((e) => e.category !== TIPO_EJERCITO);
 
   if (cartCount === 0 && !notification) {
     return null;
@@ -406,7 +412,9 @@ export default function GlobalCartWidget() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   {characters.map((char) => {
-                    const isFull = char.bagUsed >= char.bagCapacity;
+                    // La bolsa llena solo bloquea si algo del carrito va a la
+                    // bolsa: las unidades de ejército tienen casillas propias.
+                    const isFull = char.bagUsed >= char.bagCapacity && cartNeedsBag;
                     const isDead = char.lifeStatus === "muerto";
                     const isSelected = selectedCharId === char.id;
                     return (

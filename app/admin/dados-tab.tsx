@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import ConfirmActionModal from "@/components/ui/confirm-action-modal";
 import { modalOverlayCls, modalPanelCls, MODAL_EXIT_MS } from "@/lib/useModalTransition";
 import { DICE_TYPES, REWARD_TYPES } from "@/lib/types/dados";
+import { TIPO_EJERCITO } from "@/lib/ejercito";
 import type { DiceType, RewardType, LutCaraTipo } from "@/lib/types/dados";
 import DiceVisual from "@/app/components/dice-visual";
 import DiceModule from "@/app/components/dice-module";
@@ -201,12 +202,16 @@ export function DadosTab({ token }: { token: string | null }) {
     fetchData();
   }, [fetchData]);
 
-  const objectSelectorItems: ObjectSelectorItem[] = objects.map((o) => ({
-    value: o.id,
-    name: o.name,
-    icon: o.icon,
-    searchText: `${o.name} ${o.itemType} ${o.rarity}`,
-  }));
+  // Las unidades de ejército no pueden salir en un dado: solo se compran en
+  // tienda y viven fuera de la bolsa (lib/ejercito.ts).
+  const objectSelectorItems: ObjectSelectorItem[] = objects
+    .filter((o) => o.itemType !== TIPO_EJERCITO)
+    .map((o) => ({
+      value: o.id,
+      name: o.name,
+      icon: o.icon,
+      searchText: `${o.name} ${o.itemType} ${o.rarity}`,
+    }));
 
   const subtablaOptions = recompensas.filter((r) => r.tipo === "subtabla");
 

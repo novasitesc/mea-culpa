@@ -1,4 +1,5 @@
 import type { LutCaraResult } from "./dados";
+import type { UnidadEjercito } from "@/lib/ejercito";
 
 export type SalaParticipante = {
   id: string;
@@ -13,6 +14,8 @@ export type SalaParticipante = {
   caidas: number;
   /** Niveles de agotamiento (0-6); un descanso largo reduce 1. */
   cansancio: number;
+  /** Regimientos que trae a la expedición; el DM les aplica bajas. */
+  ejercito: UnidadEjercito[];
 };
 
 export type SalaPartida = {
@@ -22,6 +25,8 @@ export type SalaPartida = {
   piso: number;
   tier: number;
   inicioEn: string | null;
+  /** El usuario actual es el DM que creó la partida (el único que puede iniciarla). */
+  esMiPartida: boolean;
 };
 
 export type EventoDadoTirado = {
@@ -145,6 +150,24 @@ export type EventoDescansoCorto = {
   personajes: DescansoPersonajeResultado[];
 };
 
+export type EventoEjercitoBaja = {
+  tipo: "ejercito_baja";
+  personajeId: number;
+  personajeNombre: string;
+  /** Fila de `ejercito_objetos` afectada; permite actualizar la sala en vivo. */
+  unidadId: number;
+  unidadNombre: string;
+  unidadIcono: string;
+  /** Soldados caídos en esta acción (migración 058: se cuentan por soldado). */
+  bajas: number;
+  /** Soldados que quedan en pie tras la baja. */
+  restante: number;
+  /** Acumulado de caídos en la casilla; refresca la sala sin recargar. */
+  soldadosCaidos?: number;
+  /** true cuando la casilla se vacía: la unidad desaparece del inventario. */
+  aniquilada: boolean;
+};
+
 export type SalaEvento =
   | EventoDadoTirado
   | EventoAsignacionManual
@@ -157,4 +180,5 @@ export type SalaEvento =
   | EventoDescansoLargo
   | EventoDescansoCorto
   | EventoSalaAvanzada
-  | EventoConjuroLanzado;
+  | EventoConjuroLanzado
+  | EventoEjercitoBaja;

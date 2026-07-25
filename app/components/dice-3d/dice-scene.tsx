@@ -35,6 +35,33 @@ export const DICE_STAGGER_MS = 90;
 
 const THROW_H = 5.2; // altura a la que entra el dado lanzado
 const EDGE = "#ffd23c"; // arista dorada brillante: más pop arcade que el oro de la web
+const WINNER = "#fff2a8"; // contorno de la cara ganadora, casi blanco para destacar
+
+// La cámara mira desde donde la cara ganadora se lee sin lugar a dudas, y eso
+// depende de la forma del dado.
+//
+// A 45° para todos, el dado caía bien —la ganadora SIEMPRE queda arriba— pero
+// se leía mal: en un d20 las caras vecinas se inclinan 41.8°, así que la vecina
+// que daba a la cámara quedaba a 3° de mirarnos de frente mientras la ganadora
+// se veía a 45°. Ganaba visualmente el número equivocado, y la cara de arriba se
+// aplanaba hasta parecer una punta.
+//
+// Para que la ganadora sea la más frontal, el ángulo de visión respecto a la
+// vertical debe ser menor que la mitad de la inclinación de la cara vecina; el
+// d20 manda (41.8°/2 = 20.9°); a 80° de elevación se mira a 10° y cumplen d6,
+// d8, d10, d12 y d20 con margen.
+//
+// El d4 es el caso opuesto: apoyado en una cara no tiene ninguna mirando
+// arriba, las tres visibles quedan a 19.47° sobre la horizontal. Ahí la cenital
+// es lo peor posible y se queda en 45°, que es para lo que se calculó su tilt.
+// dice-geometry.test.ts verifica ambos casos cara por cara.
+const DIST = 8.2; // distancia al punto de mira; igual para todos los dados
+export const CAMERA_TARGET: [number, number, number] = [0, 0.4, 0];
+
+export function cameraPosFor(type: DiceType): [number, number, number] {
+  const elevacion = ((type === "d4" ? 45 : 80) * Math.PI) / 180;
+  return [0, CAMERA_TARGET[1] + DIST * Math.sin(elevacion), DIST * Math.cos(elevacion)];
+}
 
 export type SceneDie = { type: DiceType; value: number };
 
@@ -140,6 +167,7 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
   const group = useRef<THREE.Group>(null); // posición + aplaste (mundo, sin rotar)
   const spin = useRef<THREE.Group>(null); // tumbo del dado (rotación)
   const edgeMat = useRef<THREE.LineBasicMaterial>(null);
+  const winnerMat = useRef<THREE.LineBasicMaterial>(null); // halo de la cara ganadora
   const squash = useRef(0); // energía de aplaste, sube en cada impacto y decae
   const settleAt = useRef<number | null>(null);
   const die = useMemo(() => getDie(type), [type]);
@@ -239,6 +267,11 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
       sy += pop;
       sxz -= pop * 0.5;
       if (edgeMat.current) edgeMat.current.opacity = 0.5 + 0.5 * Math.exp(-st * 4); // fogonazo dorado
+      // La cara ganadora se enciende y late: aunque el ángulo engañe, el número
+      // que cuenta es el único enmarcado.
+      if (winnerMat.current) {
+        winnerMat.current.opacity = Math.min(1, st * 3.5) * (0.72 + 0.28 * Math.sin(st * 4.5));
+      }
     }
     g.scale.set(sxz, sy, sxz);
   });
@@ -257,6 +290,10 @@ function Die({ type, value, index, rest, flip, skip, onImpact, onSettled }: DieP
         <lineSegments geometry={die.edges}>
           <lineBasicMaterial ref={edgeMat} color={EDGE} transparent opacity={0.5} />
         </lineSegments>
+        {/* Marco de la cara que salió: invisible durante la caída, se enciende al parar */}
+        <lineLoop geometry={die.outlines[(value - 1) % die.outlines.length]}>
+          <lineBasicMaterial ref={winnerMat} color={WINNER} transparent opacity={0} />
+        </lineLoop>
       </group>
     </group>
   );
@@ -341,10 +378,10 @@ export default function DiceScene(props: SceneProps) {
 
   return (
     <Canvas
-      camera={{ position: [0, 6.2, 5.8], fov: 42 }}
+      camera={{ position: cameraPosFor(props.dice[0]?.type ?? "d20"), fov: 42 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      onCreated={({ camera }) => camera.lookAt(0, 0.4, 0)}
+      onCreated={({ camera }) => camera.lookAt(...CAMERA_TARGET)}
       style={{ pointerEvents: "none" }}
     >
       <Env />

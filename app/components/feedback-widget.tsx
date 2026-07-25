@@ -3,6 +3,7 @@
 // Widget de reportes: manda lo escrito a POST /api/feedback.
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bug,
@@ -35,9 +36,19 @@ const TYPE_OPTIONS: TypeOption[] = [
   { value: "comment", label: "Comentario", icon: <MessageSquare className="w-3.5 h-3.5" /> },
 ];
 
+// Rutas cuya esquina inferior derecha ya está ocupada por UI anclada abajo. En
+// /gremio es el campo de escribir del chat: el botón flotante caía justo encima
+// del botón de enviar. En esas rutas se va a la esquina contraria, que está
+// libre en todos los breakpoints (bajo la nav en escritorio, vacía en móvil).
+const ESQUINA_IZQUIERDA = ["/gremio"];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FeedbackWidget() {
+  const pathname = usePathname();
+  const aLaIzquierda = ESQUINA_IZQUIERDA.some(
+    (ruta) => pathname === ruta || pathname?.startsWith(`${ruta}/`),
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<PanelState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -102,7 +113,9 @@ export default function FeedbackWidget() {
         onClick={handleOpen}
         aria-label="Reportar un problema o enviar feedback"
         title="Reportar un problema"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded border border-gold-dim/70 bg-card px-3 py-2 text-sm font-medium text-gold shadow-lg transition-all hover:border-gold hover:bg-card/90 hover:shadow-[0_0_16px_rgba(212,175,55,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+        className={`fixed bottom-6 z-50 flex items-center gap-2 rounded border border-gold-dim/70 bg-card px-3 py-2 text-sm font-medium text-gold shadow-lg transition-all hover:border-gold hover:bg-card/90 hover:shadow-[0_0_16px_rgba(212,175,55,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 ${
+          aLaIzquierda ? "left-6" : "right-6"
+        }`}
       >
         <Flag className="h-4 w-4 shrink-0" />
         <span className="hidden sm:inline">Reportar</span>

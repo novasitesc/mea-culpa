@@ -14,6 +14,8 @@ export const ITEM_TYPE_OPTIONS = [
   "ingrediente",
   "misc",
   "capa",
+  // Sólo puede guardarse en el inventario de ejército (lib/ejercito.ts).
+  "ejército",
 ] as const;
 
 export const ITEM_RARITY_OPTIONS = [

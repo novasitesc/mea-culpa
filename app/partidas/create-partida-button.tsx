@@ -38,7 +38,7 @@ export default function CreatePartidaButton({ token, isAdmin, onCreated, showAle
   const [floor, setFloor] = useState(1);
   const [tier, setTier] = useState(1);
   const [startTime, setStartTime] = useState("");
-  const minStart = useMemo(nowLocalMin, [open]);
+  const minStart = useMemo(() => nowLocalMin(), [open]);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
   // Defensa en profundidad en el cliente: si no es DM/SuperAdmin, no hay botón.

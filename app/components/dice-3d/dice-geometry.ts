@@ -15,6 +15,8 @@ export type DieData = {
   faces: DieFace[];
   /** Distancia del centro al plano de una cara: altura de reposo sobre el suelo. */
   restHeight: number;
+  /** Contorno cerrado de cada cara (índice = valor − 1), para marcar la ganadora. */
+  outlines: THREE.BufferGeometry[];
 };
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -70,6 +72,42 @@ function trapezohedronGeometry(radius: number): THREE.BufferGeometry {
   return geo;
 }
 
+/**
+ * Contorno cerrado de una cara. Todas las caras de un dado son polígonos
+ * convexos, así que basta con deduplicar los vértices de sus triángulos y
+ * ordenarlos por ángulo alrededor del centro — sin encadenar aristas.
+ * Se separa un pelo hacia afuera para que la línea no pelee con la cara en Z.
+ */
+function faceOutline(
+  verts: THREE.Vector3[],
+  center: THREE.Vector3,
+  normal: THREE.Vector3,
+  up: THREE.Vector3,
+): THREE.BufferGeometry {
+  const uAxis = new THREE.Vector3().crossVectors(up, normal).normalize();
+  const seen = new Map<string, THREE.Vector3>();
+  for (const p of verts) {
+    seen.set(`${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`, p);
+  }
+
+  const d = new THREE.Vector3();
+  const ordered = Array.from(seen.values()).sort((a, b) => {
+    const angle = (p: THREE.Vector3) => {
+      d.subVectors(p, center);
+      return Math.atan2(d.dot(up), d.dot(uAxis));
+    };
+    return angle(a) - angle(b);
+  });
+
+  // Encoge el contorno hacia el centro para que quede dentro de la cara y no
+  // sobre la arista, donde se confundiría con el borde del propio dado.
+  // Sin repetir el primer punto: lo dibuja un lineLoop, que ya cierra el anillo.
+  const lift = normal.clone().multiplyScalar(0.012);
+  return new THREE.BufferGeometry().setFromPoints(
+    ordered.map((p) => p.clone().sub(center).multiplyScalar(0.82).add(center).add(lift)),
+  );
+}
+
 function buildDie(type: DiceType): DieData {
   let geo = baseGeometry(type);
   if (geo.index) geo = geo.toNonIndexed();
@@ -99,6 +137,7 @@ function buildDie(type: DiceType): DieData {
   const newUv = new Float32Array(pos.count * 2);
   const out = new THREE.BufferGeometry();
   const faces: DieFace[] = [];
+  const outlines: THREE.BufferGeometry[] = [];
   let write = 0;
 
   clusters.forEach((cluster, faceIdx) => {
@@ -130,6 +169,7 @@ function buildDie(type: DiceType): DieData {
     }
     out.addGroup(start, verts.length, faceIdx);
     faces.push({ value: faceIdx + 1, normal: n.clone(), up });
+    outlines.push(faceOutline(verts, center, n, up));
   });
 
   out.setAttribute("position", new THREE.BufferAttribute(newPos, 3));
@@ -148,6 +188,7 @@ function buildDie(type: DiceType): DieData {
     edges: new THREE.EdgesGeometry(out, 10),
     faces,
     restHeight: Math.abs(f0Center.dot(faces[0].normal)),
+    outlines,
   };
 }
 

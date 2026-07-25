@@ -101,11 +101,20 @@ function HomePageContent({ forcedSection }: HomePageProps) {
 
   useEffect(() => {
     let isMounted = true;
-    const userId = user?.id ?? "demo-user";
+
+    // El perfil es privado: sin sesión no hay nada que pedir. Antes se llamaba
+    // con "demo-user" y la ruta contestaba igual, ahora responde 401.
+    if (!user?.id || !token) {
+      setProfile(null);
+      setIsProfileLoading(false);
+      return;
+    }
 
     setIsProfileLoading(true);
 
-    fetch(`/api/profile?userId=${userId}`)
+    fetch(`/api/profile?userId=${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((data: ProfileResponse) => {
         if (isMounted) {
@@ -128,7 +137,7 @@ function HomePageContent({ forcedSection }: HomePageProps) {
     return () => {
       isMounted = false;
     };
-  }, [router, user?.id]);
+  }, [router, user?.id, token]);
 
   // Cargar imágenes de noticias
   useEffect(() => {

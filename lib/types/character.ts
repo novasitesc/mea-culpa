@@ -44,6 +44,15 @@ export type WeaponSlots = {
   manoDerecha?: string;
 };
 
+/**
+ * La capa va aparte de `ArmorSlots` porque tiene sus propios engarces
+ * (`capeSockets`) y en la ficha se dibuja detrás del cuerpo, no como pieza de
+ * armadura.
+ */
+export type CapeSlot = {
+  capa?: string;
+};
+
 export type CharacterStats = {
   str: number;
   dex: number;
@@ -76,6 +85,7 @@ export type Character = {
   armor: ArmorSlots;
   accessories: AccessorySlots;
   weapons: WeaponSlots;
+  cape?: CapeSlot;
   bag: Bag;
   knownSpells?: SpellEntry[];
 };

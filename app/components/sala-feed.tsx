@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles, Swords } from "lucide-react";
 import { schoolRgb, spellKey } from "@/lib/spells";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
@@ -357,12 +357,56 @@ function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => strin
     );
   }
 
+  if (ev.tipo === "ejercito_baja") {
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-orange-900/30 last:border-0 rounded-sm sf-shake-in sf-flash-red"
+      >
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-orange-950/30 border border-orange-800/50 rounded text-orange-400">
+          <Swords className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> pierde </span>
+          <span className="text-orange-300 font-semibold">
+            {ev.bajas} soldado{ev.bajas === 1 ? "" : "s"} de {ev.unidadNombre}
+          </span>
+          {ev.aniquilada ? (
+            <span className="text-rose-400 font-semibold"> — unidad aniquilada</span>
+          ) : (
+            <span className="text-foreground/40">
+              {" "}
+              — quedan {ev.restante} en pie
+            </span>
+          )}
+        </p>
+      </div>
+    );
+  }
+
   return null;
+}
+
+// Solo los últimos eventos se pintan. El resto queda tras "ver historial": el
+// panel deja de estirar la página y el DOM no crece sin límite en partidas largas.
+export const VISIBLES = 15;
+
+/**
+ * Ventana visible del feed.
+ * `desde` es el índice ABSOLUTO del primer evento pintado, y es lo que mantiene
+ * estables las keys de React: al llegar un evento nuevo la ventana se desplaza,
+ * pero cada evento conserva su índice y no se remonta (ni repite su animación).
+ */
+export function ventanaFeed(total: number, showAll: boolean, maximo = VISIBLES) {
+  const fuera = Math.max(0, total - maximo);
+  return { fuera, desde: showAll ? 0 : fuera };
 }
 
 export default function SalaFeed({ eventos }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLen = useRef<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   // Descripciones de conjuros para el tooltip del log. Se resuelven desde el
   // catálogo por nombre (una sola carga la primera vez que aparece un conjuro),
@@ -415,16 +459,30 @@ export default function SalaFeed({ eventos }: Props) {
     prevLen.current = eventos.length;
   }, [eventos]);
 
+  const { fuera, desde } = ventanaFeed(eventos.length, showAll);
+  const visibles = eventos.slice(desde);
+
   return (
-    <div className="flex flex-col h-full">
-      <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans mb-2">
-        Feed en vivo
-      </p>
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-0 pr-1">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="mb-2 flex items-center gap-2">
+        <p className="text-[10px] uppercase tracking-widest text-foreground/40 font-sans">
+          Feed en vivo
+        </p>
+        {fuera > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="ml-auto rounded border border-gold-dim/30 px-2 py-0.5 font-sans text-[10px] uppercase tracking-widest text-foreground/45 transition-colors hover:border-gold/50 hover:text-gold"
+          >
+            {showAll ? "Ver menos" : `Ver historial (${fuera})`}
+          </button>
+        )}
+      </div>
+      <div className="feed-scroll max-h-[26rem] flex-1 overflow-y-auto min-h-0 space-y-0 pr-1">
         {eventos.length === 0 ? (
           <p className="text-xs text-foreground/30 italic font-sans">Esperando al DM...</p>
         ) : (
-          eventos.map((ev, i) => renderEvento(ev, i, descOf))
+          visibles.map((ev, i) => renderEvento(ev, desde + i, descOf))
         )}
         <div ref={bottomRef} />
       </div>

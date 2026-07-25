@@ -53,7 +53,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { playUiOpenSfx, playUiClickSfx, playUiHoverSfx, playUiBackSfx, playSuccessSfx, playErrorSfx } from "@/lib/sfx";
-import { getIconForString } from "@/lib/iconMapper";
+import { getIconForString, nombreDecideIcono } from "@/lib/iconMapper";
 import { useModalTransition, modalOverlayCls, modalPanelCls } from "@/lib/useModalTransition";
 import { useAuth } from "@/lib/useAuth";
 import Header from "@/app/components/header";
@@ -114,6 +114,10 @@ type AdminObject = {
   rarity: string;
   price: number;
   bonusStats: Record<string, unknown> | null;
+  /** Ficha de unidad — sólo en objetos de tipo ejército. */
+  soldiers: number | null;
+  armorClass: number | null;
+  damage: string | null;
   createdAt: string;
 };
 
@@ -3281,6 +3285,10 @@ const SHOP_ICON_OPTIONS: { icon: string; label: string }[] = [
   { icon: "🔥", label: "Fuego" },
   { icon: "✨", label: "Mágico" },
   { icon: "🎲", label: "Azar" },
+  // Puestos que venden regimientos (objetos de tipo "ejército").
+  { icon: "🚩", label: "Cuartel" },
+  { icon: "🏇", label: "Caballerizas" },
+  { icon: "🪨", label: "Asedio" },
 ];
 
 function ShopIconPicker({
@@ -4100,6 +4108,200 @@ function ObjectsTab({
   );
 }
 
+// ─── Selector de icono de objeto ──────────────────────────────────────────────
+
+// Cada entrada guarda el emoji clave que `getIconForString` traduce a su
+// componente de Lucide/Gi. En el panel nunca se ve el emoji: se pinta el icono
+// real, que es exactamente el que verá el jugador en su bolsa.
+const OBJECT_ICON_GROUPS: { grupo: string; iconos: { icon: string; label: string }[] }[] = [
+  {
+    grupo: "Armas",
+    iconos: [
+      { icon: "⚔️", label: "Espadas" },
+      { icon: "🗡️", label: "Daga" },
+      { icon: "🪓", label: "Hacha" },
+      { icon: "🔨", label: "Martillo" },
+      { icon: "🏹", label: "Arco" },
+    ],
+  },
+  {
+    grupo: "Armadura",
+    iconos: [
+      { icon: "👕", label: "Peto" },
+      { icon: "🛡️", label: "Escudo" },
+      { icon: "⛑", label: "Yelmo" },
+      { icon: "🧤", label: "Guantes" },
+      { icon: "👢", label: "Botas" },
+      { icon: "🧥", label: "Capa" },
+      { icon: "🪢", label: "Cinturón" },
+    ],
+  },
+  {
+    grupo: "Accesorios",
+    iconos: [
+      { icon: "💍", label: "Anillo" },
+      { icon: "📿", label: "Collar" },
+      { icon: "💎", label: "Gema" },
+      { icon: "👑", label: "Corona" },
+    ],
+  },
+  {
+    grupo: "Consumibles",
+    iconos: [
+      { icon: "🧪", label: "Poción" },
+      { icon: "🍺", label: "Bebida" },
+      { icon: "🌿", label: "Hierba" },
+    ],
+  },
+  {
+    grupo: "Arcano",
+    iconos: [
+      { icon: "🔮", label: "Varita" },
+      { icon: "📜", label: "Pergamino" },
+      { icon: "📖", label: "Tomo" },
+      { icon: "✨", label: "Encantado" },
+      { icon: "🔥", label: "Fuego" },
+      { icon: "⚡", label: "Rayo" },
+      { icon: "💧", label: "Agua" },
+      { icon: "🌪", label: "Viento" },
+    ],
+  },
+  {
+    // Regimientos del sistema RTS: son objetos de tipo "ejército", que no van
+    // a la mochila sino a las 5 casillas de ejército (lib/ejercito.ts).
+    grupo: "Ejército: tropa",
+    iconos: [
+      { icon: "🔱", label: "Lanceros" },
+      { icon: "🎯", label: "Arqueros" },
+      { icon: "🤺", label: "Espadachines" },
+      { icon: "🧱", label: "Escudados" },
+      { icon: "🏛", label: "Infantería" },
+      { icon: "🏇", label: "Caballería" },
+      { icon: "🦅", label: "Unidad alada" },
+      { icon: "🎖", label: "Comandante" },
+      { icon: "🚩", label: "Regimiento" },
+    ],
+  },
+  {
+    grupo: "Ejército: razas",
+    iconos: [
+      { icon: "🐗", label: "Hombre bestia" },
+      { icon: "👺", label: "Orcos" },
+      { icon: "🧝", label: "Elfos" },
+      { icon: "🧔", label: "Enanos" },
+      { icon: "💀", label: "No muertos" },
+      { icon: "🧌", label: "Bárbaros" },
+      { icon: "🐉", label: "Dragones" },
+    ],
+  },
+  {
+    grupo: "Ejército: asedio y monturas",
+    iconos: [
+      { icon: "🪨", label: "Catapulta" },
+      { icon: "🗼", label: "Trebuchet" },
+      { icon: "🐴", label: "Caballo" },
+      { icon: "🐘", label: "Elefante" },
+      { icon: "🐪", label: "Camello" },
+      { icon: "🫏", label: "Mula" },
+    ],
+  },
+  {
+    grupo: "Varios",
+    iconos: [
+      { icon: "📦", label: "Genérico" },
+      { icon: "🪙", label: "Monedas" },
+      { icon: "🔩", label: "Pieza" },
+      { icon: "📍", label: "Marca" },
+    ],
+  },
+];
+
+function ObjectIconPicker({
+  value,
+  onSelect,
+  accent,
+}: {
+  value: string;
+  onSelect: (icon: string) => void;
+  accent: string;
+}) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+
+  const grupos = q
+    ? OBJECT_ICON_GROUPS.map((g) => ({
+        ...g,
+        iconos: g.iconos.filter(
+          ({ label }) =>
+            label.toLowerCase().includes(q) || g.grupo.toLowerCase().includes(q),
+        ),
+      })).filter((g) => g.iconos.length > 0)
+    : OBJECT_ICON_GROUPS;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          className={`${inputCls} pl-8 text-xs`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar icono (poción, hacha, corona...)"
+        />
+      </div>
+
+      <div className="max-h-52 overflow-y-auto pr-1">
+        {grupos.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            Ningún icono coincide con &ldquo;{query}&rdquo;.
+          </p>
+        ) : (
+          grupos.map(({ grupo, iconos }) => (
+            <div key={grupo} className="mb-3 last:mb-0">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                {grupo}
+              </p>
+              <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9">
+                {iconos.map(({ icon, label }) => {
+                  const selected = value === icon;
+                  return (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => onSelect(icon)}
+                      onMouseEnter={playUiHoverSfx}
+                      title={label}
+                      aria-label={label}
+                      aria-pressed={selected}
+                      className={`flex aspect-square items-center justify-center rounded-lg border transition-all duration-150 ${
+                        selected
+                          ? "scale-105 border-transparent"
+                          : "border-border bg-background/40 text-muted-foreground hover:scale-105 hover:bg-white/5 hover:text-foreground"
+                      }`}
+                      style={
+                        selected
+                          ? {
+                              borderColor: accent,
+                              background: `${accent}1f`,
+                              color: accent,
+                              boxShadow: `0 0 14px ${accent}44`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {getIconForString(icon, "w-5 h-5")}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ObjectFormModal({
   title,
   initial,
@@ -4124,8 +4326,16 @@ function ObjectFormModal({
     bonusStats: initial?.bonusStats
       ? JSON.stringify(initial.bonusStats, null, 2)
       : "",
+    soldiers: initial?.soldiers != null ? String(initial.soldiers) : "",
+    armorClass: initial?.armorClass != null ? String(initial.armorClass) : "",
+    damage: initial?.damage ?? "",
   });
   const [jsonError, setJsonError] = useState("");
+  const esEjercito = form.itemType === "ejército";
+  const rarezaHex = ITEM_RARITY_HEX[form.rarity as ItemRarity] ?? ITEM_RARITY_HEX["común"];
+  // Si el nombre casa con una palabra clave, `getIconForString` lo prioriza y el
+  // icono elegido no llega a verse: mejor decirlo que dejar el selector mintiendo.
+  const mandaElNombre = nombreDecideIcono(form.name);
 
   const set = (key: string, val: unknown) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -4155,32 +4365,94 @@ function ObjectFormModal({
       rarity: form.rarity,
       price: priceNum,
       bonusStats: parsedBonus,
+      soldiers: form.soldiers === "" ? null : Number(form.soldiers),
+      armorClass: form.armorClass === "" ? null : Number(form.armorClass),
+      damage: form.damage.trim() || null,
     });
   };
 
   return (
-    <Modal title={title} subtitle="Ficha del objeto en el catálogo" onClose={onClose} accent={OBJETOS_ACCENT} icon={Box}>
+    <Modal
+      title={title}
+      subtitle="Ficha del objeto en el catálogo"
+      onClose={onClose}
+      accent={OBJETOS_ACCENT}
+      icon={Box}
+      maxWidth="max-w-2xl"
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="grid grid-cols-[auto_1fr] gap-4 items-end">
-          <FormField label="Icono">
+        {/* Vitrina: el objeto tal y como lo verá el jugador, con su rareza */}
+        <AdmPanel accent={rarezaHex} className="flex items-center gap-4">
+          <span
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border transition-colors duration-300"
+            style={{
+              borderColor: `${rarezaHex}66`,
+              background: `radial-gradient(circle at 50% 35%, ${rarezaHex}26, transparent 70%)`,
+              color: rarezaHex,
+              boxShadow: `0 0 22px ${rarezaHex}22`,
+            }}
+          >
+            {getIconForString(form.name || form.icon, "w-8 h-8", form.icon)}
+          </span>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             <input
-              className={`${inputCls} w-16 text-center text-xl`}
-              value={form.icon}
-              onChange={(e) => set("icon", e.target.value)}
-              placeholder="📦"
-              maxLength={4}
-            />
-          </FormField>
-          <FormField label="Nombre del objeto">
-            <input
-              className={inputCls}
+              className={`${inputCls} font-serif text-base`}
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="Espada larga"
+              placeholder="Nombre del objeto — Espada larga"
               required
+              autoFocus
             />
-          </FormField>
-        </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {ITEM_RARITY_OPTIONS.map((rarity) => {
+                const hex = ITEM_RARITY_HEX[rarity];
+                const activa = form.rarity === rarity;
+                return (
+                  <button
+                    key={rarity}
+                    type="button"
+                    onClick={() => set("rarity", rarity)}
+                    onMouseEnter={playUiHoverSfx}
+                    aria-pressed={activa}
+                    className={`rounded-full border px-2.5 py-1 font-sans text-[11px] capitalize leading-none transition-all ${
+                      activa ? "scale-105" : "border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={
+                      activa
+                        ? { borderColor: hex, background: `${hex}1f`, color: hex }
+                        : undefined
+                    }
+                  >
+                    {rarity}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </AdmPanel>
+
+        {/* Icono: se elige viendo el icono real, no un emoji suelto */}
+        <AdmPanel accent={OBJETOS_ACCENT} className="flex flex-col gap-3">
+          <AdmHeading
+            accent={OBJETOS_ACCENT}
+            icon={Sparkles}
+            title="Icono"
+            subtitle="El que verá el jugador en su bolsa y en la tienda"
+          />
+          {mandaElNombre && (
+            <p className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              El nombre <span className="text-foreground">&ldquo;{form.name}&rdquo;</span> ya
+              contiene una palabra reconocida, así que manda sobre el icono elegido. Lo de
+              arriba es el resultado real.
+            </p>
+          )}
+          <ObjectIconPicker
+            value={form.icon}
+            onSelect={(icon) => set("icon", icon)}
+            accent={OBJETOS_ACCENT}
+          />
+        </AdmPanel>
 
         <FormField label="Descripción">
           <textarea
@@ -4192,7 +4464,7 @@ function ObjectFormModal({
           />
         </FormField>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Tipo de objeto">
             <Select
               className={inputCls}
@@ -4213,36 +4485,69 @@ function ObjectFormModal({
             </Select>
           </FormField>
 
-          <FormField label="Rareza">
-            <Select
-              className={inputCls}
-              value={form.rarity}
-              onChange={(e) => set("rarity", e.target.value)}
-            >
-              {ITEM_RARITY_OPTIONS.map((rarity) => (
-                <option key={rarity} value={rarity}>
-                  {rarity}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-
           <FormField label="Precio base">
-            <input
-              className={inputCls}
-              type="number"
-              min={0}
-              value={form.price}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d+$/.test(val)) {
-                  set("price", val === "" ? "" : Number(val));
-                }
-              }}
-              required
-            />
+            <div className="relative">
+              <Coins className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gold/70" />
+              <input
+                className={`${inputCls} pl-8 tabular-nums`}
+                type="number"
+                min={0}
+                value={form.price}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || /^\d+$/.test(val)) {
+                    set("price", val === "" ? "" : Number(val));
+                  }
+                }}
+                required
+              />
+            </div>
           </FormField>
         </div>
+
+        {/* Ficha de la unidad — sólo para objetos de tipo ejército */}
+        {esEjercito && (
+          <div className="rounded-lg border border-amber-700/40 bg-amber-950/10 p-3 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-400/80 font-semibold">
+              Ficha del regimiento
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <FormField label="Soldados por unidad">
+                <input
+                  className={inputCls}
+                  type="number"
+                  min={1}
+                  value={form.soldiers}
+                  onChange={(e) => set("soldiers", e.target.value)}
+                  placeholder="20"
+                />
+              </FormField>
+              <FormField label="CA">
+                <input
+                  className={inputCls}
+                  type="number"
+                  min={0}
+                  value={form.armorClass}
+                  onChange={(e) => set("armorClass", e.target.value)}
+                  placeholder="14"
+                />
+              </FormField>
+              <FormField label="Daño">
+                <input
+                  className={inputCls}
+                  value={form.damage}
+                  onChange={(e) => set("damage", e.target.value)}
+                  placeholder="1d6"
+                  maxLength={24}
+                />
+              </FormField>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Las unidades no van a la mochila: se apilan en las 5 casillas de ejército del
+              personaje (hasta 100 por casilla) y sólo el DM puede matarlas en partida.
+            </p>
+          </div>
+        )}
 
         <label className="flex items-start gap-3 rounded-lg border border-border bg-secondary/20 px-3 py-2">
           <input

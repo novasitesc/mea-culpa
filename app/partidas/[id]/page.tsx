@@ -33,6 +33,7 @@ import type {
   EventoCansancio,
   EventoDesmembramiento,
   EventoConjuroLanzado,
+  EventoEjercitoBaja,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
@@ -109,6 +110,33 @@ export default function SalaPage() {
           cansancio:
             r.cansancio ??
             (ev.tipo === "descanso_largo" ? Math.max(0, p.cansancio - 1) : p.cansancio),
+        };
+      }),
+    );
+  }, []);
+
+  // Aplica una baja de ejército al estado local: descuenta los regimientos
+  // caídos y saca la unidad de la lista si el regimiento fue aniquilado.
+  const aplicarBajaEjercito = useCallback((ev: EventoEjercitoBaja) => {
+    setParticipantes((prev) =>
+      prev.map((p) => {
+        if (p.personajeId !== ev.personajeId) return p;
+        return {
+          ...p,
+          // `restante` son soldados en pie, no regimientos: lo que cambia es el
+          // acumulado de caídos, nunca `cantidad` (esa es la compra del jugador).
+          ejercito: ev.aniquilada
+            ? p.ejercito.filter((u) => u.id !== ev.unidadId)
+            : p.ejercito.map((u) =>
+                u.id === ev.unidadId
+                  ? {
+                      ...u,
+                      soldadosCaidos:
+                        ev.soldadosCaidos ??
+                        Math.max(0, (u.soldados ?? 0) * u.cantidad - ev.restante),
+                    }
+                  : u,
+              ),
         };
       }),
     );
@@ -292,6 +320,10 @@ export default function SalaPage() {
           setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev: payload }));
         }
       })
+      .on("broadcast", { event: "ejercito_baja" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "ejercito_baja") aplicarBajaEjercito(payload);
+      })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
         if (payload.tipo === "desmembramiento") {
@@ -321,7 +353,7 @@ export default function SalaPage() {
       void supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, triggerCaidaFx, triggerDesmFx, triggerEstadoFx]);
+  }, [partidaId, isAuthenticated, appendEvento, aplicarDescansoLocal, aplicarBajaEjercito, triggerCaidaFx, triggerDesmFx, triggerEstadoFx]);
 
   function handleEvent(ev: SalaEvento) {
     channelRef.current?.send({
@@ -385,6 +417,12 @@ export default function SalaPage() {
     if (ev.tipo === "conjuro_lanzado") {
       appendEvento(ev);
       setConjuroFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+      return;
+    }
+
+    if (ev.tipo === "ejercito_baja") {
+      appendEvento(ev);
+      aplicarBajaEjercito(ev);
       return;
     }
 
