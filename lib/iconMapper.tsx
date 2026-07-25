@@ -16,12 +16,46 @@ import {
   GiSlicedBread, GiSpears, GiSpikedArmor, GiSpikedMace, GiSwapBag, 
   GiSwordBrandish, GiTribalMask, GiTrident, GiTwoCoins, GiUnstableOrb, GiWarPick, 
   GiWarhammer, GiWaterDrop, GiWhip, GiWizardStaff, GiWolfHead,
-  GiElephant, GiMechanicalArm, GiEyeTarget, GiElephantHead, GiTrojanHorse, GiCamel, GiDonkey, GiCavalry, GiHound
+  GiElephant, GiMechanicalArm, GiEyeTarget, GiElephantHead, GiTrojanHorse, GiCamel, GiDonkey, GiCavalry, GiHound,
+  // Regimientos del sistema RTS (LibroRTSDND.md) — ver bloque "Ejército".
+  GiSpartan, GiSwordman, GiArcher, GiShieldBash, GiHarpy, GiRank3, GiTatteredBanner,
+  GiMinotaur, GiCentaur, GiOrcHead, GiElfHelmet, GiDwarfHelmet, GiSkeleton, GiBarbarian,
+  GiWyvern, GiCatapult, GiTrebuchet
 } from "react-icons/gi";
 
 // Reglas dinámicas por palabras clave (el orden importa, la primera coincidencia se aplica).
 // Esto evita incluir la lista completa de objetos en el código cliente.
 const KEYWORD_RULES: Array<[string[], React.ComponentType<{ className?: string }>]> = [
+  // --- Ejército (RTS) ---
+  // Va primero por necesidad: un regimiento de "Espadachines" o de "Lanceros
+  // con escudo" contiene "espada"/"escudo" y se llevaría el icono del arma
+  // suelta. Las reglas de tropa tienen que ganarle a las de equipo.
+  //
+  // Vocabulario del manual (LibroRTSDND.md): las tres clases de movimiento
+  // —a pie, montadas, aladas (l. 286-290)—, los arqueros (l. 133), la unidad
+  // escudada (l. 117), el comandante y el regimiento. Raza propia del libro
+  // sólo hay una, el hombre bestia (l. 540); el resto son razas de relleno
+  // para poder surtir la tienda de ejército.
+  [["espadachin", "espadachín"], GiSwordman],
+  [["escudado", "escudada", "muro de escudo"], GiShieldBash],
+  [["lancero", "piquero"], GiSpears],
+  [["arquero"], GiArcher],
+  [["infanter", "legionario", "hoplita"], GiSpartan],
+  [["caballer", "jinete", "montada", "montado"], GiCavalry],
+  [["alada", "alado", "arpía", "arpia"], GiHarpy],
+  [["comandante", "general"], GiRank3],
+  [["regimiento", "pelotón", "peloton", "batallón", "batallon", "estandarte"], GiTatteredBanner],
+  [["hombre bestia", "hombres bestia", "minotauro"], GiMinotaur],
+  [["centauro"], GiCentaur],
+  [["orco"], GiOrcHead],
+  [["elfo", "élfic", "elfic"], GiElfHelmet],
+  [["enano"], GiDwarfHelmet],
+  [["no muerto", "esqueleto", "muerto viviente"], GiSkeleton],
+  [["bárbaro", "barbaro", "saqueador"], GiBarbarian],
+  [["dragón", "dragon", "wyvern", "draco"], GiWyvern],
+  [["catapulta"], GiCatapult],
+  [["trebuchet", "trabuquete"], GiTrebuchet],
+
   // --- Específicos / Especiales ---
   [["jetpack"], GiJetpack],
   [["mosquete", "rifle"], GiMusket],
@@ -208,6 +242,25 @@ export const getIconForString = (
     "🫏": <GiTrojanHorse className={defaultClass} />,
     "🐪": <GiCamel className={defaultClass} />,
     "🐴": <GiHorseHead className={defaultClass} />,
+    // Ejército (RTS): claves del grupo "Ejército" del selector de admin.
+    "🔱": <GiSpears className={defaultClass} />,
+    "🎯": <GiArcher className={defaultClass} />,
+    "🤺": <GiSwordman className={defaultClass} />,
+    "🧱": <GiShieldBash className={defaultClass} />,
+    "🏇": <GiCavalry className={defaultClass} />,
+    "🦅": <GiHarpy className={defaultClass} />,
+    "🎖": <GiRank3 className={defaultClass} />,
+    "🚩": <GiTatteredBanner className={defaultClass} />,
+    "🐗": <GiMinotaur className={defaultClass} />,
+    "🏛": <GiSpartan className={defaultClass} />,
+    "👺": <GiOrcHead className={defaultClass} />,
+    "🧝": <GiElfHelmet className={defaultClass} />,
+    "🧔": <GiDwarfHelmet className={defaultClass} />,
+    "💀": <GiSkeleton className={defaultClass} />,
+    "🧌": <GiBarbarian className={defaultClass} />,
+    "🐉": <GiWyvern className={defaultClass} />,
+    "🪨": <GiCatapult className={defaultClass} />,
+    "🗼": <GiTrebuchet className={defaultClass} />,
   };
 
   if (emojiMap[normalized]) {

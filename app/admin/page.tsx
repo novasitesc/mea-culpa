@@ -3271,6 +3271,10 @@ const SHOP_ICON_OPTIONS: { icon: string; label: string }[] = [
   { icon: "🔥", label: "Fuego" },
   { icon: "✨", label: "Mágico" },
   { icon: "🎲", label: "Azar" },
+  // Puestos que venden regimientos (objetos de tipo "ejército").
+  { icon: "🚩", label: "Cuartel" },
+  { icon: "🏇", label: "Caballerizas" },
+  { icon: "🪨", label: "Asedio" },
 ];
 
 function ShopIconPicker({
@@ -4149,8 +4153,38 @@ const OBJECT_ICON_GROUPS: { grupo: string; iconos: { icon: string; label: string
     ],
   },
   {
-    grupo: "Ejército y monturas",
+    // Regimientos del sistema RTS: son objetos de tipo "ejército", que no van
+    // a la mochila sino a las 5 casillas de ejército (lib/ejercito.ts).
+    grupo: "Ejército: tropa",
     iconos: [
+      { icon: "🔱", label: "Lanceros" },
+      { icon: "🎯", label: "Arqueros" },
+      { icon: "🤺", label: "Espadachines" },
+      { icon: "🧱", label: "Escudados" },
+      { icon: "🏛", label: "Infantería" },
+      { icon: "🏇", label: "Caballería" },
+      { icon: "🦅", label: "Unidad alada" },
+      { icon: "🎖", label: "Comandante" },
+      { icon: "🚩", label: "Regimiento" },
+    ],
+  },
+  {
+    grupo: "Ejército: razas",
+    iconos: [
+      { icon: "🐗", label: "Hombre bestia" },
+      { icon: "👺", label: "Orcos" },
+      { icon: "🧝", label: "Elfos" },
+      { icon: "🧔", label: "Enanos" },
+      { icon: "💀", label: "No muertos" },
+      { icon: "🧌", label: "Bárbaros" },
+      { icon: "🐉", label: "Dragones" },
+    ],
+  },
+  {
+    grupo: "Ejército: asedio y monturas",
+    iconos: [
+      { icon: "🪨", label: "Catapulta" },
+      { icon: "🗼", label: "Trebuchet" },
       { icon: "🐴", label: "Caballo" },
       { icon: "🐘", label: "Elefante" },
       { icon: "🐪", label: "Camello" },
