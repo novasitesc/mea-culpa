@@ -25,6 +25,8 @@ export type SalaPartida = {
   piso: number;
   tier: number;
   inicioEn: string | null;
+  /** El usuario actual es el DM que creó la partida (el único que puede iniciarla). */
+  esMiPartida: boolean;
 };
 
 export type EventoDadoTirado = {

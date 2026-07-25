@@ -7,6 +7,28 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { ensureOwnedAliveCharacter } from "@/lib/characterLife";
+import { filasQueSeMueven, ordenAparcado } from "@/lib/bagOrder";
+
+/**
+ * 500 que no se traga el error de Postgres.
+ *
+ * Antes cada rama devolvía una cadena fija y descartaba el objeto de error, así
+ * que un fallo aquí llegaba al navegador como "Failed to update bag" y al log
+ * del servidor como nada. El código de Postgres (23505, 23502, …) es justo lo
+ * que hace falta para saber qué se rompió.
+ */
+function dbFailure(context: string, error: unknown) {
+  const err = error as { message?: string; code?: string; details?: string } | null;
+  console.error(`[update-bag] ${context}:`, err);
+  return NextResponse.json(
+    {
+      error: context,
+      detail: err?.message ?? "Error desconocido",
+      code: err?.code ?? null,
+    },
+    { status: 500 },
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -83,10 +105,7 @@ export async function POST(request: Request) {
           .in("nombre", slotNames);
 
         if (equipLookupError) {
-          return NextResponse.json(
-            { error: "Failed to resolve equipment items" },
-            { status: 500 },
-          );
+          return dbFailure("Failed to resolve equipment items", equipLookupError);
         }
 
         for (const o of objEquip ?? []) nameToId.set(o.nombre, o.id);
@@ -179,10 +198,7 @@ export async function POST(request: Request) {
         );
 
       if (equipUpsertError) {
-        return NextResponse.json(
-          { error: "Failed to update character equipment" },
-          { status: 500 },
-        );
+        return dbFailure("Failed to update character equipment", equipUpsertError);
       }
     }
 
@@ -197,10 +213,7 @@ export async function POST(request: Request) {
         .order("orden", { ascending: true });
 
       if (existingBagError) {
-        return NextResponse.json(
-          { error: "Failed to load current bag state" },
-          { status: 500 },
-        );
+        return dbFailure("Failed to load current bag state", existingBagError);
       }
 
       const existingById = new Map<number, any>();
@@ -231,10 +244,7 @@ export async function POST(request: Request) {
           .in("nombre", namesToResolve);
 
         if (bagLookupError) {
-          return NextResponse.json(
-            { error: "Failed to resolve bag item IDs" },
-            { status: 500 },
-          );
+          return dbFailure("Failed to resolve bag item IDs", bagLookupError);
         }
 
         nameToId = new Map((objetos ?? []).map((o: any) => [o.nombre, o.id]));
@@ -302,10 +312,26 @@ export async function POST(request: Request) {
           .in("id", idsToDelete);
 
         if (deleteBagError) {
-          return NextResponse.json(
-            { error: "Failed to remove old bag items" },
-            { status: 500 },
-          );
+          return dbFailure("Failed to remove old bag items", deleteBagError);
+        }
+      }
+
+      // Pasada 1: aparcar en negativo las filas que cambian de posición, para
+      // que la pasada 2 escriba el orden definitivo sin chocar con el que otra
+      // fila todavía ocupa. El porqué, en lib/bagOrder.ts.
+      const ordenActual = new Map(
+        (existingRows ?? []).map((row) => [Number(row.id), Number(row.orden)]),
+      );
+
+      for (const row of filasQueSeMueven(rowsToApply, ordenActual)) {
+        const { error: parkError } = await db
+          .from("bolsa_objetos")
+          .update({ orden: ordenAparcado(Number(row.id)) })
+          .eq("id", row.id)
+          .eq("personaje_id", characterId);
+
+        if (parkError) {
+          return dbFailure("Failed to reorder bag items", parkError);
         }
       }
 
@@ -324,10 +350,7 @@ export async function POST(request: Request) {
             .eq("personaje_id", characterId);
 
           if (updateBagError) {
-            return NextResponse.json(
-              { error: "Failed to update bag items" },
-              { status: 500 },
-            );
+            return dbFailure("Failed to update bag items", updateBagError);
           }
           continue;
         }
@@ -344,10 +367,7 @@ export async function POST(request: Request) {
           });
 
         if (insertBagError) {
-          return NextResponse.json(
-            { error: "Failed to insert new bag items" },
-            { status: 500 },
-          );
+          return dbFailure("Failed to insert new bag items", insertBagError);
         }
       }
     }

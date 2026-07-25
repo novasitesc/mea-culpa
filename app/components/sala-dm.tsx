@@ -33,7 +33,7 @@ import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
-import { SALAS_POR_DESCANSO, salasDesdeUltimoDescanso } from "@/lib/descanso";
+import { SALAS_POR_DESCANSO, debeDescansar, salasDesdeUltimoDescanso } from "@/lib/descanso";
 import { TIPO_EJERCITO, totalTropas } from "@/lib/ejercito";
 
 type Props = {
@@ -115,8 +115,9 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   // D&D 5e 2014: un solo descanso largo por día de aventura → uno por expedición.
   const yaDescansaron = eventos.some((ev) => ev.tipo === "descanso_largo");
   const salasRecorridas = salasDesdeUltimoDescanso(eventos);
-  const tocaDescanso = salasRecorridas >= SALAS_POR_DESCANSO;
+  const tocaDescanso = debeDescansar(salasRecorridas);
   const enProgreso = partida.estado === "en_progreso";
+  const agotadosAlLimite = participantesActivos.filter((p) => p.cansancio >= MAX_CANSANCIO);
 
   const unidadActual =
     selectedParticipante?.ejercito.find((u) => u.id === unidadSeleccionadaId) ?? null;
@@ -612,11 +613,14 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {enProgreso && (
               <>
+                {/* El descanso a las 4 salas es obligatorio: el botón se apaga
+                    y el servidor devuelve 409 si alguien fuerza la petición. */}
                 <button
                   type="button"
                   onClick={handleAvanzarSala}
-                  disabled={advancing}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#8B7355]/50 px-3 py-1.5 font-sans text-xs text-foreground/70 transition-all hover:border-gold/60 hover:text-gold active:scale-95 disabled:opacity-40"
+                  disabled={advancing || tocaDescanso}
+                  title={tocaDescanso ? "El grupo debe descansar antes de avanzar" : undefined}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#8B7355]/50 px-3 py-1.5 font-sans text-xs text-foreground/70 transition-all hover:border-gold/60 hover:text-gold active:scale-95 disabled:opacity-40 disabled:hover:border-[#8B7355]/50 disabled:hover:text-foreground/70"
                 >
                   {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <DoorOpen className="h-3.5 w-3.5" />}
                   Avanzar sala
@@ -637,15 +641,24 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
               </>
             )}
             {partida.estado === "abierta" ? (
-              <button
-                type="button"
-                onClick={handleStartGame}
-                disabled={startingGame}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-900/25 px-3 py-1.5 font-sans text-xs font-semibold text-emerald-200 transition-all hover:bg-emerald-900/50 active:scale-95 disabled:opacity-60"
-              >
-                {startingGame ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                {startingGame ? "Iniciando..." : "Iniciar partida"}
-              </button>
+              /* La inicia el DM que la creó. Otro admin la ve pero no la
+                 arranca; el servidor devuelve 403 si lo intenta igualmente. */
+              partida.esMiPartida ? (
+                <button
+                  type="button"
+                  onClick={handleStartGame}
+                  disabled={startingGame}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-900/25 px-3 py-1.5 font-sans text-xs font-semibold text-emerald-200 transition-all hover:bg-emerald-900/50 active:scale-95 disabled:opacity-60"
+                >
+                  {startingGame ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  {startingGame ? "Iniciando..." : "Iniciar partida"}
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#8B7355]/40 px-3 py-1.5 font-sans text-xs text-foreground/40">
+                  <Play className="h-3.5 w-3.5" />
+                  La inicia su DM
+                </span>
+              )
             ) : (
               <button
                 type="button"
@@ -667,6 +680,22 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
           >
             El grupo lleva {salasRecorridas} salas sin descansar: el descanso es obligatorio
             antes de seguir.
+          </motion.p>
+        )}
+
+        {/* Agotamiento al máximo. La muerte no se aplica sola a propósito: matar
+            un personaje no se deshace, así que el aviso es para el DM y es él
+            quien decide, con el mismo botón de matar de siempre. */}
+        {agotadosAlLimite.length > 0 && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-2.5 rounded-lg border border-red-600/50 bg-red-950/25 px-3 py-1.5 font-sans text-[11px] leading-relaxed text-red-200"
+          >
+            <Zap className="mr-1 -mt-0.5 inline-block h-3 w-3" />
+            {agotadosAlLimite.map((p) => p.nombre).join(", ")} {agotadosAlLimite.length === 1 ? "llegó" : "llegaron"}
+            {" "}a {MAX_CANSANCIO} de cansancio — {EFECTOS_CANSANCIO[MAX_CANSANCIO].toLowerCase()} según las reglas.
+            Decides tú si aplicarla.
           </motion.p>
         )}
       </div>

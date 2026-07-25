@@ -2,6 +2,7 @@
 import assert from "node:assert";
 import {
   aplicarDescanso,
+  debeDescansar,
   esRacion,
   esTiendaAcampar,
   salasDesdeUltimoDescanso,
@@ -44,13 +45,34 @@ assert.equal(salasDesdeUltimoDescanso([sala, ruido, sala]), 2);
 assert.equal(salasDesdeUltimoDescanso([sala, sala, corto]), 0);
 assert.equal(salasDesdeUltimoDescanso([sala, sala, corto, sala]), 1);
 assert.equal(salasDesdeUltimoDescanso([sala, largo, sala, sala, sala]), 3);
-// Cuatro salas seguidas disparan el aviso de descanso obligatorio
+// Cuatro salas seguidas disparan el descanso obligatorio
 assert.ok(
   salasDesdeUltimoDescanso(Array(SALAS_POR_DESCANSO).fill(sala)) >= SALAS_POR_DESCANSO,
 );
 // …y tras descansar el aviso se apaga
 assert.ok(
   salasDesdeUltimoDescanso([...Array(SALAS_POR_DESCANSO).fill(sala), largo]) < SALAS_POR_DESCANSO,
+);
+
+// El bloqueo de avanzar sala ("tienen que descansar sí o sí"). Se comprueba
+// aquí y no solo en el botón: /sala-avanzada devuelve 409 con esta misma regla.
+assert.equal(debeDescansar(0), false);
+assert.equal(debeDescansar(SALAS_POR_DESCANSO - 1), false, "la sala 4 aún se puede abrir");
+assert.equal(debeDescansar(SALAS_POR_DESCANSO), true, "tras la 4.ª sala no se avanza más");
+// Descansar reabre el paso; encadenar salas tras el descanso vuelve a bloquear.
+assert.equal(
+  debeDescansar(salasDesdeUltimoDescanso([...Array(SALAS_POR_DESCANSO).fill(sala), largo])),
+  false,
+);
+assert.equal(
+  debeDescansar(
+    salasDesdeUltimoDescanso([
+      ...Array(SALAS_POR_DESCANSO).fill(sala),
+      largo,
+      ...Array(SALAS_POR_DESCANSO).fill(sala),
+    ]),
+  ),
+  true,
 );
 
 // ── Conjuros gastados: claves normalizadas y sin duplicados ──────────────────

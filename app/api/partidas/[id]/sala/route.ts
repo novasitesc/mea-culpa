@@ -146,7 +146,7 @@ export async function GET(
 
   const { data: partida, error: partidaError } = await db
     .from("partidas")
-    .select("id, titulo, estado, piso, tier, inicio_en")
+    .select("id, titulo, estado, piso, tier, inicio_en, creada_por")
     .eq("id", partidaId)
     .maybeSingle();
 
@@ -207,6 +207,8 @@ export async function GET(
       piso: (partida as any).piso,
       tier: (partida as any).tier,
       inicioEn: (partida as any).inicio_en,
+      // Quien la creó es su DM: solo él (o el super admin) puede iniciarla.
+      esMiPartida: (partida as any).creada_por === user.id,
     },
     esAdmin,
     participantes: (participantes ?? []).map((p: any) => ({

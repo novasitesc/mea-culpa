@@ -8,7 +8,6 @@
 // POST /api/profile/update-bag. La pantalla propone, la ruta dispone.
 
 import { useState, useCallback, useEffect } from "react";
-import FantasyAlert from "@/components/ui/fantasy-alert";
 import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { getSupabase } from "@/lib/supabase";
@@ -574,150 +573,107 @@ const TYPE_TAG_COLORS: Partial<Record<ItemType, string>> = {
   colgante: "bg-yellow-900/20 text-yellow-400",
 };
 
-interface EquipmentPreviewProps {
+// ─── Sub-component: tira compacta de equipo ──────────────────────────────────
+//
+// Sustituye a la vista previa del muñeco (280×380 px de SVG más 13 ranuras
+// grandes) que se pintaba dentro de la tarjeta de personaje. El muñeco es el
+// editor y vive donde se edita: dentro de la bolsa. Aquí fuera basta con SABER
+// qué llevas puesto, y eso cabe en una fila.
+//
+// Cada casilla es un botón que abre la bolsa: el resumen es también el camino
+// al editor, en vez de un aviso de "esto es solo lectura".
+
+interface EquipmentStripProps {
   character: Character;
+  /** Abrir la bolsa. Cualquier casilla lleva ahí. */
+  onOpenBag?: () => void;
 }
 
-export function EquipmentPreview({ character }: EquipmentPreviewProps) {
+export function EquipmentStrip({ character, onOpenBag }: EquipmentStripProps) {
   const equipped = buildEquippedMap(character);
-  const weaponSockets = buildWeaponSockets(character);
-  const capeSockets = buildCapeSockets(character);
-  const [noticeId, setNoticeId] = useState(0);
-  const notifyOpenBag = () => {
-    setNoticeId((prev) => prev + 1);
-  };
+  const slots = Object.keys(SLOT_CONFIG) as SlotKey[];
+  const equippedCount = slots.filter((key) => equipped[key]).length;
+
+  // Un resumen de trece casillas vacías no resume nada: solo mete ruido en la
+  // tarjeta de un personaje recién creado. La barra de arriba ya dice "Sin arma
+  // · Sin armadura", y el botón de la bolsa está justo debajo.
+  if (equippedCount === 0) return null;
 
   return (
-    <>
-      <FantasyAlert
-        key={noticeId}
-        open={noticeId > 0}
-        title="Modo solo lectura"
-        message='Para editar, presiona "Abrir Bolsa".'
-        variant="warning"
-        onClose={() => setNoticeId(0)}
-      />
-
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{
-          background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
-          border: "1px solid #8B7355",
-        }}
-      >
-        <div
-          className="px-4 py-3 border-b border-[#3a3020]"
-          style={{
-            background:
-              "linear-gradient(90deg, #0f0e0c 0%, #1e1c14 50%, #0f0e0c 100%)",
-          }}
-        >
-          <h3 className="text-xs tracking-[0.2em] uppercase text-[#D4AF37]">
-            Equipo del Personaje
-          </h3>
-        </div>
-
-        <div
-          className="flex flex-col items-center gap-3 p-4 w-full overflow-hidden"
-          style={{ background: "rgba(0,0,0,0.15)" }}
-        >
-          <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355]">
-            Personaje
-          </span>
-
-          {/* Desktop Figure (<xl hidden) */}
-          <div className="hidden xl:block relative w-[280px] h-[380px] translate-x-[120px]">
-            <svg
-              viewBox="0 0 280 380"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute inset-0 w-full h-full"
-            >
-              <defs>
-                <linearGradient id="bodyGradPreview" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2a2618" />
-                  <stop offset="100%" stopColor="#1a1610" />
-                </linearGradient>
-              </defs>
-              <circle cx="140" cy="62" r="34" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-              <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1" />
-              <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.5" />
-              <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGradPreview)" stroke="#3a3020" strokeWidth="1.2" />
-              <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
-            </svg>
-
-            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
-              const weaponSlot =
-                key === "manoizq" || key === "manoderecha" ? key : null;
-
-              return (
-                <SlotButton
-                  key={key}
-                  slotKey={key}
-                  item={equipped[key]}
-                  selected={false}
-                  onSelect={() => {}}
-                  weaponLevel={
-                    weaponSlot
-                      ? getWeaponLevelForSlot(character, equipped, weaponSlot)
-                      : undefined
-                  }
-                  weaponSocketItems={
-                    weaponSlot ? weaponSockets[weaponSlot] : undefined
-                  }
-                  weaponSelectedSocketIndex={null}
-                  capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
-                  capeSocketItems={key === "capa" ? capeSockets : undefined}
-                  capeSelectedSocketIndex={null}
-                  readOnly
-                  onReadOnlyAttempt={notifyOpenBag}
-                />
-              );
-            })}
-          </div>
-
-          {/* Mobile Grid (<xl) */}
-          <div className="xl:hidden w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
-            {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => {
-              const weaponSlot =
-                key === "manoizq" || key === "manoderecha" ? key : null;
-
-              return (
-                <SlotButton
-                  key={key}
-                  slotKey={key}
-                  item={equipped[key]}
-                  selected={false}
-                  onSelect={() => {}}
-                  weaponLevel={
-                    weaponSlot
-                      ? getWeaponLevelForSlot(character, equipped, weaponSlot)
-                      : undefined
-                  }
-                  weaponSocketItems={
-                    weaponSlot ? weaponSockets[weaponSlot] : undefined
-                  }
-                  weaponSelectedSocketIndex={null}
-                  capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
-                  capeSocketItems={key === "capa" ? capeSockets : undefined}
-                  capeSelectedSocketIndex={null}
-                  readOnly
-                  onReadOnlyAttempt={notifyOpenBag}
-                  layoutMode="grid"
-                />
-              );
-            })}
-          </div>
-        </div>
+    <div className="rounded-xl border border-[#8B7355]/60 bg-gradient-to-b from-[#1a1814] to-[#141210] p-3">
+      <div className="flex items-center gap-2.5">
+        <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#D4AF37]">Equipo</h3>
+        <div className="h-px flex-1 bg-[#3a3020]" />
+        <span className="font-sans text-[10px] tabular-nums text-[#8B7355]">
+          {equippedCount}/{slots.length}
+        </span>
       </div>
-    </>
+
+      {/* Medidor: cuánto del equipo está cubierto, de un vistazo. */}
+      <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-black/40">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-[#8B7355] to-[#D4AF37]"
+          initial={{ width: 0 }}
+          animate={{ width: `${(equippedCount / slots.length) * 100}%` }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+        />
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {slots.map((key, i) => {
+          const item = equipped[key];
+          const { label, icon } = SLOT_CONFIG[key];
+
+          return (
+            <motion.button
+              key={key}
+              type="button"
+              onClick={onOpenBag}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: i * 0.025, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.94 }}
+              aria-label={item ? `${label}: ${item.name}. Abrir bolsa` : `${label}: vacío. Abrir bolsa`}
+              className={`group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/60 ${
+                item
+                  ? "border-[#D4AF37]/45 bg-[#D4AF37]/8 text-[#D4AF37] hover:border-[#D4AF37]"
+                  : "border-dashed border-[#3a3020] bg-black/25 text-[#8B7355] opacity-40 hover:opacity-75"
+              }`}
+            >
+              {/* Mismo mapeador que el resto de la app: resuelve el nombre del
+                  objeto por palabra clave y, si no encaja con ninguna, cae al
+                  emoji de la ranura, que su tabla también traduce a icono. */}
+              <span aria-hidden>
+                {item
+                  ? getIconForString(item.name, "h-4 w-4", icon)
+                  : getIconForString(icon, "h-4 w-4")}
+              </span>
+
+              {/* Tooltip en CSS puro: sin estado ni dependencia, y aparece
+                  igual con el foco del teclado que con el ratón. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 max-w-40 -translate-x-1/2 scale-95 truncate rounded-md border border-[#8B7355]/60 bg-[#0f0e0c] px-2 py-1 text-center opacity-0 shadow-lg transition-all duration-150 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100"
+              >
+                <span className="block text-[9px] uppercase tracking-widest text-[#8B7355]">
+                  {label}
+                </span>
+                <span
+                  className={`block text-[10px] ${item ? "text-[#e8d8b0]" : "italic text-[#6b5a2a]"}`}
+                >
+                  {item ? item.name : "Vacío"}
+                </span>
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 text-[10px] text-[#8B7355]/70">
+        Pulsa una casilla para equipar en la bolsa.
+      </p>
+    </div>
   );
 }
 

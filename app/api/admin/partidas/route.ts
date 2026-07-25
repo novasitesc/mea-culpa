@@ -319,7 +319,7 @@ export async function PATCH(request: NextRequest) {
   if (action === "start") {
     const { data: partidaToStart, error: startFetchError } = await session.db
       .from("partidas")
-      .select("id, estado")
+      .select("id, estado, creada_por")
       .eq("id", partidaId)
       .maybeSingle();
 
@@ -328,6 +328,15 @@ export async function PATCH(request: NextRequest) {
     }
     if (!partidaToStart) {
       return NextResponse.json({ error: "Partida no encontrada" }, { status: 404 });
+    }
+    // Cada partida la arranca el DM que la creó. El super admin puede hacerlo
+    // igualmente para poder desatascar una mesa cuyo DM no aparece.
+    const esCreador = (partidaToStart as any).creada_por === session.userId;
+    if (!esCreador && session.rolSistema !== "super_admin") {
+      return NextResponse.json(
+        { error: "Solo el DM que creó la partida puede iniciarla" },
+        { status: 403 },
+      );
     }
     if ((partidaToStart as any).estado !== "abierta") {
       return NextResponse.json({ error: "Solo se pueden iniciar partidas abiertas" }, { status: 409 });

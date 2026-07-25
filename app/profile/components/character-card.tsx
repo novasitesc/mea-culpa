@@ -35,7 +35,7 @@ import {
 import { AnimatePresence } from "framer-motion";
 import EjercitoModal from "./ejercito-modal";
 import { totalTropas, type UnidadEjercito } from "@/lib/ejercito";
-import { EquipmentPreview } from "../bolsa/bolsa";
+import { EquipmentStrip } from "../bolsa/bolsa";
 import CaidasTracker from "@/app/components/caidas-tracker";
 import { MAX_CANSANCIO, EFECTOS_CANSANCIO } from "@/lib/caidas";
 import SpellsRegistry from "./spells-registry";
@@ -556,8 +556,15 @@ export default function CharacterCard({
                     ))}
                   </div>
 
-                  {/* Equipment Preview */}
-                  <EquipmentPreview character={character} />
+                  {/* Resumen de equipo. El muñeco con las ranuras grandes vive
+                      dentro de la bolsa, que es donde se edita; aquí solo se
+                      consulta, y una fila de casillas basta para eso. */}
+                  <EquipmentStrip
+                    character={character}
+                    onOpenBag={
+                      character.lifeStatus === "muerto" ? undefined : handleOpenBagClick
+                    }
+                  />
 
                   {/* Open Bag / Ejército buttons */}
                   <div className="flex justify-end gap-2 mt-2">

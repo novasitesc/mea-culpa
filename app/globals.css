@@ -230,6 +230,42 @@
   background: rgba(12, 12, 12, 0.92) !important;
 }
 
+/* Paneles con log largo (feed de sala, chat de gremio): scroll suave, barra
+   delgada y desvanecido superior para que el corte no se vea abrupto. */
+.feed-scroll {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 134, 11, 0.45) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+
+.feed-scroll::-webkit-scrollbar {
+  width: 6px;
+  background: transparent !important;
+}
+
+.feed-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb {
+  background: rgba(184, 134, 11, 0.35) !important;
+  border: 0;
+  border-radius: 999px;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.6) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-scroll {
+    scroll-behavior: auto;
+  }
+}
+
 /* Controles +/- de input[type='number'] en estilo oscuro medieval */
 input[type="number"] {
   color-scheme: dark;

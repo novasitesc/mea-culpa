@@ -8,12 +8,16 @@ import { MAX_CAIDAS, MAX_CANSANCIO, CAIDAS_CURADAS_DESCANSO_CORTO } from "./caid
 // - Largo: además requiere 1 tienda de acampar del grupo; restaura caídas a 0
 //   y reduce 1 nivel de cansancio (D&D 5e 2014). Uno por expedición.
 
-// Salas exploradas antes de que el descanso sea obligatorio. Es una regla de
-// la mesa, no de D&D 5e: el DM avanza sala y al llegar a SALAS_POR_DESCANSO se
-// avisa al grupo. Solo avisa — el DM sigue mandando sobre el ritmo de la
-// expedición.
-// ponytail: aviso sin bloqueo; si la mesa lo exige, bloquear tiradas aquí.
+// Salas de una expedición antes del descanso obligatorio. Regla de la mesa, no
+// de D&D 5e: "siempre son 4, eso no varía" y "tienen que descansar sí o sí, no
+// pueden evitarlo". El bloqueo es solo sobre avanzar de sala: la sala 4 se
+// sigue jugando entera (dados, botín, conjuros, bajas) hasta que descansen.
 export const SALAS_POR_DESCANSO = 4;
+
+/** Si el grupo ya agotó las salas de este tramo, avanzar exige descansar antes. */
+export function debeDescansar(salasRecorridas: number): boolean {
+  return salasRecorridas >= SALAS_POR_DESCANSO;
+}
 
 /**
  * Salas exploradas desde el último descanso. Se deriva del log de eventos de
