@@ -143,7 +143,7 @@ export async function GET(request: Request) {
     .single();
 
   // Obtener personajes con sus clases, stats, equipamiento e inventario
-  const { data: personajes } = await db
+  const { data: personajes, error: personajesError } = await db
     .from("personajes")
     .select(
       `
@@ -173,6 +173,25 @@ export async function GET(request: Request) {
     .eq("usuario_id", userId)
     .not("estado_vida", "in", '("enterrado","eliminado")')
     .order("numero_slot", { ascending: true });
+
+  // Si esta consulta falla, el jugador NO se ha quedado sin personajes: es un
+  // error nuestro. Antes se descartaba y la pantalla de Perfil se pintaba vacía,
+  // que es indistinguible de una cuenta nueva. El 42703 (columna inexistente)
+  // avisa además de que falta correr una migración.
+  if (personajesError) {
+    console.error("[profile] no se pudieron cargar los personajes:", personajesError);
+    const faltaColumna = personajesError.code === "42703";
+    return NextResponse.json(
+      {
+        error: faltaColumna
+          ? "La base de datos está desactualizada: falta aplicar una migración de supabase/migrations"
+          : "No se pudieron cargar los personajes",
+        detail: personajesError.message,
+        code: personajesError.code ?? null,
+      },
+      { status: 500 },
+    );
+  }
 
   // Intentar cargar conjuros conocidos por separado (la columna puede no existir aún)
   const spellsByCharId: Record<string, SpellEntry[]> = {};

@@ -12,6 +12,7 @@ import { ITEM_RARITY_HEX, type ItemRarity } from "@/lib/item-catalog";
 import {
   EJERCITO_SLOTS,
   EJERCITO_STACK_MAX,
+  capacidadSoldados,
   totalSoldados,
   type UnidadEjercito,
 } from "@/lib/ejercito";
@@ -123,7 +124,9 @@ export default function EjercitoGrid({
               </p>
               {u.soldados != null && (
                 <p className="text-center font-sans text-[9px] leading-none text-foreground/35">
-                  {u.cantidad} × {u.soldados} soldados
+                  {u.soldadosCaidos > 0
+                    ? `${soldados} de ${capacidadSoldados(u)} · ${u.soldadosCaidos} caídos`
+                    : `${u.cantidad} × ${u.soldados} soldados`}
                 </p>
               )}
 

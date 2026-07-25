@@ -180,7 +180,7 @@ export async function GET(
     }
   }
 
-  const { data: participantes } = await db
+  const { data: participantes, error: participantesError } = await db
     .from("partida_participantes")
     .select(
       `id, personaje_id, usuario_id, muerto, derrotado,
@@ -190,6 +190,23 @@ export async function GET(
        )`,
     )
     .eq("partida_id", partidaId);
+
+  // Igual que en /api/profile: si esto falla, la sala no está vacía, está rota.
+  // Sin este control el DM veía una mesa sin jugadores y no sabía por qué.
+  if (participantesError) {
+    console.error("[sala] no se pudieron cargar los participantes:", participantesError);
+    return NextResponse.json(
+      {
+        error:
+          participantesError.code === "42703"
+            ? "La base de datos está desactualizada: falta aplicar una migración de supabase/migrations"
+            : "No se pudieron cargar los participantes",
+        detail: participantesError.message,
+        code: participantesError.code ?? null,
+      },
+      { status: 500 },
+    );
+  }
 
   const { data: eventosRows } = await db
     .from("partidas_eventos")

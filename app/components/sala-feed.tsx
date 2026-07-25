@@ -370,12 +370,15 @@ function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => strin
           <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
           <span className="text-foreground/40"> pierde </span>
           <span className="text-orange-300 font-semibold">
-            {ev.bajas} × {ev.unidadNombre}
+            {ev.bajas} soldado{ev.bajas === 1 ? "" : "s"} de {ev.unidadNombre}
           </span>
           {ev.aniquilada ? (
-            <span className="text-rose-400 font-semibold"> — regimiento aniquilado</span>
+            <span className="text-rose-400 font-semibold"> — unidad aniquilada</span>
           ) : (
-            <span className="text-foreground/40"> — quedan {ev.restante} en pie</span>
+            <span className="text-foreground/40">
+              {" "}
+              — quedan {ev.restante} en pie
+            </span>
           )}
         </p>
       </div>

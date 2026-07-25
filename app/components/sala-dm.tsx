@@ -34,7 +34,12 @@ import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import { SALAS_POR_DESCANSO, debeDescansar, salasDesdeUltimoDescanso } from "@/lib/descanso";
-import { TIPO_EJERCITO, totalTropas } from "@/lib/ejercito";
+import {
+  TIPO_EJERCITO,
+  capacidadSoldados,
+  totalSoldados,
+  totalTropas,
+} from "@/lib/ejercito";
 
 type Props = {
   partida: SalaPartida;
@@ -121,6 +126,10 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
 
   const unidadActual =
     selectedParticipante?.ejercito.find((u) => u.id === unidadSeleccionadaId) ?? null;
+  // Las bajas se cuentan en soldados: un regimiento de ogros son 20, y el DM
+  // puede tumbarlos de a pocos o de golpe.
+  const soldadosVivos = unidadActual ? totalSoldados(unidadActual) : 0;
+  const soldadosCapacidad = unidadActual ? capacidadSoldados(unidadActual) : 0;
 
   const loadObjects = useCallback(async () => {
     if (objects.length > 0) return;
@@ -435,6 +444,7 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
         unidadIcono: data.unidadIcono,
         bajas: Number(data.bajas ?? 0),
         restante: Number(data.restante ?? 0),
+        soldadosCaidos: Number(data.soldadosCaidos ?? 0),
         aniquilada: Boolean(data.aniquilada),
       });
       setBajas(1);
@@ -1073,22 +1083,24 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                                     <p className="flex items-center gap-1.5 font-sans text-[11px] text-foreground/70">
                                       {getIconForString(unidadActual.nombre, "w-3.5 h-3.5 shrink-0", unidadActual.icono)}
                                       <span className="font-semibold text-[#e8d8b0]">{unidadActual.nombre}</span>
-                                      <span className="text-foreground/40">· {unidadActual.cantidad} en pie</span>
+                                      <span className="text-foreground/40">
+                                        · {soldadosVivos} de {soldadosCapacidad} soldados en pie
+                                      </span>
                                     </p>
 
                                     <div className="flex items-center gap-2">
                                       <label className="shrink-0 font-sans text-[11px] text-foreground/50">
-                                        Bajas:
+                                        Soldados que caen:
                                       </label>
                                       <input
                                         type="number"
                                         min={1}
-                                        max={unidadActual.cantidad}
+                                        max={Math.max(1, soldadosVivos)}
                                         value={bajas}
                                         onChange={(e) =>
                                           setBajas(
                                             Math.min(
-                                              unidadActual.cantidad,
+                                              Math.max(1, soldadosVivos),
                                               Math.max(1, parseInt(e.target.value) || 1),
                                             ),
                                           )
@@ -1096,9 +1108,50 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                                         className="w-20 rounded border border-border bg-background px-2 py-1 text-xs tabular-nums focus:border-rose-500/60 focus:outline-none"
                                       />
                                       <span className="font-sans text-[10px] text-foreground/35">
-                                        de {unidadActual.cantidad}
+                                        de {soldadosVivos}
+                                        {unidadActual.soldados
+                                          ? ` · ${unidadActual.soldados} por regimiento`
+                                          : ""}
                                       </span>
                                     </div>
+
+                                    {/* Atajos: lo que más se usa es tumbar un regimiento entero. */}
+                                    {unidadActual.soldados != null && soldadosVivos > 0 && (
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        {[1, 5, unidadActual.soldados]
+                                          .filter(
+                                            (n, i, arr) =>
+                                              n <= soldadosVivos && arr.indexOf(n) === i,
+                                          )
+                                          .map((n) => (
+                                            <button
+                                              key={n}
+                                              type="button"
+                                              onClick={() => setBajas(n)}
+                                              className={`rounded border px-2 py-0.5 font-sans text-[10px] transition-all ${
+                                                bajas === n
+                                                  ? "border-rose-500/60 bg-rose-900/30 text-rose-200"
+                                                  : "border-border text-foreground/50 hover:text-foreground/80"
+                                              }`}
+                                            >
+                                              {n === unidadActual.soldados
+                                                ? `1 regimiento (${n})`
+                                                : `−${n}`}
+                                            </button>
+                                          ))}
+                                        <button
+                                          type="button"
+                                          onClick={() => setBajas(soldadosVivos)}
+                                          className={`rounded border px-2 py-0.5 font-sans text-[10px] transition-all ${
+                                            bajas === soldadosVivos
+                                              ? "border-rose-500/60 bg-rose-900/30 text-rose-200"
+                                              : "border-border text-foreground/50 hover:text-foreground/80"
+                                          }`}
+                                        >
+                                          todos ({soldadosVivos})
+                                        </button>
+                                      </div>
+                                    )}
 
                                     <div className="grid grid-cols-2 gap-1.5">
                                       <button
@@ -1126,8 +1179,9 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                                     </div>
 
                                     <p className="font-sans text-[10px] leading-relaxed text-foreground/35">
-                                      Las bajas se descuentan del inventario del jugador al instante;
-                                      si el regimiento cae entero, libera su casilla.
+                                      Las bajas se cuentan por soldado y se descuentan del
+                                      inventario del jugador al instante. La casilla se libera
+                                      solo cuando no queda nadie en pie.
                                     </p>
                                   </div>
                                 </motion.div>

@@ -158,10 +158,12 @@ export type EventoEjercitoBaja = {
   unidadId: number;
   unidadNombre: string;
   unidadIcono: string;
-  /** Regimientos caídos en esta acción. */
+  /** Soldados caídos en esta acción (migración 058: se cuentan por soldado). */
   bajas: number;
-  /** Regimientos que quedan en pie tras la baja. */
+  /** Soldados que quedan en pie tras la baja. */
   restante: number;
+  /** Acumulado de caídos en la casilla; refresca la sala sin recargar. */
+  soldadosCaidos?: number;
   /** true cuando la casilla se vacía: la unidad desaparece del inventario. */
   aniquilada: boolean;
 };

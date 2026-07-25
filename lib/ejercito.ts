@@ -28,33 +28,57 @@ export type UnidadEjercito = {
   orden: number;
   /** Soldados que forma un regimiento; null si el DM no lo definió. */
   soldados: number | null;
+  /** Soldados ya muertos en esta casilla (migración 058). */
+  soldadosCaidos: number;
   clase_armadura: number | null;
   dano: string | null;
 };
 
-/** Soldados totales de una casilla: soldados por regimiento × regimientos. */
-export function totalSoldados(u: Pick<UnidadEjercito, "soldados" | "cantidad">): number {
+type UnidadContable = Pick<UnidadEjercito, "soldados" | "cantidad"> &
+  Partial<Pick<UnidadEjercito, "soldadosCaidos">>;
+
+/**
+ * Soldados que la casilla llegó a tener: soldados por regimiento × regimientos.
+ * Es el techo, no la tropa viva — para eso está `totalSoldados`.
+ */
+export function capacidadSoldados(u: UnidadContable): number {
   return (u.soldados ?? 0) * u.cantidad;
 }
 
-/** Suma de soldados de todo el ejército de un personaje. */
-export function totalTropas(unidades: UnidadEjercito[]): number {
+/** Soldados en pie de una casilla: la capacidad menos los que han caído. */
+export function totalSoldados(u: UnidadContable): number {
+  return Math.max(0, capacidadSoldados(u) - Math.max(0, u.soldadosCaidos ?? 0));
+}
+
+/**
+ * Regimientos que aún tienen a alguien de pie. Un regimiento a medias sigue
+ * contando como regimiento: 35 de 60 ogros son 2 regimientos en juego.
+ */
+export function regimientosEnPie(u: UnidadContable): number {
+  const porRegimiento = u.soldados ?? 0;
+  if (porRegimiento <= 0) return u.cantidad;
+  return Math.ceil(totalSoldados(u) / porRegimiento);
+}
+
+/** Suma de soldados en pie de todo el ejército de un personaje. */
+export function totalTropas(unidades: UnidadContable[]): number {
   return unidades.reduce((acc, u) => acc + totalSoldados(u), 0);
 }
 
 /**
- * Bajas que el DM aplica a una casilla.
+ * Bajas que el DM aplica a una casilla, **contadas en soldados**.
  *
- * `bajas` se acota a lo que queda en pie (no se puede matar más de lo que hay)
- * y `aniquilar` barre el regimiento entero de un golpe. Cuando `restante` cae
- * a 0 la casilla se libera.
+ * Antes se contaban en regimientos y no había manera de bajar un regimiento de
+ * a pocos: restar 1 a los ogros se llevaba a los 20. Ahora `vivos` y `bajas`
+ * son soldados; `aniquilar` barre la casilla completa de un golpe. Cuando
+ * `restante` cae a 0 la casilla se libera.
  */
 export function aplicarBajas(
-  cantidad: number,
+  vivos: number,
   bajas: number,
   aniquilar: boolean,
 ): { caidas: number; restante: number } {
-  const enPie = Math.max(0, Math.floor(cantidad));
+  const enPie = Math.max(0, Math.floor(vivos));
   const caidas = aniquilar ? enPie : Math.min(Math.max(0, Math.floor(bajas)), enPie);
   return { caidas, restante: enPie - caidas };
 }
@@ -72,6 +96,7 @@ export function mapUnidadRow(row: any): UnidadEjercito {
     cantidad: Number(row.cantidad ?? 1),
     orden: Number(row.orden ?? 0),
     soldados: row.objetos?.soldados ?? null,
+    soldadosCaidos: Number(row.soldados_caidos ?? 0),
     clase_armadura: row.objetos?.clase_armadura ?? null,
     dano: row.objetos?.dano ?? null,
   };
@@ -79,4 +104,4 @@ export function mapUnidadRow(row: any): UnidadEjercito {
 
 /** Columnas a pedir en el join con `objetos` al leer el ejército. */
 export const EJERCITO_SELECT =
-  "id, objeto_id, cantidad, orden, objetos:objeto_id ( nombre, icono, descripcion, rareza, precio, soldados, clase_armadura, dano )";
+  "id, objeto_id, cantidad, orden, soldados_caidos, objetos:objeto_id ( nombre, icono, descripcion, rareza, precio, soldados, clase_armadura, dano )";

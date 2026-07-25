@@ -123,10 +123,19 @@ export default function SalaPage() {
         if (p.personajeId !== ev.personajeId) return p;
         return {
           ...p,
+          // `restante` son soldados en pie, no regimientos: lo que cambia es el
+          // acumulado de caídos, nunca `cantidad` (esa es la compra del jugador).
           ejercito: ev.aniquilada
             ? p.ejercito.filter((u) => u.id !== ev.unidadId)
             : p.ejercito.map((u) =>
-                u.id === ev.unidadId ? { ...u, cantidad: ev.restante } : u,
+                u.id === ev.unidadId
+                  ? {
+                      ...u,
+                      soldadosCaidos:
+                        ev.soldadosCaidos ??
+                        Math.max(0, (u.soldados ?? 0) * u.cantidad - ev.restante),
+                    }
+                  : u,
               ),
         };
       }),

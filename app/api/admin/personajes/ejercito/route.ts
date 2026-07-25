@@ -1,10 +1,20 @@
-// PATCH — Solo admin. El DM aplica bajas al ejército de un personaje cuando
-// las unidades caen en batalla, para que nadie pueda decir "es que me
-// sobrevive". Resta `bajas` regimientos de la casilla; si llega a 0 (o si el
-// DM aniquila la unidad entera), la casilla se libera.
+// PATCH — Solo admin. El DM aplica bajas al ejército de un personaje cuando las
+// tropas caen en batalla, para que nadie pueda decir "es que me sobrevive".
+//
+// `bajas` son SOLDADOS, no regimientos: un regimiento de ogros son 20 soldados y
+// el DM puede tumbarlos de a pocos. Los caídos se acumulan en
+// `soldados_caidos`; cuando no queda nadie en pie (o el DM aniquila la casilla)
+// la casilla se libera.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminAuth";
-import { EJERCITO_SELECT, aplicarBajas, mapUnidadRow } from "@/lib/ejercito";
+import {
+  EJERCITO_SELECT,
+  aplicarBajas,
+  capacidadSoldados,
+  mapUnidadRow,
+  regimientosEnPie,
+  totalSoldados,
+} from "@/lib/ejercito";
 
 export async function PATCH(request: Request) {
   const result = await requireAdmin(request);
@@ -27,7 +37,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "unidadId inválido" }, { status: 400 });
   }
   if (!aniquilar && (!Number.isFinite(bajas) || bajas <= 0)) {
-    return NextResponse.json({ error: "Indica cuántas unidades caen" }, { status: 400 });
+    return NextResponse.json({ error: "Indica cuántos soldados caen" }, { status: 400 });
   }
 
   const { data: unidad, error: fetchError } = await session.db
@@ -45,12 +55,27 @@ export async function PATCH(request: Request) {
 
   const actual = mapUnidadRow(unidad);
   const personajeId = Number((unidad as any).personaje_id);
-  const { caidas, restante } = aplicarBajas(actual.cantidad, bajas, aniquilar);
+  const capacidad = capacidadSoldados(actual);
+  const vivosAntes = totalSoldados(actual);
+
+  // Sin ficha de soldados no hay nada que contar: la casilla solo se puede
+  // aniquilar entera. Es el caso de una unidad que el DM creó sin rellenar
+  // `objetos.soldados`.
+  if (capacidad <= 0 && !aniquilar) {
+    return NextResponse.json(
+      {
+        error: `"${actual.nombre}" no tiene soldados definidos en el catálogo; solo puedes aniquilar la casilla`,
+      },
+      { status: 422 },
+    );
+  }
+
+  const { caidas, restante } = aplicarBajas(vivosAntes, bajas, aniquilar);
 
   if (restante > 0) {
     const { error } = await session.db
       .from("ejercito_objetos")
-      .update({ cantidad: restante })
+      .update({ soldados_caidos: capacidad - restante })
       .eq("id", unidadId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else {
@@ -75,17 +100,33 @@ export async function PATCH(request: Request) {
       objeto_nombre: actual.nombre,
       objeto_icono: actual.icono,
       cantidad: caidas,
-      metadata: { restante, aniquilada: restante === 0, unidadId },
+      metadata: {
+        restante,
+        aniquilada: restante === 0,
+        unidadId,
+        unidad: "soldados",
+        capacidad,
+        soldadosPorRegimiento: actual.soldados,
+      },
     });
   }
+
+  const soldadosCaidos = restante === 0 ? capacidad : capacidad - restante;
 
   return NextResponse.json({
     personajeId,
     unidadId,
     unidadNombre: actual.nombre,
     unidadIcono: actual.icono,
+    /** Soldados caídos en esta acción. */
     bajas: caidas,
+    /** Soldados que quedan en pie. */
     restante,
+    /** Acumulado de caídos en la casilla, para refrescar la sala sin recargar. */
+    soldadosCaidos,
+    /** Soldados que llegó a tener la casilla (regimientos × soldados). */
+    capacidad,
+    regimientosEnPie: regimientosEnPie({ ...actual, soldadosCaidos }),
     aniquilada: restante === 0,
     personajeNombre: (personaje as any)?.nombre ?? "Personaje",
   });
