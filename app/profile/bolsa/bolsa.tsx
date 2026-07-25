@@ -8,10 +8,10 @@
 // POST /api/profile/update-bag. La pantalla propone, la ruta dispone.
 
 import { useState, useCallback, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X, Lock } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import { getSupabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { playBagOpenSfx, playItemSelectSfx } from "@/lib/sfx";
 
 // ─── Types (re-exported from your page, or paste here) ───────────────────────
@@ -771,6 +771,733 @@ function BagItemCard({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Paperdoll de escritorio (xl+) ───────────────────────────────────────────
+//
+// El muñeco anterior colocaba las trece ranuras con píxeles absolutos, tres de
+// ellos NEGATIVOS (`left:-375px` para el arma izquierda, `right:-190px` para la
+// capa) compensados con un `ml-72` en el contenedor. Cualquier cambio de tamaño
+// lo rompía, y los paneles de arma y capa flotaban a 300px del cuerpo sin nada
+// que los atara a él.
+//
+// Tres cambios:
+//   1. Todo va en PORCENTAJES sobre una caja con aspect-ratio fijo, así que el
+//      conjunto escala entero. Cero píxeles mágicos, cero offsets negativos.
+//   2. Cada ranura tiene una línea que la ata a su parte del cuerpo, y esa parte
+//      se ilumina cuando la ranura está activa o acepta lo que llevas en la mano.
+//   3. El muñeco SE VISTE: al equipar, la pieza aparece dibujada sobre la
+//      silueta. Es la diferencia entre una lista de ranuras y un personaje.
+//
+// Las armas y la capa tienen tres sub-huecos cada una: no caben como chip, así
+// que el chip enseña tres pips (lleno / vacío / bloqueado) para el vistazo y
+// despliega el panel completo al pulsarlo. Divulgación progresiva: el detalle
+// aparece cuando lo pides, no antes.
+//
+// Debajo de xl no se monta nada de esto: la rejilla de móvil sigue intacta.
+
+type DollAnchor = {
+  /** Centro del chip, en % de la caja. */
+  x: number;
+  y: number;
+  /** Punto del chip del que sale la línea guía. */
+  tx: number;
+  ty: number;
+  /** Punto del cuerpo al que llega la línea guía. */
+  ax: number;
+  ay: number;
+  /** Hacia dónde mira el chip: el icono va siempre del lado del cuerpo. */
+  side: "left" | "right" | "center";
+};
+
+// Las coordenadas del cuerpo salen del viewBox 280×380 de la silueta, que ocupa
+// el 43.8% del ancho y el 85% del alto de la caja, centrada y arrancando al 9%.
+// Convertir a mano una vez es más barato que medirlo en runtime con refs y un
+// ResizeObserver: la caja tiene aspect-ratio fijo, así que la relación no cambia.
+//
+// `ty` arranca siempre en el BORDE del chip, no en su centro: los chips altos
+// (los de la fila de abajo miden 74px) se comían su propia línea guía.
+const DOLL_LAYOUT: Record<SlotKey, DollAnchor> = {
+  cabeza:      { x: 50, y: 6.5, tx: 50, ty: 12.5, ax: 50.0, ay: 17.9, side: "center" },
+  capa:        { x: 11, y: 18,  tx: 21, ty: 18.0, ax: 43.0, ay: 35.8, side: "left" },
+  pecho:       { x: 11, y: 36,  tx: 21, ty: 36.0, ax: 46.0, ay: 45.9, side: "left" },
+  manos:       { x: 11, y: 54,  tx: 21, ty: 54.0, ax: 38.1, ay: 55.5, side: "left" },
+  cinturon:    { x: 11, y: 72,  tx: 21, ty: 72.0, ax: 46.0, ay: 56.5, side: "left" },
+  colgante:    { x: 89, y: 16,  tx: 79, ty: 16.0, ax: 51.6, ay: 32.5, side: "right" },
+  amuleto:     { x: 89, y: 32,  tx: 79, ty: 32.0, ax: 54.4, ay: 40.3, side: "right" },
+  anillo1:     { x: 89, y: 48,  tx: 79, ty: 48.0, ax: 61.9, ay: 53.5, side: "right" },
+  anillo2:     { x: 89, y: 62,  tx: 79, ty: 62.0, ax: 63.0, ay: 55.5, side: "right" },
+  anillo3:     { x: 89, y: 76,  tx: 79, ty: 76.0, ax: 61.9, ay: 57.5, side: "right" },
+  manoizq:     { x: 16, y: 90,  tx: 16, ty: 82.8, ax: 38.1, ay: 57.5, side: "center" },
+  pies:        { x: 50, y: 93,  tx: 50, ty: 87.0, ax: 50.0, ay: 82.4, side: "center" },
+  manoderecha: { x: 84, y: 90,  tx: 84, ty: 82.8, ax: 61.9, ay: 57.5, side: "center" },
+};
+
+/** Zonas del cuerpo que se encienden por ranura, en coords del viewBox 280×380. */
+const BODY_GLOW: Record<SlotKey, Array<[number, number, number, number]>> = {
+  cabeza:      [[140, 62, 42, 42]],
+  colgante:    [[140, 106, 26, 22]],
+  amuleto:     [[140, 140, 32, 26]],
+  capa:        [[140, 225, 118, 126]],
+  pecho:       [[140, 163, 70, 60]],
+  cinturon:    [[140, 208, 70, 18]],
+  manos:       [[64, 208, 22, 20], [216, 208, 22, 20]],
+  manoizq:     [[64, 208, 24, 22]],
+  manoderecha: [[216, 208, 24, 22]],
+  anillo1:     [[216, 208, 24, 22]],
+  anillo2:     [[216, 208, 24, 22]],
+  anillo3:     [[216, 208, 24, 22]],
+  pies:        [[140, 328, 62, 20]],
+};
+
+/** Ranuras con sub-huecos: las únicas que despliegan panel. */
+type SocketedSlot = "manoizq" | "manoderecha" | "capa";
+
+function isSocketedSlot(key: SlotKey): key is SocketedSlot {
+  return key === "manoizq" || key === "manoderecha" || key === "capa";
+}
+
+// ─── Silueta ─────────────────────────────────────────────────────────────────
+//
+// El cuerpo, las piezas que lleva puestas y el resplandor de la zona activa.
+// Todo en el mismo viewBox para que las piezas caigan donde tienen que caer sin
+// una sola coordenada calculada en JS.
+
+function Silhouette({
+  equipped,
+  highlighted,
+  reduced,
+}: {
+  equipped: EquippedMap;
+  highlighted: Set<SlotKey>;
+  reduced: boolean;
+}) {
+  // Una pieza equipada entra dibujándose; si el usuario pidió menos movimiento,
+  // simplemente aparece.
+  const piece = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, scale: 0.82 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.82 },
+        transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] as const },
+        style: { transformBox: "fill-box" as const, transformOrigin: "center" },
+      };
+
+  const glowZones = [...highlighted].flatMap((key) =>
+    BODY_GLOW[key].map((zone, i) => [`${key}-${i}`, zone] as const),
+  );
+
+  return (
+    <svg
+      viewBox="0 0 280 380"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="absolute left-1/2 top-[9%] h-[85%] w-auto -translate-x-1/2"
+      aria-hidden="true"
+    >
+      <defs>
+        {/* El cuerpo desnudo tiene que leerse sobre el fondo del modal: con el
+            gris casi negro de antes, brazos y piernas sin equipo desaparecían. */}
+        <linearGradient id="dollBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3c3526" />
+          <stop offset="100%" stopColor="#221d16" />
+        </linearGradient>
+        <linearGradient id="dollSteel" x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0%" stopColor="#8f9aa6" />
+          <stop offset="55%" stopColor="#5d6773" />
+          <stop offset="100%" stopColor="#3a424c" />
+        </linearGradient>
+        {/* Las armas necesitan su propio acero, más claro: con el del peto se
+            fundían con el pecho y no se veía que el muñeco empuñaba nada. */}
+        <linearGradient id="dollBlade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#e8eef5" />
+          <stop offset="45%" stopColor="#aab6c4" />
+          <stop offset="100%" stopColor="#69747f" />
+        </linearGradient>
+        <linearGradient id="dollCloth" x1="0" y1="0" x2="0.2" y2="1">
+          <stop offset="0%" stopColor="#5c2531" />
+          <stop offset="100%" stopColor="#280f18" />
+        </linearGradient>
+        <linearGradient id="dollGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f0d67a" />
+          <stop offset="100%" stopColor="#a8801f" />
+        </linearGradient>
+        <radialGradient id="dollFloor" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
+        </radialGradient>
+        <filter id="dollGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="5" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Halo del suelo: ancla el muñeco para que no flote en el vacío. */}
+      <ellipse cx="140" cy="346" rx="104" ry="20" fill="url(#dollFloor)" />
+
+      {/* Resplandor de la zona activa, por debajo del cuerpo para que lo bañe
+          en vez de taparlo. */}
+      <AnimatePresence>
+        {glowZones.map(([id, [cx, cy, rx, ry]]) => (
+          <motion.ellipse
+            key={id}
+            cx={cx}
+            cy={cy}
+            rx={rx}
+            ry={ry}
+            fill="#D4AF37"
+            filter="url(#dollGlow)"
+            initial={{ opacity: 0 }}
+            animate={reduced ? { opacity: 0.16 } : { opacity: [0.09, 0.24, 0.09] }}
+            exit={{ opacity: 0 }}
+            transition={
+              reduced
+                ? { duration: 0.2 }
+                : { duration: 2.1, repeat: Infinity, ease: "easeInOut" }
+            }
+          />
+        ))}
+      </AnimatePresence>
+
+      {/* Capa: va detrás del cuerpo, que es donde va una capa. */}
+      <AnimatePresence>
+        {equipped.capa && (
+          <motion.g key="capa" {...piece}>
+            {/* Estrecha y con dobladillo ondulado: ancha y con el borde recto
+                tapaba las piernas y parecía una falda, no una capa. */}
+            <path
+              d="M99 114 C72 158 56 244 52 316 Q96 334 140 323 Q184 334 228 316 C224 244 208 158 181 114 Z"
+              fill="url(#dollCloth)"
+              stroke="#7a3340"
+              strokeWidth="1"
+              opacity="0.55"
+            />
+            <path d="M140 118 L140 322" stroke="#00000055" strokeWidth="2" />
+          </motion.g>
+        )}
+      </AnimatePresence>
+
+      {/* Cuerpo */}
+      <circle cx="140" cy="62" r="34" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.5" />
+      <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1" />
+      <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.5" />
+      <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+      <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#dollBody)" stroke="#4a4028" strokeWidth="1.2" />
+
+      {/* Piezas equipadas */}
+      <AnimatePresence>
+        {equipped.pecho && (
+          <motion.g key="pecho" {...piece}>
+            {/* Escote en V y hombreras aparte: el peto rectangular de antes se
+                comía cuello y brazos y el muñeco quedaba en un bulto gris. */}
+            <path
+              d="M96 114 Q90 116 89 134 L88 192 Q88 200 97 202 L183 202 Q192 200 192 192 L191 134 Q190 116 184 114 L152 114 Q140 130 128 114 Z"
+              fill="url(#dollSteel)"
+              stroke="#a4b0bd"
+              strokeWidth="1.1"
+            />
+            <path d="M86 110 Q66 112 62 133 L79 139 Q83 118 93 116 Z" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="1" />
+            <path d="M194 110 Q214 112 218 133 L201 139 Q197 118 187 116 Z" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="1" />
+            <path d="M140 118 L140 200" stroke="#2b323a" strokeWidth="1.8" />
+            <path d="M100 150 L180 150 M100 174 L180 174" stroke="#2b323a" strokeWidth="1.2" opacity="0.55" />
+          </motion.g>
+        )}
+
+        {equipped.cabeza && (
+          <motion.g key="cabeza" {...piece}>
+            <path d="M107 62 A33 33 0 0 1 173 62 Z" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="1.1" />
+            <rect x="104" y="57" width="72" height="9" rx="3" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.7" />
+            <rect x="137" y="64" width="6" height="22" rx="2" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="0.7" />
+            {/* Carrilleras: dejan hueco para la cara, y así se lee un yelmo en
+                una cabeza en vez de una cúpula sobre un borrón. */}
+            <path d="M108 64 Q105 85 114 94 L123 91 Q116 78 118 64 Z" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="0.8" />
+            <path d="M172 64 Q175 85 166 94 L157 91 Q164 78 162 64 Z" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="0.8" />
+          </motion.g>
+        )}
+
+        {equipped.manos && (
+          <motion.g key="manos" {...piece}>
+            <ellipse cx="64" cy="208" rx="16" ry="12" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="1" />
+            <ellipse cx="216" cy="208" rx="16" ry="12" fill="url(#dollSteel)" stroke="#a4b0bd" strokeWidth="1" />
+          </motion.g>
+        )}
+
+        {equipped.cinturon && (
+          <motion.g key="cinturon" {...piece}>
+            <rect x="84" y="200" width="112" height="14" rx="3" fill="#43301c" stroke="#77542c" strokeWidth="1" />
+            <rect x="132" y="197" width="16" height="20" rx="3" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.8" />
+          </motion.g>
+        )}
+
+        {equipped.pies && (
+          <motion.g key="pies" {...piece}>
+            <path d="M96 300 L120 300 L122 320 Q130 323 130 331 Q130 338 118 338 L98 338 Q90 336 91 322 Z" fill="#43301c" stroke="#77542c" strokeWidth="1.1" />
+            <path d="M184 300 L160 300 L158 320 Q150 323 150 331 Q150 338 162 338 L182 338 Q190 336 189 322 Z" fill="#43301c" stroke="#77542c" strokeWidth="1.1" />
+          </motion.g>
+        )}
+
+        {equipped.colgante && (
+          <motion.g key="colgante" {...piece}>
+            <path d="M126 112 Q140 136 154 112" stroke="url(#dollGold)" strokeWidth="2.2" fill="none" />
+            <circle cx="140" cy="133" r="4.5" fill="url(#dollGold)" />
+          </motion.g>
+        )}
+
+        {equipped.amuleto && (
+          <motion.g key="amuleto" {...piece}>
+            <circle cx="140" cy="160" r="7" fill="#6a48a8" stroke="url(#dollGold)" strokeWidth="1.8" />
+          </motion.g>
+        )}
+
+        {equipped.manoizq && (
+          <motion.g key="manoizq" {...piece}>
+            <rect x="54" y="112" width="12" height="86" rx="2" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+            <path d="M54 112 L60 96 L66 112 Z" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+            <path d="M60 116 L60 194" stroke="#7c8896" strokeWidth="1" />
+            <rect x="42" y="198" width="36" height="7" rx="2.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.6" />
+            <rect x="56" y="205" width="8" height="16" rx="2" fill="#43301c" />
+            <circle cx="60" cy="223" r="4" fill="url(#dollGold)" />
+          </motion.g>
+        )}
+
+        {equipped.manoderecha && (
+          <motion.g key="manoderecha" {...piece}>
+            <rect x="214" y="112" width="12" height="86" rx="2" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+            <path d="M214 112 L220 96 L226 112 Z" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+            <path d="M220 116 L220 194" stroke="#7c8896" strokeWidth="1" />
+            <rect x="202" y="198" width="36" height="7" rx="2.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.6" />
+            <rect x="216" y="205" width="8" height="16" rx="2" fill="#43301c" />
+            <circle cx="220" cy="223" r="4" fill="url(#dollGold)" />
+          </motion.g>
+        )}
+
+        {/* Los tres anillos comparten mano: se apilan como puntos de oro. */}
+        {(["anillo1", "anillo2", "anillo3"] as const).map((key, i) =>
+          equipped[key] ? (
+            <motion.circle
+              key={key}
+              cx={224 - i * 7}
+              cy={214 - i * 5}
+              r="3.4"
+              fill="url(#dollGold)"
+              stroke="#4a3410"
+              strokeWidth="0.8"
+              {...piece}
+            />
+          ) : null,
+        )}
+      </AnimatePresence>
+    </svg>
+  );
+}
+
+// ─── Chip de ranura ──────────────────────────────────────────────────────────
+
+type ChipState = "selected" | "compatible" | "dimmed" | "filled" | "empty";
+
+function DollChip({
+  slotKey,
+  item,
+  state,
+  pips,
+  index,
+  reduced,
+  onSelect,
+}: {
+  slotKey: SlotKey;
+  item: Item | null;
+  state: ChipState;
+  /** Sólo para armas y capa: estado de los tres sub-huecos. */
+  pips?: Array<"filled" | "empty" | "locked">;
+  index: number;
+  reduced: boolean;
+  onSelect: () => void;
+}) {
+  const cfg = SLOT_CONFIG[slotKey];
+  const { x, y, side } = DOLL_LAYOUT[slotKey];
+
+  const skin: Record<ChipState, string> = {
+    selected:   "border-[#D4AF37] bg-[#241d09] text-[#f3e3b4] shadow-[0_0_0_1px_rgba(212,175,55,0.5),0_0_22px_rgba(212,175,55,0.35)]",
+    compatible: "border-[#D4AF37]/70 border-dashed bg-[#1a1608]/80 text-[#e8d8b0]",
+    dimmed:     "border-[#2f2a1e] bg-[#111010]/70 text-[#7a705a] opacity-55",
+    filled:     "border-[#6d7a3a] bg-[#191c11]/90 text-[#e8d8b0] hover:border-[#93a54c]",
+    empty:      "border-dashed border-[#3a3020] bg-[#100f0d]/70 text-[#7d7057] hover:border-[#8B7355] hover:bg-[#1c1913]/80",
+  };
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      aria-label={`${cfg.label}: ${item ? item.name : "vacío"}`}
+      aria-pressed={state === "selected"}
+      initial={reduced ? false : { opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.03, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.97 }}
+      style={{ left: `${x}%`, top: `${y}%` }}
+      className={[
+        // Atenuado no es lo mismo que desactivado: pulsar una ranura que no
+        // acepta el objeto sigue explicando POR QUÉ no lo acepta, así que el
+        // cursor tiene que seguir invitando a pulsarla.
+        "absolute z-20 -translate-x-1/2 -translate-y-1/2 w-[19%] cursor-pointer rounded-xl border px-2 py-1.5",
+        "transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/70",
+        skin[state],
+      ].join(" ")}
+    >
+      {/* Anillo de "aquí puedes soltar": late para separarse visualmente de la
+          ranura que está seleccionada, que es fija. Antes ambas se pintaban
+          igual y no había forma de distinguirlas. */}
+      {state === "compatible" && !reduced && (
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute -inset-px rounded-xl border border-[#D4AF37]"
+          animate={{ opacity: [0.25, 0.9, 0.25], boxShadow: [
+            "0 0 0px rgba(212,175,55,0)",
+            "0 0 16px rgba(212,175,55,0.55)",
+            "0 0 0px rgba(212,175,55,0)",
+          ] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+        />
+      )}
+
+      <span
+        className={[
+          "flex items-center gap-1.5",
+          side === "center" ? "flex-col" : side === "left" ? "flex-row-reverse" : "flex-row",
+        ].join(" ")}
+      >
+        <span className="shrink-0 text-[#D4AF37]">
+          {getIconForString(item ? item.name : cfg.icon, "w-5 h-5", cfg.icon)}
+        </span>
+        <span
+          className={[
+            "min-w-0 flex-1 leading-tight",
+            side === "center" ? "text-center" : side === "left" ? "text-right" : "text-left",
+          ].join(" ")}
+        >
+          <span className="block truncate text-[8px] font-semibold uppercase tracking-[0.14em] text-[#8a7a5a]">
+            {cfg.label}
+          </span>
+          <span className="block truncate text-[10px] font-medium">
+            {item ? item.name : "—"}
+          </span>
+        </span>
+      </span>
+
+      {pips && (
+        <span className="mt-1.5 flex items-center justify-center gap-1" aria-hidden>
+          {pips.map((p, i) => (
+            <span
+              key={i}
+              className={[
+                "h-1.5 w-1.5 rounded-full",
+                p === "filled"
+                  ? "bg-[#D4AF37] shadow-[0_0_5px_rgba(212,175,55,0.8)]"
+                  : p === "empty"
+                  ? "border border-[#6b5a2a] bg-transparent"
+                  : "bg-[#3a3020]",
+              ].join(" ")}
+            />
+          ))}
+        </span>
+      )}
+    </motion.button>
+  );
+}
+
+// ─── Panel de sub-huecos ─────────────────────────────────────────────────────
+
+function SocketPanel({
+  slotKey,
+  item,
+  level,
+  unlocked,
+  sockets,
+  selectedIndex,
+  reduced,
+  onSelectSocket,
+}: {
+  slotKey: SocketedSlot;
+  item: Item | null;
+  level: number;
+  unlocked: number;
+  sockets: readonly WeaponSocketItem[];
+  selectedIndex: number | null;
+  reduced: boolean;
+  onSelectSocket: (index: number) => void;
+}) {
+  // Carril fijo bajo el cinturón: es la única banda de la caja que no pisa ni
+  // un chip ni la mitad alta del cuerpo, así que cabeza, peto y ambas armas
+  // siguen viéndose mientras engarzas. El panel nace del lado de su chip —
+  // sólo cambia el origen de la animación — y así se ve de dónde ha salido sin
+  // tener que dibujar un conector.
+  const origin: Record<SocketedSlot, string> = {
+    capa: "top left",
+    manoizq: "bottom left",
+    manoderecha: "bottom right",
+  };
+
+  return (
+    <motion.div
+      initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.86, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.86, y: 6 }}
+      transition={{ type: "spring", damping: 24, stiffness: 340 }}
+      style={{ transformOrigin: origin[slotKey] }}
+      className="absolute left-[28%] right-[28%] top-[59%] z-30 rounded-xl border border-[#8B7355] bg-[#0f0e0c]/95 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="truncate text-[10px] font-bold uppercase tracking-[0.16em] text-[#D4AF37]">
+          {SLOT_CONFIG[slotKey].label}
+        </span>
+        <span className="shrink-0 font-sans text-[9px] tabular-nums text-[#8a7a5a]">
+          Nv. {level} · {unlocked}/3
+        </span>
+      </div>
+
+      <p className="mt-0.5 truncate text-[11px] text-[#e8d8b0]">
+        {item ? item.name : <span className="italic text-[#6b5a2a]">Ranura vacía</span>}
+      </p>
+
+      {/* Medidor de huecos abiertos: el nivel del objeto es lo que los abre. */}
+      <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-black/50">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-[#8B7355] to-[#D4AF37]"
+          initial={{ width: 0 }}
+          animate={{ width: `${(unlocked / 3) * 100}%` }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        />
+      </div>
+
+      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+        {[0, 1, 2].map((i) => {
+          const open = i < unlocked;
+          const socketItem = sockets[i] ?? null;
+          const active = selectedIndex === i;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={!open}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectSocket(i);
+              }}
+              title={open ? socketItem?.name ?? "Hueco vacío" : "Bloqueado por nivel"}
+              className={[
+                "flex h-14 flex-col items-center justify-center gap-1 rounded-lg border px-1 text-center transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/70",
+                !open
+                  ? "cursor-not-allowed border-[#2f2a1e] bg-black/40 text-[#5a4f36]"
+                  : active
+                  ? "cursor-pointer border-[#D4AF37] bg-[#241d09] text-[#f3e3b4] shadow-[0_0_14px_rgba(212,175,55,0.4)]"
+                  : socketItem
+                  ? "cursor-pointer border-[#6b5a2a] bg-[#17150f] text-[#cbb58a] hover:border-[#D4AF37]"
+                  : "cursor-pointer border-dashed border-[#4a3e22] bg-black/25 text-[#7d7057] hover:border-[#8B7355]",
+              ].join(" ")}
+            >
+              {!open ? (
+                <Lock className="h-3.5 w-3.5" />
+              ) : socketItem ? (
+                <span className="text-[#D4AF37]">{getIconForString(socketItem.name, "w-4 h-4", "💠")}</span>
+              ) : (
+                <span className="text-base leading-none opacity-50">◇</span>
+              )}
+              <span className="w-full truncate text-[8px] uppercase tracking-wide">
+                {!open ? "Bloq." : socketItem?.name ?? "Vacío"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Composición ─────────────────────────────────────────────────────────────
+
+function PaperDoll({
+  character,
+  equipped,
+  selectedSlot,
+  selectedBagItem,
+  weaponSockets,
+  capeSockets,
+  selectedWeaponSocket,
+  selectedCapeSocket,
+  onSelectSlot,
+  onSelectWeaponSocket,
+  onSelectCapeSocket,
+}: {
+  character: Character;
+  equipped: EquippedMap;
+  selectedSlot: SlotKey | null;
+  selectedBagItem: Item | null;
+  weaponSockets: WeaponSockets;
+  capeSockets: CapeSockets;
+  selectedWeaponSocket: { weaponSlot: WeaponSlotKey; socketIndex: number } | null;
+  selectedCapeSocket: number | null;
+  onSelectSlot: (key: SlotKey) => void;
+  onSelectWeaponSocket: (weaponSlot: WeaponSlotKey, socketIndex: number) => void;
+  onSelectCapeSocket: (socketIndex: number) => void;
+}) {
+  const reduced = useReducedMotion() ?? false;
+  const slots = Object.keys(SLOT_CONFIG) as SlotKey[];
+
+  const compatible = (key: SlotKey) =>
+    !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
+
+  const stateOf = (key: SlotKey): ChipState => {
+    if (selectedSlot === key) return "selected";
+    if (selectedBagItem) return compatible(key) ? "compatible" : "dimmed";
+    return equipped[key] ? "filled" : "empty";
+  };
+
+  // El cuerpo se ilumina donde puedes actuar: la ranura activa, o todas las que
+  // aceptan el objeto que acabas de coger de la bolsa.
+  const highlighted = new Set<SlotKey>(
+    selectedBagItem ? slots.filter(compatible) : selectedSlot ? [selectedSlot] : [],
+  );
+
+  const levelOf = (key: SocketedSlot) =>
+    key === "capa"
+      ? getCapeLevel(character, equipped)
+      : getWeaponLevelForSlot(character, equipped, key);
+
+  // Sin objeto en la ranura no hay dónde engarzar: `selectWeaponSocket` ya lo
+  // rechaza ("Equipa un arma primero"), así que los pips y el panel no pueden
+  // anunciar un hueco libre que al pulsarlo da un aviso. Ojo: la cuenta base
+  // devuelve 1 incluso a nivel 0, de ahí el corte.
+  const unlockedOf = (key: SocketedSlot) =>
+    !equipped[key]
+      ? 0
+      : key === "capa"
+      ? getUnlockedCapeSocketCount(levelOf(key))
+      : getUnlockedWeaponSocketCount(levelOf(key));
+
+  const socketsOf = (key: SocketedSlot): readonly WeaponSocketItem[] =>
+    key === "capa" ? capeSockets : weaponSockets[key];
+
+  const pipsOf = (key: SocketedSlot): Array<"filled" | "empty" | "locked"> => {
+    const open = unlockedOf(key);
+    const items = socketsOf(key);
+    return [0, 1, 2].map((i) => (i >= open ? "locked" : items[i] ? "filled" : "empty"));
+  };
+
+  // El panel sigue abierto mientras trabajes dentro de él: seleccionar un
+  // sub-hueco vacía `selectedSlot`, así que hay que mirar también los otros dos.
+  const openPanel: SocketedSlot | null = selectedWeaponSocket
+    ? selectedWeaponSocket.weaponSlot
+    : selectedCapeSocket !== null
+    ? "capa"
+    : selectedSlot && isSocketedSlot(selectedSlot)
+    ? selectedSlot
+    : null;
+
+  return (
+    <motion.div
+      className="relative mx-auto aspect-10/7 w-full max-w-190"
+      // Respira en reposo y se queda quieto en cuanto empiezas a trabajar: un
+      // blanco que se mueve bajo el cursor es un blanco peor.
+      animate={reduced || selectedSlot || selectedBagItem ? { y: 0 } : { y: [0, -5, 0] }}
+      transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+    >
+      {/* Líneas guía: cada ranura atada a su parte del cuerpo. Sin ellas, trece
+          cajas alrededor de una silueta son trece cajas, no un personaje. */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        {slots.map((key, i) => {
+          const { tx, ty, ax, ay } = DOLL_LAYOUT[key];
+          const hot = highlighted.has(key);
+          return (
+            <motion.path
+              key={key}
+              d={`M ${tx} ${ty} Q ${(tx + ax) / 2} ${ty} ${ax} ${ay}`}
+              fill="none"
+              stroke={hot ? "#D4AF37" : "#4a4028"}
+              strokeWidth={hot ? 1.4 : 0.8}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              initial={reduced ? false : { pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: hot ? 0.95 : 0.5 }}
+              transition={{ duration: 0.5, delay: reduced ? 0 : i * 0.03, ease: "easeOut" }}
+            />
+          );
+        })}
+        {slots.map((key) => {
+          const { ax, ay } = DOLL_LAYOUT[key];
+          const hot = highlighted.has(key);
+          return (
+            <circle
+              key={`${key}-dot`}
+              cx={ax}
+              cy={ay}
+              r={hot ? 0.9 : 0.6}
+              fill={hot ? "#D4AF37" : "#6b5a2a"}
+              opacity={hot ? 1 : 0.6}
+            />
+          );
+        })}
+      </svg>
+
+      <Silhouette equipped={equipped} highlighted={highlighted} reduced={reduced} />
+
+      {slots.map((key, i) => (
+        <DollChip
+          key={key}
+          slotKey={key}
+          item={equipped[key]}
+          state={stateOf(key)}
+          pips={isSocketedSlot(key) ? pipsOf(key) : undefined}
+          index={i}
+          reduced={reduced}
+          onSelect={() => onSelectSlot(key)}
+        />
+      ))}
+
+      <AnimatePresence>
+        {openPanel && (
+          <SocketPanel
+            key={openPanel}
+            slotKey={openPanel}
+            item={equipped[openPanel]}
+            level={levelOf(openPanel)}
+            unlocked={unlockedOf(openPanel)}
+            sockets={socketsOf(openPanel)}
+            selectedIndex={
+              openPanel === "capa"
+                ? selectedCapeSocket
+                : selectedWeaponSocket?.weaponSlot === openPanel
+                ? selectedWeaponSocket.socketIndex
+                : null
+            }
+            reduced={reduced}
+            onSelectSocket={(i) =>
+              openPanel === "capa"
+                ? onSelectCapeSocket(i)
+                : onSelectWeaponSocket(openPanel, i)
+            }
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -1536,7 +2263,7 @@ export default function EquipmentModal({
             transition: { duration: 0.18, ease: "easeInOut" },
           }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-412.5 rounded-xl flex flex-col overflow-hidden max-h-[92vh] my-auto shadow-2xl border border-[#8B7355]"
+          className="relative w-full max-w-[1400px] rounded-xl flex flex-col overflow-hidden max-h-[92vh] my-auto shadow-2xl border border-[#8B7355]"
           style={{
             background: "linear-gradient(160deg, #1a1814 0%, #141210 100%)",
           }}
@@ -1670,87 +2397,32 @@ export default function EquipmentModal({
 
             {/* RIGHT / BOTTOM: Character figure */}
             <div
-              className="w-full xl:w-225 shrink-0 flex flex-col items-center gap-3 p-4 overflow-y-auto"
+              className="w-full xl:flex-1 xl:min-w-0 flex flex-col items-center gap-3 p-4 overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
-              <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-semibold">
-                Slots de Personaje
-              </span>
+              <div className="flex w-full max-w-190 items-center gap-3">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#3a3020]" />
+                <span className="text-[10px] tracking-[0.3em] uppercase text-[#8B7355] font-semibold">
+                  Slots de Personaje
+                </span>
+                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#3a3020]" />
+              </div>
 
-              {/* Desktop Figure (<xl hidden) */}
-              <div className="hidden xl:block relative w-65 h-92.5 md:ml-34 xl:ml-72">
-                {/* SVG silhouette */}
-                <svg
-                  viewBox="0 0 280 380"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="absolute inset-0 w-full h-full"
-                >
-                  <defs>
-                    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2a2618" />
-                      <stop offset="100%" stopColor="#1a1610" />
-                    </linearGradient>
-                  </defs>
-                  {/* Head */}
-                  <circle cx="140" cy="62" r="34" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
-                  {/* Neck */}
-                  <rect x="128" y="90" width="24" height="20" rx="4" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1" />
-                  {/* Torso */}
-                  <path d="M88 108 Q80 108 78 130 L76 205 Q76 215 88 218 L192 218 Q204 215 204 205 L202 130 Q200 108 192 108 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.5" />
-                  {/* Left arm */}
-                  <path d="M88 112 Q72 114 68 130 L60 185 Q58 198 66 202 L80 200 L82 145 L90 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Right arm */}
-                  <path d="M192 112 Q208 114 212 130 L220 185 Q222 198 214 202 L200 200 L198 145 L190 118 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Hands */}
-                  <ellipse cx="64" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <ellipse cx="216" cy="208" rx="14" ry="10" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Legs */}
-                  <path d="M100 218 L94 305 Q93 318 100 322 L118 322 Q124 318 122 305 L118 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <path d="M160 218 L158 305 Q156 318 162 322 L180 322 Q187 318 186 305 L180 218 Z" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Feet */}
-                  <ellipse cx="107" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  <ellipse cx="173" cy="328" rx="16" ry="9" fill="url(#bodyGrad)" stroke="#3a3020" strokeWidth="1.2" />
-                  {/* Center line */}
-                  <line x1="140" y1="110" x2="140" y2="218" stroke="#3a3020" strokeWidth="0.5" strokeDasharray="4 3" />
-                </svg>
-
-                {/* Slot buttons */}
-                {(Object.keys(SLOT_CONFIG) as SlotKey[]).map((key) => (
-                  (() => {
-                    const weaponSlot =
-                      key === "manoizq" || key === "manoderecha" ? key : null;
-                    const isCompatible =
-                      !!selectedBagItem && SLOT_CONFIG[key].accepts.includes(selectedBagItem.type);
-                    return (
-                      <SlotButton
-                        key={key}
-                        slotKey={key}
-                        item={equipped[key]}
-                        selected={selectedSlot === key || isCompatible}
-                        onSelect={() => selectSlot(key)}
-                        weaponLevel={
-                          weaponSlot
-                            ? getWeaponLevelForSlot(character, equipped, weaponSlot)
-                            : undefined
-                        }
-                        weaponSocketItems={
-                          weaponSlot ? weaponSockets[weaponSlot] : undefined
-                        }
-                        weaponSelectedSocketIndex={
-                          weaponSlot && selectedWeaponSocket?.weaponSlot === weaponSlot
-                            ? selectedWeaponSocket.socketIndex
-                            : null
-                        }
-                        onSelectWeaponSocket={selectWeaponSocket}
-                        capeLevel={key === "capa" ? getCapeLevel(character, equipped) : undefined}
-                        capeSocketItems={key === "capa" ? capeSockets : undefined}
-                        capeSelectedSocketIndex={key === "capa" ? selectedCapeSocket : null}
-                        onSelectCapeSocket={selectCapeSocket}
-                      />
-                    );
-                  })()
-                ))}
+              {/* Escritorio (xl+): muñeco nuevo. Debajo de xl no se monta. */}
+              <div className="hidden w-full xl:block">
+                <PaperDoll
+                  character={character}
+                  equipped={equipped}
+                  selectedSlot={selectedSlot}
+                  selectedBagItem={selectedBagItem}
+                  weaponSockets={weaponSockets}
+                  capeSockets={capeSockets}
+                  selectedWeaponSocket={selectedWeaponSocket}
+                  selectedCapeSocket={selectedCapeSocket}
+                  onSelectSlot={selectSlot}
+                  onSelectWeaponSocket={selectWeaponSocket}
+                  onSelectCapeSocket={selectCapeSocket}
+                />
               </div>
 
               {/* Mobile Grid (<xl) */}
