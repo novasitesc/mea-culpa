@@ -21,7 +21,16 @@ const VALID_TYPES = [
   "ingrediente",
   "misc",
   "capa",
+  "ejército",
 ] as const;
+
+// Ficha de la unidad: sólo la rellenan los objetos de tipo ejército. `dano` es
+// texto libre para que el DM escriba "1d6" o "2d6+1" sin encorsetarlo.
+function normalizeUnitStat(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+}
 
 function mapItemTypeToDb(itemType: string): string {
   return itemType === "armadura" ? "pecho" : itemType;
@@ -71,6 +80,27 @@ function mapRarityFromDb(rarity: string): string {
     .toLowerCase();
 }
 
+const OBJECT_COLUMNS =
+  "id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, soldados, clase_armadura, dano, creado_en";
+
+function mapObjectRow(o: any) {
+  return {
+    id: o.id,
+    name: o.nombre,
+    description: o.descripcion,
+    icon: o.icono,
+    itemType: mapItemTypeFromDb(o.tipo_item),
+    requiresTwoHands: Boolean(o.requiere_dos_manos),
+    rarity: mapRarityFromDb(o.rareza),
+    price: o.precio,
+    bonusStats: o.bono_estadisticas,
+    soldiers: o.soldados ?? null,
+    armorClass: o.clase_armadura ?? null,
+    damage: o.dano ?? null,
+    createdAt: o.creado_en,
+  };
+}
+
 // GET /api/admin/objetos
 export async function GET(request: NextRequest) {
   const result = await requireAdmin(request);
@@ -79,25 +109,12 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
+    .select(OBJECT_COLUMNS)
     .order("creado_en", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(
-    (data ?? []).map((o: any) => ({
-      id: o.id,
-      name: o.nombre,
-      description: o.descripcion,
-      icon: o.icono,
-      itemType: mapItemTypeFromDb(o.tipo_item),
-      requiresTwoHands: Boolean(o.requiere_dos_manos),
-      rarity: mapRarityFromDb(o.rareza),
-      price: o.precio,
-      bonusStats: o.bono_estadisticas,
-      createdAt: o.creado_en,
-    })),
-  );
+  return NextResponse.json((data ?? []).map(mapObjectRow));
 }
 
 // POST /api/admin/objetos
@@ -107,7 +124,7 @@ export async function POST(request: NextRequest) {
   const { db } = result.session;
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands, soldiers, armorClass, damage } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Nombre obligatorio" }, { status: 400 });
@@ -125,6 +142,7 @@ export async function POST(request: NextRequest) {
   const weaponRequiresTwoHands = itemType === "arma" ? Boolean(requiresTwoHands) : false;
 
   const rarityNormalized = normalizeRarity(rarity ?? "común");
+  const esEjercito = itemType === "ejército";
 
   const { data, error } = await db
     .from("objetos")
@@ -137,27 +155,17 @@ export async function POST(request: NextRequest) {
       rareza: rarityNormalized,
       precio: Number(price),
       bono_estadisticas: bonusStats ?? null,
+      // La ficha de unidad sólo tiene sentido en objetos de tipo ejército.
+      soldados: esEjercito ? normalizeUnitStat(soldiers) : null,
+      clase_armadura: esEjercito ? normalizeUnitStat(armorClass) : null,
+      dano: esEjercito && typeof damage === "string" && damage.trim() ? damage.trim() : null,
     })
-    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
+    .select(OBJECT_COLUMNS)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(
-    {
-      id: (data as any).id,
-      name: (data as any).nombre,
-      description: (data as any).descripcion,
-      icon: (data as any).icono,
-      itemType: mapItemTypeFromDb((data as any).tipo_item),
-      requiresTwoHands: Boolean((data as any).requiere_dos_manos),
-      rarity: mapRarityFromDb((data as any).rareza),
-      price: (data as any).precio,
-      bonusStats: (data as any).bono_estadisticas,
-      createdAt: (data as any).creado_en,
-    },
-    { status: 201 },
-  );
+  return NextResponse.json(mapObjectRow(data), { status: 201 });
 }
 
 // PATCH /api/admin/objetos?id=:id
@@ -173,7 +181,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands } = body;
+  const { name, description, icon, itemType, rarity, price, bonusStats, requiresTwoHands, soldiers, armorClass, damage } = body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.nombre = name;
@@ -206,27 +214,29 @@ export async function PATCH(request: NextRequest) {
   }
   if (bonusStats !== undefined) updates.bono_estadisticas = bonusStats;
 
+  // Al dejar de ser ejército la ficha de unidad se limpia; al serlo, se guarda.
+  if (itemType !== undefined && itemType !== "ejército") {
+    updates.soldados = null;
+    updates.clase_armadura = null;
+    updates.dano = null;
+  } else {
+    if (soldiers !== undefined) updates.soldados = normalizeUnitStat(soldiers);
+    if (armorClass !== undefined) updates.clase_armadura = normalizeUnitStat(armorClass);
+    if (damage !== undefined) {
+      updates.dano = typeof damage === "string" && damage.trim() ? damage.trim() : null;
+    }
+  }
+
   const { error } = await db.from("objetos").update(updates).eq("id", Number(id));
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const { data } = await db
     .from("objetos")
-    .select("id, nombre, descripcion, icono, tipo_item, requiere_dos_manos, rareza, precio, bono_estadisticas, creado_en")
+    .select(OBJECT_COLUMNS)
     .eq("id", Number(id))
     .single();
 
-  return NextResponse.json({
-    id: (data as any).id,
-    name: (data as any).nombre,
-    description: (data as any).descripcion,
-    icon: (data as any).icono,
-    itemType: mapItemTypeFromDb((data as any).tipo_item),
-    requiresTwoHands: Boolean((data as any).requiere_dos_manos),
-    rarity: mapRarityFromDb((data as any).rareza),
-    price: (data as any).precio,
-    bonusStats: (data as any).bono_estadisticas,
-    createdAt: (data as any).creado_en,
-  });
+  return NextResponse.json(mapObjectRow(data));
 }
 
 // DELETE /api/admin/objetos?id=:id

@@ -10,6 +10,7 @@ import { createServerClient } from "@/lib/supabaseServer";
 import { normalizeAccountLevel } from "@/lib/accountLevel";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import { normalizeSpells, normalizeUsedSpells, type SpellEntry } from "@/lib/spells";
+import { EJERCITO_SELECT, EJERCITO_SLOTS, mapUnidadRow } from "@/lib/ejercito";
 
 function hasDismemberedLimb(extremities: unknown): boolean {
   if (!extremities || typeof extremities !== "object") {
@@ -162,7 +163,8 @@ export async function GET(request: Request) {
         fue_comerciado,
         publicado_en_trade,
         objetos:objeto_id ( nombre, tipo_item, precio, icono, descripcion, requiere_dos_manos )
-      )
+      ),
+      ejercito_objetos ( ${EJERCITO_SELECT} )
     `,
     )
     .eq("usuario_id", userId)
@@ -401,6 +403,12 @@ export async function GET(request: Request) {
             publicadoEnTrade: Boolean(bi.publicado_en_trade),
           })),
         maxSlots: p.capacidad_bolsa,
+      },
+      army: {
+        units: (p.ejercito_objetos ?? [])
+          .sort((a: any, b: any) => a.orden - b.orden)
+          .map(mapUnidadRow),
+        maxSlots: EJERCITO_SLOTS,
       },
     };
   });

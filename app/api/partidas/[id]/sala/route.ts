@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { getUserFromRequest } from "@/lib/apiAuth";
 import type { SalaEvento } from "@/lib/types/sala";
+import { EJERCITO_SELECT, mapUnidadRow } from "@/lib/ejercito";
 
 function mapEventoRow(row: any): SalaEvento | null {
   switch (row.tipo) {
@@ -51,6 +52,17 @@ function mapEventoRow(row: any): SalaEvento | null {
       tipo: "sala_avanzada",
       sala:             Number(row.cantidad ?? 0),
       requiereDescanso: Boolean((row.metadata as any)?.requiereDescanso ?? false),
+    };
+    case "ejercito_baja": return {
+      tipo: "ejercito_baja",
+      personajeId:     row.personaje_id,
+      personajeNombre: row.personaje_nombre ?? "",
+      unidadId:        Number((row.metadata as any)?.unidadId ?? 0),
+      unidadNombre:    row.objeto_nombre ?? "",
+      unidadIcono:     row.objeto_icono ?? "⚔️",
+      bajas:           Number(row.cantidad ?? 0),
+      restante:        Number((row.metadata as any)?.restante ?? 0),
+      aniquilada:      Boolean((row.metadata as any)?.aniquilada ?? false),
     };
     case "descanso_largo":
     case "descanso_corto": return {
@@ -170,7 +182,13 @@ export async function GET(
 
   const { data: participantes } = await db
     .from("partida_participantes")
-    .select("id, personaje_id, usuario_id, muerto, derrotado, personaje:personaje_id(nombre, extremidades, caidas, puntos_cansancio)")
+    .select(
+      `id, personaje_id, usuario_id, muerto, derrotado,
+       personaje:personaje_id(
+         nombre, extremidades, caidas, puntos_cansancio,
+         ejercito_objetos ( ${EJERCITO_SELECT} )
+       )`,
+    )
     .eq("partida_id", partidaId);
 
   const { data: eventosRows } = await db
@@ -201,6 +219,9 @@ export async function GET(
       extremidades: (p.personaje as any)?.extremidades ?? null,
       caidas: Number((p.personaje as any)?.caidas ?? 0),
       cansancio: Number((p.personaje as any)?.puntos_cansancio ?? 0),
+      ejercito: ((p.personaje as any)?.ejercito_objetos ?? [])
+        .sort((a: any, b: any) => a.orden - b.orden)
+        .map(mapUnidadRow),
     })),
     eventos,
   });

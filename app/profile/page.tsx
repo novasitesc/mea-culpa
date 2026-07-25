@@ -22,6 +22,7 @@ import CreateCharacterModal, {
   type CreateCharacterPayload,
 } from "./components/create-character-modal";
 import { type SpellEntry } from "@/lib/spells";
+import { type UnidadEjercito } from "@/lib/ejercito";
 import { Coins, Lock } from "lucide-react";
 
 type Player = {
@@ -118,6 +119,8 @@ type Character = {
   /** Conjuros ya gastados (claves en minúsculas); el descanso largo los devuelve. */
   usedSpells?: string[];
   bag: Bag;
+  /** Inventario de ejército (5 casillas), aparte de la mochila. */
+  army?: { units: UnidadEjercito[]; maxSlots: number };
   equipmentRequiresTwoHandsByName?: Record<string, boolean>;
   puntoCansancio: number;
   caidas: number;

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { TIPO_EJERCITO } from "@/lib/ejercito";
 
 type AsignarItemParams = {
   db: SupabaseClient;
@@ -43,6 +44,16 @@ export async function asignarItem({
 
   if (objectError || !objectRow) {
     return { ok: false, grantedQty: 0, error: "Objeto no encontrado" };
+  }
+
+  // Las unidades de ejército sólo se compran en tienda y viven en su propio
+  // inventario (lib/ejercito.ts); nunca deben acabar en la bolsa.
+  if ((objectRow as any).tipo_item === TIPO_EJERCITO) {
+    return {
+      ok: false,
+      grantedQty: 0,
+      error: "Las unidades de ejército sólo se adquieren en la tienda",
+    };
   }
 
   const isConsumable = (objectRow as any).tipo_item === "consumible";

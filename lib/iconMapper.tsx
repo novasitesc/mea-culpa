@@ -136,6 +136,16 @@ const KEYWORD_RULES: Array<[string[], React.ComponentType<{ className?: string }
   [["ruleta", "puntos"], GiDiceTwentyFacesTwenty],
 ];
 
+/**
+ * ¿El nombre del objeto ya decide su icono por palabra clave? Si es que sí, el
+ * icono elegido a mano se ignora al renderizar. Lo usa el panel de admin para
+ * avisar en vez de dejar que el selector mienta.
+ */
+export const nombreDecideIcono = (name: string): boolean => {
+  const n = name.trim().toLowerCase();
+  return n.length > 3 && KEYWORD_RULES.some(([kws]) => kws.some((k) => n.includes(k)));
+};
+
 export const getIconForString = (
   iconStr: string | null | undefined,
   className?: string,

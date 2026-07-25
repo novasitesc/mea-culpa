@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playConsumibleSfx } from "@/lib/sfx";
 import type { SalaEvento } from "@/lib/types/sala";
-import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles } from "lucide-react";
+import { Package, Droplet, Dices, FlaskConical, Skull, HeartPulse, Moon, Zap, DoorOpen, Sparkles, Swords } from "lucide-react";
 import { schoolRgb, spellKey } from "@/lib/spells";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
 import HuesoRoto from "@/app/components/hueso-roto";
@@ -352,6 +352,31 @@ function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => strin
           <span className={ev.desmembrado ? "text-rose-400 font-semibold" : "text-emerald-400 font-semibold"}>
             {ev.miembroLabel}
           </span>
+        </p>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "ejercito_baja") {
+    return (
+      <div
+        key={i}
+        className="flex items-center gap-2 py-2 border-b border-orange-900/30 last:border-0 rounded-sm sf-shake-in sf-flash-red"
+      >
+        <span className="shrink-0 flex items-center justify-center w-7 h-7 bg-orange-950/30 border border-orange-800/50 rounded text-orange-400">
+          <Swords className="w-4 h-4" />
+        </span>
+        <p className="text-xs font-sans">
+          <span className="text-foreground/70 font-semibold">{ev.personajeNombre}</span>
+          <span className="text-foreground/40"> pierde </span>
+          <span className="text-orange-300 font-semibold">
+            {ev.bajas} × {ev.unidadNombre}
+          </span>
+          {ev.aniquilada ? (
+            <span className="text-rose-400 font-semibold"> — regimiento aniquilado</span>
+          ) : (
+            <span className="text-foreground/40"> — quedan {ev.restante} en pie</span>
+          )}
         </p>
       </div>
     );
