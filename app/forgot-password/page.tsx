@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
               <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
                   src="/imgs/Login/calavera.jpeg"
-                  alt="Mea Culpa"
+                  alt="MudHakar"
                   fill
                   className="object-contain"
                   priority

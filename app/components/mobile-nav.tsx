@@ -171,7 +171,7 @@ export default function MobileNav() {
                   <div className="relative w-10 h-8 rounded overflow-hidden">
                     <Image
                       src="/imgs/mea-culpa-logo.jpeg"
-                      alt="Mea Culpa Logo"
+                      alt="MudHakar Logo"
                       fill
                       sizes="40px"
                       className="object-contain"
@@ -179,7 +179,7 @@ export default function MobileNav() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gold tracking-wider font-sans leading-tight">
-                      MEA CULPA
+                      MUDHAKAR
                     </p>
                     <p className="text-[10px] text-muted-foreground leading-tight">RPG Online</p>
                   </div>

@@ -70,7 +70,7 @@ export default function Header() {
           <span className="relative h-10 w-12 overflow-hidden rounded-lg sm:h-12 sm:w-16">
             <Image
               src="/imgs/mea-culpa-logo.jpeg"
-              alt="Mea Culpa Logo"
+              alt="MudHakar Logo"
               fill
               sizes="64px"
               className="object-contain transition-transform duration-300 group-hover:scale-110"
@@ -79,7 +79,7 @@ export default function Header() {
           </span>
           <span className="text-left">
             <span className="block text-base font-bold tracking-wider text-gold font-sans sm:text-xl">
-              MEA CULPA
+              MUDHAKAR
             </span>
             <span className="hidden text-xs text-muted-foreground sm:block">RPG Online</span>
           </span>

@@ -18,7 +18,7 @@ import {
   GiSpears,
   GiSwordman,
 } from "react-icons/gi";
-import { getIconForString } from "./iconMapper";
+import { getIconForString, esEscudo } from "./iconMapper";
 
 /** Componente con el que se pinta un nombre de objeto. */
 const icono = (nombre: string) => (getIconForString(nombre) as any)?.type;
@@ -54,5 +54,15 @@ for (const [emoji, esperado] of [
 ] as const) {
   assert.equal((getIconForString(emoji) as any)?.type, esperado, `emoji ${emoji}`);
 }
+
+// `esEscudo` decide si el muñeco de la bolsa dibuja escudo o espada en la mano.
+// La ranura acepta un solo tipo ("arma"), así que el nombre es todo lo que hay.
+for (const nombre of ["Escudo de Hierro", "Escudo Comun", "escudo de roble", "Broquel élfico"]) {
+  assert.equal(esEscudo(nombre), true, `${nombre} es escudo`);
+}
+for (const nombre of ["Espada Larga", "Hacha de Batalla", "Varilla de Fuerza", ""]) {
+  assert.equal(esEscudo(nombre), false, `${nombre} no es escudo`);
+}
+assert.equal(esEscudo(null), false, "sin nombre no hay escudo");
 
 console.log("iconMapper: OK");

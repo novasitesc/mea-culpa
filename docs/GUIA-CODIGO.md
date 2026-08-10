@@ -1,4 +1,4 @@
-# Guía para leer el código de Mea Culpa
+# Guía para leer el código de MudHakar
 
 Esta guía es para leer el proyecto entero sin perderte. Va en orden: cada fase
 se apoya en la anterior. **No saltes fases** y, sobre todo, **no empieces por
@@ -269,7 +269,7 @@ Es un descuido histórico, no una pista de nada.
 
 **`app/components/` no es `components/`.** El primero tiene componentes con
 lógica del juego; el segundo (en la raíz) son piezas genéricas de UI sin nada de
-Mea Culpa dentro.
+MudHakar dentro.
 
 **Cabecera y navegación aparecen sin que las importe cada pantalla**: están en
 `app/layout.tsx`, que envuelve a todas.

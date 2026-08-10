@@ -5367,7 +5367,7 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground">
                 Bienvenido,{" "}
                 <span className="text-foreground font-medium">{user.name}</span>{" "}
-                · Gestión del servidor Mea Culpa
+                · Gestión del servidor MudHakar
               </p>
             </div>
           </div>

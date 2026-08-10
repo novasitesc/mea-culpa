@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Mea Culpa** is a Next.js 15 online RPG platform with a dark medieval fantasy aesthetic. Players create and manage D&D-style characters, trade items, join guilds and parties, and participate in game systems (roulette, dice, shops). Premium features are monetized via PayPal.
+**MudHakar** is a Next.js 15 online RPG platform with a dark medieval fantasy aesthetic. Players create and manage D&D-style characters, trade items, join guilds and parties, and participate in game systems (roulette, dice, shops). Premium features are monetized via PayPal.
 
 ## Commands
 

@@ -1,12 +1,12 @@
-# Bienvenido a MeaCulpa
+# Bienvenido a MudHakar
 
-**MeaCulpa** es una plataforma web de rol de fantasía: un mundo persistente donde creas personajes, acumulas oro, comercias, te unes a gremios y vives (o mueres) en partidas dirigidas por un Dungeon Master. Aquí cada decisión cuenta, cada moneda tiene dueño y la muerte de un personaje es algo muy real.
+**MudHakar** es una plataforma web de rol de fantasía: un mundo persistente donde creas personajes, acumulas oro, comercias, te unes a gremios y vives (o mueres) en partidas dirigidas por un Dungeon Master. Aquí cada decisión cuenta, cada moneda tiene dueño y la muerte de un personaje es algo muy real.
 
 Si acabas de llegar: bienvenido, aventurero. Este documento te pone en contexto.
 
-##  ¿Qué es MeaCulpa?
+##  ¿Qué es MudHakar?
 
-MeaCulpa es el compañero digital de una campaña de rol de mesa. Centraliza todo lo que en una mesa tradicional vive en hojas de papel y en la memoria del DM:
+MudHakar es el compañero digital de una campaña de rol de mesa. Centraliza todo lo que en una mesa tradicional vive en hojas de papel y en la memoria del DM:
 
 - **Personajes persistentes** — cada usuario puede crear personajes con nivel (hasta 20), fuerza, bolsa de objetos con capacidad limitada, extremidades que se pueden perder y un estado de vida real: si tu personaje muere, muere. Existe historial de muertes y mecánicas de revivir.
 - **Economía de oro** — el oro es un recurso protegido a nivel de base de datos: transacciones auditadas, impuestos que el admin puede cobrar en masa, y sin trampas posibles desde el cliente.

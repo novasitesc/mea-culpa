@@ -16,7 +16,7 @@ const _cinzelDecorative = Cinzel_Decorative({ subsets: ["latin"], weight: ["400"
 const _medievalSharp = MedievalSharp({ subsets: ["latin"], weight: ["400"] });
 
 export const metadata: Metadata = {
-  title: 'Mea Culpa - RPG Online',
+  title: 'MudHakar - RPG Online',
   description: 'Plataforma de rol online con gremios, comercio y aventuras épicas',
   generator: 'v0.app',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')),
@@ -24,16 +24,16 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Mea Culpa - RPG Online',
+    title: 'MudHakar - RPG Online',
     description: 'Plataforma de rol online con gremios, comercio y aventuras épicas',
     url: '/',
-    siteName: 'Mea Culpa',
+    siteName: 'MudHakar',
     images: [
       {
         url: '/icon.png',
         width: 800,
         height: 600,
-        alt: 'Mea Culpa - RPG Online',
+        alt: 'MudHakar - RPG Online',
       },
     ],
     locale: 'es_ES',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mea Culpa - RPG Online',
+    title: 'MudHakar - RPG Online',
     description: 'Plataforma de rol online con gremios, comercio y aventuras épicas',
     images: ['/icon.png'],
   },

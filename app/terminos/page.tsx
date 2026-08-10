@@ -23,7 +23,7 @@ export default function TerminosDeServicio() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">1. Aceptación de los Términos</h2>
               <p>
-                Al acceder y utilizar el juego en línea "Mea Culpa" (en adelante, la "Plataforma"), usted acepta estar sujeto a estas Condiciones de Servicio. 
+                Al acceder y utilizar el juego en línea "MudHakar" (en adelante, la "Plataforma"), usted acepta estar sujeto a estas Condiciones de Servicio. 
                 Si no está de acuerdo con alguno de los términos aquí expuestos, le rogamos que no utilice la Plataforma. 
                 El desarrollo y mantenimiento de esta Plataforma está a cargo de <strong>NOVASITE</strong>.
               </p>
@@ -32,7 +32,7 @@ export default function TerminosDeServicio() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">2. Descripción del Servicio</h2>
               <p>
-                "Mea Culpa" es una experiencia de rol en línea que permite a los usuarios crear personajes, interactuar en partidas y participar en actividades comerciales dentro del juego. 
+                "MudHakar" es una experiencia de rol en línea que permite a los usuarios crear personajes, interactuar en partidas y participar en actividades comerciales dentro del juego. 
                 NOVASITE se reserva el derecho de modificar, suspender o descontinuar la Plataforma en cualquier momento, con o sin previo aviso.
               </p>
             </section>
@@ -40,7 +40,7 @@ export default function TerminosDeServicio() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">3. Registro de Cuenta</h2>
               <p>
-                Para acceder a las funciones de "Mea Culpa", deberá crear una cuenta proporcionando información veraz, actual y completa. 
+                Para acceder a las funciones de "MudHakar", deberá crear una cuenta proporcionando información veraz, actual y completa. 
                 Usted es responsable de mantener la confidencialidad de sus credenciales (contraseña y/o métodos de autenticación de terceros como Google o Discord). 
                 Toda actividad realizada bajo su cuenta es de su exclusiva responsabilidad.
               </p>
@@ -62,7 +62,7 @@ export default function TerminosDeServicio() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">5. Propiedad Intelectual</h2>
               <p>
-                Todo el contenido, diseño gráfico, código, interfaces, personajes, historias, mecánicas y elementos asociados a "Mea Culpa" son propiedad de NOVASITE o de sus respectivos licenciantes. 
+                Todo el contenido, diseño gráfico, código, interfaces, personajes, historias, mecánicas y elementos asociados a "MudHakar" son propiedad de NOVASITE o de sus respectivos licenciantes. 
                 El uso de la Plataforma no le otorga ningún derecho de propiedad sobre su contenido.
               </p>
             </section>

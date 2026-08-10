@@ -344,6 +344,36 @@ export default function TiendasPage() {
     }
   };
 
+  // ─── Salida ──────────────────────────────────────────────────────────────
+  //
+  // Una sola forma de retroceder, siempre en pantalla: dentro de un puesto
+  // vuelve al mercado, y en el mercado sale al perfil. El enlace de antes vivía
+  // arriba del contenido y desaparecía al primer scroll por un estante largo,
+  // que es cuando más falta hace.
+
+  const salir = useCallback(() => {
+    if (activeShop) {
+      setActiveShop(null);
+      setFilterCategory("all");
+    } else {
+      router.push("/profile");
+    }
+  }, [activeShop, router]);
+
+  // Escape sale del puesto, y sólo del puesto: es el gesto que se espera dentro
+  // de algo que se ha "abierto". Salir de /tiendas es navegar, y navegar sin
+  // querer por pulsar una tecla asusta más de lo que ayuda. Con el mostrador
+  // abierto manda su propio cierre, o una tecla cerraría carrito y puesto de
+  // golpe.
+  useEffect(() => {
+    if (mostradorOpen || !activeShop) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") salir();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mostradorOpen, activeShop, salir]);
+
   // ─────────────────────────────────────────────────────────────────────────
 
   const tema = activeShop
@@ -381,6 +411,28 @@ export default function TiendasPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Salida siempre visible. Abajo a la izquierda porque la derecha está
+            ocupada: el carrito en bottom-24 right-6 y "Reportar" en bottom-6
+            right-6. z-40 la deja por debajo del mostrador (z-50), que cuando
+            está abierto debe cerrarse primero. */}
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.35, ease: EASE, delay: 0.2 }}
+          whileHover={{ x: -3 }}
+          onClick={salir}
+          title={
+            activeShop
+              ? "Volver a la fila de puestos (Esc)"
+              : "Salir de las tiendas y volver al perfil"
+          }
+          className="fixed bottom-6 left-6 z-40 inline-flex items-center gap-2 rounded-full border-2 border-gold/70 bg-[#12100d]/95 px-5 py-3 font-sans text-sm font-semibold text-gold shadow-[0_12px_36px_-12px_rgba(212,175,55,0.7)] backdrop-blur transition-colors hover:border-gold hover:bg-[#1c1710] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+        >
+          <ChevronLeft className="h-5 w-5 shrink-0" />
+          {activeShop ? "Volver al mercado" : "Salir de las tiendas"}
+        </motion.button>
 
         {/* Botón del mostrador */}
         <AnimatePresence>
@@ -462,15 +514,6 @@ export default function TiendasPage() {
             {/* ── Vista: dentro del puesto ─────────────────────────────────── */}
             {activeShop && tema && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setActiveShop(null)}
-                  className="mb-4 inline-flex items-center gap-1.5 font-sans text-xs text-foreground/50 transition-colors hover:text-gold"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  Volver al mercado
-                </button>
-
                 {isLoadingShop ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {[...Array(8)].map((_, i) => (
