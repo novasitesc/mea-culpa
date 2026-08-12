@@ -12,6 +12,7 @@ import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } f
 import HuesoRoto from "@/app/components/hueso-roto";
 import SpellDescriptionHover from "@/app/components/spell-description-hover";
 import { getIconForString } from "@/lib/iconMapper";
+import { ShoppingCart } from "lucide-react";
 
 type Props = {
   eventos: SalaEvento[];
@@ -257,6 +258,35 @@ function renderEvento(ev: SalaEvento, i: number, descOf: (name: string) => strin
             {ev.personajes.length === 0 && (
               <p className="text-[11px] text-foreground/40 italic font-sans">
                 El grupo descansa; nadie necesitaba recuperarse.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (ev.tipo === "compra_tienda") {
+    const isMultiple = ev.items.length > 1 || (ev.items[0]?.cantidad ?? 0) > 1;
+    const summary = isMultiple
+      ? `${ev.items.reduce((acc, item) => acc + item.cantidad, 0)} objetos`
+      : ev.items[0]?.nombre || "algo";
+
+    return (
+      <div key={i} className="py-2 border-b border-amber-900/30 last:border-0 animate-in fade-in slide-in-from-bottom-1 duration-500">
+        <div className="rounded-lg border border-amber-800/40 bg-gradient-to-r from-amber-950/40 via-black/30 to-amber-950/40 px-3 py-2.5 flex items-center gap-2.5">
+          <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-amber-900/30 border border-amber-700/50 text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.2)]">
+            <ShoppingCart className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-sans text-foreground/70">
+              <span className="font-semibold text-foreground/90">{ev.personajeNombre}</span> compró{" "}
+              <span className="text-amber-400 font-semibold">{summary}</span> por{" "}
+              <span className="text-gold font-semibold">{ev.oroGastado} oro</span>
+            </p>
+            {isMultiple && (
+              <p className="text-[10px] text-foreground/40 font-sans truncate mt-0.5">
+                {ev.items.map(item => `${item.cantidad}x ${item.nombre}`).join(", ")}
               </p>
             )}
           </div>

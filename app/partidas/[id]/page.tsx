@@ -34,6 +34,8 @@ import type {
   EventoDesmembramiento,
   EventoConjuroLanzado,
   EventoEjercitoBaja,
+  EventoTiendaAbierta,
+  EventoTiendaCerrada,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
@@ -43,6 +45,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 const DiceOverlay = dynamic(() => import("@/app/components/dice-3d/dice-overlay"), { ssr: false });
 // Igual con el conjuro: la escena baja la primera vez que alguien lanza uno.
 const ConjuroOverlay = dynamic(() => import("@/app/components/conjuro-overlay"), { ssr: false });
+const ShopOverlay = dynamic(() => import("@/app/components/shop-overlay"), { ssr: false });
 
 // La tirada del DM llega por broadcast: los espectadores reproducen la misma
 // animación con el resultado ya comprometido en el servidor.
@@ -90,6 +93,8 @@ export default function SalaPage() {
   const [estadoFx, setEstadoFx] = useState<{ key: number; fx: EstadoFx } | null>(null);
   // Conjuro en escena; lo ve toda la sala. key remonta si encadenan lanzamientos.
   const [conjuroFx, setConjuroFx] = useState<{ key: number; ev: EventoConjuroLanzado } | null>(null);
+  // Tiendas mid-game
+  const [tiendasFx, setTiendasFx] = useState<EventoTiendaAbierta[]>([]);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const esAdminRef = useRef(esAdmin);
@@ -193,6 +198,17 @@ export default function SalaPage() {
       setEsAdmin(data.esAdmin);
       if (data.eventos?.length > 0) {
         setEventos(data.eventos);
+        const aberturas = data.eventos.filter((e: any) => e.tipo === "tienda_abierta");
+        const cierres = data.eventos.filter((e: any) => e.tipo === "tienda_cerrada");
+        
+        const activas = aberturas.filter((abierta: any) => {
+          const idx = data.eventos.indexOf(abierta);
+          const cerrado = cierres.find((c: any) => c.tiendaId === abierta.tiendaId && data.eventos.indexOf(c) > idx);
+          const expirada = abierta.expiraEn ? new Date(abierta.expiraEn).getTime() < Date.now() : false;
+          return !cerrado && !expirada;
+        });
+        
+        setTiendasFx(activas as EventoTiendaAbierta[]);
       }
     } finally {
       setLoadingData(false);
@@ -344,6 +360,21 @@ export default function SalaPage() {
             ),
           );
         }
+      })
+      .on("broadcast", { event: "tienda_abierta" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "tienda_abierta") {
+          setTiendasFx((prev) => [...prev, payload]);
+        }
+      })
+      .on("broadcast", { event: "tienda_cerrada" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "tienda_cerrada") {
+          setTiendasFx((prev) => prev.filter((t) => t.tiendaId !== payload.tiendaId));
+        }
+      })
+      .on("broadcast", { event: "compra_tienda" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
       })
       .subscribe();
 
@@ -601,6 +632,27 @@ export default function SalaPage() {
             escuela: conjuroFx.ev.escuela,
           }}
           onDone={() => setConjuroFx(null)}
+        />
+      )}
+
+      {/* Tiendas en medio de la partida */}
+      {!esAdmin && tiendasFx.filter(t => !t.jugadoresPermitidos || t.jugadoresPermitidos.length === 0 || (myPersonajeId != null && t.jugadoresPermitidos.includes(myPersonajeId))).length > 0 && (
+        <ShopOverlay 
+          eventos={tiendasFx.filter(t => !t.jugadoresPermitidos || t.jugadoresPermitidos.length === 0 || (myPersonajeId != null && t.jugadoresPermitidos.includes(myPersonajeId)))} 
+          partidaId={partidaId}
+          onClose={(tiendaId) => {
+            setTiendasFx((prev) => prev.filter((t) => t.tiendaId !== tiendaId));
+          }} 
+          onBuySuccess={(personaje, items, oroGastado) => {
+            const ev = {
+              tipo: "compra_tienda" as const,
+              personajeId: personaje.id,
+              personajeNombre: personaje.name,
+              items: items.map(i => ({ nombre: i.name, cantidad: i.qty })),
+              oroGastado
+            };
+            handleEvent(ev);
+          }}
         />
       )}
 

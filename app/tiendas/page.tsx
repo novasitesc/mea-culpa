@@ -134,6 +134,21 @@ export default function TiendasPage() {
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
+  const [partidaData, setPartidaData] = useState<{
+    enExpedicion: boolean;
+    partidaId: string | null;
+    personajeId: number | null;
+    tiendasAbiertas: any[];
+    loading: boolean;
+  }>({
+    enExpedicion: false,
+    partidaId: null,
+    personajeId: null,
+    tiendasAbiertas: [],
+    loading: true,
+  });
+  const enExpedicion = partidaData.enExpedicion;
+
   // Lo que dice el tendero ahora mismo; `turno` rota la frase para que no repita.
   const [charla, setCharla] = useState<{ situacion: SituacionTendero; turno: number }>({
     situacion: "bienvenida",
@@ -151,6 +166,52 @@ export default function TiendasPage() {
       .then((data: ShopListItem[]) => setShops(data))
       .finally(() => setIsLoadingShops(false));
   }, []);
+
+  // Verificar si el jugador está en partida y buscar tiendas abiertas
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = getSupabase();
+    
+    async function checkExpedicion() {
+      try {
+        const { data, error } = await supabase
+          .from('partida_participantes')
+          .select('partida_id, personaje_id, partidas!inner(estado)')
+          .eq('usuario_id', user!.id)
+          .eq('partidas.estado', 'en_progreso');
+
+        if (error || !data || data.length === 0) {
+          setPartidaData({ enExpedicion: false, partidaId: null, personajeId: null, tiendasAbiertas: [], loading: false });
+          return;
+        }
+
+        const partidaId = data[0].partida_id;
+        const personajeId = data[0].personaje_id;
+
+        const { data: abiertas, error: errAbiertas } = await supabase
+          .from('partidas_tiendas_abiertas')
+          .select('*')
+          .eq('partida_id', partidaId);
+
+        if (errAbiertas) {
+          console.error("Error al obtener tiendas abiertas:", errAbiertas);
+        }
+
+        setPartidaData({
+          enExpedicion: true,
+          partidaId,
+          personajeId,
+          tiendasAbiertas: abiertas || [],
+          loading: false
+        });
+      } catch (err) {
+        console.error("Excepción verificando expedición:", err);
+        setPartidaData({ enExpedicion: false, partidaId: null, personajeId: null, tiendasAbiertas: [], loading: false });
+      }
+    }
+    
+    checkExpedicion();
+  }, [user?.id]);
 
   // Cargar personajes del usuario (para el selector de bolsa al comprar)
   useEffect(() => {
@@ -485,7 +546,7 @@ export default function TiendasPage() {
                   </p>
                 </div>
 
-                {isLoadingShops ? (
+                {(isLoadingShops || enExpedicion === null) ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[...Array(6)].map((_, i) => (
                       <div
@@ -497,15 +558,28 @@ export default function TiendasPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {shops.map((shop, i) => (
-                      <PuestoCard
-                        key={shop.id}
-                        {...shop}
-                        index={i}
-                        hasAccess={tieneAcceso(shop.minLevel)}
-                        onOpen={() => openShop(shop.id)}
-                      />
-                    ))}
+                    {shops.map((shop, i) => {
+                      const isTiendaAbiertaEnPartida = partidaData.enExpedicion && partidaData.tiendasAbiertas.some(t => 
+                        t.tienda_id === shop.id && 
+                        (!t.jugadores_permitidos || t.jugadores_permitidos.length === 0 || t.jugadores_permitidos.includes(partidaData.personajeId))
+                      );
+                      
+                      const hasAccess = isTiendaAbiertaEnPartida || (!partidaData.enExpedicion && tieneAcceso(shop.minLevel));
+                      const lockReason = (partidaData.enExpedicion && !isTiendaAbiertaEnPartida) 
+                        ? "El DM no ha abierto esta tienda en tu expedición" 
+                        : undefined;
+
+                      return (
+                        <PuestoCard
+                          key={shop.id}
+                          {...shop}
+                          index={i}
+                          hasAccess={hasAccess}
+                          lockReason={lockReason}
+                          onOpen={() => openShop(shop.id)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </>
@@ -514,26 +588,51 @@ export default function TiendasPage() {
             {/* ── Vista: dentro del puesto ─────────────────────────────────── */}
             {activeShop && tema && (
               <>
-                {isLoadingShop ? (
+                {isLoadingShop || partidaData.loading ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {[...Array(8)].map((_, i) => (
                       <div key={i} className="h-56 animate-pulse rounded-xl border border-[#2a241a] bg-card/50" />
                     ))}
                   </div>
-                ) : !tieneAcceso(activeShop.minLevel) ? (
-                  <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
-                    <Lock className="h-8 w-8 text-foreground/30" />
-                    <div>
-                      <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
-                      <p className="mt-1 font-sans text-sm text-muted-foreground">
-                        {activeShop.name} abre a nivel {activeShop.minLevel}.
-                      </p>
-                      <p className="mt-0.5 font-sans text-xs text-foreground/35">
-                        Tu nivel: {user?.level ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
+                ) : (() => {
+                  const isTiendaAbierta = partidaData.enExpedicion && partidaData.tiendasAbiertas.some(t => 
+                    t.tienda_id === activeShop.id && 
+                    (!t.jugadores_permitidos || t.jugadores_permitidos.length === 0 || t.jugadores_permitidos.includes(partidaData.personajeId))
+                  );
+                  const hasAccessInner = isTiendaAbierta || (!partidaData.enExpedicion && tieneAcceso(activeShop.minLevel));
+
+                  if (partidaData.enExpedicion && !isTiendaAbierta) {
+                    return (
+                      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
+                        <Lock className="h-8 w-8 text-foreground/30" />
+                        <div>
+                          <h2 className="font-serif text-xl text-[#e8d8b0]">En Expedición</h2>
+                          <p className="mt-1 font-sans text-sm text-muted-foreground">
+                            El DM no ha abierto esta tienda en tu expedición.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (!hasAccessInner) {
+                    return (
+                      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
+                        <Lock className="h-8 w-8 text-foreground/30" />
+                        <div>
+                          <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
+                          <p className="mt-1 font-sans text-sm text-muted-foreground">
+                            {activeShop.name} abre a nivel {activeShop.minLevel}.
+                          </p>
+                          <p className="mt-0.5 font-sans text-xs text-foreground/35">
+                            Tu nivel: {user?.level ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
                   <>
                     {/* Estandarte del puesto */}
                     <motion.div
@@ -654,7 +753,8 @@ export default function TiendasPage() {
                       </motion.div>
                     )}
                   </>
-                )}
+                  );
+                })()}
               </>
             )}
           </div>

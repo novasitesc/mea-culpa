@@ -168,6 +168,30 @@ export type EventoEjercitoBaja = {
   aniquilada: boolean;
 };
 
+export type EventoTiendaAbierta = {
+  tipo: "tienda_abierta";
+  tiendaId: string;
+  tiendaNombre: string;
+  tiendaIcono: string;
+  /** ISO timestamp; null = sin timer, el DM cierra manual. */
+  expiraEn: string | null;
+  /** Array de personajeId que tienen acceso. Si es undefined o vacío, es para todos. */
+  jugadoresPermitidos?: number[];
+};
+
+export interface EventoTiendaCerrada {
+  tipo: "tienda_cerrada";
+  tiendaId?: string; // Para saber qué tienda cerrar, en caso de múltiples
+};
+
+export type EventoCompraTienda = {
+  tipo: "compra_tienda";
+  personajeId: number;
+  personajeNombre: string;
+  items: { nombre: string; cantidad: number }[];
+  oroGastado: number;
+};
+
 export type SalaEvento =
   | EventoDadoTirado
   | EventoAsignacionManual
@@ -181,4 +205,7 @@ export type SalaEvento =
   | EventoDescansoCorto
   | EventoSalaAvanzada
   | EventoConjuroLanzado
-  | EventoEjercitoBaja;
+  | EventoEjercitoBaja
+  | EventoTiendaAbierta
+  | EventoTiendaCerrada
+  | EventoCompraTienda;
