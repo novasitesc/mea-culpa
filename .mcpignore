@@ -1,0 +1,14 @@
+node_modules/
+.next/
+build/
+out/
+.git/
+*.mp4
+*.gif
+*.png
+*.jpg
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+dnd5e.spells.json
+package-lock.json
+pnpm-lock.yaml

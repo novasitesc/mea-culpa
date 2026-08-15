@@ -216,6 +216,24 @@ export async function GET(
 
   const eventos = (eventosRows ?? []).map(mapEventoRow).filter((e): e is SalaEvento => e !== null);
 
+  // Consultar tiendas abiertas activas en esta expedición
+  const { data: abiertasRows } = await db
+    .from("partidas_tiendas_abiertas")
+    .select("tienda_id, expira_en, jugadores_permitidos, tiendas!inner(nombre, icono)")
+    .eq("partida_id", partidaId);
+
+  const now = Date.now();
+  const tiendasAbiertas = (abiertasRows ?? [])
+    .filter((r: any) => !r.expira_en || new Date(r.expira_en).getTime() > now)
+    .map((r: any) => ({
+      tipo: "tienda_abierta" as const,
+      tiendaId: r.tienda_id,
+      tiendaNombre: r.tiendas?.nombre ?? r.tienda_id,
+      tiendaIcono: r.tiendas?.icono ?? "🏪",
+      expiraEn: r.expira_en,
+      jugadoresPermitidos: r.jugadores_permitidos ?? [],
+    }));
+
   return NextResponse.json({
     partida: {
       id: (partida as any).id,
@@ -243,5 +261,7 @@ export async function GET(
         .map(mapUnidadRow),
     })),
     eventos,
+    tiendasAbiertas,
   });
 }
+

@@ -81,6 +81,17 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => {
+                  const el = document.getElementById("seccion-ejercito-player");
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-600/40 bg-amber-950/25 px-3 py-1.5 font-sans text-[11px] font-semibold uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-900/40 active:scale-95"
+              >
+                <Swords className="h-3.5 w-3.5" />
+                Ejército ({tropas})
+              </button>
+              <button
+                type="button"
                 onClick={() => setSpellsOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/15 px-3 py-1.5 font-sans text-[11px] font-semibold uppercase tracking-widest text-gold transition-all hover:bg-gold/30 active:scale-95"
               >
@@ -205,9 +216,10 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
             </motion.div>
           )}
 
-          {/* ─── Ejército ──────────────────────────────────────────────────── */}
-          {me && me.ejercito.length > 0 && (
+          {/* ─── Ejército (siempre visible para el jugador) ────────────────── */}
+          {me && (
             <motion.div
+              id="seccion-ejercito-player"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.08, ease: EASE }}
@@ -215,18 +227,19 @@ export default function SalaPlayer({ partida, participantes, eventos, token, usu
             >
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="inline-flex items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.2em] text-foreground/45">
-                  <Swords className="h-3 w-3" /> Tu ejército
+                  <Swords className="h-3 w-3 text-amber-400" /> Tu ejército
                 </p>
                 <span className="inline-flex items-center gap-1 font-sans text-[11px] text-gold tabular-nums">
                   <Users className="h-3 w-3 opacity-70" />
-                  {tropas.toLocaleString("es-ES")}
+                  {tropas.toLocaleString("es-ES")} soldados
                 </span>
               </div>
-              <EjercitoGrid unidades={me.ejercito} compacto />
+              <EjercitoGrid unidades={me.ejercito ?? []} compacto />
               <p className="mt-2.5 flex items-start gap-1.5 font-sans text-[10px] leading-relaxed text-foreground/30">
                 <Shield className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
-                El DM retira las unidades que caen en batalla; lo que sobrevive va contigo a la
-                siguiente expedición.
+                {me.ejercito && me.ejercito.length > 0
+                  ? "El DM retira las unidades que caen en batalla; lo que sobrevive vuelve contigo al Nexo."
+                  : "Sin regimientos en marcha. Puedes reclutar tropas si el DM abre una tienda durante la expedición."}
               </p>
             </motion.div>
           )}

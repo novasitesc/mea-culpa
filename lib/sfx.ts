@@ -601,3 +601,31 @@ export function playItemSelectSfx(): void {
   tone(a, t, 784, 0.09, 0.07, "triangle", 988); // pluck ascendente breve
   tone(a, t + 0.02, 1568, 0.06, 0.03, "sine"); // brillo agudo
 }
+
+/** Bajas en el ejército: choque de espadas, redoble de guerra y caída de estandarte. */
+export function playEjercitoBajaSfx(aniquilada = false): void {
+  const a = ac();
+  if (!a) return;
+  const t = a.currentTime;
+  // Choque de acero cortante (clash)
+  noise(a, t, 0.18, "bandpass", 4200, 0.35, 1200);
+  noise(a, t + 0.02, 0.12, "highpass", 3500, 0.25);
+  tone(a, t, 880, 0.14, 0.22, "sawtooth", 220); // resonancia de hoja metálica
+  tone(a, t + 0.04, 1320, 0.1, 0.15, "triangle", 440);
+
+  // Tambor de guerra sordo (impacto en el pecho)
+  tone(a, t + 0.06, 95, 0.35, 0.45, "sine", 32);
+  noise(a, t + 0.06, 0.15, "lowpass", 450, 0.3);
+
+  // Segundo golpe de combate
+  noise(a, t + 0.18, 0.14, "bandpass", 3200, 0.28, 800);
+  tone(a, t + 0.18, 80, 0.4, 0.4, "sine", 28);
+
+  if (aniquilada) {
+    // Si la unidad fue aniquilada: cuerno fúnebre y tañido grave de derrota
+    [110, 116.54].forEach((f) => tone(a, t + 0.45, f, 2.2, 0.25, "sawtooth", f * 0.85));
+    [55, 58.27].forEach((f) => tone(a, t + 0.7, f, 2.6, 0.3, "sine"));
+    noise(a, t + 0.4, 0.4, "lowpass", 300, 0.25); // retumbar de escombros
+  }
+}
+

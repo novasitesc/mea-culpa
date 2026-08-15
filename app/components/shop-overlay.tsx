@@ -15,11 +15,12 @@ const ShopPortal3D = dynamic(() => import("./shop-portal-3d"), { ssr: false });
 type ShopOverlayProps = {
   eventos: EventoTiendaAbierta[];
   onClose: (tiendaId: string) => void;
+  onDismiss?: () => void;
   onBuySuccess?: (personaje: any, cart: any[], totalCost: number) => void;
   partidaId: string;
 };
 
-export default function ShopOverlay({ eventos, onClose, onBuySuccess, partidaId }: ShopOverlayProps) {
+export default function ShopOverlay({ eventos, onClose, onDismiss, onBuySuccess, partidaId }: ShopOverlayProps) {
   const { user, token, refreshUser } = useAuth();
   const [activeTiendaId, setActiveTiendaId] = useState<string>(eventos[0]?.tiendaId);
   
@@ -211,6 +212,16 @@ export default function ShopOverlay({ eventos, onClose, onBuySuccess, partidaId 
                 <Clock className="h-4 w-4" />
                 {timeLeft}
               </div>
+            )}
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-foreground/60 transition-colors hover:bg-white/10 hover:text-foreground"
+                title="Minimizar tienda"
+              >
+                <X className="h-4 w-4" />
+              </button>
             )}
           </div>
         </div>

@@ -29,7 +29,7 @@ import EjercitoGrid from "@/app/components/ejercito-grid";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import FantasyAlert from "@/components/ui/fantasy-alert";
-import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento, EventoTiendaAbierta } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
@@ -46,6 +46,7 @@ type Props = {
   participantes: SalaParticipante[];
   token: string;
   eventos: SalaEvento[];
+  tiendasAbiertas?: EventoTiendaAbierta[];
   onEvent: (ev: SalaEvento) => void;
   onStart: () => void;
 };
@@ -69,7 +70,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 function mkId() { return Math.random().toString(36).slice(2, 9); }
 
-export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
+export default function SalaDM({ partida, participantes, token, eventos, tiendasAbiertas: tiendasAbiertasProp = [], onEvent, onStart }: Props) {
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
     participantes[0]?.personajeId ?? null,
   );
@@ -119,26 +120,11 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   const [tiendaJugadores, setTiendaJugadores] = useState<number[]>([]);
   const [abriendoTienda, setAbriendoTienda] = useState(false);
   const tiendasAbiertas = useMemo(() => {
-    const aberturas = eventos.filter((e) => e.tipo === "tienda_abierta") as any[];
-    const cierres = eventos.filter((e) => e.tipo === "tienda_cerrada") as any[];
-    
-    // Una tienda está activa si tiene un evento de apertura y NO tiene un evento de cierre posterior
-    return aberturas.filter((abierta) => {
-      // Find closures for this specific shop that happened after this open event
-      const indexAbertura = eventos.indexOf(abierta);
-      const cerradoPosterior = cierres.find(
-        (c) => c.tiendaId === abierta.tiendaId && eventos.indexOf(c) > indexAbertura
-      );
-      
-      // Also, if it has an expiration time, we should check if it's expired
-      let expirada = false;
-      if (abierta.expiraEn) {
-        expirada = new Date(abierta.expiraEn).getTime() < Date.now();
-      }
-      
-      return !cerradoPosterior && !expirada;
-    });
-  }, [eventos]);
+    const now = Date.now();
+    return tiendasAbiertasProp.filter(
+      (t) => !t.expiraEn || new Date(t.expiraEn).getTime() > now,
+    );
+  }, [tiendasAbiertasProp]);
 
   const selectedParticipante =
     participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
@@ -296,6 +282,13 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setAlert({ variant: "error", message: err.error ?? (abrir ? "Error abriendo tienda" : "Error cerrando tienda") });
+      } else {
+        if (abrir) {
+          setTiendaSeleccionada("");
+          setTiendaDuracion("");
+          setTiendaJugadores([]);
+        }
+        onStart();
       }
     } finally {
       setAbriendoTienda(false);
