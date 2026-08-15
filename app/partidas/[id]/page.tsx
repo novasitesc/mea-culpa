@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Store } from "lucide-react";
 import Link from "next/link";
 import Header from "@/app/components/header";
 import Sidebar from "@/app/components/sidebar";
@@ -34,6 +34,8 @@ import type {
   EventoDesmembramiento,
   EventoConjuroLanzado,
   EventoEjercitoBaja,
+  EventoTiendaAbierta,
+  EventoTiendaCerrada,
 } from "@/lib/types/sala";
 import type { DiceOverlayData } from "@/app/components/dice-3d/dice-overlay";
 import type { DiceType } from "@/lib/types/dados";
@@ -43,6 +45,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 const DiceOverlay = dynamic(() => import("@/app/components/dice-3d/dice-overlay"), { ssr: false });
 // Igual con el conjuro: la escena baja la primera vez que alguien lanza uno.
 const ConjuroOverlay = dynamic(() => import("@/app/components/conjuro-overlay"), { ssr: false });
+const ShopOverlay = dynamic(() => import("@/app/components/shop-overlay"), { ssr: false });
+const EjercitoBajaOverlay = dynamic(() => import("@/app/components/ejercito-baja-overlay"), { ssr: false });
 
 // La tirada del DM llega por broadcast: los espectadores reproducen la misma
 // animación con el resultado ya comprometido en el servidor.
@@ -90,8 +94,35 @@ export default function SalaPage() {
   const [estadoFx, setEstadoFx] = useState<{ key: number; fx: EstadoFx } | null>(null);
   // Conjuro en escena; lo ve toda la sala. key remonta si encadenan lanzamientos.
   const [conjuroFx, setConjuroFx] = useState<{ key: number; ev: EventoConjuroLanzado } | null>(null);
+  // Bajas de ejército en escena con Three.js WebGL
+  const [ejercitoBajaFx, setEjercitoBajaFx] = useState<{ key: number; ev: EventoEjercitoBaja } | null>(null);
+  // Tiendas mid-game
+  const [tiendasFx, setTiendasFx] = useState<EventoTiendaAbierta[]>([]);
+  const [shopDismissed, setShopDismissed] = useState(false);
+
+  // Limpieza periódica de tiendas expiradas en sala (incluso con modal minimizado)
+  useEffect(() => {
+    if (tiendasFx.length === 0) return;
+    const hasTimers = tiendasFx.some((t) => t.expiraEn);
+    if (!hasTimers) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setTiendasFx((prev) => {
+        const next = prev.filter((t) => !t.expiraEn || new Date(t.expiraEn).getTime() > now);
+        if (next.length !== prev.length) {
+          if (next.length === 0) setShopDismissed(false);
+          return next;
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tiendasFx]);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const partidaRef = useRef<SalaPartida | null>(null);
   const esAdminRef = useRef(esAdmin);
   const miPersonajeIdRef = useRef<number | null>(null);
 
@@ -176,9 +207,9 @@ export default function SalaPage() {
     if (fx) setEstadoFx((p) => ({ key: (p?.key ?? 0) + 1, fx }));
   }, []);
 
-  const loadSala = useCallback(async () => {
+  const loadSala = useCallback(async (silent = false) => {
     if (!token || !partidaId) return;
-    setLoadingData(true);
+    if (!silent && !partidaRef.current) setLoadingData(true);
     try {
       const res = await fetch(`/api/partidas/${partidaId}/sala`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -188,11 +219,15 @@ export default function SalaPage() {
         setAccessError(data.error ?? "No se pudo acceder a la sala");
         return;
       }
+      partidaRef.current = data.partida;
       setPartida(data.partida);
       setParticipantes(data.participantes);
       setEsAdmin(data.esAdmin);
       if (data.eventos?.length > 0) {
         setEventos(data.eventos);
+      }
+      if (Array.isArray(data.tiendasAbiertas)) {
+        setTiendasFx(data.tiendasAbiertas);
       }
     } finally {
       setLoadingData(false);
@@ -322,7 +357,10 @@ export default function SalaPage() {
       })
       .on("broadcast", { event: "ejercito_baja" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
-        if (payload.tipo === "ejercito_baja") aplicarBajaEjercito(payload);
+        if (payload.tipo === "ejercito_baja") {
+          aplicarBajaEjercito(payload);
+          setEjercitoBajaFx((p) => ({ key: (p?.key ?? 0) + 1, ev: payload }));
+        }
       })
       .on("broadcast", { event: "desmembramiento" }, ({ payload }: { payload: SalaEvento }) => {
         appendEvento(payload);
@@ -344,6 +382,27 @@ export default function SalaPage() {
             ),
           );
         }
+      })
+      .on("broadcast", { event: "tienda_abierta" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "tienda_abierta") {
+          setTiendasFx((prev) => [...prev, payload]);
+          setShopDismissed(false);
+        }
+      })
+      .on("broadcast", { event: "tienda_cerrada" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        if (payload.tipo === "tienda_cerrada") {
+          setTiendasFx((prev) => {
+            const next = payload.tiendaId ? prev.filter((t) => t.tiendaId !== payload.tiendaId) : [];
+            if (next.length === 0) setShopDismissed(false);
+            return next;
+          });
+        }
+      })
+      .on("broadcast", { event: "compra_tienda" }, ({ payload }: { payload: SalaEvento }) => {
+        appendEvento(payload);
+        void loadSala(true);
       })
       .subscribe();
 
@@ -423,6 +482,13 @@ export default function SalaPage() {
     if (ev.tipo === "ejercito_baja") {
       appendEvento(ev);
       aplicarBajaEjercito(ev);
+      setEjercitoBajaFx((p) => ({ key: (p?.key ?? 0) + 1, ev }));
+      return;
+    }
+
+    if (ev.tipo === "compra_tienda") {
+      appendEvento(ev);
+      void loadSala(true);
       return;
     }
 
@@ -508,7 +574,7 @@ export default function SalaPage() {
             </div>
 
             {/* Contenido */}
-            {loadingData ? (
+            {loadingData && !partida ? (
               <div className="flex-1 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-gold" />
               </div>
@@ -530,8 +596,9 @@ export default function SalaPage() {
                     participantes={participantes}
                     token={token}
                     eventos={eventos}
+                    tiendasAbiertas={tiendasFx}
                     onEvent={handleEvent}
-                    onStart={loadSala}
+                    onStart={() => void loadSala(true)}
                   />
                 ) : (
                   <SalaPlayer
@@ -604,9 +671,64 @@ export default function SalaPage() {
         />
       )}
 
+      {/* Tiendas en medio de la partida */}
+      {(() => {
+        const misTiendas = tiendasFx.filter(t => !t.jugadoresPermitidos || t.jugadoresPermitidos.length === 0 || (myPersonajeId != null && t.jugadoresPermitidos.includes(myPersonajeId)));
+        if (esAdmin || misTiendas.length === 0) return null;
+
+        // Overlay abierto
+        if (!shopDismissed) return (
+          <ShopOverlay 
+            eventos={misTiendas} 
+            partidaId={partidaId}
+            onDismiss={() => setShopDismissed(true)}
+            onClose={(tiendaId) => {
+              setTiendasFx((prev) => {
+                const next = prev.filter((t) => t.tiendaId !== tiendaId);
+                if (next.length === 0) setShopDismissed(false);
+                return next;
+              });
+            }} 
+            onBuySuccess={(personaje, items, oroGastado) => {
+              const ev = {
+                tipo: "compra_tienda" as const,
+                personajeId: personaje.id,
+                personajeNombre: personaje.name,
+                items: items.map(i => ({ nombre: i.name, cantidad: i.qty })),
+                oroGastado
+              };
+              handleEvent(ev);
+              void loadSala(true);
+            }}
+          />
+        );
+
+        // Botón flotante para reabrir
+        return (
+          <button
+            type="button"
+            onClick={() => setShopDismissed(false)}
+            className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-full border border-amber-500/50 bg-[#12100d]/95 px-5 py-3 font-sans text-sm font-semibold text-amber-400 shadow-[0_0_20px_-4px_rgba(251,191,36,0.5)] backdrop-blur transition-all hover:border-amber-400 hover:shadow-[0_0_28px_-4px_rgba(251,191,36,0.7)] hover:scale-105 active:scale-95 animate-in slide-in-from-bottom-4 fade-in duration-300"
+          >
+            <Store className="h-5 w-5" />
+            Tienda abierta ({misTiendas.length})
+          </button>
+        );
+      })()}
+
       {/* Desmembramiento escenificado para toda la sala */}
       {desmFx && (
         <DesmembramientoOverlay key={desmFx.key} evento={desmFx.ev} onDone={() => setDesmFx(null)} />
+      )}
+
+      {/* Bajas de ejército escenificadas con WebGL / Three.js para toda la sala */}
+      {ejercitoBajaFx && (
+        <EjercitoBajaOverlay
+          key={ejercitoBajaFx.key}
+          evento={ejercitoBajaFx.ev}
+          esPropio={ejercitoBajaFx.ev.personajeId === myPersonajeId}
+          onDone={() => setEjercitoBajaFx(null)}
+        />
       )}
 
       {/* Cierre ceremonial: Partida finalizada (jugadores) */}

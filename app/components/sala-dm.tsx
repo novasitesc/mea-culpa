@@ -18,7 +18,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Loader2, Coins, Package, X, Skull, Scissors, HeartCrack, Plus, Minus,
-  Moon, Zap, DoorOpen, Dices, Swords, Users, Play, Flag,
+  Moon, Zap, DoorOpen, Dices, Swords, Users, Play, Flag, Store,
 } from "lucide-react";
 import { getIconForString } from "@/lib/iconMapper";
 import DiceModule from "@/app/components/dice-module";
@@ -29,7 +29,7 @@ import EjercitoGrid from "@/app/components/ejercito-grid";
 import { ObjectSelector, type ObjectSelectorItem } from "@/components/ui/object-selector";
 import { GoldAmountInput } from "@/components/ui/gold-amount-input";
 import FantasyAlert from "@/components/ui/fantasy-alert";
-import type { SalaPartida, SalaParticipante, SalaEvento } from "@/lib/types/sala";
+import type { SalaPartida, SalaParticipante, SalaEvento, EventoTiendaAbierta } from "@/lib/types/sala";
 import type { RollResult } from "@/lib/types/dados";
 import { LIMBS } from "@/lib/limbs";
 import { MAX_CAIDAS, MAX_CANSANCIO, EFECTOS_CANSANCIO, CANSANCIO_POR_DERROTA } from "@/lib/caidas";
@@ -46,6 +46,7 @@ type Props = {
   participantes: SalaParticipante[];
   token: string;
   eventos: SalaEvento[];
+  tiendasAbiertas?: EventoTiendaAbierta[];
   onEvent: (ev: SalaEvento) => void;
   onStart: () => void;
 };
@@ -55,20 +56,21 @@ type AlertState = { variant: "success" | "error" | "warning"; message: string } 
 type CloseRewardItem = { id: string; objectId: number | null; qty: number };
 type CloseReward = { gold: number; levelUps: number; items: CloseRewardItem[] };
 
-type TabKey = "dados" | "botin" | "estado" | "ejercito";
+type TabKey = "dados" | "botin" | "estado" | "ejercito" | "tienda";
 
 const TABS: Array<{ key: TabKey; label: string; icon: typeof Dices }> = [
   { key: "dados", label: "Dados", icon: Dices },
   { key: "botin", label: "Botín", icon: Package },
   { key: "estado", label: "Estado", icon: HeartCrack },
   { key: "ejercito", label: "Ejército", icon: Swords },
+  { key: "tienda", label: "Tienda", icon: Store },
 ];
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 function mkId() { return Math.random().toString(36).slice(2, 9); }
 
-export default function SalaDM({ partida, participantes, token, eventos, onEvent, onStart }: Props) {
+export default function SalaDM({ partida, participantes, token, eventos, tiendasAbiertas: tiendasAbiertasProp = [], onEvent, onStart }: Props) {
   const [selectedPersonajeId, setSelectedPersonajeId] = useState<number | null>(
     participantes[0]?.personajeId ?? null,
   );
@@ -110,6 +112,19 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   const [unidadSeleccionadaId, setUnidadSeleccionadaId] = useState<number | null>(null);
   const [bajas, setBajas] = useState(1);
   const [aplicandoBajas, setAplicandoBajas] = useState(false);
+
+  // Tienda (mid-game access)
+  const [tiendasDisponibles, setTiendasDisponibles] = useState<any[]>([]);
+  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string>("");
+  const [tiendaDuracion, setTiendaDuracion] = useState<number | "">("");
+  const [tiendaJugadores, setTiendaJugadores] = useState<number[]>([]);
+  const [abriendoTienda, setAbriendoTienda] = useState(false);
+  const tiendasAbiertas = useMemo(() => {
+    const now = Date.now();
+    return tiendasAbiertasProp.filter(
+      (t) => !t.expiraEn || new Date(t.expiraEn).getTime() > now,
+    );
+  }, [tiendasAbiertasProp]);
 
   const selectedParticipante =
     participantes.find((p) => p.personajeId === selectedPersonajeId) ?? null;
@@ -159,6 +174,19 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
   }, [objects.length, token]);
 
   useEffect(() => { loadObjects(); }, [loadObjects]);
+
+  // Cargar lista de tiendas para el tab Tienda
+  useEffect(() => {
+    if (tab === "tienda" && tiendasDisponibles.length === 0) {
+      fetch("/api/tiendas")
+        .then((res) => res.json())
+        .then((data) => {
+          setTiendasDisponibles(data);
+          if (data.length > 0) setTiendaSeleccionada(data[0].id);
+        })
+        .catch(console.error);
+    }
+  }, [tab, tiendasDisponibles.length]);
 
   const rollApiUrl = `/api/partidas/${partida.id}/dados/roll`;
   const extraBody = useMemo(
@@ -233,6 +261,37 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
       setOroDelta("");
     } finally {
       setAssigning(false);
+    }
+  }
+
+  async function handleToggleTienda(abrir: boolean, idToToggle?: string) {
+    if (abrir && !tiendaSeleccionada) {
+      setAlert({ variant: "error", message: "Selecciona una tienda para abrir." });
+      return;
+    }
+    
+    const targetId = abrir ? tiendaSeleccionada : idToToggle;
+    
+    setAbriendoTienda(true);
+    try {
+      const res = await fetch(`/api/partidas/${partida.id}/tienda-acceso`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(abrir ? { tiendaId: targetId, duracion: typeof tiendaDuracion === "number" ? tiendaDuracion : undefined, jugadoresPermitidos: tiendaJugadores } : { cerrar: true, tiendaId: targetId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAlert({ variant: "error", message: err.error ?? (abrir ? "Error abriendo tienda" : "Error cerrando tienda") });
+      } else {
+        if (abrir) {
+          setTiendaSeleccionada("");
+          setTiendaDuracion("");
+          setTiendaJugadores([]);
+        }
+        onStart();
+      }
+    } finally {
+      setAbriendoTienda(false);
     }
   }
 
@@ -1189,6 +1248,121 @@ export default function SalaDM({ partida, participantes, token, eventos, onEvent
                             </AnimatePresence>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {/* ── Tienda ── */}
+                    {tab === "tienda" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-sans text-[10px] uppercase tracking-widest text-foreground/45">
+                            Acceso a Tienda para Jugadores
+                          </p>
+                          <Store className="h-4 w-4 opacity-70 text-amber-400" />
+                        </div>
+
+                        {tiendasAbiertas.length > 0 && (
+                          <div className="space-y-3 mb-6">
+                            <h3 className="font-sans text-xs font-semibold text-foreground/70">Tiendas Activas</h3>
+                            {tiendasAbiertas.map((tienda) => (
+                              <div key={tienda.tiendaId} className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-3 flex justify-between items-center gap-3">
+                                <div className="min-w-0">
+                                  <p className="font-sans text-sm font-semibold text-amber-400 truncate">
+                                    {tienda.tiendaNombre}
+                                  </p>
+                                  {tienda.expiraEn ? (
+                                    <p className="font-sans text-[11px] text-amber-400/70">
+                                      Cierra a las {new Date(tienda.expiraEn).toLocaleTimeString()}
+                                    </p>
+                                  ) : (
+                                    <p className="font-sans text-[11px] text-amber-400/70">
+                                      Cierre manual
+                                    </p>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleTienda(false, tienda.tiendaId)}
+                                  disabled={abriendoTienda}
+                                  className="flex shrink-0 items-center gap-1.5 rounded bg-amber-500/20 px-2.5 py-1.5 text-xs font-semibold text-amber-400 transition-colors hover:bg-amber-500/30 border border-amber-500/50 disabled:opacity-50"
+                                >
+                                  {abriendoTienda ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                                  Cerrar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-black/20">
+                          <h3 className="font-sans text-xs font-semibold text-foreground/70 mb-2">Abrir nueva tienda</h3>
+                          
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-foreground/70">Seleccionar tienda</label>
+                            <select
+                              className={inputCls}
+                              value={tiendaSeleccionada}
+                              onChange={(e) => setTiendaSeleccionada(e.target.value)}
+                            >
+                              {tiendasDisponibles.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-foreground/70">Cierre automático (minutos)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              className={inputCls}
+                              placeholder="Dejar en blanco para cierre manual"
+                              value={tiendaDuracion}
+                              onChange={(e) => setTiendaDuracion(e.target.value === "" ? "" : parseInt(e.target.value) || "")}
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1.5 border-t border-border/30 pt-3">
+                            <label className="text-xs font-semibold text-foreground/70">¿Quién puede ver esta tienda?</label>
+                            <p className="text-[10px] text-foreground/40 leading-relaxed mb-1">
+                              Si no seleccionas a nadie, la tienda será global (para todos).
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {participantesActivos.map((p) => {
+                                const isSelected = tiendaJugadores.includes(p.personajeId);
+                                return (
+                                  <label key={p.personajeId} className={`flex items-center gap-2 rounded border px-2 py-1.5 cursor-pointer transition-colors ${isSelected ? "border-amber-500/60 bg-amber-500/10 text-amber-200" : "border-border text-foreground/60 hover:border-border/80"}`}>
+                                    <input 
+                                      type="checkbox"
+                                      className="accent-amber-500 rounded border-border"
+                                      checked={isSelected}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setTiendaJugadores(prev => [...prev, p.personajeId]);
+                                        } else {
+                                          setTiendaJugadores(prev => prev.filter(id => id !== p.personajeId));
+                                        }
+                                      }}
+                                    />
+                                    <span className="text-[11px] font-sans truncate">{p.nombre}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTienda(true)}
+                            disabled={abriendoTienda || !tiendaSeleccionada}
+                            className="flex w-full items-center justify-center gap-2 rounded bg-amber-500 px-3 py-2 text-sm font-bold text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
+                          >
+                            {abriendoTienda ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
+                            Abrir Portal
+                          </button>
+                        </div>
                       </div>
                     )}
                   </motion.div>

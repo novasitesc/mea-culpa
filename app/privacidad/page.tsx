@@ -23,7 +23,7 @@ export default function PoliticaDePrivacidad() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">1. Información General</h2>
               <p>
-                Esta Política de Privacidad describe cómo <strong>NOVASITE</strong>, empresa responsable del desarrollo y mantenimiento de "Mea Culpa" (en adelante, la "Plataforma"), recopila, utiliza, almacena y comparte su información personal al utilizar nuestros servicios. Su privacidad es fundamental para nosotros, y nos comprometemos a proteger sus datos.
+                Esta Política de Privacidad describe cómo <strong>NOVASITE</strong>, empresa responsable del desarrollo y mantenimiento de "MudHakar" (en adelante, la "Plataforma"), recopila, utiliza, almacena y comparte su información personal al utilizar nuestros servicios. Su privacidad es fundamental para nosotros, y nos comprometemos a proteger sus datos.
               </p>
             </section>
 

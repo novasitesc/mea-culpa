@@ -50,3 +50,4 @@ package-lock.json
 LibroRTSDND.md
 sistemaRTS.md
 QA-REPORTE.md
+supabase/migrations/059_shop_mid_game_bypass.sql

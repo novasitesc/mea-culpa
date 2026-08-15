@@ -134,6 +134,21 @@ export default function TiendasPage() {
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
+  const [partidaData, setPartidaData] = useState<{
+    enExpedicion: boolean;
+    partidaId: string | null;
+    personajeId: number | null;
+    tiendasAbiertas: any[];
+    loading: boolean;
+  }>({
+    enExpedicion: false,
+    partidaId: null,
+    personajeId: null,
+    tiendasAbiertas: [],
+    loading: true,
+  });
+  const enExpedicion = partidaData.enExpedicion;
+
   // Lo que dice el tendero ahora mismo; `turno` rota la frase para que no repita.
   const [charla, setCharla] = useState<{ situacion: SituacionTendero; turno: number }>({
     situacion: "bienvenida",
@@ -151,6 +166,29 @@ export default function TiendasPage() {
       .then((data: ShopListItem[]) => setShops(data))
       .finally(() => setIsLoadingShops(false));
   }, []);
+
+  // Verificar si el jugador está en partida y buscar tiendas abiertas
+  useEffect(() => {
+    if (!user?.id || !token) return;
+    
+    fetch("/api/tiendas/expedicion", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setPartidaData({
+          enExpedicion: data.enExpedicion ?? false,
+          partidaId: data.partidaId ?? null,
+          personajeId: data.personajeId ?? null,
+          tiendasAbiertas: data.tiendasAbiertas ?? [],
+          loading: false,
+        });
+      })
+      .catch((err) => {
+        console.error("Error verificando expedición:", err);
+        setPartidaData({ enExpedicion: false, partidaId: null, personajeId: null, tiendasAbiertas: [], loading: false });
+      });
+  }, [user?.id, token]);
 
   // Cargar personajes del usuario (para el selector de bolsa al comprar)
   useEffect(() => {
@@ -344,6 +382,36 @@ export default function TiendasPage() {
     }
   };
 
+  // ─── Salida ──────────────────────────────────────────────────────────────
+  //
+  // Una sola forma de retroceder, siempre en pantalla: dentro de un puesto
+  // vuelve al mercado, y en el mercado sale al perfil. El enlace de antes vivía
+  // arriba del contenido y desaparecía al primer scroll por un estante largo,
+  // que es cuando más falta hace.
+
+  const salir = useCallback(() => {
+    if (activeShop) {
+      setActiveShop(null);
+      setFilterCategory("all");
+    } else {
+      router.push("/profile");
+    }
+  }, [activeShop, router]);
+
+  // Escape sale del puesto, y sólo del puesto: es el gesto que se espera dentro
+  // de algo que se ha "abierto". Salir de /tiendas es navegar, y navegar sin
+  // querer por pulsar una tecla asusta más de lo que ayuda. Con el mostrador
+  // abierto manda su propio cierre, o una tecla cerraría carrito y puesto de
+  // golpe.
+  useEffect(() => {
+    if (mostradorOpen || !activeShop) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") salir();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mostradorOpen, activeShop, salir]);
+
   // ─────────────────────────────────────────────────────────────────────────
 
   const tema = activeShop
@@ -381,6 +449,28 @@ export default function TiendasPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Salida siempre visible. Abajo a la izquierda porque la derecha está
+            ocupada: el carrito en bottom-24 right-6 y "Reportar" en bottom-6
+            right-6. z-40 la deja por debajo del mostrador (z-50), que cuando
+            está abierto debe cerrarse primero. */}
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.35, ease: EASE, delay: 0.2 }}
+          whileHover={{ x: -3 }}
+          onClick={salir}
+          title={
+            activeShop
+              ? "Volver a la fila de puestos (Esc)"
+              : "Salir de las tiendas y volver al perfil"
+          }
+          className="fixed bottom-6 left-6 z-40 inline-flex items-center gap-2 rounded-full border-2 border-gold/70 bg-[#12100d]/95 px-5 py-3 font-sans text-sm font-semibold text-gold shadow-[0_12px_36px_-12px_rgba(212,175,55,0.7)] backdrop-blur transition-colors hover:border-gold hover:bg-[#1c1710] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+        >
+          <ChevronLeft className="h-5 w-5 shrink-0" />
+          {activeShop ? "Volver al mercado" : "Salir de las tiendas"}
+        </motion.button>
 
         {/* Botón del mostrador */}
         <AnimatePresence>
@@ -433,7 +523,7 @@ export default function TiendasPage() {
                   </p>
                 </div>
 
-                {isLoadingShops ? (
+                {(isLoadingShops || partidaData.loading) ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[...Array(6)].map((_, i) => (
                       <div
@@ -445,15 +535,28 @@ export default function TiendasPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {shops.map((shop, i) => (
-                      <PuestoCard
-                        key={shop.id}
-                        {...shop}
-                        index={i}
-                        hasAccess={tieneAcceso(shop.minLevel)}
-                        onOpen={() => openShop(shop.id)}
-                      />
-                    ))}
+                    {shops.map((shop, i) => {
+                      const isTiendaAbiertaEnPartida = partidaData.enExpedicion && partidaData.tiendasAbiertas.some(t => 
+                        t.tienda_id === shop.id && 
+                        (!t.jugadores_permitidos || t.jugadores_permitidos.length === 0 || t.jugadores_permitidos.includes(partidaData.personajeId))
+                      );
+                      
+                      const hasAccess = isTiendaAbiertaEnPartida || (!partidaData.enExpedicion && tieneAcceso(shop.minLevel));
+                      const lockReason = (partidaData.enExpedicion && !isTiendaAbiertaEnPartida) 
+                        ? "No se puede acceder a esta tienda en estos momentos" 
+                        : undefined;
+
+                      return (
+                        <PuestoCard
+                          key={shop.id}
+                          {...shop}
+                          index={i}
+                          hasAccess={hasAccess}
+                          lockReason={lockReason}
+                          onOpen={() => openShop(shop.id)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </>
@@ -462,35 +565,51 @@ export default function TiendasPage() {
             {/* ── Vista: dentro del puesto ─────────────────────────────────── */}
             {activeShop && tema && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setActiveShop(null)}
-                  className="mb-4 inline-flex items-center gap-1.5 font-sans text-xs text-foreground/50 transition-colors hover:text-gold"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  Volver al mercado
-                </button>
-
-                {isLoadingShop ? (
+                {isLoadingShop || partidaData.loading ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {[...Array(8)].map((_, i) => (
                       <div key={i} className="h-56 animate-pulse rounded-xl border border-[#2a241a] bg-card/50" />
                     ))}
                   </div>
-                ) : !tieneAcceso(activeShop.minLevel) ? (
-                  <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
-                    <Lock className="h-8 w-8 text-foreground/30" />
-                    <div>
-                      <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
-                      <p className="mt-1 font-sans text-sm text-muted-foreground">
-                        {activeShop.name} abre a nivel {activeShop.minLevel}.
-                      </p>
-                      <p className="mt-0.5 font-sans text-xs text-foreground/35">
-                        Tu nivel: {user?.level ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
+                ) : (() => {
+                  const isTiendaAbierta = partidaData.enExpedicion && partidaData.tiendasAbiertas.some(t => 
+                    t.tienda_id === activeShop.id && 
+                    (!t.jugadores_permitidos || t.jugadores_permitidos.length === 0 || t.jugadores_permitidos.includes(partidaData.personajeId))
+                  );
+                  const hasAccessInner = isTiendaAbierta || (!partidaData.enExpedicion && tieneAcceso(activeShop.minLevel));
+
+                  if (partidaData.enExpedicion && !isTiendaAbierta) {
+                    return (
+                      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
+                        <Lock className="h-8 w-8 text-foreground/30" />
+                        <div>
+                          <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
+                          <p className="mt-1 font-sans text-sm text-muted-foreground">
+                            No se puede acceder a esta tienda en estos momentos.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (!hasAccessInner) {
+                    return (
+                      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#3a3020] py-20 text-center">
+                        <Lock className="h-8 w-8 text-foreground/30" />
+                        <div>
+                          <h2 className="font-serif text-xl text-[#e8d8b0]">Puesto cerrado</h2>
+                          <p className="mt-1 font-sans text-sm text-muted-foreground">
+                            {activeShop.name} abre a nivel {activeShop.minLevel}.
+                          </p>
+                          <p className="mt-0.5 font-sans text-xs text-foreground/35">
+                            Tu nivel: {user?.level ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
                   <>
                     {/* Estandarte del puesto */}
                     <motion.div
@@ -611,7 +730,8 @@ export default function TiendasPage() {
                       </motion.div>
                     )}
                   </>
-                )}
+                  );
+                })()}
               </>
             )}
           </div>

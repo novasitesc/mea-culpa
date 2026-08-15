@@ -22,11 +22,12 @@ type Props = {
   hasAccess: boolean;
   index: number;
   onOpen: () => void;
+  lockReason?: string;
 };
 
 export default function PuestoCard({
   id, name, description, icon, keeper, location,
-  itemCount, minLevel, hasAccess, index, onOpen,
+  itemCount, minLevel, hasAccess, index, onOpen, lockReason,
 }: Props) {
   const { accent, deep } = temaTienda(id, `${name} ${description}`);
 
@@ -116,10 +117,10 @@ export default function PuestoCard({
           </div>
 
           {!hasAccess && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-              <Lock className="h-4 w-4 text-foreground/45" />
-              <p className="font-sans text-[11px] text-foreground/55">
-                Abre a nivel {minLevel}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 backdrop-blur-[2px]">
+              <Lock className="h-6 w-6 text-white/50 mb-1" />
+              <p className="font-sans text-[11px] text-white/80 text-center px-4 leading-tight">
+                {lockReason || `Abre a nivel ${minLevel}`}
               </p>
             </div>
           )}

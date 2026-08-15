@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import * as Collapsible from "@radix-ui/react-collapsible";
@@ -42,6 +43,12 @@ import SpellsRegistry from "./spells-registry";
 import PortraitPicker from "./portrait-picker";
 import { type SpellEntry } from "@/lib/spells";
 import { playUiHoverSfx } from "@/lib/sfx";
+
+// Carga diferida: `three` no tiene por qué entrar en el bundle del perfil sólo
+// porque una tarjeta lleve un botón con brasas.
+const DeleteCharacterButton = dynamic(() => import("./delete-character-button"), {
+  ssr: false,
+});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Re-use the types from the parent. They are not exported from page.tsx so we
@@ -486,15 +493,11 @@ export default function CharacterCard({
                   </div>
 
                   {/* Delete button */}
-                  <div className="flex justify-center pt-2">
-                    <button
-                      className="text-[11px] font-medium text-muted-foreground/50 hover:text-red-400/80 transition-colors uppercase tracking-widest border-b border-transparent hover:border-red-400/80 pb-0.5"
-                      onClick={() => onDeleteCharacter(character)}
+                  <div className="flex justify-center pt-2 pb-4">
+                    <DeleteCharacterButton
+                      onDelete={() => onDeleteCharacter(character)}
                       disabled={isDeleting}
-                      title="Eliminar o matar a este personaje"
-                    >
-                      Eliminar personaje
-                    </button>
+                    />
                   </div>
 
                   {/* Nivel20 Link per character */}

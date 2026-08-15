@@ -175,6 +175,15 @@ const KEYWORD_RULES: Array<[string[], React.ComponentType<{ className?: string }
  * icono elegido a mano se ignora al renderizar. Lo usa el panel de admin para
  * avisar en vez de dejar que el selector mienta.
  */
+/**
+ * ¿Este objeto de mano es un escudo y no un arma? Las ranuras de mano aceptan
+ * un único tipo ("arma"), así que el nombre es lo único que distingue "Escudo
+ * de Hierro" de "Espada Larga". Lo usa el muñeco de la bolsa para dibujar un
+ * escudo en la mano en vez de una espada.
+ */
+export const esEscudo = (name: string | null | undefined): boolean =>
+  /escudo|broquel|rodela/i.test(name ?? "");
+
 export const nombreDecideIcono = (name: string): boolean => {
   const n = name.trim().toLowerCase();
   return n.length > 3 && KEYWORD_RULES.some(([kws]) => kws.some((k) => n.includes(k)));

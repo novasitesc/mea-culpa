@@ -70,7 +70,7 @@ export default function Mostrador({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={onClose}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       >
         <motion.div
           initial={{ opacity: 0, y: 26, scale: 0.97 }}

@@ -190,7 +190,7 @@ export default function RegisterPage() {
               <div className="relative w-full max-w-xs h-auto aspect-4/3">
                 <Image
                   src="/imgs/Login/calavera.jpeg"
-                  alt="Mea Culpa - Más allá del vigésimo nivel"
+                  alt="MudHakar - Más allá del vigésimo nivel"
                   fill
                   className="object-contain"
                   priority
@@ -458,7 +458,7 @@ export default function RegisterPage() {
           {/* Footer */}
           <div className="text-center mt-6 space-y-2">
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Mea Culpa - RPG Online
+              © {new Date().getFullYear()} MudHakar - RPG Online
             </p>
             <div className="flex justify-center items-center gap-4 text-xs text-muted-foreground/80">
               <Link href="/terminos" className="hover:text-gold transition-colors">

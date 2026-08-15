@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, Undo2, Coins, Swords, ShoppingBag, X, Lock } from "lucide-react";
-import { getIconForString } from "@/lib/iconMapper";
+import { getIconForString, esEscudo } from "@/lib/iconMapper";
 import { getSupabase } from "@/lib/supabase";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { playBagOpenSfx, playItemSelectSfx } from "@/lib/sfx";
@@ -858,6 +858,44 @@ function isSocketedSlot(key: SlotKey): key is SocketedSlot {
   return key === "manoizq" || key === "manoderecha" || key === "capa";
 }
 
+const WEAPON_SLOTS: readonly WeaponSlotKey[] = ["manoizq", "manoderecha"];
+
+/**
+ * Lo que empuña una mano del muñeco. Geometría escrita alrededor de la mano
+ * izquierda (centro x=64 del viewBox); la derecha es la misma trasladada 152,
+ * que es la distancia entre las dos manos.
+ *
+ * Un escudo se dibuja como escudo: la ranura de mano solo acepta el tipo
+ * "arma", así que sin esto un "Escudo de Hierro" aparecía empuñado como espada.
+ */
+function HandHeld({ item }: { item: Item }) {
+  if (esEscudo(item.name)) {
+    return (
+      <>
+        <path
+          d="M40 168 Q40 166 42 166 L86 166 Q88 166 88 168 L88 210 Q88 238 64 250 Q40 238 40 210 Z"
+          fill="url(#dollSteel)"
+          stroke="url(#dollGold)"
+          strokeWidth="2"
+        />
+        <path d="M64 170 L64 244 M43 198 L85 198" stroke="#2b323a" strokeWidth="1.4" opacity="0.7" />
+        <circle cx="64" cy="202" r="6.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.8" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <rect x="58" y="112" width="12" height="86" rx="2" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+      <path d="M58 112 L64 96 L70 112 Z" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
+      <path d="M64 116 L64 194" stroke="#7c8896" strokeWidth="1" />
+      <rect x="46" y="198" width="36" height="7" rx="2.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.6" />
+      <rect x="60" y="205" width="8" height="16" rx="2" fill="#43301c" />
+      <circle cx="64" cy="223" r="4" fill="url(#dollGold)" />
+    </>
+  );
+}
+
 // ─── Silueta ─────────────────────────────────────────────────────────────────
 //
 // El cuerpo, las piezas que lleva puestas y el resplandor de la zona activa.
@@ -1060,26 +1098,17 @@ function Silhouette({
           </motion.g>
         )}
 
-        {equipped.manoizq && (
-          <motion.g key="manoizq" {...piece}>
-            <rect x="54" y="112" width="12" height="86" rx="2" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
-            <path d="M54 112 L60 96 L66 112 Z" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
-            <path d="M60 116 L60 194" stroke="#7c8896" strokeWidth="1" />
-            <rect x="42" y="198" width="36" height="7" rx="2.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.6" />
-            <rect x="56" y="205" width="8" height="16" rx="2" fill="#43301c" />
-            <circle cx="60" cy="223" r="4" fill="url(#dollGold)" />
-          </motion.g>
-        )}
-
-        {equipped.manoderecha && (
-          <motion.g key="manoderecha" {...piece}>
-            <rect x="214" y="112" width="12" height="86" rx="2" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
-            <path d="M214 112 L220 96 L226 112 Z" fill="url(#dollBlade)" stroke="#cfd8e2" strokeWidth="0.8" />
-            <path d="M220 116 L220 194" stroke="#7c8896" strokeWidth="1" />
-            <rect x="202" y="198" width="36" height="7" rx="2.5" fill="url(#dollGold)" stroke="#7a5c14" strokeWidth="0.6" />
-            <rect x="216" y="205" width="8" height="16" rx="2" fill="#43301c" />
-            <circle cx="220" cy="223" r="4" fill="url(#dollGold)" />
-          </motion.g>
+        {/* Las dos manos comparten geometría: se dibuja para la izquierda y la
+            derecha se traslada. Antes eran dos bloques copiados, y el escudo
+            habría sido un tercero y un cuarto. */}
+        {WEAPON_SLOTS.map((key) =>
+          equipped[key] ? (
+            <motion.g key={key} {...piece}>
+              <g transform={key === "manoderecha" ? "translate(152 0)" : undefined}>
+                <HandHeld item={equipped[key]!} />
+              </g>
+            </motion.g>
+          ) : null,
         )}
 
         {/* Los tres anillos comparten mano: se apilan como puntos de oro. */}
@@ -2396,8 +2425,15 @@ export default function EquipmentModal({
             </div>
 
             {/* RIGHT / BOTTOM: Character figure */}
+            {/* El scroll propio SOLO en xl+, donde esta columna es una de dos y
+                tiene altura acotada. Apilada (<xl) `overflow-y-auto` le ponía
+                `min-height: 0`, y como el panel de la bolsa es `shrink-0`,
+                flexbox aplastaba los slots a altura cero: quedaban escondidos
+                bajo el modal y sin forma de llegar a ellos (el body tampoco
+                hacía scroll, porque los hijos "cabían"). Sin scroll propio
+                recupera `min-height: auto` y el body sí desborda y scrollea. */}
             <div
-              className="w-full xl:flex-1 xl:min-w-0 flex flex-col items-center gap-3 p-4 overflow-y-auto"
+              className="w-full max-xl:shrink-0 xl:flex-1 xl:min-w-0 flex flex-col items-center gap-3 p-4 xl:overflow-y-auto"
               style={{ background: "rgba(0,0,0,0.15)" }}
             >
               <div className="flex w-full max-w-190 items-center gap-3">
