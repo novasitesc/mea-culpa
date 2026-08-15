@@ -8,7 +8,7 @@ Si acabas de llegar: bienvenido, aventurero. Este documento te pone en contexto.
 
 MudHakar es el compañero digital de una campaña de rol de mesa. Centraliza todo lo que en una mesa tradicional vive en hojas de papel y en la memoria del DM:
 
-- **Personajes persistentes** — cada usuario puede crear personajes con nivel (hasta 20), fuerza, bolsa de objetos con capacidad limitada, extremidades que se pueden perder y un estado de vida real: si tu personaje muere, muere. Existe historial de muertes y mecánicas de revivir.
+- **Personajes persistentes** — cada usuario puede crear personajes con nivel (hasta 20), fuerza, bolsa de objetos con capacidad limitada, extremidades que se pueden perder y un estado de vida real: si tu personaje muere , muere. Existe historial de muertes y mecánicas de revivir.
 - **Economía de oro** — el oro es un recurso protegido a nivel de base de datos: transacciones auditadas, impuestos que el admin puede cobrar en masa, y sin trampas posibles desde el cliente.
 - **Tiendas y comercio** — tiendas gestionadas por el admin con artículos y precios, más comercio directo entre jugadores. Las compras se bloquean mientras estás en partida.
 - **Equipamiento** — armas (incluidas a dos manos), capas, cinturones, anillos (tres slots), gemas y sockets para mejorar el equipo.
